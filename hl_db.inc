@@ -22,23 +22,49 @@ function db_error() {
     return mysqli_error($link);
 }
 
+function enum($table, $clause=null) {
+    global $link;
+    if (!$clause) $clause = 'TRUE';
+    $query = "select * from $table where $clause";
+    $r = mysqli_query($link, $query);
+    $items = array();
+    while ($f = mysqli_fetch_object($r)) {
+        $items[] = $f;
+    }
+    mysqli_free_result($r);
+    return $items;
+}
+
 //// USER ////
 
-function user_insert($user) {
+function source_insert($source) {
     global $link;
-    $auth = $link->escape_string($user->authenticator);
-    $query = "insert into user (name, authenticator, create_time) values ('$user->name', '$auth', $user->create_time)";
+    $auth = $link->escape_string($source->authenticator);
+    $query = "insert into source (name, authenticator, create_time) values ('$source->name', '$auth', $source->create_time)";
     return mysqli_query($link, $query);
 }
 
-function user_lookup_auth($auth) {
+function source_lookup_auth($auth) {
     global $link;
     $auth = $link->escape_string($auth);
-    $query = "select * from user where authenticator='$auth'";
+    $query = "select * from source where authenticator='$auth'";
     $r = mysqli_query($link, $query);
-    $user = mysqli_fetch_object($r);
+    $source = mysqli_fetch_object($r);
     mysqli_free_result($r);
-    return $user;
+    return $source;
+}
+
+function source_lookup_id($id) {
+    global $link;
+    $query = "select * from source where id=$id";
+    $r = mysqli_query($link, $query);
+    $source = mysqli_fetch_object($r);
+    mysqli_free_result($r);
+    return $source;
+}
+
+function source_enum() {
+    return enum('source');
 }
 
 //// SITE ////
@@ -60,6 +86,10 @@ function site_lookup_name($name) {
     return $site;
 }
 
+function site_enum() {
+    return enum('site');
+}
+
 //// STORE ////
 
 function store_insert($store) {
@@ -79,13 +109,17 @@ function store_lookup_name($site_id, $name) {
     return $store;
 }
 
+function store_enum($clause='') {
+    return enum('store', $clause);
+}
+
 //// FILE ////
 
 function file_insert($file) {
     global $link;
     $md5 = $link->escape_string($file->md5);
     $name = $link->escape_string($file->name);
-    $query = "insert into file (name, create_time, size, user_id, md5) values ('$name', $file->create_time, $file->size, $file->user_id, '$md5')";
+    $query = "insert into file (name, create_time, size, source_id, md5) values ('$name', $file->create_time, $file->size, $file->source_id, '$md5')";
     return mysqli_query($link, $query);
 }
 
@@ -99,25 +133,20 @@ function file_lookup_name($name) {
     return $file;
 }
 
-function file_enum($clause) {
-    global $link;
-    if (!$clause) $clause = 'TRUE';
-    $query = "select * from file where $clause";
-    $r = mysqli_query($link, $query);
-    $files = array();
-    while ($f = mysqli_fetch_object($r)) {
-        $files[] = $f;
-    }
-    mysqli_free_result($r);
-    return $files;
+function file_enum($clause=null) {
+    return enum('file', $clause);
 }
 
 //// FILE_INSTANCE ////
 
 function file_instance_insert($fi) {
     global $link;
-    $query = "insert into file_instance (file_id, store_id, create_time, user_id) values ($fi->file_id, $fi->store_id, $fi->create_time, $fi->user_id)";
+    $query = "insert into file_instance (file_id, store_id, create_time, source_id) values ($fi->file_id, $fi->store_id, $fi->create_time, $fi->source_id)";
     return mysqli_query($link, $query);
+}
+
+function file_instance_enum($clause=null) {
+    return enum('file_instance', $clause);
 }
 
 ?>

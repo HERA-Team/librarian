@@ -10,6 +10,8 @@ require_once("hl_db.inc");
 
 init_db();
 
+// return JSON error reply
+//
 function error($msg) {
     $reply = new StdClass;
     $reply->success = 0;
@@ -17,21 +19,24 @@ function error($msg) {
     echo json_encode($reply);
 }
 
+// return JSON success reply
+//
 function success() {
     $reply = new StdClass;
     $reply->success = true;
     echo json_encode($reply);
 }
 
+// handler for create file RPC
+//
 function create_file($req) {
-    $user = user_lookup_auth($req->authenticator);
-    if (!$user) {
-        echo "foo"; exit;
+    $source = source_lookup_auth($req->authenticator);
+    if (!$source) {
         error("auth failure");
         return;
     }
     $req->create_time = time();
-    $req->user_id = $user->id;
+    $req->source_id = $source->id;
     if (!file_insert($req)) {
         error(db_error());
         return;
@@ -39,9 +44,11 @@ function create_file($req) {
     success();
 }
 
+// handler for create file instance RPC
+//
 function create_file_instance($req) {
-    $user = user_lookup_auth($req->authenticator);
-    if (!$user) {
+    $source = source_lookup_auth($req->authenticator);
+    if (!$source) {
         error("auth failure");
         return;
     }
@@ -63,7 +70,7 @@ function create_file_instance($req) {
     $req->file_id = $file->id;
     $req->store_id = $store->id;
     $req->create_time = time();
-    $req->user_id = $user->id;
+    $req->source_id = $source->id;
     if (!file_instance_insert($req)) {
         error(db_error());
         return;

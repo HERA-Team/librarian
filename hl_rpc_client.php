@@ -1,5 +1,11 @@
 <?php
 
+// MySQL binding of RPC interface to create files / file instances
+//
+// The functions return a $reply object:
+// $reply->success: 1 if success, 0 if failure
+// $reply->message: if failure, error message
+
 require_once("hl_util.inc");
 
 function do_http_post($req) {
@@ -17,7 +23,12 @@ function do_http_post($req) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_args);
     $reply_json = curl_exec($ch);
     curl_close($ch);
-    return json_decode($reply_json);
+    $ret = json_decode($reply_json);
+    if ($ret) return $ret;
+    $ret = new StdClass;
+    $ret->success = 0;
+    $ret->message = "can't parse JSON reply: $reply_json";
+    return $ret;
 }
 
 function create_file($name, $size, $md5) {
@@ -37,8 +48,5 @@ function create_file_instance($file_name, $site_name, $store_name) {
     $req->store_name = $store_name;
     return do_http_post($req);
 }
-
-//print_r(create_file("foobar", 1e9, 'asdlkjasdf'));
-print_r(create_file_instance("foobar", "UC Berkeley", "RAID box"));
 
 ?>

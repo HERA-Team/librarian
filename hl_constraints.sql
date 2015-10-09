@@ -1,4 +1,4 @@
-alter table user
+alter table source
     add unique(name);
 
 alter table site
@@ -10,9 +10,10 @@ alter table store
 
 alter table file
     add unique(name),
-    add foreign key(user_id) references user(id);
+    add foreign key(source_id) references source(id);
 
 alter table file_instance
+    add unique(file_id, store_id),
     add foreign key(store_id) references store(id),
     add foreign key(file_id) references file(id),
-    add foreign key(user_id) references user(id);
+    add foreign key(source_id) references source(id);

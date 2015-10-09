@@ -1,5 +1,54 @@
 <?php
 
+function sidebar($cols, $items) {
+    echo "
+        <div class=\"col-*-$cols sidebar\">
+            <ul class=\"nav nav-sidebar\">
+    ";
+    foreach ($items as $item) {
+        echo "<li><a href=\"".$item[0]."\">".$item[1]."</a></li>\n";
+    }
+    echo "
+            </ul>
+        </div>
+    ";
+}
+
+function navbar($title, $items_left, $items_right) {
+    echo '
+<nav class="navbar navbar-inverse">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="hl.php">'.$title.'</a>
+    </div>
+    <div>
+      <ul class="nav navbar-nav">
+';
+    foreach ($items_left as $item) {
+        echo '<li><a href="'.$item[1].'">'.$item[0].'</a></li>
+        ';
+    }
+    echo '
+      </ul>
+    ';
+    if (count($items_right)) {
+        echo '<ul class="nav navbar-nav navbar-right">
+        ';
+        foreach ($items_right as $item) {
+            echo '
+                <li><a href="'.$item[1].'">'.$item[0].'</a></li>
+            ';
+        }
+        echo '</ul>
+        ';
+    }
+    echo '
+    </div>
+  </div>
+</nav>
+';
+}
+
 function page_head($title) {
 echo '
     <!DOCTYPE html>
@@ -24,7 +73,13 @@ echo '
         <![endif]-->
     </head>
     <body>
-    <div class="container">
+';
+    navbar("HERA Librarian",
+        array(array('Search', 'hl.php')),
+        array(array('Contact', 'hl.php'))
+    );
+echo '
+    <div class="container-fluid">
 ';
 echo "<h1>$title</h1>\n";
 }
@@ -82,6 +137,34 @@ function table_end() {
         </table>
         </div>
     ';
+}
+
+function get_str($name, $optional=false) {
+    if (isset($_GET[$name])) {
+        $x = $_GET[$name];
+    } else {
+        if (!$optional) {
+            error_page("missing or bad parameter: $name");
+        }
+        $x = null;
+    }
+    return $x;
+}
+
+function get_int($name, $optional=false) {
+    $x=null;
+    if (isset($_GET[$name])) $x = $_GET[$name];
+    if (!is_numeric($x)) {
+        if ($optional) {
+            if ($x) {
+                error_page("$name not numeric");
+            }
+            return null;
+        } else {
+            error_page("$name missing");
+        }
+    }
+    return (int)$x;
 }
 
 ?>

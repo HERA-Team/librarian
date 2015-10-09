@@ -1,4 +1,4 @@
-create table user (
+create table source (
     id              integer         not null auto_increment,
     name            varchar(254)    not null,
     authenticator   varchar(254)    not null,
@@ -28,7 +28,7 @@ create table file (
     name            varchar(254)    not null,
     create_time     double          not null,
     size            double          not null,
-    user_id         integer         not null,
+    source_id       integer         not null,
     md5             varchar(254)    not null,
     primary key (id)
 ) engine=InnoDB;
@@ -38,6 +38,6 @@ create table file_instance (
     file_id         integer         not null,
     store_id        integer         not null,
     create_time     double          not null,
-    user_id         integer         not null,
+    source_id       integer         not null,
     primary key (id)
 ) engine=InnoDB;

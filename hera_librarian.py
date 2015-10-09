@@ -2,6 +2,8 @@ import os
 import urllib
 import json
 
+# parse config file, return as a dictionary
+#
 def get_config():
     path = os.path.expanduser('~/.hera_librarian')
     f = open(path, 'r')
@@ -12,6 +14,21 @@ def get_config():
     f.close()
     return config
 
+# do a POST operation,
+# passing a JSON version of the request and expecting a JSON reply;
+# return the decoded version of the latter.
+#
+def do_http_post(req, config):
+    req_json = json.dumps(req)
+    params = urllib.urlencode({'request': req_json})
+    url = config['server']+'/hl_rpc_handler.php'
+    f = urllib.urlopen(url , params);
+    reply_json = f.read()
+    reply = json.loads(reply_json)
+    return reply
+
+# do RPC to create a file
+#
 def create_file(name, size, md5):
     config = get_config()
     req = {'operation': 'create_file',
@@ -19,14 +36,18 @@ def create_file(name, size, md5):
         'name': name,
         'size': size,
         'md5': md5}
+    return do_http_post(req, config)
 
-    req_json = json.dumps(req)
-    params = urllib.urlencode({'request': req_json})
-    url = config['server']+'/hl_rpc_handler.php'
-    f = urllib.urlopen(url , params);
+# do RPC to create a file instance
+#
+def create_file_instance(file_name, site_name, store_name):
+    config = get_config()
+    req = {'operation': 'create_file_instance',
+        'authenticator': config['authenticator'],
+        'file_name': file_name,
+        'site_name': site_name,
+        'store_name': store_name}
+    return do_http_post(req, config)
 
-    reply_json = f.read()
-    reply = json.loads(reply_json)
-    return reply
-
-create_file('filename2', 2e9, 'ajfjfkdjffjf')
+#create_file('filename2', 2e9, 'ajfjfkdjffjf')
+#create_file_instance("filename2", "UC Berkeley", "RAID box")
