@@ -48,16 +48,44 @@ function file_search_form() {
 function file_search_action() {
     page_head("Files");
     table_start();
-    table_header(array("name", "source", "size"));
+    table_header(array("Name", "Created", "Source", "Size", "Site", "Store"));
     $clause = '';
     $source_id = get_int('source_id');
     if ($source_id) {
-        $clause = "source_id = $source_id";
+        $clause = "file.source_id = $source_id";
     }
-    $files = file_enum($clause);
-    foreach ($files as $file) {
-        $source = source_lookup_id($file->source_id);
-        table_row(array($file->name, $source->name, $file->size));
+    $fis = file_instance_enum2($clause);
+    foreach ($fis as $fi) {
+        $source = source_lookup_id($fi->f_source_id);
+        $store = store_lookup_id($fi->store_id);
+        $site = site_lookup_id($store->site_id);
+        table_row(array(
+            $fi->f_name,
+            time_str($fi->create_time),
+            $source->name,
+            size_str($fi->f_size),
+            $site->name,
+            $store->name
+        ));
+    }
+    table_end();
+    page_tail();
+}
+
+function show_storage() {
+    page_head("Storage");
+    table_start();
+    table_header(array("Site", "Name", "Capacity", "Used", "% used"));
+    $stores = store_enum();
+    foreach ($stores as $store) {
+        $site = site_lookup_id($store->site_id);
+        table_row(array(
+            $site->name,
+            $store->name,
+            size_str($store->capacity),
+            size_str($store->used),
+            progress_bar(100*$store->used/$store->capacity)
+        ));
     }
     table_end();
     page_tail();
@@ -68,10 +96,13 @@ if (!init_db()) {
 }
 
 $action = get_str("action", true);
-if ($action == 'search') {
-    file_search_action();
-} else {
-    file_search_form();
+switch ($action) {
+case 'search':
+    file_search_action(); break;
+case 'storage':
+    show_storage(); break;
+default:
+    file_search_form(); break;
 }
 
 ?>

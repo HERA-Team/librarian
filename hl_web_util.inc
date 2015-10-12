@@ -75,7 +75,10 @@ echo '
     <body>
 ';
     navbar("HERA Librarian",
-        array(array('Search', 'hl.php')),
+        array(
+            array('Files', 'hl.php'),
+            array('Storage', 'hl.php?action=storage'),
+        ),
         array(array('Contact', 'hl.php'))
     );
 echo '
@@ -165,6 +168,48 @@ function get_int($name, $optional=false) {
         }
     }
     return (int)$x;
+}
+
+function time_str($x) {
+    if ($x == 0) return "---";
+    return gmdate('j M Y, G:i:s', $x) . " UTC";
+}
+
+function size_str($x) {
+    $kilo = 1024.;
+    $mega = $kilo*1024.;
+    $giga = $mega*1024.;
+    $tera = $giga*1024.;
+
+    if ($x >= $tera) {
+        $y = number_format($x/$tera, 2);
+        return "$y TB";
+    }
+    if ($x >= $giga) {
+        $y = number_format($x/$giga, 2);
+        return "$y GB";
+    }
+    if ($x >= $mega) {
+        $y = number_format($x/$mega, 2);
+        return "$y MB";
+    }
+    if ($x >= $kilo) {
+        $y = number_format($x/$kilo, 2);
+        return "$y KB";
+    }
+    return "$x bytes";
+}
+
+function progress_bar($pct) {
+    $p = (int)$pct;
+    return '
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" aria-valuenow="'.$pct.'"
+                aria-valuemin="0" aria-valuemax="100" style="width:'.$pct.'%">
+                '.$p.'%
+            </div>
+        </div>
+    ';
 }
 
 ?>

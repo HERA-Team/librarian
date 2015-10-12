@@ -4,10 +4,6 @@
 // script to create a bunch of files and instances, for testing
 // Do this using RPCs rather than direct DB access
 
-error_reporting(E_ALL);
-ini_set('display_errors', true);
-ini_set('display_startup_errors', true);
-
 require_once("hl_util.inc");
 require_once("hl_rpc_client.php");
 

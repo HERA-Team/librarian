@@ -75,6 +75,7 @@ function create_file_instance($req) {
         error(db_error());
         return;
     }
+    store_update($store->id, "used = used+$file->size");
     success();
 }
 

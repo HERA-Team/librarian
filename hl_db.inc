@@ -35,6 +35,16 @@ function enum($table, $clause=null) {
     return $items;
 }
 
+function lookup_id($table, $id) {
+    global $link;
+    $query = "select * from $table where id=$id";
+    $r = mysqli_query($link, $query);
+    $source = mysqli_fetch_object($r);
+    mysqli_free_result($r);
+    return $source;
+}
+
+
 //// USER ////
 
 function source_insert($source) {
@@ -55,12 +65,7 @@ function source_lookup_auth($auth) {
 }
 
 function source_lookup_id($id) {
-    global $link;
-    $query = "select * from source where id=$id";
-    $r = mysqli_query($link, $query);
-    $source = mysqli_fetch_object($r);
-    mysqli_free_result($r);
-    return $source;
+    return lookup_id("source", $id);
 }
 
 function source_enum() {
@@ -84,6 +89,10 @@ function site_lookup_name($name) {
     $site = mysqli_fetch_object($r);
     mysqli_free_result($r);
     return $site;
+}
+
+function site_lookup_id($id) {
+    return lookup_id("site", $id);
 }
 
 function site_enum() {
@@ -111,6 +120,16 @@ function store_lookup_name($site_id, $name) {
 
 function store_enum($clause='') {
     return enum('store', $clause);
+}
+
+function store_lookup_id($id) {
+    return lookup_id("store", $id);
+}
+
+function store_update($id, $clause) {
+    global $link;
+    $query = "update store set $clause where id=$id";
+    return mysqli_query($link, $query);
 }
 
 //// FILE ////
@@ -149,4 +168,16 @@ function file_instance_enum($clause=null) {
     return enum('file_instance', $clause);
 }
 
+function file_instance_enum2($clause=null) {
+    global $link;
+    if (!$clause) $clause = 'TRUE';
+    $query = "select fi.*, file.name as f_name, file.size as f_size, file.source_id as f_source_id from file_instance as fi join file where fi.file_id=file.id and $clause";
+    $r = mysqli_query($link, $query);
+    $items = array();
+    while ($f = mysqli_fetch_object($r)) {
+        $items[] = $f;
+    }
+    mysqli_free_result($r);
+    return $items;
+}
 ?>
