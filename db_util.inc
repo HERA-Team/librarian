@@ -92,4 +92,8 @@ function observation_lookup_id($id) {
     return lookup_id("observation", $id);
 }
 
+function observation_enum($clause) {
+    return enum('observation');
+}
+
 ?>

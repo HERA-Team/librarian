@@ -32,14 +32,49 @@ function show_store_select() {
     ';
 }
 
-function file_search_form() {
-    page_head("Search files");
-    echo '
-        <form role="form" action="hl.php">
+function obs_search_form() {
+    page_head("Search observations");
+    echo '<form role="form" action="hl.php">
     ';
     show_source_select();
     echo '
-        <button type="submit" name="action" value="search" class="btn btn-default">Submit</button>
+        <button type="submit" name="action" value="obs_search_action" class="btn btn-default">Submit</button>
+        </form>
+    ';
+    page_tail();
+}
+
+function obs_search_action() {
+    page_head("Observations");
+    table_start();
+    table_header(array("ID (click for files)", "Date", "Source", "Polarization", "Length (days)"));
+    $clause = '';
+    $source_id = get_int('source_id');
+    if ($source_id) {
+        $clause = "file.source_id = $source_id";
+    }
+    $obs = observation_enum($clause);
+    foreach ($obs as $ob) {
+        $source = source_lookup_id($ob->source_id);
+        table_row(array(
+            "<a href=hl.php?action=file_search_action&obs_id=$ob->id>$ob->id</a>",
+            time_str($ob->julian_date),
+            $source->name,
+            $ob->polarization,
+            $ob->length_days
+        ));
+    }
+    table_end();
+    page_tail();
+}
+
+function file_search_form() {
+    page_head("Search files");
+    echo '<form role="form" action="hl.php">
+    ';
+    show_source_select();
+    echo '
+        <button type="submit" name="action" value="file_search_action" class="btn btn-default">Submit</button>
         </form>
     ';
     page_tail();
@@ -48,11 +83,15 @@ function file_search_form() {
 function file_search_action() {
     page_head("Files");
     table_start();
-    table_header(array("Name", "Created", "Source", "Size", "Store"));
-    $clause = '';
-    $source_id = get_int('source_id');
+    table_header(array("Name", "Created", "Observation", "Source", "Size", "Store"));
+    $clause = 'true';
+    $source_id = get_int('source_id', true);
     if ($source_id) {
-        $clause = "file.source_id = $source_id";
+        $clause .= " and file.source_id = $source_id";
+    }
+    $obs_id = get_int('obs_id', true);
+    if ($obs_id) {
+        $clause .= " and observation_id=$obs_id";
     }
     $files = file_enum($clause);
     foreach ($files as $file) {
@@ -61,6 +100,7 @@ function file_search_action() {
         table_row(array(
             $file->name,
             time_str($file->create_time),
+            $file->observation_id,
             $source->name,
             size_str($file->size),
             $store->name
@@ -93,12 +133,16 @@ if (!init_db(LIBRARIAN_DB_NAME)) {
 
 $action = get_str("action", true);
 switch ($action) {
-case 'search':
+case 'file_search_action':
     file_search_action(); break;
+case 'file_search_form':
+    file_search_form(); break;
+case 'obs_search_action':
+    obs_search_action(); break;
 case 'stores':
     show_stores(); break;
 default:
-    file_search_form(); break;
+    obs_search_form(); break;
 }
 
 ?>

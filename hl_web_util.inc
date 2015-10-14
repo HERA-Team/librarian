@@ -76,7 +76,8 @@ echo '
 ';
     navbar("HERA Librarian",
         array(
-            array('Files', 'hl.php'),
+            array('Observations', 'hl.php'),
+            array('Files', 'hl.php?action=file_search_form'),
             array('Storage', 'hl.php?action=stores'),
         ),
         array(array('Contact', 'hl.php'))
