@@ -1,6 +1,6 @@
 <?php
 
-// All MySQL code goes here
+// MySQL code goes here
 
 $link = null;
 $db_error = '';
@@ -45,7 +45,7 @@ function lookup_id($table, $id) {
 }
 
 
-//// USER ////
+//// SOURCE ////
 
 function source_insert($source) {
     global $link;
@@ -72,31 +72,17 @@ function source_enum() {
     return enum('source');
 }
 
-//// SITE ////
+//// OBSERVATION ////
 
-function site_insert($site) {
+function observation_insert($obs) {
     global $link;
-    $name = $link->escape_string($site->name);
-    $query = "insert into site (name, create_time) values ('$name', $site->create_time)";
+    $polarization = $link->escape_string($obs->polarization);
+    $query = "insert into observation (source_id, julian_date, polarization, length_days) values ($obs->source_id, $obs->julian_date, '$polarization', $obs->length_days)";
     return mysqli_query($link, $query);
 }
 
-function site_lookup_name($name) {
-    global $link;
-    $name = $link->escape_string($name);
-    $query = "select * from site where name='$name'";
-    $r = mysqli_query($link, $query);
-    $site = mysqli_fetch_object($r);
-    mysqli_free_result($r);
-    return $site;
-}
-
-function site_lookup_id($id) {
-    return lookup_id("site", $id);
-}
-
-function site_enum() {
-    return enum('site');
+function observation_lookup_id($id) {
+    return lookup_id("observation", $id);
 }
 
 //// STORE ////
@@ -104,14 +90,14 @@ function site_enum() {
 function store_insert($store) {
     global $link;
     $name = $link->escape_string($store->name);
-    $query = "insert into store (site_id, name, create_time, capacity, used) values ($store->site_id, '$name', $store->create_time, $store->capacity, $store->used)";
+    $query = "insert into store (name, create_time, capacity, used) values ('$name', $store->create_time, $store->capacity, $store->used)";
     return mysqli_query($link, $query);
 }
 
-function store_lookup_name($site_id, $name) {
+function store_lookup_name($name) {
     global $link;
     $name = $link->escape_string($name);
-    $query = "select * from store where site_id=$site_id and name='$name'";
+    $query = "select * from store where name='$name'";
     $r = mysqli_query($link, $query);
     $store = mysqli_fetch_object($r);
     mysqli_free_result($r);
@@ -138,7 +124,7 @@ function file_insert($file) {
     global $link;
     $md5 = $link->escape_string($file->md5);
     $name = $link->escape_string($file->name);
-    $query = "insert into file (name, create_time, size, source_id, md5) values ('$name', $file->create_time, $file->size, $file->source_id, '$md5')";
+    $query = "insert into file (name, create_time, observation_id, source_id, store_id, size, md5) values ('$name', $file->create_time, $file->observation_id, $file->source_id, $file->store_id, $file->size, '$md5')";
     return mysqli_query($link, $query);
 }
 
@@ -156,28 +142,4 @@ function file_enum($clause=null) {
     return enum('file', $clause);
 }
 
-//// FILE_INSTANCE ////
-
-function file_instance_insert($fi) {
-    global $link;
-    $query = "insert into file_instance (file_id, store_id, create_time, source_id) values ($fi->file_id, $fi->store_id, $fi->create_time, $fi->source_id)";
-    return mysqli_query($link, $query);
-}
-
-function file_instance_enum($clause=null) {
-    return enum('file_instance', $clause);
-}
-
-function file_instance_enum2($clause=null) {
-    global $link;
-    if (!$clause) $clause = 'TRUE';
-    $query = "select fi.*, file.name as f_name, file.size as f_size, file.source_id as f_source_id from file_instance as fi join file where fi.file_id=file.id and $clause";
-    $r = mysqli_query($link, $query);
-    $items = array();
-    while ($f = mysqli_fetch_object($r)) {
-        $items[] = $f;
-    }
-    mysqli_free_result($r);
-    return $items;
-}
 ?>

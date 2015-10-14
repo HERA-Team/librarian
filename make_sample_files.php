@@ -8,27 +8,26 @@ require_once("hl_util.inc");
 require_once("hl_rpc_client.php");
 
 function test_setup() {
-    $sites = array('UC Berkeley', 'Penn', 'ASU');
-    $stores = array('Luster', 'RAID Box');
+    $stores = array('UC Berkeley', 'Penn', 'ASU');
     for ($i=0; $i<100; $i++) {
+        $julian_date = time() - rand(0, 100*86400);
+        $polarization = "xy";
+        $length_days = .5;
+        $ret = create_observation($julian_date, $polarization, $length_days);
+        if (!$ret->success) {
+            echo "create_observation() error: $ret->message\n";
+            continue;
+        }
+        $observation_id = $ret->id;
         $f = "file_$i";
         $size = rand(1, 100)*1.e9;
-        $ret = create_file($f, $size, random_string());
+        $store = $stores[rand(0, 2)];
+        $ret = create_file($f, $observation_id, $size, random_string(), $store);
         if ($ret->success) {
             echo "created file $f\n";
         } else {
             echo "create_file() error: $ret->message\n";
             continue;
-        }
-        for ($j=0; $j<3; $j++) {
-            $site = $sites[rand(0,2)];
-            $store = $stores[rand(0,1)];
-            $ret = create_file_instance($f, $site, $store);
-            if ($ret->success) {
-                echo "  created instance on $site $store\n";
-            } else {
-                echo "create_file_instance() error: $ret->message\n";
-            }
         }
     }
 }

@@ -27,27 +27,16 @@ def do_http_post(req, config):
     reply = json.loads(reply_json)
     return reply
 
-# do RPC to create a file
+# RPC to create a file
 #
-def create_file(name, size, md5):
+def create_file(name, size, md5, store_name):
     config = get_config()
     req = {'operation': 'create_file',
         'authenticator': config['authenticator'],
         'name': name,
         'size': size,
-        'md5': md5}
-    return do_http_post(req, config)
-
-# do RPC to create a file instance
-#
-def create_file_instance(file_name, site_name, store_name):
-    config = get_config()
-    req = {'operation': 'create_file_instance',
-        'authenticator': config['authenticator'],
-        'file_name': file_name,
-        'site_name': site_name,
+        'md5': md5,
         'store_name': store_name}
     return do_http_post(req, config)
 
-#create_file('filename2', 2e9, 'ajfjfkdjffjf')
-#create_file_instance("filename2", "UC Berkeley", "RAID box")
+#create_file('filename2', 2e9, 'ajfjfkdjffjf', 'UCB RAID')

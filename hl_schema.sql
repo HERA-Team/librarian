@@ -6,16 +6,17 @@ create table source (
     primary key (id)
 ) engine=InnoDB;
 
-create table site (
+create table observation (
     id              integer         not null auto_increment,
-    name            varchar(254)    not null,
-    create_time     double          not null,
+    source_id       integer         not null,
+    julian_date     double          not null,
+    polarization    char(4)         not null,
+    length_days     double          not null,
     primary key (id)
 ) engine=InnoDB;
 
 create table store (
     id              integer         not null auto_increment,
-    site_id         integer         not null,
     name            varchar(254)    not null,
     create_time     double          not null,
     capacity        double          not null,
@@ -27,17 +28,10 @@ create table file (
     id              integer         not null auto_increment,
     name            varchar(254)    not null,
     create_time     double          not null,
-    size            double          not null,
+    observation_id  integer         not null,
     source_id       integer         not null,
-    md5             varchar(254)    not null,
-    primary key (id)
-) engine=InnoDB;
-
-create table file_instance (
-    id              integer         not null auto_increment,
-    file_id         integer         not null,
     store_id        integer         not null,
-    create_time     double          not null,
-    source_id       integer         not null,
+    size            double          not null,
+    md5             varchar(254)    not null,
     primary key (id)
 ) engine=InnoDB;

@@ -8,8 +8,10 @@
 
 require_once("hl_util.inc");
 
+$config = get_config();
+
 function do_http_post($req) {
-    $config = get_config();
+    global $config;
     $server = $config->server;
     $url = "$server/hl_rpc_handler.php";
     $req->authenticator = $config->authenticator;
@@ -31,20 +33,22 @@ function do_http_post($req) {
     return $ret;
 }
 
-function create_file($name, $size, $md5) {
+function create_observation($julian_date, $polarization, $length_days) {
     $req = new StdClass;
-    $req->operation = 'create_file';
-    $req->name = $name;
-    $req->size = $size;
-    $req->md5 = $md5;
+    $req->operation = 'create_observation';
+    $req->julian_date = $julian_date;
+    $req->polarization = $polarization;
+    $req->length_days = $length_days;
     return do_http_post($req);
 }
 
-function create_file_instance($file_name, $site_name, $store_name) {
+function create_file($name, $observation_id, $size, $md5, $store_name) {
     $req = new StdClass;
-    $req->operation = 'create_file_instance';
-    $req->file_name = $file_name;
-    $req->site_name = $site_name;
+    $req->operation = 'create_file';
+    $req->name = $name;
+    $req->observation_id = $observation_id;
+    $req->size = $size;
+    $req->md5 = $md5;
     $req->store_name = $store_name;
     return do_http_post($req);
 }
