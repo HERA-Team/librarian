@@ -6,8 +6,10 @@ create table source (
     primary key (id)
 ) engine=InnoDB;
 
+/* clone of M&C table */
+
 create table observation (
-    id              integer         not null auto_increment,
+    id              integer         not null,
     source_id       integer         not null,
     julian_date     double          not null,
     polarization    char(4)         not null,

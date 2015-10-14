@@ -1,0 +1,42 @@
+Test instructions
+-----------------
+Clone the repo on a Linux system.  Then:
+
+1) create MySQL databases "hera_lib" and "hera_mc":
+    > mysql
+    MariaDB [(none)]> create database hera_lib;
+    MariaDB [(hera_lib)]> create database hera_mc;
+
+    Make sure they're accessible (R/W) by both you and Apache.
+
+2) create the tables:
+    > mysql hera_lib < hl_schema.sql
+    > mysql hera_lib < hl_constraints.sql
+    > mysql hera_mc < mc_schema.sql
+    > mysql hera_mc < mc_constraints.sql
+
+3) add test data
+    > ./db_init.php test_setup
+
+4) copy or symlink the following to a directory served by Apache at some URL:
+    db_util.inc
+    hl_db.inc
+    hl_rpc_handler.php
+    hl.php
+    hl_web_util.inc
+    hera_util.inc
+    mc_db.inc
+    mc_rpc_handler.php
+
+5) create ~/.hera_librarian and ~/.hera_mc, both with format
+
+server http://isaac.ssl.berkeley.edu/test
+authenticator fd23001b4946a0a99737edc9e0a9e866
+
+    The URL is from 4).
+    The authenticators are from 3).
+
+6) add sample data for observations and files
+    > ./make_sample_files.php
+
+7) Go to URL/hl.php and make sure files are shown

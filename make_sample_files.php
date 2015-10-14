@@ -1,11 +1,12 @@
 #!/usr/bin/env php
 <?php
 
-// script to create a bunch of files and instances, for testing
+// Create a bunch of observations and files, for testing.
 // Do this using RPCs rather than direct DB access
 
-require_once("hl_util.inc");
+require_once("hera_util.inc");
 require_once("hl_rpc_client.php");
+require_once("mc_rpc_client.php");
 
 function test_setup() {
     $stores = array('UC Berkeley', 'Penn', 'ASU');
@@ -13,12 +14,19 @@ function test_setup() {
         $julian_date = time() - rand(0, 100*86400);
         $polarization = "xy";
         $length_days = .5;
-        $ret = create_observation($julian_date, $polarization, $length_days);
+        $ret = mc_create_observation($julian_date, $polarization, $length_days);
         if (!$ret->success) {
-            echo "create_observation() error: $ret->message\n";
+            echo "mc_create_observation() error: $ret->message\n";
             continue;
         }
         $observation_id = $ret->id;
+        $ret = hl_create_observation(
+            $observation_id, $julian_date, $polarization, $length_days
+        );
+        if (!$ret->success) {
+            echo "hl_create_observation() error: $ret->message\n";
+            continue;
+        }
         $f = "file_$i";
         $size = rand(1, 100)*1.e9;
         $store = $stores[rand(0, 2)];

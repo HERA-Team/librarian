@@ -1,20 +1,21 @@
 <?php
 
-// PHP binding of Librarian RPC interface
+// PHP binding of M&C RPC interface
 //
 // The functions return a $reply object:
 // $reply->success: 1 if success, 0 if failure
 // $reply->message: if failure, error message
+// $reply->id: for creation RPC, the DB ID of the created item
 
 require_once("hera_util.inc");
 
-$hl_config = get_config('.hera_librarian');
+$mc_config = get_config('.hera_mc');
 
-function hl_do_http_post($req) {
-    global $hl_config;
-    $server = $hl_config->server;
-    $url = "$server/hl_rpc_handler.php";
-    $req->authenticator = $hl_config->authenticator;
+function mc_do_http_post($req) {
+    global $mc_config;
+    $server = $mc_config->server;
+    $url = "$server/mc_rpc_handler.php";
+    $req->authenticator = $mc_config->authenticator;
     $req_json = json_encode($req);
     $post_args = array();
     $post_args['request'] = $req_json;
@@ -33,25 +34,13 @@ function hl_do_http_post($req) {
     return $ret;
 }
 
-function hl_create_observation($id, $julian_date, $polarization, $length_days) {
+function mc_create_observation($julian_date, $polarization, $length_days) {
     $req = new StdClass;
     $req->operation = 'create_observation';
-    $req->id = $id;
     $req->julian_date = $julian_date;
     $req->polarization = $polarization;
     $req->length_days = $length_days;
-    return hl_do_http_post($req);
-}
-
-function create_file($name, $observation_id, $size, $md5, $store_name) {
-    $req = new StdClass;
-    $req->operation = 'create_file';
-    $req->name = $name;
-    $req->observation_id = $observation_id;
-    $req->size = $size;
-    $req->md5 = $md5;
-    $req->store_name = $store_name;
-    return hl_do_http_post($req);
+    return mc_do_http_post($req);
 }
 
 ?>

@@ -4,11 +4,11 @@ error_reporting(E_ALL);
 ini_set('display_errors', true);
 ini_set('display_startup_errors', true);
 
-// parse Librarian config file, return as object
+// parse config file, return as object
 //
-function get_config() {
+function get_config($file) {
     $home = getenv('HOME');
-    $config_path = "$home/.hera_librarian";
+    $config_path = "$home/$file";
     $lines = file($config_path);
     if (!$lines) {
         die("can't read $config_path\n");
