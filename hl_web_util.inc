@@ -16,7 +16,7 @@ function sidebar($cols, $items) {
 
 function navbar($title, $items_left, $items_right) {
     echo '
-<nav class="navbar navbar-inverse">
+<nav class="navbar navbar-default">
   <div class="container-fluid">
     <div class="navbar-header">
       <a class="navbar-brand" href="hl.php">'.$title.'</a>

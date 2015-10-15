@@ -39,4 +39,4 @@ authenticator fd23001b4946a0a99737edc9e0a9e866
 6) add sample data for observations and files
     > ./make_sample_files.php
 
-7) Go to URL/hl.php and make sure files are shown
+7) Go to URL/hl.php and make sure observations and files are shown

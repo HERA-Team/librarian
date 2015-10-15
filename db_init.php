@@ -37,7 +37,7 @@ function create_store($name, $capacity) {
 
 function mc_setup() {
     init_db(MC_DB_NAME);
-    foreach (array('RTP', 'raw data') as $u) {
+    foreach (array('RTP', 'correlator') as $u) {
         if (!create_source($u, 'M&C')) {
             echo db_error()."\n";
         }

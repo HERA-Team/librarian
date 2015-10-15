@@ -45,10 +45,32 @@ function create_observation($req) {
     echo json_encode($reply);
 }
 
+function create_status($req) {
+    $source = source_lookup_auth($req->authenticator);
+    if (!$source) {
+        error("auth failure");
+        return;
+    }
+    $req->source_id = $source->id;
+    if (!status_insert($req)) {
+        error(db_error());
+        return;
+    }
+    $reply = success();
+    $reply->id = insert_id();
+    echo json_encode($reply);
+}
+
 $req = json_decode($_POST['request']);
 switch ($req->operation) {
-case 'create_observation': create_observation($req); break;
-default: error("unknown op $req->operation");
+case 'create_observation':
+    create_observation($req);
+    break;
+case 'create_status':
+    create_status($req);
+    break;
+default:
+    error("unknown op $req->operation");
 }
 
 ?>
