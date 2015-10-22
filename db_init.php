@@ -2,7 +2,7 @@
 <?php
 
 // CLI script to create Librarian and MC records.
-// Usage: db_init.php command args
+// Usage: db_init.php command
 //
 // commands:
 // hl_source name
@@ -16,6 +16,17 @@
 
 require_once("hera_util.inc");
 require_once("hl_db.inc");
+
+function usage() {
+    echo "usage: db_init.php command
+    commands:
+        hl_source name: create Librarian source
+        mc_source name: create M&C source
+        store name capacity: create store
+        test_setup: create records for testing
+";
+    exit;
+}
 
 function create_source($name, $subsystem) {
     $source = new StdClass;
@@ -32,6 +43,7 @@ function create_store($name, $capacity) {
     $store->create_time = time();
     $store->capacity = (double)$capacity;
     $store->used = 0;
+    $store->rsync_base = "boincadm@isaac.ssl.berkeley.edu/hera_data";
     return store_insert($store);
 }
 
@@ -45,19 +57,23 @@ function mc_setup() {
 }
 
 function hl_setup() {
+    global $test_store_names, $test_source_names;
     init_db(LIBRARIAN_DB_NAME);
-    foreach (array('RTP', 'raw data') as $u) {
+    foreach ($test_source_names as $u) {
         if (!create_source($u, 'Librarian')) {
             echo db_error()."\n";
         }
     }
-    foreach (array('UC Berkeley', 'Penn', 'ASU') as $s) {
+    foreach ($test_store_names as $s) {
         if (!create_store($s, 1e12)) {
             echo db_error()."\n";
         }
     }
 }
 
+if ($argc < 2) {
+    usage();
+}
 
 switch ($argv[1]) {
 case 'hl_source':
@@ -73,10 +89,9 @@ case 'store':
     create_store($argv[2], $argv[3], $argv[4]);
     break;
 case 'test_setup':
-    mc_setup();
     hl_setup();
     break;
-default: die("no such command\n");
+default: usage();
 }
 
 ?>

@@ -4,7 +4,7 @@ import os
 import urllib
 import json
 
-# parse config file, return as a dictionary
+# parse config file, return as dictionary
 #
 def get_config(file):
     path = os.path.expanduser('~/'+file)

@@ -1,5 +1,7 @@
 <?php
 
+// Librarian web interface.
+
 require_once("hl_web_util.inc");
 require_once("hl_db.inc");
 
@@ -51,7 +53,7 @@ function obs_search_action() {
     $clause = '';
     $source_id = get_int('source_id');
     if ($source_id) {
-        $clause = "file.source_id = $source_id";
+        $clause = "source_id = $source_id";
     }
     $obs = observation_enum($clause);
     foreach ($obs as $ob) {
@@ -81,29 +83,32 @@ function file_search_form() {
 }
 
 function file_search_action() {
-    page_head("Files");
     table_start();
-    table_header(array("Name", "Created", "Observation", "Source", "Size", "Store"));
+    table_header(array("Name", "Created", "Observation", "Source", "Size", "Store", "Path"));
     $clause = 'true';
     $source_id = get_int('source_id', true);
     if ($source_id) {
         $clause .= " and file.source_id = $source_id";
+        $title = "Files from source $source_id";
     }
     $obs_id = get_int('obs_id', true);
     if ($obs_id) {
         $clause .= " and observation_id=$obs_id";
+        $title = "Files from observation $obs_id";
     }
+    page_head($title);
     $files = file_enum($clause);
     foreach ($files as $file) {
         $source = source_lookup_id($file->source_id);
         $store = store_lookup_id($file->store_id);
         table_row(array(
-            $file->name,
+            "<a href=$file->url>$file->name</a>",
             time_str($file->create_time),
             $file->observation_id,
             $source->name,
             size_str($file->size),
-            $store->name
+            $store->name,
+            $file->path
         ));
     }
     table_end();

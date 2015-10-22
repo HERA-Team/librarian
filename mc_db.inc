@@ -1,4 +1,7 @@
 <?php
+
+// PHP interface to MySQL version of M&C database
+
 require_once("db_util.inc");
 
 function status_insert($status) {

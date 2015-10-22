@@ -40,6 +40,8 @@ function daemon() {
     global $sleep_interval;
     while (1) {
         start_tasks();
+        // reap any child processes
+        //
         while (1) {
             $ret = pcntl_wait($status, WNOHANG);
             if ($ret > 0) continue;

@@ -43,4 +43,20 @@ function mc_create_observation($julian_date, $polarization, $length_days) {
     return mc_do_http_post($req);
 }
 
+function create_status(
+    $observation_id, $status, $current_pid, $still_host, $still_path,
+    $output_host, $output_path
+) {
+    $req = new StdClass;
+    $req->operation = 'create_status';
+    $req->observation_id = $observation_id;
+    $req->status = $status;
+    $req->current_pid = $current_pid;
+    $req->still_host = $still_host;
+    $req->still_path = $still_path;
+    $req->output_host = $output_host;
+    $req->output_path = $output_path;
+    return mc_do_http_post($req);
+}
+
 ?>

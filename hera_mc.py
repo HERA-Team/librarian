@@ -1,6 +1,6 @@
-import hera_rpc
-
 # Python binding of M&C RPCs
+
+import hera_rpc
 
 # create an observation
 #

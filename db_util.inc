@@ -7,22 +7,33 @@ $db_error = '';
 define('LIBRARIAN_DB_NAME', 'hera_lib');
 define('MC_DB_NAME', 'hera_mc');
 
+// connect to a DB of the given name
+//
 function init_db($db_name) {
     global $link;
     $link = @mysqli_connect('', '', '', $db_name);
+    if (!$link) {
+        echo "can't connect to $db_name\n";
+    }
     return $link;
 }
 
+// get ID of last insert
+//
 function insert_id() {
     global $link;
     return mysqli_insert_id($link);
 }
 
+// get string describing last error
+//
 function db_error() {
     global $link;
     return mysqli_error($link);
 }
 
+// enumerate a table
+//
 function enum($table, $clause=null) {
     global $link;
     if (!$clause) $clause = 'TRUE';
@@ -36,6 +47,8 @@ function enum($table, $clause=null) {
     return $items;
 }
 
+// look up record from table with given ID
+//
 function lookup_id($table, $id) {
     global $link;
     $query = "select * from $table where id=$id";
@@ -44,6 +57,8 @@ function lookup_id($table, $id) {
     mysqli_free_result($r);
     return $source;
 }
+
+// Functions for tables common to M&C and HL databases
 
 //// SOURCE ////
 
@@ -68,8 +83,8 @@ function source_lookup_id($id) {
     return lookup_id("source", $id);
 }
 
-function source_enum() {
-    return enum('source');
+function source_enum($clause=null) {
+    return enum('source', $clause);
 }
 
 //// OBSERVATION ////
@@ -81,6 +96,8 @@ function observation_insert_hl($obs) {
     return mysqli_query($link, $query);
 }
 
+// for M&C, we don't supply an ID; MySQL generates it
+//
 function observation_insert_mc($obs) {
     global $link;
     $polarization = $link->escape_string($obs->polarization);
@@ -92,8 +109,8 @@ function observation_lookup_id($id) {
     return lookup_id("observation", $id);
 }
 
-function observation_enum($clause) {
-    return enum('observation');
+function observation_enum($clause=null) {
+    return enum('observation', $clause);
 }
 
 ?>

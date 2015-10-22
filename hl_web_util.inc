@@ -1,5 +1,9 @@
 <?php
 
+// utility functions for Librarian web interface
+
+// show sidebar with given list of items
+//
 function sidebar($cols, $items) {
     echo "
         <div class=\"col-*-$cols sidebar\">
@@ -14,6 +18,8 @@ function sidebar($cols, $items) {
     ";
 }
 
+// show horizontal navbar with given items
+//
 function navbar($title, $items_left, $items_right) {
     echo '
 <nav class="navbar navbar-default">
@@ -143,6 +149,9 @@ function table_end() {
     ';
 }
 
+// return a GET string argument.
+// If $optional is true and arg is missing, return null
+//
 function get_str($name, $optional=false) {
     if (isset($_GET[$name])) {
         $x = $_GET[$name];
@@ -155,6 +164,8 @@ function get_str($name, $optional=false) {
     return $x;
 }
 
+// same, integer argument
+//
 function get_int($name, $optional=false) {
     $x=null;
     if (isset($_GET[$name])) $x = $_GET[$name];
@@ -171,11 +182,15 @@ function get_int($name, $optional=false) {
     return (int)$x;
 }
 
+// convert Unix time to string
+//
 function time_str($x) {
     if ($x == 0) return "---";
     return gmdate('j M Y, G:i:s', $x) . " UTC";
 }
 
+// convert size (in bytes) to string
+//
 function size_str($x) {
     $kilo = 1024.;
     $mega = $kilo*1024.;
@@ -201,6 +216,8 @@ function size_str($x) {
     return "$x bytes";
 }
 
+// show progress bar
+//
 function progress_bar($pct) {
     $p = (int)$pct;
     return '

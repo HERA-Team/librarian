@@ -1,3 +1,5 @@
+# constraints for Librarian DB
+
 alter table source
     add unique(name);
 

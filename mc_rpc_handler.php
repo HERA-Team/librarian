@@ -1,6 +1,6 @@
 <?php
 
-// handler for HERA M&C RPCs
+// CGI handler for HERA M&C RPCs
 
 error_reporting(E_ALL);
 ini_set('display_errors', true);

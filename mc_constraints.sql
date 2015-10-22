@@ -1,3 +1,5 @@
+# constraints for M&C DB
+
 alter table observation
     add foreign key(source_id) references source(id);
 

@@ -1,6 +1,6 @@
 <?php
 
-// handler for HERA librarian RPCs
+// CGI handler for Librarian RPCs
 
 error_reporting(E_ALL);
 ini_set('display_errors', true);

@@ -16,12 +16,13 @@ require_once("hl_db.inc");
 // do the actual file transfer with rsync
 //
 function do_rsync($task, $file) {
-    $ret = hl_lookup_store($task->site_name, $task->store_name);
+    $ret = lookup_store($task->site_name, $task->store_name);
     if (!$ret->success) {
-        task_update_error($task->id, "lookup_store");
+        task_update_error($task->id, $ret->message);
         exit(1);
     }
-    $dest = $ret->rsync_base.$file->name;
+    $store = $ret->store;
+    $dest = $store->rsync_base.$file->name;
     $cmd = "rsync $file->path $dest 2>&1";
     exec($cmd, $output, $status);
     if ($status) {
