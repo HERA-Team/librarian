@@ -87,13 +87,14 @@ function file_search_action() {
     table_header(array("Name", "Created", "Observation", "Source", "Size", "Store", "Path"));
     $clause = 'true';
     $source_id = get_int('source_id', true);
+    $title = "All files";
     if ($source_id) {
         $clause .= " and file.source_id = $source_id";
         $title = "Files from source $source_id";
     }
     $obs_id = get_int('obs_id', true);
     if ($obs_id) {
-        $clause .= " and observation_id=$obs_id";
+        $clause .= " and obs_id=$obs_id";
         $title = "Files from observation $obs_id";
     }
     page_head($title);
@@ -102,13 +103,13 @@ function file_search_action() {
         $source = source_lookup_id($file->source_id);
         $store = store_lookup_id($file->store_id);
         table_row(array(
-            "<a href=$file->url>$file->name</a>",
+            "<a href=$store->http_prefix/$file->name>$file->name</a>",
             time_str($file->create_time),
-            $file->observation_id,
+            "<a href=hl.php?obs_id=$file->obs_id&action=file_search_action>$file->obs_id</a>",
             $source->name,
             size_str($file->size),
             $store->name,
-            $file->path
+            "$store->path/$file->name"
         ));
     }
     table_end();
@@ -132,10 +133,29 @@ function show_stores() {
     page_tail();
 }
 
+function task_phase_name($task) {
+    switch ($task->state) {
+    case 0: return "rsync";
+    case 1: return "register";
+    case 2: return "delete";
+    }
+    return "unknown";
+}
+
+function task_status($task) {
+    if ($task->completed) {
+        return "Completed ".time_str($task->completed_time);
+    }
+    if ($in_progress) {
+        return "In progress: ".task_phase_name($task);
+    }
+    return "Waiting to start";
+}
+
 function show_tasks() {
     page_head("Tasks");
     table_start();
-    table_header(array("Created", "File", "Local", "Remote", "Last error"));
+    table_header(array("Created", "File", "Local", "Remote", "Status", "Last error"));
     $tasks = task_enum();
     foreach ($tasks as $task) {
         table_row(array(
@@ -143,7 +163,8 @@ function show_tasks() {
             $task->file_name,
             $task->local_store,
             $task->remote_site.': '.$task->remote_store,
-            $task->last_error
+            task_status($task),
+            $task->last_error.' ('.time_str($task->last_error_time).')'
         ));
     }
 }
@@ -165,7 +186,7 @@ case 'stores':
 case 'tasks':
     show_tasks(); break;
 default:
-    obs_search_form(); break;
+    file_search_action(); break;
 }
 
 ?>

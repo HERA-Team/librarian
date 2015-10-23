@@ -66,10 +66,22 @@ function create_file(
     if (!$site) return ret_struct(false, "No such site $site_name");
     $req = new StdClass;
     $req->operation = 'create_file';
-    $req->name = $file_name;
+    $req->file_name = $file_name;
     $req->obs_id = $obs_id;
     $req->size = $size;
     $req->md5 = $md5;
+    $req->store_name = $store_name;
+    return hl_do_http_post($req, $site);
+}
+
+function delete_file(
+    $site_name, $file_name, $store_name
+) {
+    $site = get_site($site_name);
+    if (!$site) return ret_struct(false, "No such site $site_name");
+    $req = new StdClass;
+    $req->operation = 'delete_file';
+    $req->name = $file_name;
     $req->store_name = $store_name;
     return hl_do_http_post($req, $site);
 }

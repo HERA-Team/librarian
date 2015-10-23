@@ -16,7 +16,7 @@ function test_setup() {
 
     // make 10 observations
     //
-    for ($i=0; $i<10; $i++) {
+    for ($i=1; $i<=10; $i++) {
         $julian_date = time() - rand(0, 100*86400);
         $polarization = $pols[rand(0, 3)];
         $length_days = .1*rand(0, 10);

@@ -47,7 +47,7 @@ function store_update($id, $clause) {
 function file_insert($file) {
     global $link;
     $md5 = $link->escape_string($file->md5);
-    $name = $link->escape_string($file->name);
+    $name = $link->escape_string($file->file_name);
     $query = "insert into file (name, create_time, obs_id, source_id, store_id, size, md5) values ('$name', $file->create_time, $file->obs_id, $file->source_id, $file->store_id, $file->size, '$md5')";
     return mysqli_query($link, $query);
 }
