@@ -84,7 +84,8 @@ echo '
         array(
             array('Observations', 'hl.php'),
             array('Files', 'hl.php?action=file_search_form'),
-            array('Storage', 'hl.php?action=stores'),
+            array('Stores', 'hl.php?action=stores'),
+            array('Tasks', 'hl.php?action=tasks'),
         ),
         array(array('Contact', 'hl.php'))
     );

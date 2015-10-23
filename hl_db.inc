@@ -52,10 +52,10 @@ function file_insert($file) {
     return mysqli_query($link, $query);
 }
 
-function file_lookup_name_source($name, $source_id) {
+function file_lookup_name_store($name, $store_id) {
     global $link;
     $name = $link->escape_string($name);
-    $query = "select * from file where name='$name' and source_id=$source_id";
+    $query = "select * from file where name='$name' and store_id=$store_id";
     $r = mysqli_query($link, $query);
     $file = mysqli_fetch_object($r);
     mysqli_free_result($r);
@@ -67,6 +67,10 @@ function file_enum($clause=null) {
 }
 
 ///// TASK /////
+
+function task_lookup_id($id) {
+    return lookup_id("task", $id);
+}
 
 function task_enum($clause=null) {
     return enum('task', $clause);

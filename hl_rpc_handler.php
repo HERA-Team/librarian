@@ -98,11 +98,19 @@ function create_task($req) {
     echo json_encode(success());
 }
 
+function get_store_list($req) {
+    $stores = store_enum();
+    $reply = success();
+    $reply->stores = $stores;
+    echo json_encode($reply);
+}
+
 $req = json_decode($_POST['request']);
 switch ($req->operation) {
 case 'create_observation': create_observation($req); break;
 case 'create_file': create_file($req); break;
 case 'create_task': create_task($req); break;
+case 'get_store_list': get_store_list($req); break;
 default: error("unknown op $req->operation");
 }
 

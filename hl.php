@@ -116,7 +116,7 @@ function file_search_action() {
 }
 
 function show_stores() {
-    page_head("Storage");
+    page_head("Stores");
     table_start();
     table_header(array("Name", "Capacity", "Used", "% used"));
     $stores = store_enum();
@@ -130,6 +130,22 @@ function show_stores() {
     }
     table_end();
     page_tail();
+}
+
+function show_tasks() {
+    page_head("Tasks");
+    table_start();
+    table_header(array("Created", "File", "Local", "Remote", "Last error"));
+    $tasks = task_enum();
+    foreach ($tasks as $task) {
+        table_row(array(
+            time_str($task->create_time),
+            $task->file_name,
+            $task->local_store,
+            $task->remote_site.': '.$task->remote_store,
+            $task->last_error
+        ));
+    }
 }
 
 if (!init_db(LIBRARIAN_DB_NAME)) {
@@ -146,6 +162,8 @@ case 'obs_search_action':
     obs_search_action(); break;
 case 'stores':
     show_stores(); break;
+case 'tasks':
+    show_tasks(); break;
 default:
     obs_search_form(); break;
 }

@@ -1,3 +1,4 @@
+#! /usr/bin/env php
 <?php
 
 // copier.php --task_id id
@@ -12,31 +13,37 @@
 // 3 deleted local copy
 
 require_once("hl_db.inc");
+require_once("hl_rpc_client.php");
 
 // do the actual file transfer with rsync
 //
-function do_rsync($task, $file) {
-    $ret = lookup_store($task->site_name, $task->store_name);
+function do_rsync($task, $local_store, $file) {
+    echo "looking up remote store\n";
+    $ret = lookup_store($task->remote_site, $task->remote_store);
     if (!$ret->success) {
+        echo "couldn't find remote store $task->remote_store\n";
         task_update_error($task->id, $ret->message);
         exit(1);
     }
-    $store = $ret->store;
-    $dest = $store->rsync_base.$file->name;
-    $cmd = "rsync $file->path $dest 2>&1";
+    $remote_store = $ret->store;
+    $dest = $remote_store->rsync_prefix.'/'.$file->name;
+    $path = $local_store->path.'/'.$file->name;
+    $cmd = "rsync $path $dest 2>&1";
+    echo "copier: execing $cmd\n";
     exec($cmd, $output, $status);
     if ($status) {
         task_update_error($task->id, implode("\n", $output));
         exit(1);
     }
+    echo "rsync finished\n";
 }
 
 // register file with remote Librarian
 //
 function do_remote_register($task, $file) {
-    $ret = hl_create_file(
-        $task->site_name, $file->name, $file->obs_id, $file->size,
-        $file->md5, $task->store_name
+    $ret = create_file(
+        $task->remote_site, $file->name, $file->obs_id, $file->size,
+        $file->md5, $task->remote_store
     );
     if (!$ret->success) {
         task_update_error($task->id, $ret->message);
@@ -49,12 +56,16 @@ function do_task($task_id) {
     if (!$task) {
         die("no such task: $task_id\n");
     }
-    $file = file_lookup_name($task->file_name);
+    $local_store = store_lookup_name($task->local_store);
+    if (!$local_store) {
+        die("no such store: $task->local_store\n");
+    }
+    $file = file_lookup_name_store($task->file_name, $local_store->id);
     if (!$file) {
         die("no such file: $task->file_name");
     }
     if ($task->state == 0) {
-        do_rsync($task, $file);
+        do_rsync($task, $local_store, $file);
         $ret = task_update($task->id, "state=1");
         if (!$ret) {
             task_update_error($task->id, "task_update() failed");
@@ -62,7 +73,7 @@ function do_task($task_id) {
         $task->state = 1;
     }
     if ($task->state < 2) {
-        do_remote_register($task);
+        do_remote_register($task, $file);
         $ret = task_update($task->id, "state=2");
         if (!$ret) {
             task_update_error($task->id, "task_update() failed");
@@ -98,7 +109,7 @@ for ($i=1; $i<$argc; $i++) {
         $task_id = (int)$argv[++$i];
         break;
     default:
-        die("usage\n");
+        die("copier.php: bad arg: ".$argv[$i]."\n");
     }
 }
 
@@ -106,6 +117,7 @@ if (!$task_id) {
     die ("no task ID\n");
 }
 
+init_db(LIBRARIAN_DB_NAME);
 do_task($task_id);
 
 ?>

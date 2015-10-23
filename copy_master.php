@@ -13,7 +13,7 @@
 require_once("hl_db.inc");
 
 $sleep_interval = 10;
-$retry_interval = 3600;
+$retry_interval = 0;
 
 function init() {
     task_update_all("in_progress=0", "completed=0");
@@ -23,7 +23,8 @@ function start_task($task) {
     task_update($task->id, "in_progress=1");
     $pid = pcntl_fork();
     if (!$pid) {
-        system("copier.php --id $task->id");
+        $cmd = "copier.php --task_id $task->id";
+        system($cmd);
     }
 }
 
@@ -32,6 +33,7 @@ function start_tasks() {
     $t = time() - $retry_interval;
     $tasks = task_enum("completed=0 and in_progress=0 and last_error_time<$t");
     foreach ($tasks as $task) {
+        echo "starting task $task->id\n";
         start_task($task);
     }
 }
@@ -53,6 +55,7 @@ function daemon() {
 
 $daemon = false;
 
+init_db(LIBRARIAN_DB_NAME);
 for ($i=1; $i<$argc; $i++) {
     switch ($argv[$i]) {
     case "--init":
@@ -65,7 +68,7 @@ for ($i=1; $i<$argc; $i++) {
         $sleep_interval = (int)($argv[++$argc]);
         break;
     default:
-        echo "usage\n";
+        echo "bad arg: ".$argv[$i]."\n";
     }
 }
 

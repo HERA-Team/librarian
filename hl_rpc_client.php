@@ -89,12 +89,16 @@ function get_store_list($site_name) {
 function lookup_store($site_name, $store_name) {
     $ret = get_store_list($site_name);
     if (!$ret->success) return $ret;
-    if (!array_key_exists($store_name, $ret->stores)) {
-        $ret->success = false;
-        $ret->message = "no such store";
-        return $ret;
+    print_r($ret);
+    foreach ($ret->stores as $store) {
+        if ($store_name == $store->name) {
+            $ret->store = $store;
+            return $ret;
+        }
     }
-    $ret->store = $ret->stores[$store_name];
+    $ret->success = false;
+    $ret->message = "no such store";
+    return $ret;
 }
 
 function create_task(
