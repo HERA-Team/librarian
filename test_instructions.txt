@@ -48,3 +48,8 @@ Test instructions
     > ./make_sample_files.php
 
 9) Visit URL/hl.php in a browser and check observations and files
+
+10) To test copy:
+    ./test_copy.php
+
+    s

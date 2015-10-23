@@ -7,5 +7,5 @@ alter table store
     add unique(name);
 
 alter table file
-    add unique(name),
+    add unique(name, store_id),
     add foreign key(store_id) references store(id);

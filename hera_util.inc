@@ -1,5 +1,9 @@
 <?php
 
+// task types
+
+define('TASK_TYPE_PUSH', 0);
+
 // Utility functions
 
 error_reporting(E_ALL);
@@ -17,11 +21,5 @@ function get_config($file) {
 function random_string() {
     return md5(uniqid(rand(), true));
 }
-
-// names for testing
-//
-define ('TEST_SITE_NAME', 'test_site');
-$test_store_names = array('Store 1', 'Store 2', 'Store 3');
-$test_source_names = array('RTP', 'Correlator');
 
 ?>

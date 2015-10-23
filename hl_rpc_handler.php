@@ -71,10 +71,38 @@ function create_file($req) {
     echo json_encode($reply);
 }
 
+function create_task($req) {
+    $source = source_lookup_auth($req->authenticator);
+    if (!$source) {
+        error("auth failure");
+        return;
+    }
+
+    // do as much error checking here as we can
+    //
+    $store = store_lookup_name($req->local_store_name);
+    if (!$store) {
+        error("no such local store $req->local_store_name");
+        return;
+    }
+    $file = file_lookup_name_source($req->file_name, $source->id);
+    if (!$store) {
+        error("no such file $req->file_name");
+        return;
+    }
+
+    if (!task_insert($req)) {
+        error(db_error());
+        return;
+    }
+    echo json_encode(success());
+}
+
 $req = json_decode($_POST['request']);
 switch ($req->operation) {
 case 'create_observation': create_observation($req); break;
 case 'create_file': create_file($req); break;
+case 'create_task': create_task($req); break;
 default: error("unknown op $req->operation");
 }
 

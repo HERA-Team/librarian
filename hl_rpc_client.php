@@ -97,17 +97,22 @@ function lookup_store($site_name, $store_name) {
     $ret->store = $ret->stores[$store_name];
 }
 
-function create_copy_task(
-    $local_site_name, $file_name, $remote_site_name, $remote_store_name,
+function create_task(
+    $task_type,
+    $local_site_name, $local_store_name, $file_name,
+    $remote_site_name, $remote_store_name,
     $delete_when_done
 ) {
-    $site = get_site($site_name);
-    if (!$site) return ret_struct(false, "No such site $site_name");
+    $site = get_site($local_site_name);
+    if (!$site) return ret_struct(false, "No such site $local_site_name");
     $req = new StdClass;
-    $req->operation = 'create_copy_task';
+    $req->operation = 'create_task';
+    $req->task_type = $task_type;
+    $req->local_store_name = $local_store_name;
     $req->file_name = $file_name;
     $req->remote_site_name = $remote_site_name;
     $req->remote_store_name = $remote_store_name;
+    $req->delete_when_done = $delete_when_done?1:0;
     return hl_do_http_post($req, $site);
 }
 

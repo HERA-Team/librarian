@@ -25,7 +25,9 @@ create table store (
     create_time     double          not null,
     capacity        double          not null,
     used            double          not null,
-    rsync_base      varchar(254)    not null,
+    rsync_prefix    varchar(254)    not null,
+    http_prefix     varchar(254)    not null,
+    path            varchar(254)    not null,
     primary key (id)
 ) engine=InnoDB;
 
@@ -47,6 +49,8 @@ create table file (
 create table task (
     id              integer         not null auto_increment,
     create_time     double          not null,
+    task_type       integer         not null,
+    local_store     varchar(254)    not null,
     file_name       varchar(254)    not null,
     remote_site     varchar(254)    not null,
     remote_store    varchar(254)    not null,

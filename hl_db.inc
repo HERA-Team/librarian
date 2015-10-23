@@ -11,8 +11,10 @@ require_once("db_util.inc");
 function store_insert($store) {
     global $link;
     $name = $link->escape_string($store->name);
-    $rsync_base = $link->escape_string($store->rsync_base);
-    $query = "insert into store (name, create_time, capacity, used, rsync_base) values ('$name', $store->create_time, $store->capacity, $store->used, '$rsync_base')";
+    $rsync_prefix = $link->escape_string($store->rsync_prefix);
+    $http_prefix = $link->escape_string($store->http_prefix);
+    $path = $link->escape_string($store->path);
+    $query = "insert into store (name, create_time, capacity, used, rsync_prefix, http_prefix, path) values ('$name', $store->create_time, $store->capacity, $store->used, '$rsync_prefix', '$http_prefix', '$path')";
     return mysqli_query($link, $query);
 }
 
@@ -50,10 +52,10 @@ function file_insert($file) {
     return mysqli_query($link, $query);
 }
 
-function file_lookup_name($name) {
+function file_lookup_name_source($name, $source_id) {
     global $link;
     $name = $link->escape_string($name);
-    $query = "select * from file where name='$name'";
+    $query = "select * from file where name='$name' and source_id=$source_id";
     $r = mysqli_query($link, $query);
     $file = mysqli_fetch_object($r);
     mysqli_free_result($r);
@@ -84,9 +86,12 @@ function task_update($id, $clause) {
 
 function task_insert($task) {
     global $link;
-    $local_name = $link->escape_string($file->local_name);
-    $remote_name = $link->escape_string($file->remote_name);
-    $query = "insert into task (create_time, local_name, remote_name, start_time, pid, in_progress, completed, last_error) values ($file->create_time, '$file->local_name', '$file->remote_name', 0, 0, 0, 0, '')";
+    $now = time();
+    $local_store = $link->escape_string($task->local_store_name);
+    $file_name = $link->escape_string($task->file_name);
+    $remote_site = $link->escape_string($task->remote_site_name);
+    $remote_store = $link->escape_string($task->remote_store_name);
+    $query = "insert into task (create_time, task_type, local_store, file_name, remote_site, remote_store, in_progress, delete_when_done, state, completed, completed_time, last_error, last_error_time) values ($now, $task->task_type, '$local_store', '$file_name', '$remote_site', '$remote_store', 0, $task->delete_when_done, 0, 0, 0, '', 0)";
     return mysqli_query($link, $query);
 }
 

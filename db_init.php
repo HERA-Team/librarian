@@ -14,6 +14,7 @@
 // test_setup
 //      create records for testing
 
+require_once("test_setup.inc");
 require_once("hera_util.inc");
 require_once("hl_db.inc");
 
@@ -37,13 +38,8 @@ function create_source($name, $subsystem) {
     return source_insert($source);
 }
 
-function create_store($name, $capacity) {
-    $store = new StdClass;
-    $store->name = $name;
+function create_store($store) {
     $store->create_time = time();
-    $store->capacity = (double)$capacity;
-    $store->used = 0;
-    $store->rsync_base = "boincadm@isaac.ssl.berkeley.edu/hera_data";
     return store_insert($store);
 }
 
@@ -57,15 +53,15 @@ function mc_setup() {
 }
 
 function hl_setup() {
-    global $test_store_names, $test_source_names;
+    global $test_stores, $test_source_names;
     init_db(LIBRARIAN_DB_NAME);
     foreach ($test_source_names as $u) {
         if (!create_source($u, 'Librarian')) {
             echo db_error()."\n";
         }
     }
-    foreach ($test_store_names as $s) {
-        if (!create_store($s, 1e12)) {
+    foreach ($test_stores as $s) {
+        if (!create_store($s)) {
             echo db_error()."\n";
         }
     }
