@@ -36,7 +36,7 @@ function create_observation($req) {
         return;
     }
     $req->source_id = $source->id;
-    if (!observation_insert_hl($req)) {
+    if (!observation_insert($req)) {
         error(db_error());
         return;
     }
@@ -61,6 +61,14 @@ function create_file($req) {
         return;
     }
     $req->store_id = $store->id;
+
+    if (!$req->md5) {
+        ($req->size, $req->md5) = get_file_info($store, $req->file_name);
+        if (!$req->md5) {
+            error("couldn't get MD5");
+            return;
+        }
+    }
     if (!file_insert($req)) {
         error(db_error());
         return;

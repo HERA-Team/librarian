@@ -1,5 +1,9 @@
 # schema for Librarian DB
 
+create table config (
+    max_transfers   integer         not null
+) engine=InnoDB;
+
 create table source (
     id              integer         not null auto_increment,
     name            varchar(254)    not null,
@@ -27,8 +31,8 @@ create table store (
     used            double          not null,
     rsync_prefix    varchar(254)    not null,
     http_prefix     varchar(254)    not null,
-    path            varchar(254)    not null,
-    ssh_host        varchar(254)    not null,
+    path_prefix     varchar(254)    not null,
+    ssh_prefix      varchar(254)    not null,
     unavailable     tinyint         not null,
     primary key (id)
 ) engine=InnoDB;

@@ -6,6 +6,29 @@
 
 require_once("db_util.inc");
 
+//// CONFIG ////
+
+function config_insert($config) {
+    global $link;
+    $query = "insert into config (max_transfers) values ($config->max_transfers)";
+    return mysqli_query($link, $query);
+}
+
+function config_update($clause) {
+    global $link;
+    $query = "update config set $clause";
+    return mysqli_query($link, $query);
+}
+
+function config_get() {
+    global $link;
+    $query = "select * from config";
+    $r = mysqli_query($link, $query);
+    $config = mysqli_fetch_object($r);
+    mysqli_free_result($r);
+    return $config;
+}
+
 //// STORE ////
 
 function store_insert($store) {
@@ -13,9 +36,9 @@ function store_insert($store) {
     $name = $link->escape_string($store->name);
     $rsync_prefix = $link->escape_string($store->rsync_prefix);
     $http_prefix = $link->escape_string($store->http_prefix);
-    $path = $link->escape_string($store->path);
-    $ssh_host = $link->escape_string($store->ssh_host);
-    $query = "insert into store (name, create_time, capacity, used, rsync_prefix, http_prefix, path, ssh_host, unavailable) values ('$name', $store->create_time, $store->capacity, $store->used, '$rsync_prefix', '$http_prefix', '$path', '$ssh_host', 0)";
+    $path_prefix = $link->escape_string($store->path_prefix);
+    $ssh_prefix = $link->escape_string($store->ssh_prefix);
+    $query = "insert into store (name, create_time, capacity, used, rsync_prefix, http_prefix, path_prefix, ssh_prefix, unavailable) values ('$name', $store->create_time, $store->capacity, $store->used, '$rsync_prefix', '$http_prefix', '$path_prefix', '$ssh_prefix', 0)";
     return mysqli_query($link, $query);
 }
 
@@ -48,10 +71,10 @@ function store_update_all($id, $store) {
     $name = $link->escape_string($store->name);
     $rsync_prefix = $link->escape_string($store->rsync_prefix);
     $http_prefix = $link->escape_string($store->http_prefix);
-    $path = $link->escape_string($store->path);
-    $ssh_host = $link->escape_string($store->ssh_host);
+    $path_prefix = $link->escape_string($store->path_prefix);
+    $ssh_prefix = $link->escape_string($store->ssh_prefix);
     $unavailable = $store->unavailable?1:0;
-    $query = "update store set name='$name', capacity=$store->capacity, used=$store->used, rsync_prefix='$rsync_prefix', http_prefix='$http_prefix', path='$path', ssh_host='$ssh_host', unavailable=$unavailable where id=$id";
+    $query = "update store set name='$name', capacity=$store->capacity, used=$store->used, rsync_prefix='$rsync_prefix', http_prefix='$http_prefix', path_prefix='$path_prefix', ssh_prefix='$ssh_prefix', unavailable=$unavailable where id=$id";
     return mysqli_query($link, $query);
 }
 

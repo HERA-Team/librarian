@@ -43,18 +43,8 @@ function create_store($store) {
     return store_insert($store);
 }
 
-function mc_setup() {
-    init_db(MC_DB_NAME);
-    foreach (array('RTP', 'correlator') as $u) {
-        if (!create_source($u, 'M&C')) {
-            echo db_error()."\n";
-        }
-    }
-}
-
 function hl_setup() {
-    global $test_stores, $test_source_names;
-    init_db(LIBRARIAN_DB_NAME);
+    global $test_stores, $test_source_names, $test_config;
     foreach ($test_source_names as $u) {
         if (!create_source($u, 'Librarian')) {
             echo db_error()."\n";
@@ -65,23 +55,20 @@ function hl_setup() {
             echo db_error()."\n";
         }
     }
+    config_insert($test_config);
 }
 
 if ($argc < 2) {
     usage();
 }
 
+init_db(LIBRARIAN_DB_NAME);
+
 switch ($argv[1]) {
-case 'hl_source':
-    init_db(LIBRARIAN_DB_NAME);
-    create_source($argv[2]);
-    break;
-case 'mc_source':
-    init_db(MC_DB_NAME);
+case 'source':
     create_source($argv[2]);
     break;
 case 'store':
-    init_db(LIBRARIAN_DB_NAME);
     create_store($argv[2], $argv[3], $argv[4]);
     break;
 case 'test_setup':

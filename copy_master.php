@@ -29,9 +29,18 @@ function start_task($task) {
 }
 
 function start_tasks() {
-    global $retry_interval;
+    global $retry_interval, $config;
+
+    if ($config->max_transfers) {
+        $tasks = task_enum("in_progress<>0");
+        $limit = $config->max_transfers - count($tasks);
+        if ($limit <= 0) return;
+    } else {
+        $limit = 9999;
+    }
+
     $t = time() - $retry_interval;
-    $tasks = task_enum("completed=0 and in_progress=0 and last_error_time<$t");
+    $tasks = task_enum("completed=0 and in_progress=0 and last_error_time<$t limit $limit");
     foreach ($tasks as $task) {
         echo "starting task $task->id\n";
         start_task($task);
@@ -56,6 +65,8 @@ function daemon() {
 $daemon = false;
 
 init_db(LIBRARIAN_DB_NAME);
+$config = config_get();
+
 for ($i=1; $i<$argc; $i++) {
     switch ($argv[$i]) {
     case "--init":

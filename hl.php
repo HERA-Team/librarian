@@ -109,7 +109,7 @@ function file_search_action() {
             $source->name,
             size_str($file->size),
             $store->name,
-            "$store->path/$file->name"
+            "$store->path_prefix/$file->name"
         ));
     }
     table_end();
@@ -156,8 +156,8 @@ function edit_store_form() {
         $store->used = 0;
         $store->rsync_prefix = '';
         $store->http_prefix = '';
-        $store->path = '';
-        $store->ssh_host = '';
+        $store->path_prefix = '';
+        $store->ssh_prefix = '';
         $store->unavailable = false;
         page_head("Add store");
     }
@@ -173,8 +173,8 @@ function edit_store_form() {
     form_item("Used (GB):", "text", "used", $store->used/GIGA);
     form_item("rsync prefix:", "text", "rsync_prefix", $store->rsync_prefix);
     form_item("HTTP prefix:", "text", "http_prefix", $store->http_prefix);
-    form_item("Path:", "text", "path", $store->path);
-    form_item("SSH host:", "text", "ssh_host", $store->ssh_host);
+    form_item("Path prefix:", "text", "path_prefix", $store->path_prefix);
+    form_item("SSH prefix:", "text", "ssh_prefix", $store->ssh_prefix);
     form_checkbox("Unavailable:", "unavailable", $store->unavailable);
     form_submit_button("Submit");
     echo '</form>
@@ -188,8 +188,8 @@ function edit_store_action() {
     $store->used = get_num("used")*GIGA;
     $store->rsync_prefix = get_str("rsync_prefix");
     $store->http_prefix = get_str("http_prefix");
-    $store->path = get_str("path");
-    $store->ssh_host = get_str("ssh_host");
+    $store->path_prefix = get_str("path_prefix");
+    $store->ssh_prefix = get_str("ssh_prefix");
     $store->unavailable = get_str("unavailable", true)?true:false;
     $id = get_num("id");
     if ($id) {
