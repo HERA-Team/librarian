@@ -111,7 +111,7 @@ function create_task($req) {
         error("no such local store $req->local_store_name");
         return;
     }
-    $file = file_lookup_name_source($req->file_name, $source->id);
+    $file = file_lookup_name_store($req->file_name, $store->id);
     if (!$store) {
         error("no such file $req->file_name");
         return;
@@ -127,10 +127,30 @@ function create_task($req) {
 }
 
 function get_store_list($req) {
-    $stores = store_enum();
+    $stores = store_enum('unavailable=0');
     $reply = success();
     $reply->stores = $stores;
     echo json_encode($reply);
+}
+
+function recommended_store($req) {
+    $source = source_lookup_auth($req->authenticator);
+    if (!$source) {
+        error("auth failure");
+        return;
+    }
+    $stores = store_enum('unavailable=0');
+    foreach ($stores as $store) {
+        $space = $store->capacity - $store->used;
+        if ($file_size < $space) {
+            $reply = success();
+            $reply->store = $store;
+            echo json_encode($reply);
+            return;
+        }
+    }
+    error("no store has sufficient free space");
+    return;
 }
 
 $req = json_decode($_POST['request']);
@@ -140,6 +160,7 @@ case 'create_file': create_file($req); break;
 case 'delete_file': delete_file($req); break;
 case 'create_task': create_task($req); break;
 case 'get_store_list': get_store_list($req); break;
+case 'recommended_store': recommended_store($req); break;
 default: error("unknown op $req->operation");
 }
 

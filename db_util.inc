@@ -89,19 +89,10 @@ function source_enum($clause=null) {
 
 //// OBSERVATION ////
 
-function observation_insert_hl($obs) {
+function observation_insert($obs) {
     global $link;
     $polarization = $link->escape_string($obs->polarization);
-    $query = "insert into observation (id, source_id, julian_date, polarization, length_days) values ($obs->id, $obs->source_id, $obs->julian_date, '$polarization', $obs->length_days)";
-    return mysqli_query($link, $query);
-}
-
-// for M&C, we don't supply an ID; MySQL generates it
-//
-function observation_insert_mc($obs) {
-    global $link;
-    $polarization = $link->escape_string($obs->polarization);
-    $query = "insert into observation (source_id, julian_date, polarization, length_days) values ($obs->source_id, $obs->julian_date, '$polarization', $obs->length_days)";
+    $query = "insert into observation (id, source_id, julian_date, polarization, length) values ($obs->id, $obs->source_id, $obs->julian_date, '$polarization', $obs->length)";
     return mysqli_query($link, $query);
 }
 

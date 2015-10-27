@@ -15,7 +15,7 @@ create table observation (
     source_id       integer         not null,
     julian_date     double          not null,
     polarization    char(4)         not null,
-    length_days     double          not null,
+    length          double          not null,
     primary key (id)
 ) engine=InnoDB;
 
@@ -28,6 +28,8 @@ create table store (
     rsync_prefix    varchar(254)    not null,
     http_prefix     varchar(254)    not null,
     path            varchar(254)    not null,
+    ssh_host        varchar(254)    not null,
+    unavailable     tinyint         not null,
     primary key (id)
 ) engine=InnoDB;
 

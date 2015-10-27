@@ -169,9 +169,9 @@ function get_str($name, $optional=false) {
     return $x;
 }
 
-// same, integer argument
+// same, numeric argument
 //
-function get_int($name, $optional=false) {
+function get_num($name, $optional=false) {
     $x=null;
     if (isset($_GET[$name])) $x = $_GET[$name];
     if (!is_numeric($x)) {
@@ -184,7 +184,7 @@ function get_int($name, $optional=false) {
             error_page("$name missing");
         }
     }
-    return (int)$x;
+    return 0+$x;
 }
 
 // convert Unix time to string
@@ -194,28 +194,28 @@ function time_str($x) {
     return gmdate('j M Y, G:i:s', $x) . " UTC";
 }
 
+define('KILO', 1024);
+define('MEGA', 1024*KILO);
+define('GIGA', 1024*MEGA);
+define('TERA', 1024*GIGA);
+
 // convert size (in bytes) to string
 //
 function size_str($x) {
-    $kilo = 1024.;
-    $mega = $kilo*1024.;
-    $giga = $mega*1024.;
-    $tera = $giga*1024.;
-
-    if ($x >= $tera) {
-        $y = number_format($x/$tera, 2);
+    if ($x >= TERA) {
+        $y = number_format($x/TERA, 2);
         return "$y TB";
     }
-    if ($x >= $giga) {
-        $y = number_format($x/$giga, 2);
+    if ($x >= GIGA) {
+        $y = number_format($x/GIGA, 2);
         return "$y GB";
     }
-    if ($x >= $mega) {
-        $y = number_format($x/$mega, 2);
+    if ($x >= MEGA) {
+        $y = number_format($x/MEGA, 2);
         return "$y MB";
     }
-    if ($x >= $kilo) {
-        $y = number_format($x/$kilo, 2);
+    if ($x >= KILO) {
+        $y = number_format($x/KILO, 2);
         return "$y KB";
     }
     return "$x bytes";
@@ -233,6 +233,33 @@ function progress_bar($pct) {
             </div>
         </div>
     ';
+}
+
+function form_item($label, $type, $name, $value) {
+    echo '
+        <div class="form-group">
+        <label for="'.$name.'">'.$label.'</label>
+        <input type="'.$type.'" class="form-control" name="'.$name.'" id="'.$name.'" value="'.$value.'">
+        </div>
+    ';
+}
+
+function form_checkbox($label, $name, $value) {
+    $v = $value?"checked":"unchecked";
+    echo '
+        <div class="checkbox">
+        <label><input type="checkbox" name="'.$name.'" value="'.$v.'">'.$label.'</label>
+        </div>
+    ';
+}
+
+function form_submit_button($label) {
+    echo '<button type="submit" class="btn btn-default">'.$label.'</button>
+    ';
+}
+
+function redirect($url) {
+    Header("Location: $url");
 }
 
 ?>

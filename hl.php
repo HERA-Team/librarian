@@ -51,7 +51,7 @@ function obs_search_action() {
     table_start();
     table_header(array("ID (click for files)", "Date", "Source", "Polarization", "Length (days)"));
     $clause = '';
-    $source_id = get_int('source_id');
+    $source_id = get_num('source_id');
     if ($source_id) {
         $clause = "source_id = $source_id";
     }
@@ -86,13 +86,13 @@ function file_search_action() {
     table_start();
     table_header(array("Name", "Created", "Observation", "Source", "Size", "Store", "Path"));
     $clause = 'true';
-    $source_id = get_int('source_id', true);
+    $source_id = get_num('source_id', true);
     $title = "All files";
     if ($source_id) {
         $clause .= " and file.source_id = $source_id";
         $title = "Files from source $source_id";
     }
-    $obs_id = get_int('obs_id', true);
+    $obs_id = get_num('obs_id', true);
     if ($obs_id) {
         $clause .= " and obs_id=$obs_id";
         $title = "Files from observation $obs_id";
@@ -119,18 +119,89 @@ function file_search_action() {
 function show_stores() {
     page_head("Stores");
     table_start();
-    table_header(array("Name", "Capacity", "Used", "% used"));
+    table_header(array("Name<br><small>Click to edit</small>", "Capacity", "Used", "% used", "Available"));
     $stores = store_enum();
     foreach ($stores as $store) {
         table_row(array(
-            $store->name,
+            "<a href=hl.php?action=edit_store_form&id=$store->id>$store->name</a>",
             size_str($store->capacity),
             size_str($store->used),
-            progress_bar(100*$store->used/$store->capacity)
+            progress_bar(100*$store->used/$store->capacity),
+            $store->unavailable?"No":"Yes"
         ));
     }
     table_end();
+    echo '
+        <a href="hl.php?action=edit_store_form">
+        <button type="button" class="btn btn-default">
+        Add store
+        </button>
+        </a>
+    ';
     page_tail();
+}
+
+function edit_store_form() {
+    $id = get_num("id", true);
+    if ($id) {
+        $store = store_lookup_id($id);
+        if (!$store) {
+            error_page("no such store");
+        }
+        page_head("Edit store $store->name");
+    } else {
+        $store = new StdClass;
+        $store->name = '';
+        $store->capacity = 0;
+        $store->used = 0;
+        $store->rsync_prefix = '';
+        $store->http_prefix = '';
+        $store->path = '';
+        $store->ssh_host = '';
+        $store->unavailable = false;
+        page_head("Add store");
+    }
+    echo '<form role="form" action="hl.php" method="get">
+        <input type="hidden" name="action" value="edit_store_action">
+    ';
+    if ($id) {
+        echo '<input type="hidden" name="id" value="'.$id.'">
+        ';
+    }
+    form_item("Name:", "text", "name", $store->name);
+    form_item("Capacity (GB):", "text", "capacity", $store->capacity/GIGA);
+    form_item("Used (GB):", "text", "used", $store->used/GIGA);
+    form_item("rsync prefix:", "text", "rsync_prefix", $store->rsync_prefix);
+    form_item("HTTP prefix:", "text", "http_prefix", $store->http_prefix);
+    form_item("Path:", "text", "path", $store->path);
+    form_item("SSH host:", "text", "ssh_host", $store->ssh_host);
+    form_checkbox("Unavailable:", "unavailable", $store->unavailable);
+    form_submit_button("Submit");
+    echo '</form>
+    ';
+}
+
+function edit_store_action() {
+    $store = new StdClass;
+    $store->name = get_str("name");
+    $store->capacity = get_num("capacity")*GIGA;
+    $store->used = get_num("used")*GIGA;
+    $store->rsync_prefix = get_str("rsync_prefix");
+    $store->http_prefix = get_str("http_prefix");
+    $store->path = get_str("path");
+    $store->ssh_host = get_str("ssh_host");
+    $store->unavailable = get_str("unavailable", true)?true:false;
+    $id = get_num("id");
+    if ($id) {
+        $ret = store_update_all($id, $store);
+    } else {
+        $store->create_time = time();
+        $ret = store_insert($store);
+    }
+    if (!$ret) {
+        error_page("database error");
+    }
+    redirect("hl.php?action=stores");
 }
 
 function task_phase_name($task) {
@@ -146,7 +217,7 @@ function task_status($task) {
     if ($task->completed) {
         return "Completed ".time_str($task->completed_time);
     }
-    if ($in_progress) {
+    if ($task->in_progress) {
         return "In progress: ".task_phase_name($task);
     }
     return "Waiting to start";
@@ -185,6 +256,10 @@ case 'stores':
     show_stores(); break;
 case 'tasks':
     show_tasks(); break;
+case 'edit_store_form':
+    edit_store_form(); break;
+case 'edit_store_action':
+    edit_store_action(); break;
 default:
     file_search_action(); break;
 }

@@ -14,7 +14,8 @@ function store_insert($store) {
     $rsync_prefix = $link->escape_string($store->rsync_prefix);
     $http_prefix = $link->escape_string($store->http_prefix);
     $path = $link->escape_string($store->path);
-    $query = "insert into store (name, create_time, capacity, used, rsync_prefix, http_prefix, path) values ('$name', $store->create_time, $store->capacity, $store->used, '$rsync_prefix', '$http_prefix', '$path')";
+    $ssh_host = $link->escape_string($store->ssh_host);
+    $query = "insert into store (name, create_time, capacity, used, rsync_prefix, http_prefix, path, ssh_host, unavailable) values ('$name', $store->create_time, $store->capacity, $store->used, '$rsync_prefix', '$http_prefix', '$path', '$ssh_host', 0)";
     return mysqli_query($link, $query);
 }
 
@@ -39,6 +40,18 @@ function store_lookup_id($id) {
 function store_update($id, $clause) {
     global $link;
     $query = "update store set $clause where id=$id";
+    return mysqli_query($link, $query);
+}
+
+function store_update_all($id, $store) {
+    global $link;
+    $name = $link->escape_string($store->name);
+    $rsync_prefix = $link->escape_string($store->rsync_prefix);
+    $http_prefix = $link->escape_string($store->http_prefix);
+    $path = $link->escape_string($store->path);
+    $ssh_host = $link->escape_string($store->ssh_host);
+    $unavailable = $store->unavailable?1:0;
+    $query = "update store set name='$name', capacity=$store->capacity, used=$store->used, rsync_prefix='$rsync_prefix', http_prefix='$http_prefix', path='$path', ssh_host='$ssh_host', unavailable=$unavailable where id=$id";
     return mysqli_query($link, $query);
 }
 

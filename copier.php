@@ -29,7 +29,7 @@ function do_rsync($task, $local_store, $file) {
     $dest = $remote_store->rsync_prefix.'/'.$file->name;
     $path = $local_store->path.'/'.$file->name;
     $cmd = "rsync $path $dest 2>&1";
-    echo "copier: execing $cmd\n";
+    //echo "copier: execing $cmd\n";
     exec($cmd, $output, $status);
     if ($status) {
         task_update_error($task->id, implode("\n", $output));

@@ -46,7 +46,7 @@ function hl_do_http_post($req, $site) {
 }
 
 function create_observation(
-    $site_name, $obs_id, $julian_date, $polarization, $length_days
+    $site_name, $obs_id, $julian_date, $polarization, $length
 ) {
     $site = get_site($site_name);
     if (!$site) return ret_struct(false, "No such site $site_name");
@@ -55,7 +55,7 @@ function create_observation(
     $req->id = $obs_id;
     $req->julian_date = $julian_date;
     $req->polarization = $polarization;
-    $req->length_days = $length_days;
+    $req->length = $length;
     return hl_do_http_post($req, $site);
 }
 
@@ -101,7 +101,6 @@ function get_store_list($site_name) {
 function lookup_store($site_name, $store_name) {
     $ret = get_store_list($site_name);
     if (!$ret->success) return $ret;
-    print_r($ret);
     foreach ($ret->stores as $store) {
         if ($store_name == $store->name) {
             $ret->store = $store;
@@ -111,6 +110,17 @@ function lookup_store($site_name, $store_name) {
     $ret->success = false;
     $ret->message = "no such store";
     return $ret;
+}
+
+// get the recommended store for a file of given size
+//
+function recommended_store($file_size) {
+    $site = get_site($site_name);
+    if (!$site) return ret_struct(false, "No such site $site_name");
+    $req = new StdClass;
+    $req->file_size = $file_size;
+    $req->operation = 'recommended_store';
+    return hl_do_http_post($req, $site);
 }
 
 function create_task(

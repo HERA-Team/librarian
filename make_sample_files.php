@@ -19,8 +19,8 @@ function test_setup() {
     for ($i=1; $i<=10; $i++) {
         $julian_date = time() - rand(0, 100*86400);
         $polarization = $pols[rand(0, 3)];
-        $length_days = .1*rand(0, 10);
-//        $ret = mc_create_observation($julian_date, $polarization, $length_days);
+        $length = .1*rand(0, 864000);
+//        $ret = mc_create_observation($julian_date, $polarization, $length);
 //        if (!$ret->success) {
 //            echo "mc_create_observation() error: $ret->message\n";
 //            continue;
@@ -28,7 +28,7 @@ function test_setup() {
 //        $obs_id = $ret->id;
         $obs_id = $i;
         $ret = create_observation(
-            TEST_SITE_NAME, $obs_id, $julian_date, $polarization, $length_days
+            TEST_SITE_NAME, $obs_id, $julian_date, $polarization, $length
         );
         if (!$ret->success) {
             echo "create_observation() error: $ret->message\n";

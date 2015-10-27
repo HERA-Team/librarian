@@ -34,12 +34,12 @@ function mc_do_http_post($req) {
     return $ret;
 }
 
-function mc_create_observation($julian_date, $polarization, $length_days) {
+function mc_create_observation($julian_date, $polarization, $length) {
     $req = new StdClass;
     $req->operation = 'create_observation';
     $req->julian_date = $julian_date;
     $req->polarization = $polarization;
-    $req->length_days = $length_days;
+    $req->length = $length;
     return mc_do_http_post($req);
 }
 

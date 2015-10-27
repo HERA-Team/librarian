@@ -12,7 +12,7 @@ create table observation (
     id              integer         not null auto_increment,
     julian_date     double          not null,
     polarization    char(4)         not null,
-    length_days     double          not null,
+    length          double          not null,
     source_id       integer         not null,
     primary key (id)
 ) engine=InnoDB;
