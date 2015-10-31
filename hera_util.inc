@@ -22,22 +22,4 @@ function random_string() {
     return md5(uniqid(rand(), true));
 }
 
-function get_file_info($store, $file_name) {
-    if ($store->ssh_host) {
-        $cmd = "ssh $store->ssh_prefix md5sum $store->path_prefix/$file_name";
-        $out = system($cmd);
-        $x = explode($out, " ");
-        $md5 = $x[0];
-        $cmd = "ssh $store->ssh_prefix wc -c $store->path_prefix/$file_name";
-        $out = system($cmd);
-        $x = explode($out, " ");
-        $size = $x[0];
-    } else {
-        $path = "$store->path_prefix/$file_name";
-        $size = filesize($path);
-        $md5 = md5_file($path);
-    }
-    return array($size, $md5);
-}
-
 ?>

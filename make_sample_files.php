@@ -13,6 +13,13 @@ require_once("mc_rpc_client.php");
 function test_setup() {
     global $test_stores;
     $pols = array('xx', 'yy', 'xy', 'yx');
+    $nstores = count($test_stores);
+
+    // make the store directories
+    //
+    foreach ($test_stores as $store) {
+        @mkdir($store->path_prefix);
+    }
 
     // make 10 observations
     //
@@ -32,7 +39,6 @@ function test_setup() {
         );
         if (!$ret->success) {
             echo "create_observation() error: $ret->message\n";
-            continue;
         }
 
         // for each observation, create a few files.
@@ -40,10 +46,19 @@ function test_setup() {
         //
         for ($j=0; $j<4; $j++) {
             $f = "file_".$obs_id."_$j";
-            $size = rand(1, 100)*1.e9;
-            $store = $test_stores[rand(0, 1)];
+            $store = $test_stores[rand(0, $nstores-1)];
+            if (1) {
+                $path = $store->path_prefix.'/'.$f;
+                $string = "aslkjsdf $i $j\n";
+                file_put_contents($path, $string);
+                $size = -1;
+                $md5 = null;
+            } else {
+                $size = rand(1, 100)*1.e9;
+                $md5 = random_string();
+            }
             $ret = create_file(
-                TEST_SITE_NAME, $f, $obs_id, $size, random_string(), $store->name
+                TEST_SITE_NAME, $store->name, $f, '', $obs_id, $size, $md5
             );
             if ($ret->success) {
                 echo "created file $f\n";

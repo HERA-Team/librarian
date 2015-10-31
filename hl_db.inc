@@ -82,9 +82,10 @@ function store_update_all($id, $store) {
 
 function file_insert($file) {
     global $link;
-    $md5 = $link->escape_string($file->md5);
     $name = $link->escape_string($file->file_name);
-    $query = "insert into file (name, create_time, obs_id, source_id, store_id, size, md5) values ('$name', $file->create_time, $file->obs_id, $file->source_id, $file->store_id, $file->size, '$md5')";
+    $type = $link->escape_string($file->type);
+    $md5 = $link->escape_string($file->md5);
+    $query = "insert into file (name, create_time, type, obs_id, source_id, store_id, size, md5) values ('$name', $file->create_time, '$type', $file->obs_id, $file->source_id, $file->store_id, $file->size, '$md5')";
     return mysqli_query($link, $query);
 }
 

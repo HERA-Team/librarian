@@ -60,17 +60,18 @@ function create_observation(
 }
 
 function create_file(
-    $site_name, $file_name, $obs_id, $size, $md5, $store_name
+    $site_name, $store_name, $file_name, $type, $obs_id, $size, $md5
 ) {
     $site = get_site($site_name);
     if (!$site) return ret_struct(false, "No such site $site_name");
     $req = new StdClass;
     $req->operation = 'create_file';
+    $req->store_name = $store_name;
     $req->file_name = $file_name;
+    $req->type = $type;
     $req->obs_id = $obs_id;
     $req->size = $size;
     $req->md5 = $md5;
-    $req->store_name = $store_name;
     return hl_do_http_post($req, $site);
 }
 
@@ -114,7 +115,7 @@ function lookup_store($site_name, $store_name) {
 
 // get the recommended store for a file of given size
 //
-function recommended_store($file_size) {
+function recommended_store($site_name, $file_size) {
     $site = get_site($site_name);
     if (!$site) return ret_struct(false, "No such site $site_name");
     $req = new StdClass;
@@ -142,4 +143,6 @@ function create_task(
     return hl_do_http_post($req, $site);
 }
 
+//print_r(recommended_store('test_site', 1e6));
+print_r(create_file('test_site', 'Store 1', 'tst', 'foo', 0, -1, ''));
 ?>

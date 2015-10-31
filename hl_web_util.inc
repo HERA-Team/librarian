@@ -248,7 +248,7 @@ function form_checkbox($label, $name, $value) {
     $v = $value?"checked":"unchecked";
     echo '
         <div class="checkbox">
-        <label><input type="checkbox" name="'.$name.'" value="'.$v.'">'.$label.'</label>
+        <label><input type="checkbox" name="'.$name.'" '.$v.'>'.$label.'</label>
         </div>
     ';
 }

@@ -27,6 +27,26 @@ function success() {
     return $reply;
 }
 
+// get file size and md5
+//
+function get_file_info($store, $file_name) {
+    if ($store->ssh_prefix) {
+        $cmd = "ssh $store->ssh_prefix md5sum $store->path_prefix/$file_name";
+        $out = exec($cmd);
+        $x = explode(" ", $out);
+        $md5 = $x[0];
+        $cmd = "ssh $store->ssh_prefix wc -c $store->path_prefix/$file_name";
+        $out = exec($cmd);
+        $x = explode(" ", $out);
+        $size = $x[0];
+    } else {
+        $path = "$store->path_prefix/$file_name";
+        $size = filesize($path);
+        $md5 = md5_file($path);
+    }
+    return array($size, $md5);
+}
+
 // handler for create observation RPC
 //
 function create_observation($req) {
@@ -63,19 +83,22 @@ function create_file($req) {
     $req->store_id = $store->id;
 
     if (!$req->md5) {
-        ($req->size, $req->md5) = get_file_info($store, $req->file_name);
-        if (!$req->md5) {
+        list($size, $md5) = get_file_info($store, $req->file_name);
+        if (!$md5) {
             error("couldn't get MD5");
             return;
         }
+        $req->size = $size;
+        $req->md5 = $md5;
     }
     if (!file_insert($req)) {
         error(db_error());
         return;
     }
+    $id = insert_id();
     store_update($store->id, "used = used+$req->size");
     $reply = success();
-    $reply->id = insert_id();
+    $reply->id = $id;
     echo json_encode($reply);
 }
 
@@ -150,7 +173,7 @@ function recommended_store($req) {
     $stores = store_enum('unavailable=0');
     foreach ($stores as $store) {
         $space = $store->capacity - $store->used;
-        if ($file_size < $space) {
+        if ($req->file_size < $space) {
             $reply = success();
             $reply->store = $store;
             echo json_encode($reply);
