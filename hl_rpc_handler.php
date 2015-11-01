@@ -27,22 +27,35 @@ function success() {
     return $reply;
 }
 
-// get file size and md5
+// get size and md5 of file or dir
 //
 function get_file_info($store, $file_name) {
+    $path = "$store->path_prefix/$file_name";
     if ($store->ssh_prefix) {
-        $cmd = "ssh $store->ssh_prefix md5sum $store->path_prefix/$file_name";
+        $remote_cmd = "bash -c \"if [ -d $path ]; then zip $path | md5sum; else md5sum $path; fi\"";
+        $cmd = "ssh $store->ssh_prefix $remote_cmd";
         $out = exec($cmd);
-        $x = explode(" ", $out);
+        $x = preg_split('/\s+/', $out);
         $md5 = $x[0];
-        $cmd = "ssh $store->ssh_prefix wc -c $store->path_prefix/$file_name";
+
+        $remote_cmd = "bash -c \"if [ -d $path ]; then du -b $path; else wc -c $path; fi\"";
+        $cmd = "ssh $store->ssh_prefix $remote_cmd";
         $out = exec($cmd);
-        $x = explode(" ", $out);
+        $x = preg_split('/\s+/', $out);
         $size = $x[0];
     } else {
-        $path = "$store->path_prefix/$file_name";
-        $size = filesize($path);
-        $md5 = md5_file($path);
+        if (is_dir($path)) {
+            $out = exec("zip $path | md5sum");
+            $x = preg_split('/\s+/', $out);
+            $md5 = $x[0];
+
+            $out = exec("du -b $path");
+            $x = preg_split('/\s+/', $out);
+            $size = $x[0];
+        } else {
+            $md5 = md5_file($path);
+            $size = filesize($path);
+        }
     }
     return array($size, $md5);
 }
