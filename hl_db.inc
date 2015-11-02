@@ -103,6 +103,10 @@ function file_enum($clause=null) {
     return enum('file', $clause);
 }
 
+function file_count($clause=null) {
+    return table_count('file', $clause);
+}
+
 ///// TASK /////
 
 function task_lookup_id($id) {
@@ -140,7 +144,7 @@ function task_update_error($id, $msg) {
     global $link;
     $msg = $link->escape_string($msg);
     $now = time();
-    $query = "update task set last_error_time=$now, last_error='$msg' where id=$id";
+    $query = "update task set in_progress=0, last_error_time=$now, last_error='$msg' where id=$id";
     return mysqli_query($link, $query);
 
 }

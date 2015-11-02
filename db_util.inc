@@ -47,6 +47,16 @@ function enum($table, $clause=null) {
     return $items;
 }
 
+function table_count($table, $clause) {
+    global $link;
+    if (!$clause) $clause = 'TRUE';
+    $query = "select count(*) as total from $table where $clause";
+    $r = mysqli_query($link, $query);
+    $x = mysqli_fetch_object($r);
+    mysqli_free_result($r);
+    return $x->total;
+}
+
 // look up record from table with given ID
 //
 function lookup_id($table, $id) {
@@ -56,6 +66,13 @@ function lookup_id($table, $id) {
     $source = mysqli_fetch_object($r);
     mysqli_free_result($r);
     return $source;
+}
+
+// return # of rows affected by last query
+//
+function affected_rows() {
+    global $link;
+    return $link->affected_rows;
 }
 
 // Functions for tables common to M&C and HL databases

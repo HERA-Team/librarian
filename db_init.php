@@ -43,6 +43,14 @@ function create_store($store) {
     return store_insert($store);
 }
 
+function create_config($max_transfers) {
+    $config = new StdClass;
+    $config->max_transfers = $max_transfers;
+    if (!config_insert($config)) {
+        echo db_error()."\n";
+    }
+}
+
 function hl_setup() {
     global $test_stores, $test_source_names, $test_config;
     foreach ($test_source_names as $u) {
@@ -70,6 +78,9 @@ case 'source':
     break;
 case 'store':
     create_store($argv[2], $argv[3], $argv[4]);
+    break;
+case 'config':
+    create_config($argv[2]);
     break;
 case 'test_setup':
     hl_setup();

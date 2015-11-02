@@ -84,7 +84,7 @@ function file_search_form() {
 
 function file_search_action() {
     table_start();
-    table_header(array("Name", "Created", "Observation", "Source", "Size", "Store", "Path"));
+    table_header(array("Name", "Created", "Observation", "Type", "Source", "Size", "Store", "Path"));
     $clause = 'true';
     $source_id = get_num('source_id', true);
     $title = "All files";
@@ -97,6 +97,12 @@ function file_search_action() {
         $clause .= " and obs_id=$obs_id";
         $title = "Files from observation $obs_id";
     }
+    $store_id = get_num('store_id', true);
+    if ($store_id) {
+        $store = store_lookup_id($store_id);
+        $clause .= " and store_id=$store_id";
+        $title = "Files from store $store->name";
+    }
     page_head($title);
     $files = file_enum($clause);
     foreach ($files as $file) {
@@ -106,6 +112,7 @@ function file_search_action() {
             "<a href=$store->http_prefix/$file->name>$file->name</a>",
             time_str($file->create_time),
             "<a href=hl.php?obs_id=$file->obs_id&action=file_search_action>$file->obs_id</a>",
+            $file->type,
             $source->name,
             size_str($file->size),
             $store->name,
@@ -119,11 +126,17 @@ function file_search_action() {
 function show_stores() {
     page_head("Stores");
     table_start();
-    table_header(array("Name<br><small>Click to edit</small>", "Capacity", "Used", "% used", "Available"));
+    table_header(array(
+        "Name<br><small>Click for details</small>",
+        "Files<br><small>Click to view</small>",
+        "Capacity", "Used", "% used", "Available"
+    ));
     $stores = store_enum();
     foreach ($stores as $store) {
+        $nfiles = file_count("store_id=$store->id");
         table_row(array(
-            "<a href=hl.php?action=edit_store_form&id=$store->id>$store->name</a>",
+            "<a href=hl.php?action=store&id=$store->id>$store->name</a>",
+            "<a href=hl.php?action=file_search_action&store_id=$store->id>$nfiles</a>",
             size_str($store->capacity),
             size_str($store->used),
             progress_bar(100*$store->used/$store->capacity),
@@ -179,6 +192,28 @@ function edit_store_form() {
     form_submit_button("Submit");
     echo '</form>
     ';
+    page_tail();
+}
+
+function show_store() {
+    $id = get_num("id");
+    $store = store_lookup_id($id);
+    if (!$store) {
+        error_page("no such store");
+    }
+    page_head("Store $store->name");
+    table_start();
+    row2("Name", $store->name);
+    row2("Capacity (GB)", $store->capacity/GIGA);
+    row2("Used (GB)", $store->used/GIGA);
+    row2("rsync prefix", $store->rsync_prefix);
+    row2("HTTP prefix", $store->http_prefix);
+    row2("path prefix", $store->path_prefix);
+    row2("SSH prefix", $store->ssh_prefix);
+    row2("Available", $store->unavailable?"No":"Yes");
+    row2("", button("Edit", "hl.php?action=edit_store_form&id=$store->id"));
+    table_end();
+    page_tail();
 }
 
 function edit_store_action() {
@@ -226,10 +261,11 @@ function task_status($task) {
 function show_tasks() {
     page_head("Tasks");
     table_start();
-    table_header(array("Created", "File", "Local", "Remote", "Status", "Last error"));
+    table_header(array("ID", "Created", "File", "Local", "Remote", "Status", "Last error"));
     $tasks = task_enum();
     foreach ($tasks as $task) {
         table_row(array(
+            $task->id,
             time_str($task->create_time),
             $task->file_name,
             $task->local_store,
@@ -246,21 +282,26 @@ if (!init_db(LIBRARIAN_DB_NAME)) {
 
 $action = get_str("action", true);
 switch ($action) {
+case 'edit_store_action':
+    edit_store_action(); break;
+case 'edit_store_form':
+    edit_store_form(); break;
 case 'file_search_action':
     file_search_action(); break;
 case 'file_search_form':
     file_search_form(); break;
 case 'obs_search_action':
     obs_search_action(); break;
+case 'store':
+    show_store(); break;
 case 'stores':
     show_stores(); break;
 case 'tasks':
     show_tasks(); break;
-case 'edit_store_form':
-    edit_store_form(); break;
-case 'edit_store_action':
-    edit_store_action(); break;
 default:
+    if ($action) {
+        error_page("Unknown action '$action'");
+    }
     file_search_action(); break;
 }
 

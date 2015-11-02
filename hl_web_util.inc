@@ -115,6 +115,7 @@ function error_page($msg) {
     page_head("Error");
     echo $msg;
     page_tail();
+    exit;
 }
 
 function table_start() {
@@ -144,6 +145,13 @@ function table_row($items) {
         echo "<td>$item</td>\n";
     }
     echo "</tr>\n";
+}
+
+// use for name/value lists
+//
+function row2($x, $y) {
+    echo "<tr><td width=\"40%\" class=\"text-right\"><strong>$x</strong></td><td>$y</td></tr>
+    ";
 }
 
 function table_end() {
@@ -251,6 +259,11 @@ function form_checkbox($label, $name, $value) {
         <label><input type="checkbox" name="'.$name.'" '.$v.'>'.$label.'</label>
         </div>
     ';
+}
+
+function button($label, $url) {
+    return "<a href=\"$url\" class=\"btn btn-default\" role=\"button\">$label</a>
+    ";
 }
 
 function form_submit_button($label) {

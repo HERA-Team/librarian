@@ -17,6 +17,7 @@ $retry_interval = 0;
 
 function init() {
     task_update_all("in_progress=0", "completed=0");
+    echo "reset ".affected_rows()." tasks\n";
 }
 
 function start_task($task) {
@@ -41,6 +42,10 @@ function start_tasks() {
 
     $t = time() - $retry_interval;
     $tasks = task_enum("completed=0 and in_progress=0 and last_error_time<$t limit $limit");
+    if (!$tasks) {
+        echo "no tasks to run\n";
+        return;
+    }
     foreach ($tasks as $task) {
         echo "starting task $task->id\n";
         start_task($task);

@@ -15,6 +15,8 @@
 require_once("hl_db.inc");
 require_once("hl_rpc_client.php");
 
+define('DEBUG_COPY', true);
+
 // do the actual file transfer with rsync
 //
 function do_rsync($task, $local_store, $file) {
@@ -26,28 +28,38 @@ function do_rsync($task, $local_store, $file) {
         exit(1);
     }
     $remote_store = $ret->store;
-    $dest = $remote_store->rsync_prefix.'/'.$file->name;
-    $path = $local_store->path.'/'.$file->name;
-    $cmd = "rsync $path $dest 2>&1";
-    //echo "copier: execing $cmd\n";
+    $dest = $remote_store->rsync_prefix;
+    $path = $local_store->path_prefix.'/'.$file->name;
+    $cmd = "rsync -a $path $dest 2>&1";
+    if ($local_store->ssh_prefix) {
+        $cmd = "ssh $store->ssh_prefix $cmd";
+    }
+    if (DEBUG_COPY) {
+        echo "copier: execing $cmd\n";
+    }
     exec($cmd, $output, $status);
     if ($status) {
         task_update_error($task->id, implode("\n", $output));
         exit(1);
     }
-    echo "rsync finished\n";
+    if (DEBUG_COPY) {
+        echo "rsync finished\n";
+    }
 }
 
 // register file with remote Librarian
 //
 function do_remote_register($task, $file) {
     $ret = create_file(
-        $task->remote_site, $file->name, $file->obs_id, $file->size,
-        $file->md5, $task->remote_store
+        $task->remote_site, $task->remote_store, $file->name, $file->type,
+        $file->obs_id, $file->size, $file->md5
     );
     if (!$ret->success) {
         task_update_error($task->id, $ret->message);
         exit(1);
+    }
+    if (DEBUG_COPY) {
+        echo "remote register finished\n";
     }
 }
 
@@ -69,6 +81,7 @@ function do_task($task_id) {
         $ret = task_update($task->id, "state=1");
         if (!$ret) {
             task_update_error($task->id, "task_update() failed");
+            exit(1);
         }
         $task->state = 1;
     }
@@ -77,6 +90,7 @@ function do_task($task_id) {
         $ret = task_update($task->id, "state=2");
         if (!$ret) {
             task_update_error($task->id, "task_update() failed");
+            exit(1);
         }
         $task->state = 2;
     }
@@ -100,6 +114,9 @@ function do_task($task_id) {
     //
     $now = time();
     task_update($task->id, "completed=1, completed_time=$now");
+    if (DEBUG_COPY) {
+        echo "task finished\n";
+    }
 }
 
 $task_id = 0;
