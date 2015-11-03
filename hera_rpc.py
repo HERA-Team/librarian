@@ -19,7 +19,7 @@ def get_config(file):
 def do_http_post(req, site):
     req_json = json.dumps(req)
     params = urllib.urlencode({'request': req_json})
-    url = site.url+'/hl_rpc_handler.php'
+    url = site['url']+'/hl_rpc_handler.php'
     f = urllib.urlopen(url , params);
     reply_json = f.read()
     reply = json.loads(reply_json)
