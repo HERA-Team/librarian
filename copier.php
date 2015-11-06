@@ -68,9 +68,9 @@ function do_task($task_id) {
     if (!$task) {
         die("no such task: $task_id\n");
     }
-    $local_store = store_lookup_name($task->local_store);
+    $local_store = store_lookup_id($task->local_store_id);
     if (!$local_store) {
-        die("no such store: $task->local_store\n");
+        die("no such store: $task->local_store_id\n");
     }
     $file = file_lookup_name_store($task->file_name, $local_store->id);
     if (!$file) {

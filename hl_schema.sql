@@ -56,7 +56,7 @@ create table task (
     id              integer         not null auto_increment,
     create_time     double          not null,
     task_type       integer         not null,
-    local_store     varchar(254)    not null,
+    local_store_id  integer         not null,
     file_name       varchar(254)    not null,
     remote_site     varchar(254)    not null,
     remote_store    varchar(254)    not null,

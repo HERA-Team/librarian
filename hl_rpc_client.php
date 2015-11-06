@@ -143,7 +143,4 @@ function create_task(
     return hl_do_http_post($req, $site);
 }
 
-//print_r(recommended_store('test_site', 1e6));
-//print_r(create_file('test_site', 'Store 1', 'tst', 'foo', 0, -1, ''));
-//print_r(create_file('test_site', 'Store 0', 'foo', 'type', 0, -1, ''));
 ?>

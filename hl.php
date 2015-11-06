@@ -84,7 +84,7 @@ function file_search_form() {
 
 function file_search_action() {
     table_start();
-    table_header(array("Name", "Created", "Observation", "Type", "Source", "Size", "Store", "Path"));
+    table_header(array("Name<br><span class=small>click to download</span>", "Created", "Observation", "Type", "Source", "Size", "Store"));
     $clause = 'true';
     $source_id = get_num('source_id', true);
     $title = "All files";
@@ -115,8 +115,7 @@ function file_search_action() {
             $file->type,
             $source->name,
             size_str($file->size),
-            $store->name,
-            "$store->path_prefix/$file->name"
+            "<a href=hl.php?action=store&id=$store->id>$store->name</a>"
         ));
     }
     table_end();
@@ -161,7 +160,7 @@ function edit_store_form() {
         if (!$store) {
             error_page("no such store");
         }
-        page_head("Edit store $store->name");
+        page_head("Edit $store->name");
     } else {
         $store = new StdClass;
         $store->name = '';
@@ -201,9 +200,9 @@ function show_store() {
     if (!$store) {
         error_page("no such store");
     }
-    page_head("Store $store->name");
+    page_head("$store->name");
     table_start();
-    row2("Name", $store->name);
+    //row2("Name", $store->name);
     row2("Capacity (GB)", $store->capacity/GIGA);
     row2("Used (GB)", $store->used/GIGA);
     row2("rsync prefix", $store->rsync_prefix);

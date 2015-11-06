@@ -57,6 +57,9 @@ function get_file_info($store, $file_name) {
             $size = filesize($path);
         }
     }
+    if (!is_numeric($size) || strlen($md5) != 32) {
+        return array(-1, '');
+    }
     return array($size, $md5);
 }
 
@@ -97,8 +100,8 @@ function create_file($req) {
 
     if (!$req->md5) {
         list($size, $md5) = get_file_info($store, $req->file_name);
-        if (!$md5) {
-            error("couldn't get MD5");
+        if ($size < 0 || !$md5) {
+            error("couldn't get file info");
             return;
         }
         $req->size = $size;
@@ -161,6 +164,7 @@ function create_task($req) {
         return;
     }
 
+    $req->local_store_id = $store->id;
     if (!task_insert($req)) {
         error(db_error());
         return;

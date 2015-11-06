@@ -32,12 +32,8 @@ function db_error() {
     return mysqli_error($link);
 }
 
-// enumerate a table
-//
-function enum($table, $clause=null) {
+function enum_general($query) {
     global $link;
-    if (!$clause) $clause = 'TRUE';
-    $query = "select * from $table where $clause";
     $r = mysqli_query($link, $query);
     $items = array();
     while ($f = mysqli_fetch_object($r)) {
@@ -45,6 +41,14 @@ function enum($table, $clause=null) {
     }
     mysqli_free_result($r);
     return $items;
+}
+
+// enumerate a table
+//
+function enum($table, $clause=null) {
+    if (!$clause) $clause = 'TRUE';
+    $query = "select * from $table where $clause";
+    return enum_general($query);
 }
 
 function table_count($table, $clause) {

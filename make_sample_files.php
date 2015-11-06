@@ -42,11 +42,11 @@ function test_setup() {
         }
 
         // for each observation, create a few files.
-        // Put them on a random store.
+        // Put them on store 0.
         //
         for ($j=0; $j<4; $j++) {
             $f = "file_".$obs_id."_$j";
-            $store = $test_stores[rand(0, $nstores-1)];
+            $store = $test_stores[0];
             if (1) {
                 $path = $store->path_prefix.'/'.$f;
                 $string = "aslkjsdf $i $j\n";
