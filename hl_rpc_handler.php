@@ -144,7 +144,7 @@ function delete_file($req) {
     echo json_encode(success());
 }
 
-function create_task($req) {
+function create_copy_task($req) {
     $source = source_lookup_auth($req->authenticator);
     if (!$source) {
         error("auth failure");
@@ -206,7 +206,7 @@ switch ($req->operation) {
 case 'create_observation': create_observation($req); break;
 case 'create_file': create_file($req); break;
 case 'delete_file': delete_file($req); break;
-case 'create_task': create_task($req); break;
+case 'create_copy_task': create_copy_task($req); break;
 case 'get_store_list': get_store_list($req); break;
 case 'recommended_store': recommended_store($req); break;
 default: error("unknown op $req->operation");

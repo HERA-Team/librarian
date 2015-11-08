@@ -3,7 +3,7 @@
 
 require_once("hl_rpc_client.php");
 
-$ret = create_task(
+$ret = create_copy_task(
     TASK_TYPE_PUSH,
     "test_site", "Store 0", "foo", "test_site", "Store 1", false
 );

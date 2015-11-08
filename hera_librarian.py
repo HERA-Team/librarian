@@ -67,12 +67,12 @@ def recommended_store(site_name, file_size):
     }
     return do_http_post(req, site)
 
-def create_task(task_type, local_site_name, local_store_name, file_name,
+def create_copy_task(task_type, local_site_name, local_store_name, file_name,
     remote_site_name, remote_store_name, delete_when_done):
     site = get_site(local_site_name)
     if site == None:
         return error_struct("no such site")
-    req = {'operation': 'create_task',
+    req = {'operation': 'create_copy_task',
         'authenticator': site['authenticator'],
         'task_type': task_type,
         'local_store_name': local_store_name,

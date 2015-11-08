@@ -124,7 +124,7 @@ function recommended_store($site_name, $file_size) {
     return hl_do_http_post($req, $site);
 }
 
-function create_task(
+function create_copy_task(
     $task_type,
     $local_site_name, $local_store_name, $file_name,
     $remote_site_name, $remote_store_name,
@@ -133,7 +133,7 @@ function create_task(
     $site = get_site($local_site_name);
     if (!$site) return ret_struct(false, "No such site $local_site_name");
     $req = new StdClass;
-    $req->operation = 'create_task';
+    $req->operation = 'create_copy_task';
     $req->task_type = $task_type;
     $req->local_store_name = $local_store_name;
     $req->file_name = $file_name;

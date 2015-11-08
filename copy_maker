@@ -1,6 +1,6 @@
 #! /usr/bin/env php
 <?php
-// copy_maker.php args
+// copy_maker args
 // start copy tasks for files that
 // - currently have no copy task
 // - satisfy the criteria given by args

@@ -1,9 +1,10 @@
 #! /usr/bin/env php
 <?php
 
-// copier.php --task_id id
+// copier --task_id id
 //
-// start (or restart) a file copy operation.
+// Start (or restart) a file copy operation.
+// This is normally run by copy_master.
 //
 // task.state tells us how much of the operating we've already done.
 // values of task.state:

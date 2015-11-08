@@ -49,9 +49,9 @@ function obs_search_form() {
 function obs_search_action() {
     page_head("Observations");
     table_start();
-    table_header(array("ID (click for files)", "Date", "Source", "Polarization", "Length (days)"));
+    table_header(array("ID (click for files)", "Date", "Source", "Polarization", "Length (seconds)"));
     $clause = '';
-    $source_id = get_num('source_id');
+    $source_id = get_num('source_id', true);
     if ($source_id) {
         $clause = "source_id = $source_id";
     }
@@ -63,7 +63,7 @@ function obs_search_action() {
             time_str($ob->julian_date),
             $source->name,
             $ob->polarization,
-            $ob->length_days
+            $ob->length
         ));
     }
     table_end();

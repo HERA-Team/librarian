@@ -3,7 +3,7 @@
 
 // script to manage copy tasks
 //
-// copy_master.php args
+// copy_master args
 // --init: clear in_progress flags (do at boot time)
 // --daemon: run as a daemon
 // --sleep_interval: if daemon, how long to sleep between scans
@@ -24,7 +24,7 @@ function start_task($task) {
     task_update($task->id, "in_progress=1");
     $pid = pcntl_fork();
     if (!$pid) {
-        $cmd = "copier.php --task_id $task->id";
+        $cmd = "copier --task_id $task->id";
         system($cmd);
     }
 }

@@ -2,7 +2,7 @@
 <?php
 
 // CLI script to create Librarian and MC records.
-// Usage: db_init.php command
+// Usage: db_init command
 //
 // commands:
 // hl_source name
