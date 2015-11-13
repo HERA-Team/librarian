@@ -10,12 +10,20 @@ error_reporting(E_ALL);
 ini_set('display_errors', true);
 ini_set('display_startup_errors', true);
 
-// parse config file, return as object
+// parse client config file, return as object
 //
-function get_config($file) {
+function get_client_config() {
     $home = getenv('HOME');
-    $config_path = "$home/$file";
+    $config_path = "$home/.hl_client.cfg";
     return json_decode(file_get_contents($config_path));
+}
+
+// parse server config file
+//
+function get_server_config() {
+    $x = file_get_contents("hl_server.cfg");
+    $c = json_decode($x);
+    return $c;
 }
 
 function random_string() {

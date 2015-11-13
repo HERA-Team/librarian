@@ -1,9 +1,5 @@
 # schema for Librarian DB
 
-create table config (
-    max_transfers   integer         not null
-) engine=InnoDB;
-
 create table source (
     id              integer         not null auto_increment,
     name            varchar(254)    not null,

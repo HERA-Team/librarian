@@ -4,17 +4,14 @@
 
 $link = null;
 $db_error = '';
-define('LIBRARIAN_DB_NAME', 'hera_lib');
-define('MC_DB_NAME', 'hera_mc');
 
-// connect to a DB of the given name
+// connect to a DB with the given parameters
 //
-function init_db($db_name) {
+function init_db($config) {
     global $link;
-    $link = @mysqli_connect('', '', '', $db_name);
-    if (!$link) {
-        echo "can't connect to $db_name\n";
-    }
+    $link = @mysqli_connect(
+        $config->db_host, $config->db_user, $config->db_passwd, $config->db_name
+    );
     return $link;
 }
 

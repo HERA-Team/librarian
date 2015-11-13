@@ -4,10 +4,10 @@ import os
 import urllib
 import json
 
-# parse config file, return as dictionary
+# parse client config file, return as dictionary
 #
-def get_config(file):
-    path = os.path.expanduser('~/'+file)
+def get_client_config():
+    path = os.path.expanduser('~/'+'.hl_client.cfg')
     with open(path, 'r') as f:
         s = f.read()
     return json.loads(s)

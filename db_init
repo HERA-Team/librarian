@@ -43,14 +43,6 @@ function create_store($store) {
     return store_insert($store);
 }
 
-function create_config($max_transfers) {
-    $config = new StdClass;
-    $config->max_transfers = $max_transfers;
-    if (!config_insert($config)) {
-        echo db_error()."\n";
-    }
-}
-
 function hl_setup() {
     global $test_stores, $test_source_names, $test_config;
     foreach ($test_source_names as $u) {
@@ -63,14 +55,16 @@ function hl_setup() {
             echo db_error()."\n";
         }
     }
-    config_insert($test_config);
 }
 
 if ($argc < 2) {
     usage();
 }
 
-init_db(LIBRARIAN_DB_NAME);
+$config = get_server_config();
+if (!init_db($config)) {
+    die("can't connect to DB\n");
+}
 
 switch ($argv[1]) {
 case 'source':
@@ -78,9 +72,6 @@ case 'source':
     break;
 case 'store':
     create_store($argv[2], $argv[3], $argv[4]);
-    break;
-case 'config':
-    create_config($argv[2]);
     break;
 case 'test_setup':
     hl_setup();

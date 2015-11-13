@@ -10,6 +10,7 @@
 // --retry_interval: how long to wait until retry failed copy (sec)
 // default: start tasks as needed, then exit
 
+require_once("hera_util.inc");
 require_once("hl_db.inc");
 
 $sleep_interval = 10;
@@ -69,8 +70,10 @@ function daemon() {
 
 $daemon = false;
 
-init_db(LIBRARIAN_DB_NAME);
-$config = config_get();
+$config = get_server_config();
+if (!init_db($config)) {
+    die("can't open DB\n");
+}
 
 for ($i=1; $i<$argc; $i++) {
     switch ($argv[$i]) {

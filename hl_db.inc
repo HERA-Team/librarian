@@ -6,29 +6,6 @@
 
 require_once("db_util.inc");
 
-//// CONFIG ////
-
-function config_insert($config) {
-    global $link;
-    $query = "insert into config (max_transfers) values ($config->max_transfers)";
-    return mysqli_query($link, $query);
-}
-
-function config_update($clause) {
-    global $link;
-    $query = "update config set $clause";
-    return mysqli_query($link, $query);
-}
-
-function config_get() {
-    global $link;
-    $query = "select * from config";
-    $r = mysqli_query($link, $query);
-    $config = mysqli_fetch_object($r);
-    mysqli_free_result($r);
-    return $config;
-}
-
 //// STORE ////
 
 function store_insert($store) {

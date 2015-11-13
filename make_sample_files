@@ -8,7 +8,7 @@
 require_once("hera_util.inc");
 require_once("test_setup.inc");
 require_once("hl_rpc_client.php");
-require_once("mc_rpc_client.php");
+//require_once("mc_rpc_client.php");
 
 function test_setup() {
     global $test_stores;

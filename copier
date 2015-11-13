@@ -135,7 +135,10 @@ if (!$task_id) {
     die ("no task ID\n");
 }
 
-init_db(LIBRARIAN_DB_NAME);
+if (!init_db(get_server_config())) {
+    die("can't open DB\n");
+}
+
 do_task($task_id);
 
 ?>

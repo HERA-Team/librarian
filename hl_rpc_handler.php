@@ -7,8 +7,7 @@ ini_set('display_errors', true);
 ini_set('display_startup_errors', true);
 
 require_once("hl_db.inc");
-
-init_db(LIBRARIAN_DB_NAME);
+require_once("hera_util.inc");
 
 // return JSON error reply
 //
@@ -199,6 +198,14 @@ function recommended_store($req) {
     }
     error("no store has sufficient free space");
     return;
+}
+
+$config = get_server_config();
+if (!$config) {
+    error("no config file");
+}
+if (!init_db($config)) {
+    error("can't connect to DB");
 }
 
 $req = json_decode($_POST['request']);

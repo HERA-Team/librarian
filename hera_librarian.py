@@ -3,7 +3,7 @@
 from hera_rpc import *
 
 def get_site(site_name):
-    config = get_config('.hera.cfg')
+    config = get_client_config()
     sites = config['sites']
     try:
         return sites[site_name]

@@ -2,6 +2,7 @@
 
 // Librarian web interface.
 
+require_once("hera_util.inc");
 require_once("hl_web_util.inc");
 require_once("hl_db.inc");
 
@@ -275,7 +276,7 @@ function show_tasks() {
     }
 }
 
-if (!init_db(LIBRARIAN_DB_NAME)) {
+if (!init_db(get_server_config())) {
     error_page("can't open DB");
 }
 

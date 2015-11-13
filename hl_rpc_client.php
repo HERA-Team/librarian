@@ -9,7 +9,7 @@
 
 require_once("hera_util.inc");
 
-$hl_config = get_config('.hera.cfg');
+$hl_config = get_client_config();
 
 function ret_struct($success, $message) {
     $ret = new StdClass;
