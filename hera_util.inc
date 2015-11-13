@@ -15,7 +15,14 @@ ini_set('display_startup_errors', true);
 function get_client_config() {
     $home = getenv('HOME');
     $config_path = "$home/.hl_client.cfg";
-    return json_decode(file_get_contents($config_path));
+    if (!file_exists($config_path)) {
+        die("No config file $config_path\n");
+    }
+    $c = json_decode(file_get_contents($config_path));
+    if (!$c) {
+        die("Can't parse config file $config_path\n");
+    }
+    return $c;
 }
 
 // parse server config file
