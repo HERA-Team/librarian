@@ -1,6 +1,10 @@
 {
     "sites":{
-        "test_site":{
+        "Karoo":{
+            "url":"http://paperqmaster.karoo.kat.ac.za:8080",
+            "authenticator":"46a827567979f0f9c4f5fe037c67b2d1"
+        }
+        "UCB_test":{
             "url":"http://isaac.ssl.berkeley.edu/test",
             "authenticator":"46a827567979f0f9c4f5fe037c67b2d1"
         }

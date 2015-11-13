@@ -6,6 +6,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', true);
 ini_set('display_startup_errors', true);
 
+require_once("hera_util.inc");
+
 // show sidebar with given list of items
 //
 function sidebar($cols, $items) {
@@ -60,6 +62,8 @@ function navbar($title, $items_left, $items_right) {
 }
 
 function page_head($title) {
+    $config = get_server_config();
+    $title = $config->title;
 echo '
     <!DOCTYPE html>
     <html lang="en">
@@ -84,7 +88,7 @@ echo '
     </head>
     <body>
 ';
-    navbar("HERA Librarian",
+    navbar("HERA Librarian ($title)",
         array(
             array('Observations', 'hl.php?action=obs_search_action'),
             array('Files', 'hl.php?action=file_search_form'),
