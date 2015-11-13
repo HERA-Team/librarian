@@ -1,0 +1,8 @@
+{
+    "sites":{
+        "test_site":{
+            "url":"http://isaac.ssl.berkeley.edu/test",
+            "authenticator":"46a827567979f0f9c4f5fe037c67b2d1"
+        }
+    }
+}
