@@ -264,11 +264,12 @@ function show_tasks() {
     table_header(array("ID", "Created", "File", "Local", "Remote", "Status", "Last error"));
     $tasks = task_enum();
     foreach ($tasks as $task) {
+        $store = store_lookup_id($task->local_store_id);
         table_row(array(
             $task->id,
             time_str($task->create_time),
             $task->file_name,
-            $task->local_store,
+            $store->name,
             $task->remote_site.': '.$task->remote_store,
             task_status($task),
             $task->last_error.' ('.time_str($task->last_error_time).')'
