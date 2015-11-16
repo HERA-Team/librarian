@@ -30,12 +30,10 @@ if (gethostname() == "isaac") {
     $store_1->unavailable = false;
 
     $test_stores = array($store_0, $store_1);
-}
-
-// for Karoo
-//
-if (gethostname()=="qmaster") {
-    define ('TEST_SITE_NAME', 'UCB_test');
+} else {
+    // for Karoo
+    //
+    define ('TEST_SITE_NAME', 'Karoo');
 
     $store_0 = new StdClass;
     $store_0->name = 'Store 0';
