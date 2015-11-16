@@ -36,6 +36,7 @@ function hl_do_http_post($req, $site) {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_HTTP_VERSION,  CURL_HTTP_VERSION_1_0);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post_args);
     $reply_json = curl_exec($ch);
     curl_close($ch);
