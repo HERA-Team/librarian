@@ -35,9 +35,14 @@ function start_tasks() {
     global $retry_interval, $config;
 
     if ($config->max_transfers) {
-        $tasks = task_enum("in_progress<>0");
-        $limit = $config->max_transfers - count($tasks);
-        if ($limit <= 0) return;
+        $count = table_count("task", "in_progress<>0");
+        $limit = $config->max_transfers - $count;
+        if ($limit <= 0) {
+            echo "at max_transfer limit; not starting new copies\n";
+            return;
+        } else {
+            echo "limit: $limit new copies\n";
+        }
     } else {
         $limit = 9999;
     }
