@@ -63,7 +63,7 @@ function navbar($title, $items_left, $items_right) {
 
 function page_head($title) {
     $config = get_server_config();
-    $title = $config->title;
+    $site_title = $config->title;
 echo '
     <!DOCTYPE html>
     <html lang="en">
@@ -88,7 +88,7 @@ echo '
     </head>
     <body>
 ';
-    navbar("HERA Librarian ($title)",
+    navbar("HERA Librarian ($site_title)",
         array(
             array('Observations', 'hl.php?action=obs_search_action'),
             array('Files', 'hl.php?action=file_search_form'),

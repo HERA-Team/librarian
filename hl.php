@@ -275,6 +275,11 @@ function show_tasks() {
             $task->last_error.' ('.time_str($task->last_error_time).')'
         ));
     }
+    table_end();
+    if (count($tasks == 0)) {
+        echo "No tasks";
+    }
+    page_tail();
 }
 
 if (!init_db(get_server_config())) {
