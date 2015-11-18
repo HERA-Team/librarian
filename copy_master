@@ -27,6 +27,7 @@ function start_task($task) {
     if (!$pid) {
         $cmd = "./copier --task_id $task->id";
         system($cmd);
+        exit(0);
     }
 }
 
