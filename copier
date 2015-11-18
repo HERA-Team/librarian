@@ -114,7 +114,7 @@ function do_task($task_id) {
     // all done.  update task record
     //
     $now = time();
-    task_update($task->id, "completed=1, completed_time=$now");
+    task_update($task->id, "in_progress=0, completed=1, completed_time=$now");
     if (DEBUG_COPY) {
         echo "task finished\n";
     }
