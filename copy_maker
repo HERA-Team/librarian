@@ -28,7 +28,7 @@ function copy_maker($query, $remote_site, $remote_store) {
     $n = 0;
     foreach ($files as $file) {
         $req = new StdClass;
-        $req->type = TASK_TYPE_PUSH;
+        $req->task_type = TASK_TYPE_PUSH;
         $req->file_name = $file->name;
         $req->local_store_id = $file->store_id;
         $req->remote_site_name = $remote_site;

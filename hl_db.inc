@@ -112,7 +112,8 @@ function task_insert($task) {
     $file_name = $link->escape_string($task->file_name);
     $remote_site = $link->escape_string($task->remote_site_name);
     $remote_store = $link->escape_string($task->remote_store_name);
-    $query = "insert into task (create_time, task_type, local_store_id, file_name, remote_site, remote_store, in_progress, delete_when_done, state, completed, completed_time, last_error, last_error_time) values ($now, $task->task_type, $task->local_store_id, '$file_name', '$remote_site', '$remote_store', 0, $task->delete_when_done, 0, 0, 0, '', 0)";
+    $delete_when_done = $task->delete_when_done?1:0;
+    $query = "insert into task (create_time, task_type, local_store_id, file_name, remote_site, remote_store, in_progress, delete_when_done, state, completed, completed_time, last_error, last_error_time) values ($now, $task->task_type, $task->local_store_id, '$file_name', '$remote_site', '$remote_store', 0, $delete_when_done, 0, 0, 0, '', 0)";
     return mysqli_query($link, $query);
 }
 
