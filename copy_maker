@@ -14,23 +14,31 @@
 //   file type is t
 // --remote_site site-name
 // --remote_store store-name
+//
+// This must be run on the Librarian host; it accesses the DB
 
 require_once("hl_db.inc");
 require_once("hl_rpc_client.php");
 
-function copy_maker($query) {
+// enumerate files using the given query,
+// then arrange to copy them to the given site/store
+//
+function copy_maker($query, $remote_site, $remote_store) {
     $files = enum_general($query);
     $n = 0;
     foreach ($files as $file) {
-        $local_store = store_lookup_id($file->store_id);
-        $ret = create_copy_task(TASK_TYPE_PUSH, $local_store_name, $file->name,
-            $remote_site, $remote_store, false
-        );
-        if (!$ret->success) {
-            echo "error: $ret->message\n";
-            continue;
+        $req = new StdClass;
+        $req->type = TASK_TYPE_PUSH;
+        $req->file_name = $file->name;
+        $req->local_store_id = $file->store_id;
+        $req->remote_site_name = $remote_site;
+        $req->remote_store_name = $remote_store;
+        $req->delete_when_done = false;
+        if (!task_insert($req)) {
+            echo "DB error: ".db_error()."\n";
+        } else {
+            $n++;
         }
-        $n++;
     }
     echo "started $n copies\n";
 }
@@ -62,6 +70,8 @@ if (!$remote_site || !$remote_store) {
     die ("Usage\n");
 }
 
+// don't include files that already have active copy tasks
+//
 $query = "select * from file left join task on file.name = task.file_name where task.id is null";
 
 if ($filename_pattern) {
@@ -74,6 +84,6 @@ if ($type) {
 }
 
 //echo $query;
-copy_maker($query);
+copy_maker($query, $remote_site, $remote_store);
 
 ?>
