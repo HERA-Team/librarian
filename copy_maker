@@ -12,8 +12,8 @@
 //   filename matches MySQL "like" expr (% is wildcard)
 // --type t
 //   file type is t
-// --remote-site site-name
-// --remote-store store-name
+// --remote_site site-name
+// --remote_store store-name
 
 require_once("hl_db.inc");
 require_once("hl_rpc_client.php");
@@ -23,7 +23,7 @@ function copy_maker($query) {
     $n = 0;
     foreach ($files as $file) {
         $local_store = store_lookup_id($file->store_id);
-        $ret = create_task(TASK_TYPE_PUSH, $local_store_name, $file->name,
+        $ret = create_copy_task(TASK_TYPE_PUSH, $local_store_name, $file->name,
             $remote_site, $remote_store, false
         );
         if (!$ret->success) {

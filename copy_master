@@ -25,7 +25,7 @@ function start_task($task) {
     task_update($task->id, "in_progress=1");
     $pid = pcntl_fork();
     if (!$pid) {
-        $cmd = "copier --task_id $task->id";
+        $cmd = "./copier --task_id $task->id";
         system($cmd);
     }
 }
