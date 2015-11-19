@@ -282,11 +282,55 @@ function show_tasks() {
     page_tail();
 }
 
+function get_login() {
+    $auth = null;
+    if (isset($_COOKIE['auth'])) $auth = $_COOKIE['auth'];
+    return source_lookup_auth($auth);
+}
+
+function login_page() {
+    page_head("Login");
+    echo '<form role="form" action="hl.php" method="get">
+        <input type="hidden" name="action" value="login">
+    ';
+    form_item("Authenticator:", "text", "auth", "");
+    form_submit_button("Submit");
+    page_tail();
+}
+
+function login_action() {
+    $auth = get_str("auth");
+    $source = source_lookup_auth($auth);
+    if ($source) {
+        setcookie("auth", $auth, 0, "/");
+        Header("Location: hl.php");
+    } else {
+        error_page("Invalid authenticator");
+    }
+}
+
+function logout() {
+    setcookie("auth", '', 0, "/");
+    echo "Logged out";
+}
+
 if (!init_db(get_server_config())) {
     error_page("can't open DB");
 }
 
 $action = get_str("action", true);
+
+if ($action == "login") {
+    login_action();
+    exit();
+}
+
+$source = get_login();
+if (!$source) {
+    login_page();
+    exit();
+}
+
 switch ($action) {
 case 'edit_store_action':
     edit_store_action(); break;
@@ -296,6 +340,8 @@ case 'file_search_action':
     file_search_action(); break;
 case 'file_search_form':
     file_search_form(); break;
+case 'logout':
+    logout(); break;
 case 'obs_search_action':
     obs_search_action(); break;
 case 'store':

@@ -95,7 +95,7 @@ echo '
             array('Stores', 'hl.php?action=stores'),
             array('Tasks', 'hl.php?action=tasks'),
         ),
-        array(array('Contact', 'hl.php'))
+        array(array('Logout', 'hl.php?action=logout'))
     );
 echo '
     <div class="container-fluid">
