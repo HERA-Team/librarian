@@ -49,6 +49,18 @@ else:
     jds_onepol = n.sort([jd for i,jd in enumerate(jds) if pols[i]==pols[0] and jd.astype(int)==nights[0]])
     djd = n.mean(n.diff(jds_onepol))
     print "setting length to ",djd,' days'
+
+site_name = '"Karoo'
+store_name = 'Store 0'
+for filename in args:
+    jd = float(file2jd(filename))
+    pol = file2pol(filename)
+    obsnum = jdpol2obsnum(jd, pol, djd)
+    create_observation(site_name, obsnum, jd, pol, djd)
+    create_file(site_name, store_name, "uv", obsnum, -1, '')
+
+sys.exit(0)
+
 pols = list(set(pols))#these are the pols I have to iterate over
 print "found the following pols",pols
 print "found the following nights",nights
