@@ -1,0 +1,9 @@
+# bash init for David Anderson
+alias vi='vi -u ~/dpa/.vimrc'
+PATH=.:$PATH
+alias j='jobs'
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+alias ls='ls --color=none'
+alias l='ls -sFC'
