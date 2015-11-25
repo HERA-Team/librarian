@@ -32,13 +32,13 @@ function get_file_info($store, $file_name) {
     $path = "$store->path_prefix/$file_name";
     if ($store->ssh_prefix) {
         $remote_cmd = "bash -c \"if [ -d $path ]; then zip $path | md5sum; else md5sum $path; fi\"";
-        $cmd = "ssh $store->ssh_prefix $remote_cmd";
+        $cmd = "ssh $store->ssh_prefix '$remote_cmd'";
         $out = exec($cmd);
         $x = preg_split('/\s+/', $out);
         $md5 = $x[0];
 
         $remote_cmd = "bash -c \"if [ -d $path ]; then du -b $path; else wc -c $path; fi\"";
-        $cmd = "ssh $store->ssh_prefix $remote_cmd";
+        $cmd = "ssh $store->ssh_prefix '$remote_cmd'";
         $out = exec($cmd);
         $x = preg_split('/\s+/', $out);
         $size = $x[0];

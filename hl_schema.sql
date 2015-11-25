@@ -11,7 +11,7 @@ create table source (
 /* clone of M&C table */
 
 create table observation (
-    id              integer         not null,
+    id              bigint          not null,
     source_id       integer         not null,
     julian_date     double          not null,
     polarization    char(4)         not null,
@@ -38,7 +38,7 @@ create table file (
     name            varchar(254)    not null,
     type            char(64)        not null,
     create_time     double          not null,
-    obs_id          integer         not null,
+    obs_id          bigint          not null,
     source_id       integer         not null,
     store_id        integer         not null,
     size            double          not null,

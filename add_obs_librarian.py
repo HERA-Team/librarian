@@ -10,8 +10,16 @@ KEY NOTE: Assumes all files are contiguous.  I sort the files by jd and then mat
 """
 
 
-from ddr_compress.dbi import DataBaseInterface,gethostname,jdpol2obsnum
+from ddr_compress.dbi import gethostname, jdpol2obsnum
 import optparse,os,sys,re,numpy as n
+
+import hera_librarian
+
+# from /a/b/c/d, return c/d
+def dirfilename(path):
+    x = os.path.split(path)
+    y = os.path.split(x[0])
+    return os.path.join(y[1], x[1]);
 
 def file2jd(zenuv):
     return re.findall(r'\d+\.\d+', zenuv)[0]
@@ -27,8 +35,6 @@ o.add_option('-t',action='store_true',
 o.add_option('--overwrite',action='store_true',
     help='Default action is to skip obsrvations already in the db. Setting this option overrides this safety feature and attempts anyway')
 opts, args = o.parse_args(sys.argv[1:])
-#connect to the database
-dbi = DataBaseInterface()
 
 #check that all files exist
 for filename in args:
@@ -50,14 +56,16 @@ else:
     djd = n.mean(n.diff(jds_onepol))
     print "setting length to ",djd,' days'
 
-site_name = '"Karoo'
-store_name = 'Store 0'
+site_name = 'Karoo'
+store_name = 'pot2_data1'
 for filename in args:
     jd = float(file2jd(filename))
     pol = file2pol(filename)
+    fname = dirfilename(filename)
     obsnum = jdpol2obsnum(jd, pol, djd)
-    create_observation(site_name, obsnum, jd, pol, djd)
-    create_file(site_name, store_name, "uv", obsnum, -1, '')
+    print jd, pol, djd, obsnum
+    hera_librarian.create_observation(site_name, obsnum, jd, pol, djd)
+    hera_librarian.create_file(site_name, store_name, fname, "uv", obsnum, -1, '')
 
 sys.exit(0)
 
@@ -75,7 +83,7 @@ for night in nights:
         for i,filename in enumerate(files):
             obsnum = jdpol2obsnum(float(file2jd(filename)),file2pol(filename),djd)
             print "obs num: ", obsnum
-            
+
 #            try:
 #                dbi.get_obs(jdpol2obsnum(float(file2jd(filename)),file2pol(filename),djd))
 #                if opts.overwrite:
