@@ -50,7 +50,7 @@ function obs_search_form() {
 function obs_search_action() {
     page_head("Observations");
     table_start();
-    table_header(array("ID (click for files)", "Date", "Source", "Polarization", "Length (seconds)"));
+    table_header(array("ID (click for files)", "Julian date", "Source", "Polarization", "Length (seconds)"));
     $clause = '';
     $source_id = get_num('source_id', true);
     if ($source_id) {
@@ -61,7 +61,7 @@ function obs_search_action() {
         $source = source_lookup_id($ob->source_id);
         table_row(array(
             "<a href=hl.php?action=file_search_action&obs_id=$ob->id>$ob->id</a>",
-            time_str($ob->julian_date),
+            $ob->julian_date,
             $source->name,
             $ob->polarization,
             $ob->length
@@ -109,8 +109,13 @@ function file_search_action() {
     foreach ($files as $file) {
         $source = source_lookup_id($file->source_id);
         $store = store_lookup_id($file->store_id);
+        if ($store->http_prefix) {
+            $fname = "<a href=$store->http_prefix/$file->name>$file->name</a>";
+        } else {
+            $fname = $file->name;
+        }
         table_row(array(
-            "<a href=$store->http_prefix/$file->name>$file->name</a>",
+            $fname,
             time_str($file->create_time),
             "<a href=hl.php?obs_id=$file->obs_id&action=file_search_action>$file->obs_id</a>",
             $file->type,
