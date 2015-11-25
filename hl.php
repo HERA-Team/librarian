@@ -204,8 +204,8 @@ function show_store() {
     page_head("$store->name");
     table_start();
     //row2("Name", $store->name);
-    row2("Capacity (GB)", $store->capacity/GIGA);
-    row2("Used (GB)", $store->used/GIGA);
+    row2("Capacity", size_str($store->capacity));
+    row2("Used", size_str($store->used));
     row2("rsync prefix", $store->rsync_prefix);
     row2("HTTP prefix", $store->http_prefix);
     row2("path prefix", $store->path_prefix);
@@ -259,7 +259,7 @@ function task_status($task) {
 }
 
 function show_tasks() {
-    page_head("Tasks");
+    page_head("File transfers");
     table_start();
     table_header(array("ID", "Created", "File", "Local", "Remote", "Status", "Last error"));
     $tasks = task_enum();

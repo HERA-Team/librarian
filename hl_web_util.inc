@@ -93,7 +93,7 @@ echo '
             array('Observations', 'hl.php?action=obs_search_action'),
             array('Files', 'hl.php?action=file_search_form'),
             array('Stores', 'hl.php?action=stores'),
-            array('Tasks', 'hl.php?action=tasks'),
+            array('Transfers', 'hl.php?action=tasks'),
         ),
         array(array('Logout', 'hl.php?action=logout'))
     );
