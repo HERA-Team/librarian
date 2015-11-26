@@ -64,7 +64,7 @@ function obs_search_action() {
             $ob->julian_date,
             $source->name,
             $ob->polarization,
-            $ob->length
+            $ob->length*86400
         ));
     }
     table_end();

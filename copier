@@ -33,7 +33,7 @@ function do_rsync($task, $local_store, $file) {
     $path = $local_store->path_prefix.'/'.$file->name;
     $cmd = "rsync -a $path $dest 2>&1";
     if ($local_store->ssh_prefix) {
-        $cmd = "ssh $store->ssh_prefix $cmd";
+        $cmd = "ssh $local_store->ssh_prefix $cmd";
     }
     if (DEBUG_COPY) {
         echo "copier: execing $cmd\n";
