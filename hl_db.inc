@@ -6,6 +6,50 @@
 
 require_once("db_util.inc");
 
+//// SOURCE ////
+
+function source_insert($source) {
+    global $link;
+    $auth = $link->escape_string($source->authenticator);
+    $query = "insert into source (name, authenticator, create_time) values ('$source->name', '$auth', $source->create_time)";
+    return mysqli_query($link, $query);
+}
+
+function source_lookup_auth($auth) {
+    global $link;
+    $auth = $link->escape_string($auth);
+    $query = "select * from source where authenticator='$auth'";
+    $r = mysqli_query($link, $query);
+    $source = mysqli_fetch_object($r);
+    mysqli_free_result($r);
+    return $source;
+}
+
+function source_lookup_id($id) {
+    return lookup_id("source", $id);
+}
+
+function source_enum($clause=null) {
+    return enum('source', $clause);
+}
+
+//// OBSERVATION ////
+
+function observation_insert($obs) {
+    global $link;
+    $polarization = $link->escape_string($obs->polarization);
+    $query = "insert into observation (id, source_id, julian_date, polarization, length) values ($obs->id, $obs->source_id, $obs->julian_date, '$polarization', $obs->length)";
+    return mysqli_query($link, $query);
+}
+
+function observation_lookup_id($id) {
+    return lookup_id("observation", $id);
+}
+
+function observation_enum($clause=null) {
+    return enum('observation', $clause);
+}
+
 //// STORE ////
 
 function store_insert($store) {

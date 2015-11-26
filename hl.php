@@ -31,7 +31,21 @@ function show_store_select() {
     foreach ($stores as $s) {
         echo "<option value=$s->id> $s->name\n";
     }
-    echo '</div>
+    echo '</select></div>
+    ';
+}
+
+function show_obs_select() {
+    echo '<div class="form-group">
+        <label for="obs_id">Observation:</label>
+        <select name=obs_id>
+        <option value=0> All
+    ';
+    $obs = observation_enum();
+    foreach ($obs as $ob) {
+        echo "<option value=$ob->id> $ob->id ($ob->julian_date)\n";
+    }
+    echo '</select></div>
     ';
 }
 
@@ -50,7 +64,7 @@ function obs_search_form() {
 function obs_search_action() {
     page_head("Observations");
     table_start();
-    table_header(array("ID (click for files)", "Julian date", "Source", "Polarization", "Length (seconds)"));
+    table_header(array("ID (click for details)", "Julian date", "Source", "Polarization", "Length (seconds)"));
     $clause = '';
     $source_id = get_num('source_id', true);
     if ($source_id) {
@@ -60,7 +74,7 @@ function obs_search_action() {
     foreach ($obs as $ob) {
         $source = source_lookup_id($ob->source_id);
         table_row(array(
-            "<a href=hl.php?action=file_search_action&obs_id=$ob->id>$ob->id</a>",
+            "<a href=hl.php?action=obs&id=$ob->id>$ob->id</a>",
             $ob->julian_date,
             $source->name,
             $ob->polarization,
@@ -76,6 +90,8 @@ function file_search_form() {
     echo '<form role="form" action="hl.php">
     ';
     show_source_select();
+    show_store_select();
+    show_obs_select();
     echo '
         <button type="submit" name="action" value="file_search_action" class="btn btn-default">Submit</button>
         </form>
@@ -88,21 +104,22 @@ function file_search_action() {
     table_header(array("Name<br><span class=small>click to download</span>", "Created", "Observation", "Type", "Source", "Size", "Store"));
     $clause = 'true';
     $source_id = get_num('source_id', true);
-    $title = "All files";
+    $title = "Files";
     if ($source_id) {
         $clause .= " and file.source_id = $source_id";
-        $title = "Files from source $source_id";
+        $source = source_lookup_id($source_id);
+        $title .= ", source $source->name";
     }
     $obs_id = get_num('obs_id', true);
     if ($obs_id) {
         $clause .= " and obs_id=$obs_id";
-        $title = "Files from observation $obs_id";
+        $title .= ", observation $obs_id";
     }
     $store_id = get_num('store_id', true);
     if ($store_id) {
         $store = store_lookup_id($store_id);
         $clause .= " and store_id=$store_id";
-        $title = "Files from store $store->name";
+        $title .= ", store $store->name";
     }
     page_head($title);
     $files = file_enum($clause);
@@ -117,7 +134,7 @@ function file_search_action() {
         table_row(array(
             $fname,
             time_str($file->create_time),
-            "<a href=hl.php?obs_id=$file->obs_id&action=file_search_action>$file->obs_id</a>",
+            "<a href=hl.php?id=$file->obs_id&action=obs>$file->obs_id</a>",
             $file->type,
             $source->name,
             size_str($file->size),
@@ -197,6 +214,25 @@ function edit_store_form() {
     form_submit_button("Submit");
     echo '</form>
     ';
+    page_tail();
+}
+
+function show_obs() {
+    $id = get_num("id");
+    $obs = observation_lookup_id($id);
+    if (!$obs) {
+        error_page("no such observation");
+    }
+    $source = source_lookup_id($obs->source_id);
+    $nfiles = file_count("obs_id=$id");
+    page_head("Observation $obs->id");
+    table_start();
+    row2("Julian date", $obs->julian_date);
+    row2("Source", $source->name);
+    row2("Polarization", $obs->polarization);
+    row2("Length", $obs->length*86400);
+    row2("Files", "<a href=hl.php?action=file_search_action&obs_id=$id>$nfiles</a>");
+    table_end();
     page_tail();
 }
 
@@ -355,6 +391,8 @@ case 'stores':
     show_stores(); break;
 case 'tasks':
     show_tasks(); break;
+case 'obs':
+    show_obs(); break;
 default:
     if ($action) {
         error_page("Unknown action '$action'");
