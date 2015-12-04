@@ -1,6 +1,6 @@
 <?php
 
-// MySQL code for MC and Librarian DBs
+// MySQL code for Librarian DB access
 
 $link = null;
 $db_error = '';

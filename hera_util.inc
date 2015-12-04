@@ -1,5 +1,7 @@
 <?php
 
+// Utility definitions and functions
+
 // task types
 
 define('TASK_TYPE_PUSH', 0);

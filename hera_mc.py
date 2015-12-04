@@ -1,5 +1,7 @@
 # Python binding of M&C RPCs
 
+# DEPRECATED
+
 import hera_rpc
 
 # create an observation

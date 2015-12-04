@@ -7,6 +7,8 @@
 // $reply->message: if failure, error message
 // $reply->id: for creation RPC, the DB ID of the created item
 
+// DEPRECATED
+
 require_once("hera_util.inc");
 
 $mc_config = get_config('.hera_mc');

@@ -1,5 +1,7 @@
 # schema for M&C database
 
+# DEPRECATED
+
 create table source (
     id              integer         not null auto_increment,
     name            varchar(254)    not null,

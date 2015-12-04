@@ -6,12 +6,12 @@
 // Start (or restart) a file copy operation.
 // This is normally run by copy_master.
 //
-// task.state tells us how much of the operating we've already done.
+// task.state tells us how much of the operation we've already done.
 // values of task.state:
 // 0 initial
 // 1 completed rsync
 // 2 registered file with remote Librarian
-// 3 deleted local copy
+// 3 deleted local copy (if requested)
 
 require_once("hl_db.inc");
 require_once("hl_rpc_client.php");

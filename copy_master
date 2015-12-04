@@ -14,13 +14,17 @@ require_once("hera_util.inc");
 require_once("hl_db.inc");
 
 $sleep_interval = 10;
-$retry_interval = 0;
+$retry_interval = 60;
 
+// clear the in_progress flag of uncompleted tasks
+//
 function init() {
     task_update_all("in_progress=0", "completed=0");
     echo "reset ".affected_rows()." tasks\n";
 }
 
+// spawn a process to handle a task
+//
 function start_task($task) {
     task_update($task->id, "in_progress=1");
     $pid = pcntl_fork();
@@ -31,6 +35,8 @@ function start_task($task) {
     }
 }
 
+// enumerate tasks (up to the config limit) and handle them
+//
 function start_tasks() {
     global $retry_interval, $config;
 
@@ -59,6 +65,8 @@ function start_tasks() {
     }
 }
 
+// if run as daemon: repeatedly scan for tasks
+//
 function daemon() {
     global $sleep_interval;
     while (1) {
@@ -91,6 +99,9 @@ for ($i=1; $i<$argc; $i++) {
         break;
     case "--sleep_interval":
         $sleep_interval = (int)($argv[++$argc]);
+        break;
+    case "--retry_interval":
+        $retry_interval = (int)($argv[++$argc]);
         break;
     default:
         echo "bad arg: ".$argv[$i]."\n";

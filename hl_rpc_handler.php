@@ -31,6 +31,8 @@ function success() {
 function get_file_info($store, $file_name) {
     $path = "$store->path_prefix/$file_name";
     if ($store->ssh_prefix) {
+        // if file is remote, issue ssh commands to storage host
+        //
         $remote_cmd = "bash -c \"if [ -d $path ]; then zip $path | md5sum; else md5sum $path; fi\"";
         $cmd = "ssh $store->ssh_prefix '$remote_cmd'";
         $out = exec($cmd);
@@ -43,6 +45,8 @@ function get_file_info($store, $file_name) {
         $x = preg_split('/\s+/', $out);
         $size = $x[0];
     } else {
+        // File is local
+        //
         if (is_dir($path)) {
             $out = exec("zip $path | md5sum");
             $x = preg_split('/\s+/', $out);

@@ -1,14 +1,12 @@
 #! /usr/bin/env php
 <?php
 
-// CLI script to create Librarian and MC records.
+// CLI script to create Librarian records.
 // Usage: db_init command
 //
 // commands:
-// hl_source name
+// source name
 //      create a Librarian source with the given name
-// mc_source name
-//      create a MC source with the given name
 // store name capacity
 //      create a store with the given name and capacity (in bytes)
 // test_setup
@@ -21,8 +19,7 @@ require_once("hl_db.inc");
 function usage() {
     echo "usage: db_init.php command
     commands:
-        hl_source name: create Librarian source
-        mc_source name: create M&C source
+        source name: create Librarian source
         store name capacity: create store
         test_setup: create records for testing
 ";
@@ -43,7 +40,7 @@ function create_store($store) {
     return store_insert($store);
 }
 
-function hl_setup() {
+function test_setup() {
     global $test_stores, $test_source_names, $test_config;
     foreach ($test_source_names as $u) {
         if (!create_source($u, 'Librarian')) {
@@ -74,7 +71,7 @@ case 'store':
     create_store($argv[2], $argv[3], $argv[4]);
     break;
 case 'test_setup':
-    hl_setup();
+    test_setup();
     break;
 default: usage();
 }

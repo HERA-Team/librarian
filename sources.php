@@ -1,5 +1,7 @@
 <?php
 
+// CLI script to show sources (including their authenticators)
+
 require_once("hera_util.inc");
 require_once("hl_db.inc");
 
