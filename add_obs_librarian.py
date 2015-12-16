@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 add_obs_librarian.py file1 file2 ...
 
