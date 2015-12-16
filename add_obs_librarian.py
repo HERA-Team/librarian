@@ -65,13 +65,20 @@ else:
     djd = n.mean(n.diff(jds_onepol))
     print "setting length to ",djd,' days'
 
+def check (json):
+    if json.get ('success', True):
+        return
+
+    print >>sys.stderr, 'operation failed:', json.get ('message', '(no message was provided!)')
+
+
 for filename in args:
     jd = float(file2jd(filename))
     pol = file2pol(filename)
     fname = dirfilename(filename)
     obsnum = jdpol2obsnum(jd, pol, djd)
     print jd, pol, djd, obsnum
-    hera_librarian.create_observation(opts.site, obsnum, jd, pol, djd)
-    hera_librarian.create_file(opts.site, opts.store, fname, "uv", obsnum, -1, '')
+    check (hera_librarian.create_observation(opts.site, obsnum, jd, pol, djd))
+    check (hera_librarian.create_file(opts.site, opts.store, fname, "uv", obsnum, -1, ''))
 
 print "done"
