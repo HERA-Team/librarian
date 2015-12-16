@@ -22,6 +22,10 @@ def do_http_post(req, site):
     url = site['url']+'/hl_rpc_handler.php'
     f = urllib.urlopen(url , params);
     reply_json = f.read()
-    reply = json.loads(reply_json)
+    try:
+        reply = json.loads(reply_json)
+    except ValueError:
+        print('failed to parse reply as JSON: ' + reply_json)
+        raise
     return reply
 
