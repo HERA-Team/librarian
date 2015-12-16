@@ -38,6 +38,10 @@ o.add_option('-t',action='store_true',
        help='Test. Only print, do not touch db')
 o.add_option('--overwrite',action='store_true',
     help='Default action is to skip obsrvations already in the db. Setting this option overrides this safety feature and attempts anyway')
+o.add_option('--site',type=str,default='Karoo',
+             help='The "site" name to use when creating the new records (default: %default).')
+o.add_option('--store',type=str,default='pot2_data1',
+             help='The "store" name to use when creating the new records (default: %default).')
 opts, args = o.parse_args(sys.argv[1:])
 
 # check that all files exist
@@ -61,15 +65,13 @@ else:
     djd = n.mean(n.diff(jds_onepol))
     print "setting length to ",djd,' days'
 
-site_name = 'Karoo'
-store_name = 'pot2_data1'
 for filename in args:
     jd = float(file2jd(filename))
     pol = file2pol(filename)
     fname = dirfilename(filename)
     obsnum = jdpol2obsnum(jd, pol, djd)
     print jd, pol, djd, obsnum
-    hera_librarian.create_observation(site_name, obsnum, jd, pol, djd)
-    hera_librarian.create_file(site_name, store_name, fname, "uv", obsnum, -1, '')
+    hera_librarian.create_observation(opts.site, obsnum, jd, pol, djd)
+    hera_librarian.create_file(opts.site, opts.store, fname, "uv", obsnum, -1, '')
 
 print "done"
