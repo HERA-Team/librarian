@@ -106,7 +106,7 @@ function file_insert($file) {
     $name = $link->escape_string($file->file_name);
     $type = $link->escape_string($file->type);
     $md5 = $link->escape_string($file->md5);
-    $query = "insert into file (name, create_time, type, obs_id, source_id, store_id, size, md5) values ('$name', $file->create_time, '$type', $file->obs_id, $file->source_id, $file->store_id, $file->size, '$md5')";
+    $query = "insert into file (name, create_time, type, obs_id, source_id, store_id, size, md5, deleted, deleted_time) values ('$name', $file->create_time, '$type', $file->obs_id, $file->source_id, $file->store_id, $file->size, '$md5', 0, 0)";
     return mysqli_query($link, $query);
 }
 
