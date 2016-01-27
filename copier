@@ -30,8 +30,13 @@ function do_rsync($task, $local_store, $file) {
     }
     $remote_store = $ret->store;
     $dest = $remote_store->rsync_prefix;
-    $path = $local_store->path_prefix.'/'.$file->name;
-    $cmd = "rsync -a $path $dest 2>&1";
+    // The '/./' and -R combination here use rsync's "implied directories"
+    // feature to put the files into the right subdirectories automatically.
+    // This feature was added in version 2.6.7, so if someone is running
+    // a too-old version we'll break. In that case we'll probably need to
+    // do a "mkdir -p" over SSH to ensure the parent directories exist.
+    $path = $local_store->path_prefix.'/./'.$file->name;
+    $cmd = "rsync -aR $path $dest 2>&1";
     if ($local_store->ssh_prefix) {
         $cmd = "ssh $local_store->ssh_prefix $cmd";
     }
