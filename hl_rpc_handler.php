@@ -80,7 +80,6 @@ function create_observation($req) {
         return;
     }
     $reply = success();
-    $reply->id = insert_id();
     echo json_encode($reply);
 }
 
@@ -110,14 +109,15 @@ function create_file($req) {
         $req->size = $size;
         $req->md5 = $md5;
     }
-    if (!file_insert($req)) {
+
+    $result = file_insert($req);
+    if (!$result) {
         error(db_error());
         return;
     }
-    $id = insert_id();
+    list($id) = pg_fetch_row($result);
     store_update($store->id, "used = used+$req->size");
     $reply = success();
-    $reply->id = $id;
     echo json_encode($reply);
 }
 
@@ -138,7 +138,7 @@ function delete_file($req) {
         return;
     }
     $now = time();
-    $ret = file_update($file->id, "deleted=1, deleted_time=$now");
+    $ret = file_update($file->id, "deleted=1, extract(epoch from deleted_time)=$now");
     if (!$ret) {
         error(db_error());
         return;
@@ -173,7 +173,6 @@ function create_copy_task($req) {
         return;
     }
     $reply = success();
-    $reply->id = insert_id();
     echo json_encode($reply);
 }
 

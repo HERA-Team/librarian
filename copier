@@ -24,7 +24,7 @@ function do_rsync($task, $local_store, $file) {
     echo "looking up remote store\n";
     $ret = lookup_store($task->remote_site, $task->remote_store);
     if (!$ret->success) {
-        echo "couldn't find remote store $task->remote_store\n";
+        echo "couldn't find remote store $task->remote_store: $ret->message\n";
         task_update_error($task->id, $ret->message);
         exit(1);
     }
@@ -101,15 +101,16 @@ function do_task($task_id) {
         $task->state = 2;
     }
     if ($task->delete_when_done) {
-        if (file_exists($file->path)) {
-            $ret = unlink($file->path);
+        if (file_exists($file->name)) {
+	    // This fails if $file is a directory, like a MIRIAD data set.
+            $ret = unlink($file->name);
             if (!$ret) {
-                task_update_error($task->id, "unlink($file->path) failed");
+                task_update_error($task->id, "unlink($file->name) failed");
                 exit(1);
             }
         }
         $now = time();
-        $ret = file_update($file->id, "deleted=1 and delete_time=$now");
+        $ret = file_update($file->id, "deleted=1 and deleted_time=to_timestamp($now)");
         if (!$ret) {
             task_update_error($task->id, "file_update() failed");
             exit(1);
@@ -119,7 +120,7 @@ function do_task($task_id) {
     // all done.  update task record
     //
     $now = time();
-    task_update($task->id, "in_progress=0, completed=1, completed_time=$now");
+    task_update($task->id, "in_progress=0, completed=1, completed_time=to_timestamp($now)");
     if (DEBUG_COPY) {
         echo "task finished\n";
     }
