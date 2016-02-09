@@ -4,10 +4,17 @@
 
 import json, os, urllib
 
+__all__ = str ('''
+NoSuchSiteError
+RPCFailedError
+LibrarianClient
+''').split ()
+
 
 class NoSuchSiteError (Exception):
     def __init__ (self, site_name):
         super (NoSuchSiteError, self).__init__ ("no such site " + repr (site_name))
+        self.site_name = site_name
 
 
 def get_client_config():
@@ -16,6 +23,13 @@ def get_client_config():
     with open(path, 'r') as f:
         s = f.read()
     return json.loads(s)
+
+
+class RPCFailedError (Exception):
+    def __init__ (self, req, message):
+        super (RPCFailedError, self).__init__ ("RPC call %r failed: %s" % (req, message))
+        self.req = req
+        self.message = message
 
 
 class LibrarianClient (object):
@@ -46,13 +60,17 @@ class LibrarianClient (object):
         params = urllib.urlencode({'request': req_json})
         url = self.config['url'] + '/hl_rpc_handler.php'
         f = urllib.urlopen(url, params);
-        reply_json = f.read()
+        reply = f.read()
         try:
-            reply = json.loads(reply_json)
+            reply_json = json.loads(reply)
         except ValueError:
-            print('failed to parse reply as JSON: ' + reply_json)
-            raise
-        return reply
+            raise RPCFailedError (kwargs, 'failed to parse reply as JSON: ' + repr(reply))
+
+        if not reply_json.get ('success', False):
+            raise RPCFailedError (kwargs,
+                                  reply_json.get ('message', '<no error message provided>'))
+
+        return reply_json
 
 
     def create_observation(self, obs_id, julian_date, polarization, length):
