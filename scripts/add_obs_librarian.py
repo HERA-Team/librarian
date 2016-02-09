@@ -1,19 +1,12 @@
 #!/usr/bin/env python
-"""
-add_obs_librarian.py file1 file2 ...
+"""add_obs_librarian.py /path/to/file1 /path/to/file2 ...
 
-Adapted from add_observations.py
-
-Register a list of files with the librarian.
-The files must exist and be findable on the filesystem
-NB filenames must be FULL PATH.
-If the root is not '/' for all files it will exit
-
+Register a list of files with the librarian. The paths must exist and must be
+absolute (i.e., begin with "/").
 
 """
-
 from ddr_compress.dbi import gethostname, jdpol2obsnum
-import optparse,os,sys,re,numpy as n
+import optparse, os, sys,r e, numpy as n
 
 import hera_librarian
 
@@ -65,12 +58,7 @@ else:
     djd = n.mean(n.diff(jds_onepol))
     print "setting length to ",djd,' days'
 
-def check (json):
-    if json.get ('success', True):
-        return
-
-    print >>sys.stderr, 'operation failed:', json.get ('message', '(no message was provided!)')
-
+client = hera_librarian.LibrarianClient (opts.site)
 
 for filename in args:
     jd = float(file2jd(filename))
@@ -78,7 +66,10 @@ for filename in args:
     fname = dirfilename(filename)
     obsnum = jdpol2obsnum(jd, pol, djd)
     print jd, pol, djd, obsnum
-    check (hera_librarian.create_observation(opts.site, obsnum, jd, pol, djd))
-    check (hera_librarian.create_file(opts.site, opts.store, fname, "uv", obsnum, -1, ''))
+    try:
+        client.create_observation(obsnum, jd, pol, djd)
+        client.create_file(opts.store, fname, "uv", obsnum, -1, '')
+    except hera_librarian.RPCFailedError as e:
+        print >>sys.stderr, 'failed to register %s: %s' % (filename, e)
 
 print "done"
