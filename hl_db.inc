@@ -18,7 +18,10 @@ function source_insert($source) {
 function source_lookup_auth($auth) {
     global $link;
     $auth = pg_escape_string($link, $auth);
-    return enum ("source", "authenticator='$auth'", "extract(epoch from create_time) as create_time")[0];
+    $x = enum ("source", "authenticator='$auth'", "extract(epoch from create_time) as create_time");
+    if(count($x) == 0)
+        return false;
+    return $x[0];
 }
 
 function source_lookup_id($id) {
@@ -62,7 +65,10 @@ function store_insert($store) {
 function store_lookup_name($name) {
     global $link;
     $name = pg_escape_string($link, $name);
-    return enum ("store", "name='$name'", "extract(epoch from create_time) as create_time")[0];
+    $x = enum ("store", "name='$name'", "extract(epoch from create_time) as create_time");
+    if(count($x) == 0)
+        return false;
+    return $x[0];
 }
 
 function store_enum($clause='') {
@@ -105,8 +111,11 @@ function file_insert($file) {
 function file_lookup_name_store($name, $store_id) {
     global $link;
     $name = pg_escape_string($link, $name);
-    return enum ("file", "name='$name' and store_id=$store_id",
-      "extract(epoch from create_time) as create_time, extract(epoch from deleted_time) as deleted_time")[0];
+    $x = enum ("file", "name='$name' and store_id=$store_id",
+               "extract(epoch from create_time) as create_time, extract(epoch from deleted_time) as deleted_time");
+    if(count($x) == 0)
+        return false;
+    return $x[0];
 }
 
 function file_enum($clause=null) {

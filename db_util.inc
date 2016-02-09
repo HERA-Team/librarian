@@ -51,6 +51,8 @@ function table_count($table, $clause) {
     if (!$clause) $clause = 'TRUE';
     $query = "select count(*) as total from $table where $clause";
     $x = enum_general($query);
+    if(count($x) == 0)
+        return 0;
     return $x[0]->total;
 }
 
@@ -59,7 +61,10 @@ function table_count($table, $clause) {
 function lookup_id($table, $id) {
     global $link;
     $query = "select * from $table where id=$id";
-    return enum_general($query)[0];
+    $x = enum_general($query);
+    if(count($x) == 0)
+        return false;
+    return $x[0];
 }
 
 // return # of rows affected by last query
