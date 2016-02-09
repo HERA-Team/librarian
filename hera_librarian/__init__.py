@@ -5,6 +5,11 @@
 import json, os, urllib
 
 
+class NoSuchSiteError (Exception):
+    def __init__ (self, site_name):
+        super (NoSuchSiteError, self).__init__ ("no such site " + repr (site_name))
+
+
 def get_client_config():
     """Parse the client configuration file and return it as a dictionary."""
     path = os.path.expanduser('~/.hl_client.cfg')
@@ -15,7 +20,10 @@ def get_client_config():
 
 def get_site(site_name):
     config = get_client_config()
-    return config['sites'].get (site_name)
+    site = config['sites'].get (site_name)
+    if site is None:
+        raise NoSuchSiteError (site_name)
+    return site
 
 
 def _do_http_post(req, site):
@@ -40,8 +48,6 @@ def _do_http_post(req, site):
 
 def create_observation(site_name, obs_id, julian_date, polarization, length):
     site = get_site(site_name)
-    if site == None:
-        return error_struct("no such site")
 
     req = {
         'operation': 'create_observation',
@@ -56,8 +62,6 @@ def create_observation(site_name, obs_id, julian_date, polarization, length):
 
 def create_file(site_name, store_name, file_name, type, obs_id, size, md5):
     site = get_site(site_name)
-    if site == None:
-        return error_struct("no such site")
 
     req = {
         'operation': 'create_file',
@@ -74,8 +78,6 @@ def create_file(site_name, store_name, file_name, type, obs_id, size, md5):
 
 def delete_file(site_name, file_name, store_name):
     site = get_site(site_name)
-    if site == None:
-        return error_struct("no such site")
 
     req = {
         'operation': 'delete_file',
@@ -88,8 +90,6 @@ def delete_file(site_name, file_name, store_name):
 
 def get_store_list(site_name):
     site = get_site(site_name)
-    if site == None:
-        return error_struct("no such site")
 
     req = {
         'operation': 'get_store_list',
@@ -100,8 +100,6 @@ def get_store_list(site_name):
 
 def recommended_store(site_name, file_size):
     site = get_site(site_name)
-    if site == None:
-        return error_struct("no such site")
 
     req = {
         'operation': 'recommended_store',
@@ -112,10 +110,8 @@ def recommended_store(site_name, file_size):
 
 
 def create_copy_task(task_type, local_site_name, local_store_name, file_name,
-    remote_site_name, remote_store_name, delete_when_done):
+                     remote_site_name, remote_store_name, delete_when_done):
     site = get_site(local_site_name)
-    if site == None:
-        return error_struct("no such site")
 
     req = {
         'operation': 'create_copy_task',
