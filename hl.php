@@ -317,7 +317,7 @@ function show_tasks() {
         ));
     }
     table_end();
-    if (count($tasks == 0)) {
+    if (count($tasks) == 0) {
         echo "No tasks";
     }
     page_tail();
