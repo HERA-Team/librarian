@@ -26,8 +26,6 @@ Test instructions
     hl.php
     hl_web_util.inc
     hera_util.inc
-    mc_db.inc
-    mc_rpc_handler.php
 
 7) create ~/.hera.cfg with the form
 
