@@ -8,8 +8,6 @@ create table source (
     primary key (id)
 );
 
-/* clone of M&C table */
-
 create table observation (
     id              bigint          not null,
     source_id       integer         not null,
