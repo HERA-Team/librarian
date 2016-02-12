@@ -170,7 +170,7 @@ function task_insert($task) {
 
 function task_update_error($id, $msg) {
     global $link;
-    $msg = pg_escape_string($link, $msg);
+    $msg = pg_escape_string($link, substr($msg, 0, 254));
     $now = time();
     $query = "update task set in_progress=0, last_error_time=to_timestamp($now), last_error='$msg' where id=$id";
     return pg_query($link, $query);
