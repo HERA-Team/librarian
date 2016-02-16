@@ -6,7 +6,7 @@ absolute (i.e., begin with "/").
 
 """
 from ddr_compress.dbi import gethostname, jdpol2obsnum
-import optparse, os, sys,r e, numpy as n
+import optparse, os, sys, re, numpy as n
 
 import hera_librarian
 
