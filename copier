@@ -55,7 +55,11 @@ function do_rsync($task, $local_store, $file) {
 
 // register file with remote Librarian
 //
-function do_remote_register($task, $file) {
+function do_remote_register($task, $file, $observation) {
+    $obs_ret = create_observation(
+        $task->remote_site, $file->obs_id, $observation->julian_date,
+        $observation->polarization, $observation->length
+    );
     $ret = create_file(
         $task->remote_site, $task->remote_store, $file->name, $file->type,
         $file->obs_id, $file->size, $file->md5
@@ -82,6 +86,10 @@ function do_task($task_id) {
     if (!$file) {
         die("no such file: $task->file_name");
     }
+    $observation = observation_lookup_id($file->obs_id);
+    if (!$observation) {
+        die("no such obeservation:\n $file->obs_id");
+    }
     if ($task->state == 0) {
         do_rsync($task, $local_store, $file);
         $ret = task_update($task->id, "state=1");
@@ -92,7 +100,7 @@ function do_task($task_id) {
         $task->state = 1;
     }
     if ($task->state < 2) {
-        do_remote_register($task, $file);
+        do_remote_register($task, $file, $observation);
         $ret = task_update($task->id, "state=2");
         if (!$ret) {
             task_update_error($task->id, "task_update() failed");
