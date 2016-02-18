@@ -3,6 +3,7 @@ import os
 import psutil
 import sys
 
+
 def get_size(file):
     if os.path.isfile(file):
         statinfo = os.stat(file)
@@ -27,26 +28,36 @@ def get_recommendation(file_size):
     return store, ssh_prefix, path
 
 
-def uploader(site, file):
+def uploader(site, files):
+    """
+    Upload a list of file to the librarian
 
-    file_size = get_size(file)
-    store, ssh_prefix, path = get_recommendation(file_size)
+    Parameters
+    ----------
+    site: string
+        name of librarian site
+    files: list
+        list of local files to upload
+    """
+    for file in files:
+        file_size = get_size(file)
+        store, ssh_prefix, path = get_recommendation(file_size)
 
-    scp_cmd = ["scp", "-r", "-c", "arcfour256", "-o",
-               "UserKnownHostsFile=/dev/null", "-o",
-               "StrictHostKeyChecking=no", file,
-               ssh_prefix + path + "/" + file]
-    add_obs_cmd = [ssh_prefix, "add_obs_librarian.py", "--site ", site,
-                   "--store", store, path + "/" + file]
+        scp_cmd = ["scp", "-r", "-c", "arcfour256", "-o",
+                   "UserKnownHostsFile=/dev/null", "-o",
+                   "StrictHostKeyChecking=no", file,
+                   ssh_prefix + path + "/" + file]
+        add_obs_cmd = [ssh_prefix, "add_obs_librarian.py", "--site ", site,
+                       "--store", store, path + "/" + file]
 
-    p = psutil.Popen(scp_cmd)
-    p = psutil.Popen(add_obs_cmd)
+        p = psutil.Popen(scp_cmd)
+        p = psutil.Popen(add_obs_cmd)
 
 
 def main():
     arg_list = sys.argv
     site = arg_list[1]
-    file = arg_list[2]
+    files = arg_list[2:]
 
     uploader(site, file)
 
