@@ -8,5 +8,10 @@
             "url":"http://isaac.ssl.berkeley.edu/test",
             "authenticator":"46a827567979f0f9c4f5fe037c67b2d1"
         }
+        "ASU":{
+            "url":"http://enterprise.sese.asu.edu/librarian",
+            "authenticator":"0bafaae9877a4380a9ac59c57759fc6a"
+        }
+
     }
 }
