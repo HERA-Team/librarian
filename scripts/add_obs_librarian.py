@@ -68,8 +68,11 @@ for filename in args:
     print jd, pol, djd, obsnum
     try:
         client.create_observation(obsnum, jd, pol, djd)
+    except hera_librarian.RPCFailedError as e:
+        print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
+
+    try:
         client.create_file(opts.store, fname, "uv", obsnum, -1, '')
     except hera_librarian.RPCFailedError as e:
-        print >>sys.stderr, 'failed to register %s: %s' % (filename, e)
-
+        print >>sys.stderr, 'failed to create file record %s: %s' % (filename, e)
 print "done"
