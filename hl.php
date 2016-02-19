@@ -69,7 +69,7 @@ function obs_search_action() {
     $obs = observation_enum($clause);
     foreach ($obs as $ob) {
         table_row(array(
-            "<a href=hl.php?action=obs&id=$ob->id>$ob->id</a>",
+            "<a href=hl.php?action=obs&obsid=$ob->obsid>$ob->obsid</a>",
             $ob->start_time_jd,
             $ob->stop_time_jd,
             $ob->lst_start_hr,
@@ -229,7 +229,7 @@ function show_obs() {
 }
 
 function show_store() {
-    $id = get_num("id");
+    $id = get_num("obsid");
     $store = store_lookup_id($id);
     if (!$store) {
         error_page("no such store");

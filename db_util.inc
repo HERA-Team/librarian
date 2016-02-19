@@ -72,6 +72,17 @@ function lookup_id($table, $id) {
     return $x[0];
 }
 
+// look up obsid from the observation table (specific instance of lookup_id)
+//
+function lookup_obsid($table, $id) {
+    global $link;
+    $query = "select * from $table where obsid=$id";
+    $x = enum_general($query);
+    if(count($x) == 0)
+        return false;
+    return $x[0];
+}
+
 // return # of rows affected by last query
 //
 function affected_rows() {
