@@ -7,7 +7,8 @@ absolute (i.e., begin with "/").
 """
 from ddr_compress.dbi import gethostname, jdpol2obsnum
 import optparse, os, sys, re, numpy as n
-
+from astropy.time import Time
+import aipy as a
 import hera_librarian
 
 # from /a/b/c/d, return c/d
@@ -37,6 +38,19 @@ o.add_option('--store',type=str,default='pot2_data1',
              help='The "store" name to use when creating the new records (default: %default).')
 opts, args = o.parse_args(sys.argv[1:])
 
+def obsid_from_file(filename):
+    # Get the obsnum from the file
+    # return None if not found
+    uv  = a.miriad.UV(filename)
+    try:
+        return uv['obsid']
+    except(KeyError):
+	return None
+def obsid_from_filename(filename):
+    #get the obsid from the file NAME
+    # only do this if we don't have a obsid in the file
+    jd = file2jd(filename)
+    return n.floor(Time(float(jd),scale='utc',format='jd').gps)
 # check that all files exist
 for filename in args:
     assert(filename.startswith('/'))
@@ -64,12 +78,18 @@ for filename in args:
     jd = float(file2jd(filename))
     pol = file2pol(filename)
     fname = dirfilename(filename)
-    obsnum = jdpol2obsnum(jd, pol, djd)
-    print jd, pol, djd, obsnum
+    #obsnum = jdpol2obsnum(jd, pol, djd)
+    obsid = obsid_from_file(filename)
+    if obsid is None:
+        obsid = obsid_from_filename(filename)
+    print jd, pol, djd, obsid
     try:
-        client.create_observation(obsnum, jd, pol, djd)
-        client.create_file(opts.store, fname, "uv", obsnum, -1, '')
+        client.create_observation(obsid, jd, pol, djd)
     except hera_librarian.RPCFailedError as e:
-        print >>sys.stderr, 'failed to register %s: %s' % (filename, e)
+        print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
 
+    try:
+        client.create_file(opts.store, fname, "uv", obsid, -1, '')
+    except hera_librarian.RPCFailedError as e:
+        print >>sys.stderr, 'failed to create file record %s: %s' % (filename, e)
 print "done"
