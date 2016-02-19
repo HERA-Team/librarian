@@ -5,20 +5,23 @@ import sys
 
 
 def get_size(file):
-    if os.path.isfile(file):
-        statinfo = os.stat(file)
-        file_size = statinfo.st_size
-    elif os.path.isdir(file):
+    if not os.path.exists(file):
+        raise OSError('file: ' + file + ' does not exist')
+
+    if os.path.isdir(file):
         file_size = 0
         for dirpath, dirnames, filenames in os.walk(file):
             for f in filenames:
                 fp = os.path.join(dirpath, f)
                 file_size += os.path.getsize(fp)
+    else:
+        statinfo = os.stat(file)
+        file_size = statinfo.st_size
 
     return file_size
 
 
-def get_recommendation(file_size):
+def get_recommendation(site, file_size):
     client = hera_librarian.LibrarianClient(site)
     store_dict = client.recommended_store(file_size)
     path = store_dict['store']['path_prefix']
@@ -41,12 +44,14 @@ def uploader(site, files):
     """
     for file in files:
         file_size = get_size(file)
-        store, ssh_prefix, path = get_recommendation(file_size)
+        store, ssh_prefix, path = get_recommendation(site, file_size)
+
+        lib_file = file.split("/")[-2:]
 
         scp_cmd = ["scp", "-r", "-c", "arcfour256", "-o",
                    "UserKnownHostsFile=/dev/null", "-o",
                    "StrictHostKeyChecking=no", file,
-                   ssh_prefix + path + "/" + file]
+                   ssh_prefix + ":" + path + "/" + lib_file]
         add_obs_cmd = [ssh_prefix, "add_obs_librarian.py", "--site ", site,
                        "--store", store, path + "/" + file]
 
@@ -59,7 +64,7 @@ def main():
     site = arg_list[1]
     files = arg_list[2:]
 
-    uploader(site, file)
+    uploader(site, files)
 
 if __name__ == '__main__':
     main()
