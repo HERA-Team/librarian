@@ -1,4 +1,4 @@
-#! /usr/bin/env php
+#! /usr/bin/php
 <?php
 // copy_maker args
 // start copy tasks for files that
@@ -42,11 +42,19 @@ function copy_maker($query, $remote_site, $remote_store) {
     }
     echo "started $n copies\n";
 }
-
+echo "opening server config\n";
+$config = get_server_config();
+#echo "DB host = ".$config->db_host."\n";
+#echo "DB user =".$config->db_user."\n";
+#echo "db_passwd =".$config->db_passwd."\n";
+#echo "db_name = ".$config->db_name."\n";
+#$link=init_db($config);
+#echo "DB error = ".db_error($link);
+#echo "DB link = ".$link."\n";
 if (!init_db(get_server_config())) {
     die("can't open DB\n");
 }
-
+echo "[success]\n";
 $filename_pattern = null;
 $type = null;
 $remote_site = null;
@@ -65,7 +73,6 @@ for ($i=1; $i<$argc; $i++) {
         die ("bad arg ".$argv[$i]."\n");
     }
 }
-
 if (!$remote_site || !$remote_store) {
     die ("Usage\n");
 }
@@ -79,7 +86,7 @@ if ($filename_pattern) {
     $query .= " and file.name like '$filename_pattern'";
 }
 if ($type) {
-    $type = $link->escape_string($type);
+    $type = pg_escape_string($link,$type);
     $query .= " and type='$type'";
 }
 

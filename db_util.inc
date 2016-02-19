@@ -9,7 +9,7 @@ $db_error = '';
 //
 function init_db($config) {
     global $link;
-    $link = @pg_connect(
+    $link = pg_connect(
       "host=$config->db_host user=$config->db_user password=$config->db_passwd dbname=$config->db_name"
     );
     return $link;
@@ -69,9 +69,8 @@ function lookup_id($table, $id) {
 
 // return # of rows affected by last query
 //
-function affected_rows() {
-    global $link;
-    return pg_affected_rows($link);
+function affected_rows($result) {
+    return pg_affected_rows($result);
 }
 
 ?>
