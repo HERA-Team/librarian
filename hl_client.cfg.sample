@@ -1,13 +1,13 @@
 {
     "sites":{
         "Correlator-Karoo":{
-            "url":"http://paperqmaster.karoo.kat.ac.za:8080",
+            "url":"http://paperqmaster.karoo.kat.ac.za:8080/librarian",
             "authenticator":"9876543211"
-        }
+        },
         "Human-Karoo":{
-            "url":"http://isaac.ssl.berkeley.edu/test",
+            "url":"http:///paperqmaster.karoo.kat.ac.za:8080/librarian",
             "authenticator":"9876543212"
-        }
+        },
         "Karoo-ASU":{
             "url":"http://enterprise.sese.asu.edu/librarian",
             "authenticator":"9876543213"

@@ -50,12 +50,12 @@ def uploader(site, files):
         head1, jd = os.path.split(head0)
         lib_file = os.path.join(jd, filename)
 
-        scp_cmd = ["scp", "-r", "-c", "arcfour256", "-o",
-                   "UserKnownHostsFile=/dev/null", "-o",
-                   "StrictHostKeyChecking=no", file,
-                   ssh_prefix + ":" + path + "/" + lib_file]
-        add_obs_cmd = ['ssh', ssh_prefix, "add_obs_librarian.py", "--site ", site,
-                       "--store", store, path + "/" + lib_file]
+        scp_cmd = ['scp', '-r', '-c', 'arcfour256', '-o',
+                   'UserKnownHostsFile=/dev/null', '-o',
+                   'StrictHostKeyChecking=no', file,
+                   ssh_prefix + ':' + path + '/' + lib_file]
+        add_obs_cmd = ['ssh', ssh_prefix, 'add_obs_librarian.py', '--site ',
+                       site, '--store', store, path + '/' + lib_file]
         print ' '.join(add_obs_cmd)
 
         p = psutil.Popen(scp_cmd)

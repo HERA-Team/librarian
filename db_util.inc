@@ -22,6 +22,11 @@ function db_error() {
     return pg_last_error($link);
 }
 
+function db_escape($text) {
+    global $link;
+    return pg_escape_string($link, $text);
+}
+
 function enum_general($query) {
     global $link;
     $r = pg_query($link, $query);
@@ -61,6 +66,17 @@ function table_count($table, $clause) {
 function lookup_id($table, $id) {
     global $link;
     $query = "select * from $table where id=$id";
+    $x = enum_general($query);
+    if(count($x) == 0)
+        return false;
+    return $x[0];
+}
+
+// look up obsid from the observation table (specific instance of lookup_id)
+//
+function lookup_obsid($table, $id) {
+    global $link;
+    $query = "select * from $table where obsid=$id";
     $x = enum_general($query);
     if(count($x) == 0)
         return false;

@@ -24,6 +24,14 @@ function source_lookup_auth($auth) {
     return $x[0];
 }
 
+function source_lookup_name($name) {
+    $name = db_escape($name);
+    $x = enum ("source", "name='$name'", "extract(epoch from create_time) as create_time");
+    if(count($x) == 0)
+        return false;
+    return $x[0];
+}
+
 function source_lookup_id($id) {
     return lookup_id("source", $id);
 }
@@ -36,13 +44,18 @@ function source_enum($clause=null) {
 
 function observation_insert($obs) {
     global $link;
-    $polarization = pg_escape_string($link, $obs->polarization);
-    $query = "insert into observation (id, source_id, julian_date, polarization, length) values ($obs->id, $obs->source_id, $obs->julian_date, '$polarization', $obs->length) returning id";
+    if (empty($obs->stop_time_jd)){
+      $obs->stop_time_jd='Null';
+    }
+    if (empty($obs->lst_start_hr)){
+      $obs->lst_start_hr='Null';
+    }
+    $query = "insert into observation (obsid, start_time_jd, stop_time_jd, lst_start_hr) values ($obs->obsid, $obs->start_time_jd, $obs->stop_time_jd, $obs->lst_start_hr) returning obsid";
     return pg_query($link, $query);
 }
 
-function observation_lookup_id($id) {
-    return lookup_id("observation", $id);
+function observation_lookup_id($obsid) {
+    return lookup_obsid("observation", $obsid);
 }
 
 function observation_enum($clause=null) {
@@ -104,7 +117,7 @@ function file_insert($file) {
     $name = pg_escape_string($link, $file->file_name);
     $type = pg_escape_string($link, $file->type);
     $md5 = pg_escape_string($link, $file->md5);
-    $query = "insert into file (name, create_time, type, obs_id, source_id, store_id, size, md5, deleted, deleted_time) values ('$name', to_timestamp($file->create_time), '$type', $file->obs_id, $file->source_id, $file->store_id, $file->size, '$md5', 0, to_timestamp(0)) returning id";
+    $query = "insert into file (name, create_time, type, obsid, source_id, store_id, size, md5, deleted, deleted_time) values ('$name', to_timestamp($file->create_time), '$type', $file->obsid, $file->source_id, $file->store_id, $file->size, '$md5', 0, to_timestamp(0)) returning id";
     return pg_query($link, $query);
 }
 
@@ -132,6 +145,40 @@ function file_update($id, $clause) {
     $query = "update file set $clause where id=$id";
     return pg_query($link, $query);
 }
+
+///// HISTORY /////
+
+function history_insert($hist) {
+    // Insert a new record into the 'history' table. $hist is an object
+    // containing at least the following keys:
+    //
+    //  file_id -- the ID number of the file row that this history item refers to
+    //  type    -- string giving the event type
+    //  payload -- string of event data; interpretation depends on 'type'
+    //
+    // We do not verify that file_id is valid, except to the extent that the
+    // database will yell at us for breaking a foreign key constraint if it's
+    // wrong.
+
+    global $link;
+    $now = time();
+
+    $type = db_escape($hist->type);
+    $payload = db_escape($hist->payload);
+
+    $query = <<<SQL
+INSERT INTO history (create_time, file_id, type, payload)
+VALUES (to_timestamp($now), $hist->file_id, '$type', '$payload')
+RETURNING id
+SQL;
+    return pg_query($link, $query);
+}
+
+function history_enum($clause) {
+    return enum ('history', $clause,
+                 'extract(epoch from create_time) as create_time');
+}
+
 
 ///// TASK /////
 
