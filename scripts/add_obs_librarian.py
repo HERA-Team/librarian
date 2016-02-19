@@ -59,7 +59,7 @@ for filename in args:
         print >>sys.stderr, 'error: all file arguments must be absolute paths; got %r' % (filename,)
         errors = True
     if not os.path.exists(filename):
-        print >>sys.stderr, 'error: file arguments %r does not exist' % (filename,)
+        print >>sys.stderr, 'error: file argument %r does not exist' % (filename,)
         errors = True
 
 if errors:
