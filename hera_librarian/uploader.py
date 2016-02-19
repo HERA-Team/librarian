@@ -54,8 +54,9 @@ def uploader(site, files):
                    "UserKnownHostsFile=/dev/null", "-o",
                    "StrictHostKeyChecking=no", file,
                    ssh_prefix + ":" + path + "/" + lib_file]
-        add_obs_cmd = [ssh_prefix, "add_obs_librarian.py", "--site ", site,
-                       "--store", store, path + "/" + file]
+        add_obs_cmd = ['ssh', ssh_prefix, "add_obs_librarian.py", "--site ", site,
+                       "--store", store, path + "/" + lib_file]
+        print ' '.join(add_obs_cmd)
 
         p = psutil.Popen(scp_cmd)
         p = psutil.Popen(add_obs_cmd)
