@@ -46,7 +46,9 @@ def uploader(site, files):
         file_size = get_size(file)
         store, ssh_prefix, path = get_recommendation(site, file_size)
 
-        lib_file = os.path.join(file.split("/")[-2:])
+        head0, filename = os.path.split(file)
+        head1, jd = os.path.split(head0)
+        lib_file = os.path.join(jd, filename)
 
         scp_cmd = ["scp", "-r", "-c", "arcfour256", "-o",
                    "UserKnownHostsFile=/dev/null", "-o",
