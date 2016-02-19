@@ -227,6 +227,7 @@ function list_files_without_history_item($req) {
 SELECT *, extract(epoch from create_time) as create_time, extract(epoch from deleted_time) as deleted_time
 FROM file
 WHERE source_id = $source->id
+AND deleted = 0
 AND id NOT IN (
   SELECT file_id
   FROM history
