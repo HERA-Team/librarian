@@ -32,17 +32,17 @@ create table store (
 );
 
 create table file (
-    id              SERIAL, -- unique identifier for file, primary key
-    name            varchar(254)    not null, -- file name
-    type            char(64)        not null, -- file type
-    create_time     timestamp          not null, -- file creation time in librarian
-    obsid           bigint          not null, -- observation id from M&C
-    source_id       integer         not null, -- where the file came from (foreign key into source table)
-    store_id        integer         not null, -- where the file is stored
-    size            double precision          not null, -- file size in bytes
-    md5             varchar(254)    not null, -- md5 hash
-    deleted         smallint         not null, -- boolean flag for deleted files (0=not deleted, 1=deleted)
-    deleted_time    timestamp          not null, -- time file was deleted in librarian
+    id           SERIAL,                    -- unique identifier for file, primary key
+    name         varchar(254)     not null, -- file name
+    type         varchar(64)      not null, -- file type
+    create_time  timestamp        not null, -- file creation time in librarian
+    obsid        bigint           not null, -- observation id from M&C
+    source_id    integer          not null, -- where the file came from (foreign key into source table)
+    store_id     integer          not null, -- where the file is stored
+    size         double precision not null, -- file size in bytes
+    md5          varchar(254)     not null, -- md5 hash
+    deleted      smallint         not null, -- boolean flag for deleted files (0=not deleted, 1=deleted)
+    deleted_time timestamp        not null, -- time file was deleted in librarian
     primary key (id)
 );
 
