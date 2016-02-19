@@ -36,13 +36,18 @@ function source_enum($clause=null) {
 
 function observation_insert($obs) {
     global $link;
-    $polarization = pg_escape_string($link, $obs->polarization);
-    $query = "insert into observation (id, source_id, julian_date, polarization, length) values ($obs->id, $obs->source_id, $obs->julian_date, '$polarization', $obs->length) returning id";
+    if (empty($obs->stop_time_jd)){
+      $obs->stop_time_jd='Null';
+    }
+    if (empty($obs->lst_start_hr)){
+      $obs->lst_start_hr='Null';
+    }
+    $query = "insert into observation (obsid, start_time_jd, stop_time_jd, lst_start_hr) values ($obs->obsid, $obs->start_time_jd, $obs->stop_time_jd, $obs->lst_start_hr) returning obsid";
     return pg_query($link, $query);
 }
 
-function observation_lookup_id($id) {
-    return lookup_id("observation", $id);
+function observation_lookup_id($obsid) {
+    return lookup_obsid("observation", $obsid);
 }
 
 function observation_enum($clause=null) {

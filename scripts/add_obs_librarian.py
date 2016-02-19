@@ -26,8 +26,6 @@ def file2pol(zenuv):
 o = optparse.OptionParser()
 o.set_usage('add_obs_librarian.py *.uv')
 o.set_description(__doc__)
-o.add_option('--length',type=float,
-        help='length of the input observations in minutes [default=average difference between filenames]')
 o.add_option('-t',action='store_true',
        help='Test. Only print, do not touch db')
 o.add_option('--overwrite',action='store_true',
@@ -41,50 +39,34 @@ opts, args = o.parse_args(sys.argv[1:])
 def obsid_from_file(filename):
     # Get the obsnum from the file
     # return None if not found
-    uv  = a.miriad.UV(filename)
+    uv = a.miriad.UV(filename)
     try:
         return uv['obsid']
     except(KeyError):
 	return None
+
 def obsid_from_filename(filename):
     #get the obsid from the file NAME
     # only do this if we don't have a obsid in the file
     jd = file2jd(filename)
     return n.floor(Time(float(jd),scale='utc',format='jd').gps)
+
 # check that all files exist
 for filename in args:
     assert(filename.startswith('/'))
     assert(os.path.exists(filename))
 
-# now run through all the files and build the relevant information for the db
-# get the pols
-pols = []
-jds = []
-for filename in args:
-    pols.append(file2pol(filename))
-    jds.append(float(file2jd(filename)))
-jds = n.array(jds)
-nights = list(set(jds.astype(n.int)))
-if not opts.length is None:
-    djd =  opts.length/60./24
-else:
-    jds_onepol = n.sort([jd for i,jd in enumerate(jds) if pols[i]==pols[0] and jd.astype(int)==nights[0]])
-    djd = n.mean(n.diff(jds_onepol))
-    print "setting length to ",djd,' days'
-
 client = hera_librarian.LibrarianClient (opts.site)
 
 for filename in args:
-    jd = float(file2jd(filename))
-    pol = file2pol(filename)
+    start_jd = float(file2jd(filename))
     fname = dirfilename(filename)
-    #obsnum = jdpol2obsnum(jd, pol, djd)
     obsid = obsid_from_file(filename)
     if obsid is None:
         obsid = obsid_from_filename(filename)
-    print jd, pol, djd, obsid
+    print start_jd, obsid
     try:
-        client.create_observation(obsid, jd, pol, djd)
+        client.create_observation(obsid, start_jd)
     except hera_librarian.RPCFailedError as e:
         print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
 

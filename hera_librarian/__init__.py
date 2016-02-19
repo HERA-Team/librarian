@@ -55,6 +55,9 @@ class LibrarianClient (object):
         """
         kwargs['operation'] = operation
         kwargs['authenticator'] = self.config['authenticator']
+        for k in kwargs.keys():
+            if kwargs[k] is None:
+                kwargs.pop(k)
         req_json = json.dumps(kwargs)
 
         params = urllib.urlencode({'request': req_json})
@@ -73,12 +76,13 @@ class LibrarianClient (object):
         return reply_json
 
 
-    def create_observation(self, obs_id, julian_date, polarization, length):
-        return self._do_http_post ('create_observation',
-            id=obs_id,
-            julian_date=julian_date,
-            polarization=polarization,
-            length=length,
+    def create_observation(self, obsid, start_time_jd,
+                           stop_time_jd=None, lst_start_hr=None):
+        return self._do_http_post('create_observation',
+            obsid=obsid,
+            start_time_jd=start_time_jd,
+            stop_time_jd=stop_time_jd,
+            lst_start_hr=lst_start_hr,
         )
 
 

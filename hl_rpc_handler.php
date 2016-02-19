@@ -69,12 +69,6 @@ function get_file_info($store, $file_name) {
 // handler for create observation RPC
 //
 function create_observation($req) {
-    $source = source_lookup_auth($req->authenticator);
-    if (!$source) {
-        error("auth failure");
-        return;
-    }
-    $req->source_id = $source->id;
     if (!observation_insert($req)) {
         error(db_error());
         return;

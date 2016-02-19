@@ -10,12 +10,11 @@ create table source (
 );
 
 create table observation (
-    id              bigint          not null,
-    source_id       integer         not null,
-    julian_date     double precision          not null,
-    polarization    char(4)         not null,
-    length          double precision          not null,
-    primary key (id)
+    obsid              bigint          not null,
+    start_time_jd     double precision not null,
+    stop_time_jd     double precision,
+    lst_start_hr     double precision,
+    primary key (obsid)
 );
 
 create table store (

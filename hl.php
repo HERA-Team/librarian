@@ -43,7 +43,7 @@ function show_obs_select() {
     ';
     $obs = observation_enum();
     foreach ($obs as $ob) {
-        echo "<option value=$ob->id> $ob->id ($ob->julian_date)\n";
+        echo "<option value=$ob->obsid> $ob->obsid ($ob->start_time_jd)\n";
     }
     echo '</select></div>
     ';
@@ -64,21 +64,15 @@ function obs_search_form() {
 function obs_search_action() {
     page_head("Observations");
     table_start();
-    table_header(array("ID (click for details)", "Julian date", "Source", "Polarization", "Length (seconds)"));
+    table_header(array("obsid (click for details)", "start_time_jd", "stop_time_jd", "lst_start_hr"));
     $clause = '';
-    $source_id = get_num('source_id', true);
-    if ($source_id) {
-        $clause = "source_id = $source_id";
-    }
     $obs = observation_enum($clause);
     foreach ($obs as $ob) {
-        $source = source_lookup_id($ob->source_id);
         table_row(array(
             "<a href=hl.php?action=obs&id=$ob->id>$ob->id</a>",
-            $ob->julian_date,
-            $source->name,
-            $ob->polarization,
-            $ob->length*86400
+            $ob->start_time_jd,
+            $ob->stop_time_jd,
+            $ob->lst_start_hr,
         ));
     }
     table_end();
@@ -218,20 +212,18 @@ function edit_store_form() {
 }
 
 function show_obs() {
-    $id = get_num("id");
-    $obs = observation_lookup_id($id);
+    $obsid = get_num("obsid");
+    $obs = observation_lookup_id($obsid);
     if (!$obs) {
         error_page("no such observation");
     }
-    $source = source_lookup_id($obs->source_id);
-    $nfiles = file_count("obs_id=$id");
-    page_head("Observation $obs->id");
+    $nfiles = file_count("obs_id=$obsid");
+    page_head("Observation $obs->obsid");
     table_start();
-    row2("Julian date", $obs->julian_date);
-    row2("Source", $source->name);
-    row2("Polarization", $obs->polarization);
-    row2("Length", $obs->length*86400);
-    row2("Files", "<a href=hl.php?action=file_search_action&obs_id=$id>$nfiles</a>");
+    row2("start_time_jd", $obs->start_time_jd);
+    row2("stop_time_jd", $obs->stop_time_jd);
+    row2("lst_start_hr", $obs->lst_start_hr);
+    row2("Files", "<a href=hl.php?action=file_search_action&obs_id=$obsid>$nfiles</a>");
     table_end();
     page_tail();
 }
