@@ -22,6 +22,11 @@ function db_error() {
     return pg_last_error($link);
 }
 
+function db_escape($text) {
+    global $link;
+    return pg_escape_string($link, $text);
+}
+
 function enum_general($query) {
     global $link;
     $r = pg_query($link, $query);

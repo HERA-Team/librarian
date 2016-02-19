@@ -147,6 +147,60 @@ function delete_file($req) {
     echo json_encode(success());
 }
 
+
+function create_history($req) {
+    // This RPC call creates a new record in the "history" table. It takes the
+    // following arguments:
+    //
+    // store_name -- the name of the store on which the associated file resides
+    // file_name  -- the name of the associated file within its store
+    // type       -- the type of this history event
+    // payload    -- the data associated with this event
+    //
+    // "type" and "payload" do not currently have any enforced structure,
+    // although "type" should be written in a hierarchical dot-separated form
+    // such as "rtp.processed". The interpretation of "payload" depends on
+    // "type"; we suggest JSON encoding for flexibility and future-proofness.
+
+    $source = source_lookup_auth($req->authenticator);
+    if (!$source) {
+        error("auth failure");
+        return;
+    }
+
+    $store = store_lookup_name($req->store_name);
+    if (!$store) {
+        error("bad store name");
+        return;
+    }
+
+    $file = file_lookup_name_store($req->file_name, $store->id);
+    if (!$file) {
+        error("no such file");
+        return;
+    }
+
+    if (empty ($req->type)) {
+        error("missing create_history event type");
+        return;
+    }
+
+    if (empty ($req->payload)) {
+        error("missing create_history event payload");
+        return;
+    }
+
+    $req->file_id = $file->id;
+    $ret = history_insert($req);
+    if (!$ret) {
+        error(db_error());
+        return;
+    }
+
+    echo json_encode(success());
+}
+
+
 function create_copy_task($req) {
     $source = source_lookup_auth($req->authenticator);
     if (!$source) {
@@ -216,6 +270,7 @@ switch ($req->operation) {
 case 'create_observation': create_observation($req); break;
 case 'create_file': create_file($req); break;
 case 'delete_file': delete_file($req); break;
+case 'create_history': create_history($req); break;
 case 'create_copy_task': create_copy_task($req); break;
 case 'get_store_list': get_store_list($req); break;
 case 'recommended_store': recommended_store($req); break;

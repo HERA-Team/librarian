@@ -100,6 +100,15 @@ class LibrarianClient (object):
         )
 
 
+    def create_history(self, store_name, file_name, type, payload):
+        return self._do_http_post ('create_history',
+            store_name=store_name,
+            file_name=file_name,
+            type=type,
+            payload=payload,
+        )
+
+
     def get_store_list(self):
         return self._do_http_post ('get_store_list')
 

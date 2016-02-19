@@ -133,6 +133,40 @@ function file_update($id, $clause) {
     return pg_query($link, $query);
 }
 
+///// HISTORY /////
+
+function history_insert($hist) {
+    // Insert a new record into the 'history' table. $hist is an object
+    // containing at least the following keys:
+    //
+    //  file_id -- the ID number of the file row that this history item refers to
+    //  type    -- string giving the event type
+    //  payload -- string of event data; interpretation depends on 'type'
+    //
+    // We do not verify that file_id is valid, except to the extent that the
+    // database will yell at us for breaking a foreign key constraint if it's
+    // wrong.
+
+    global $link;
+    $now = time();
+
+    $type = db_escape($hist->type);
+    $payload = db_escape($hist->payload);
+
+    $query = <<<SQL
+INSERT INTO history (create_time, file_id, type, payload)
+VALUES (to_timestamp($now), $hist->file_id, '$type', '$payload')
+RETURNING id
+SQL;
+    return pg_query($link, $query);
+}
+
+function history_enum($clause) {
+    return enum ('history', $clause,
+                 'extract(epoch from create_time) as create_time');
+}
+
+
 ///// TASK /////
 
 function task_lookup_id($id) {
