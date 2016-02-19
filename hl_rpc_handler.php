@@ -146,10 +146,11 @@ function create_history($req) {
     // This RPC call creates a new record in the "history" table. It takes the
     // following arguments:
     //
-    // store_name -- the name of the store on which the associated file resides
-    // file_name  -- the name of the associated file within its store
-    // type       -- the type of this history event
-    // payload    -- the data associated with this event
+    // authenticator -- (weak) proof that we're a valid requestor
+    // store_name    -- the name of the store on which the associated file resides
+    // file_name     -- the name of the associated file within its store
+    // type          -- the type of this history event
+    // payload       -- the data associated with this event
     //
     // "type" and "payload" do not currently have any enforced structure,
     // although "type" should be written in a hierarchical dot-separated form
@@ -194,6 +195,51 @@ function create_history($req) {
     echo json_encode(success());
 }
 
+
+function list_files_without_history_item($req) {
+    // Return a list of files that do not have a particular kind of history
+    // item. The RTP system uses this feature to identify new files that the
+    // correlator has delivered to the Librarian that it needs to process.
+    // Arguments are:
+    //
+    // authenticator -- (weak) proof that we're a valid requestor
+    // source        -- the name of the source of the files we want
+    // hist_type     -- the type of the history item we use to exclude files
+    //
+    // Right now we hardcode a limit of 1000 results being returned.
+
+    $authsource = source_lookup_auth($req->authenticator);
+    if (!$authsource) {
+        error("auth failure");
+        return;
+    }
+
+    $source = source_lookup_name($req->source);
+
+    if (empty ($req->hist_type)) {
+        error("missing hist_type in list_files_without_history_item");
+        return;
+    }
+
+    $hist_type = db_escape ($req->hist_type);
+
+    $files = enum_general(<<<SQL
+SELECT *, extract(epoch from create_time) as create_time, extract(epoch from deleted_time) as deleted_time
+FROM file
+WHERE source_id = $source->id
+AND id NOT IN (
+  SELECT file_id
+  FROM history
+  WHERE type = '$hist_type'
+)
+LIMIT 1000
+SQL
+        );
+
+    $reply = success();
+    $reply->files = $files;
+    echo json_encode($reply);
+}
 
 function create_copy_task($req) {
     $source = source_lookup_auth($req->authenticator);
@@ -263,6 +309,7 @@ $req = json_decode($_POST['request']);
 switch ($req->operation) {
 case 'create_observation': create_observation($req); break;
 case 'create_file': create_file($req); break;
+case 'list_files_without_history_item': list_files_without_history_item($req); break;
 case 'delete_file': delete_file($req); break;
 case 'create_history': create_history($req); break;
 case 'create_copy_task': create_copy_task($req); break;

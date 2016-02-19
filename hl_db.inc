@@ -24,6 +24,14 @@ function source_lookup_auth($auth) {
     return $x[0];
 }
 
+function source_lookup_name($name) {
+    $name = db_escape($name);
+    $x = enum ("source", "name='$name'", "extract(epoch from create_time) as create_time");
+    if(count($x) == 0)
+        return false;
+    return $x[0];
+}
+
 function source_lookup_id($id) {
     return lookup_id("source", $id);
 }

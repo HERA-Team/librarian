@@ -97,6 +97,13 @@ class LibrarianClient (object):
         )
 
 
+    def list_files_without_history_item (self, source, hist_type):
+        return self._do_http_post ('list_files_without_history_item',
+            source=source,
+            hist_type=hist_type,
+        )
+
+
     def delete_file(self, file_name, store_name):
         return self._do_http_post ('delete_file',
             name=file_name,
