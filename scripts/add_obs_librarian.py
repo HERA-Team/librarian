@@ -52,9 +52,18 @@ def obsid_from_filename(filename):
     return n.floor(Time(float(jd),scale='utc',format='jd').gps)
 
 # check that all files exist
+errors = False
+
 for filename in args:
-    assert(filename.startswith('/'))
-    assert(os.path.exists(filename))
+    if not filename.startswith('/'):
+        print >>sys.stderr, 'error: all file arguments must be absolute paths; got %r' % (filename,)
+        errors = True
+    if not os.path.exists(filename):
+        print >>sys.stderr, 'error: file arguments %r does not exist' % (filename,)
+        errors = True
+
+if errors:
+    sys.exit (1)
 
 client = hera_librarian.LibrarianClient (opts.site)
 
