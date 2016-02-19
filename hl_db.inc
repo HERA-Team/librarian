@@ -24,6 +24,14 @@ function source_lookup_auth($auth) {
     return $x[0];
 }
 
+function source_lookup_name($name) {
+    $name = db_escape($name);
+    $x = enum ("source", "name='$name'", "extract(epoch from create_time) as create_time");
+    if(count($x) == 0)
+        return false;
+    return $x[0];
+}
+
 function source_lookup_id($id) {
     return lookup_id("source", $id);
 }
@@ -109,7 +117,7 @@ function file_insert($file) {
     $name = pg_escape_string($link, $file->file_name);
     $type = pg_escape_string($link, $file->type);
     $md5 = pg_escape_string($link, $file->md5);
-    $query = "insert into file (name, create_time, type, obs_id, source_id, store_id, size, md5, deleted, deleted_time) values ('$name', to_timestamp($file->create_time), '$type', $file->obs_id, $file->source_id, $file->store_id, $file->size, '$md5', 0, to_timestamp(0)) returning id";
+    $query = "insert into file (name, create_time, type, obsid, source_id, store_id, size, md5, deleted, deleted_time) values ('$name', to_timestamp($file->create_time), '$type', $file->obsid, $file->source_id, $file->store_id, $file->size, '$md5', 0, to_timestamp(0)) returning id";
     return pg_query($link, $query);
 }
 

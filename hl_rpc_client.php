@@ -47,13 +47,13 @@ function hl_do_http_post($req, $site) {
 }
 
 function create_observation(
-    $site_name, $obs_id, $julian_date, $polarization, $length
+    $site_name, $obsid, $julian_date, $polarization, $length
 ) {
     $site = get_site($site_name);
     if (!$site) return ret_struct(false, "No such site $site_name");
     $req = new StdClass;
     $req->operation = 'create_observation';
-    $req->id = $obs_id;
+    $req->id = $obsid;
     $req->julian_date = $julian_date;
     $req->polarization = $polarization;
     $req->length = $length;
@@ -61,7 +61,7 @@ function create_observation(
 }
 
 function create_file(
-    $site_name, $store_name, $file_name, $type, $obs_id, $size, $md5
+    $site_name, $store_name, $file_name, $type, $obsid, $size, $md5
 ) {
     $site = get_site($site_name);
     if (!$site) return ret_struct(false, "No such site $site_name");
@@ -70,7 +70,7 @@ function create_file(
     $req->store_name = $store_name;
     $req->file_name = $file_name;
     $req->type = $type;
-    $req->obs_id = $obs_id;
+    $req->obsid = $obsid;
     $req->size = $size;
     $req->md5 = $md5;
     return hl_do_http_post($req, $site);
