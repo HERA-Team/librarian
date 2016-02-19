@@ -36,7 +36,7 @@ create table file (
     name            varchar(254)    not null, -- file name
     type            char(64)        not null, -- file type
     create_time     timestamp          not null, -- file creation time in librarian
-    obs_id          bigint          not null, -- observation id from M&C
+    obsid           bigint          not null, -- observation id from M&C
     source_id       integer         not null, -- where the file came from (foreign key into source table)
     store_id        integer         not null, -- where the file is stored
     size            double precision          not null, -- file size in bytes

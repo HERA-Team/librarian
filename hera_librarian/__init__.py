@@ -86,12 +86,12 @@ class LibrarianClient (object):
         )
 
 
-    def create_file(self, store_name, file_name, type, obs_id, size, md5):
+    def create_file(self, store_name, file_name, type, obsid, size, md5):
         return self._do_http_post ('create_file',
             store_name=store_name,
             file_name=file_name,
             type=type,
-            obs_id=obs_id,
+            obsid=obsid,
             size=size,
             md5=md5,
         )

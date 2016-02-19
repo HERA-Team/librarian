@@ -37,8 +37,8 @@ function show_store_select() {
 
 function show_obs_select() {
     echo '<div class="form-group">
-        <label for="obs_id">Observation:</label>
-        <select name=obs_id>
+        <label for="obsid">Observation:</label>
+        <select name=obsid>
         <option value=0> All
     ';
     $obs = observation_enum();
@@ -104,10 +104,10 @@ function file_search_action() {
         $source = source_lookup_id($source_id);
         $title .= ", source $source->name";
     }
-    $obs_id = get_num('obs_id', true);
-    if ($obs_id) {
-        $clause .= " and obs_id=$obs_id";
-        $title .= ", observation $obs_id";
+    $obsid = get_num('obsid', true);
+    if ($obsid) {
+        $clause .= " and obsid=$obsid";
+        $title .= ", observation $obsid";
     }
     $store_id = get_num('store_id', true);
     if ($store_id) {
@@ -128,7 +128,7 @@ function file_search_action() {
         table_row(array(
             $fname,
             time_str($file->create_time),
-            "<a href=hl.php?id=$file->obs_id&action=obs>$file->obs_id</a>",
+            "<a href=hl.php?id=$file->obsid&action=obs>$file->obsid</a>",
             $file->type,
             $source->name,
             size_str($file->size),
@@ -217,13 +217,13 @@ function show_obs() {
     if (!$obs) {
         error_page("no such observation");
     }
-    $nfiles = file_count("obs_id=$obsid");
+    $nfiles = file_count("obsid=$obsid");
     page_head("Observation $obs->obsid");
     table_start();
     row2("start_time_jd", $obs->start_time_jd);
     row2("stop_time_jd", $obs->stop_time_jd);
     row2("lst_start_hr", $obs->lst_start_hr);
-    row2("Files", "<a href=hl.php?action=file_search_action&obs_id=$obsid>$nfiles</a>");
+    row2("Files", "<a href=hl.php?action=file_search_action&obsid=$obsid>$nfiles</a>");
     table_end();
     page_tail();
 }
