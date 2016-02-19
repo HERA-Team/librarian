@@ -46,6 +46,15 @@ create table file (
     primary key (id)
 );
 
+create table history (
+    id          SERIAL,       -- unique primary key
+    create_time timestamp,    -- when this history item was created
+    file_id     integer,      -- the file that this item refers to
+    type        varchar(254), -- general classification of this item; of the form "rtp.processed"
+    payload     varchar(512), -- extra data; interpretation depends on "type"
+    primary key (id)
+);
+
 create table task (
     id              SERIAL,
     create_time     timestamp          not null,
