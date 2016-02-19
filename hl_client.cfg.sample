@@ -1,16 +1,16 @@
 {
     "sites":{
-        "Karoo":{
+        "Correlator-Karoo":{
             "url":"http://paperqmaster.karoo.kat.ac.za:8080",
-            "authenticator":"46a827567979f0f9c4f5fe037c67b2d1"
+            "authenticator":"9876543211"
         }
-        "UCB_test":{
+        "Human-Karoo":{
             "url":"http://isaac.ssl.berkeley.edu/test",
-            "authenticator":"46a827567979f0f9c4f5fe037c67b2d1"
+            "authenticator":"9876543212"
         }
-        "ASU":{
+        "Karoo-ASU":{
             "url":"http://enterprise.sese.asu.edu/librarian",
-            "authenticator":"0bafaae9877a4380a9ac59c57759fc6a"
+            "authenticator":"9876543213"
         }
 
     }
