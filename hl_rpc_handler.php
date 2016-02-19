@@ -207,6 +207,8 @@ function list_files_without_history_item($req) {
     // hist_type     -- the type of the history item we use to exclude files
     //
     // Right now we hardcode a limit of 1000 results being returned.
+    //
+    // TODO: document the fields that we return in the 'files' JSON element.
 
     $authsource = source_lookup_auth($req->authenticator);
     if (!$authsource) {
@@ -236,6 +238,28 @@ AND id NOT IN (
 LIMIT 1000
 SQL
         );
+
+    // Include some information that's needed for RTP ingest. This is not
+    // awesome SQL-wise but ... meh. It's not like the store table is going to
+    // be changing out from under us (famous last words?).
+
+    $store_map = array();
+    $stores = enum ('store');
+
+    foreach ($stores as $store) {
+        $store_map[$store->id] = $store;
+    }
+
+    // Clean up returned info; make sure not to leak database internals.
+
+    foreach ($files as $file) {
+        $file->store_ssh_prefix = $store_map[$file->store_id]->ssh_prefix;
+        $file->store_path_prefix = $store_map[$file->store_id]->path_prefix;
+
+        unset($file->id);
+        unset($file->store_id);
+        unset($file->source_id);
+    }
 
     $reply = success();
     $reply->files = $files;
