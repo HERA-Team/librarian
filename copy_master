@@ -1,4 +1,4 @@
-#! /usr/bin/env php
+#! /usr/bin/php
 <?php
 
 // script to manage copy tasks
@@ -19,8 +19,8 @@ $retry_interval = 60;
 // clear the in_progress flag of uncompleted tasks
 //
 function init() {
-    task_update_all("in_progress=0", "completed=0");
-    echo "reset ".affected_rows()." tasks\n";
+    $result=task_update_all("in_progress=0", "completed=0");
+    echo "reset ".affected_rows($result)." tasks\n";
 }
 
 // spawn a process to handle a task
