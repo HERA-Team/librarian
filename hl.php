@@ -128,7 +128,7 @@ function file_search_action() {
         table_row(array(
             $fname,
             time_str($file->create_time),
-            "<a href=hl.php?id=$file->obsid&action=obs>$file->obsid</a>",
+            "<a href=hl.php?obsid=$file->obsid&action=obs>$file->obsid</a>",
             $file->type,
             $source->name,
             size_str($file->size),
@@ -229,7 +229,7 @@ function show_obs() {
 }
 
 function show_store() {
-    $id = get_num("obsid");
+    $id = get_num("id");
     $store = store_lookup_id($id);
     if (!$store) {
         error_page("no such store");
