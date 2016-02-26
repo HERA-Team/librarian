@@ -9,7 +9,7 @@ $db_error = '';
 //
 function init_db($config) {
     global $link;
-    $link = @pg_connect(
+    $link = pg_connect(
       "host=$config->db_host user=$config->db_user password=$config->db_passwd dbname=$config->db_name"
     );
     return $link;
@@ -20,6 +20,11 @@ function init_db($config) {
 function db_error() {
     global $link;
     return pg_last_error($link);
+}
+
+function db_escape($text) {
+    global $link;
+    return pg_escape_string($link, $text);
 }
 
 function enum_general($query) {
@@ -67,11 +72,21 @@ function lookup_id($table, $id) {
     return $x[0];
 }
 
+// look up obsid from the observation table (specific instance of lookup_id)
+//
+function lookup_obsid($table, $id) {
+    global $link;
+    $query = "select * from $table where obsid=$id";
+    $x = enum_general($query);
+    if(count($x) == 0)
+        return false;
+    return $x[0];
+}
+
 // return # of rows affected by last query
 //
-function affected_rows() {
-    global $link;
-    return pg_affected_rows($link);
+function affected_rows($result) {
+    return pg_affected_rows($result);
 }
 
 ?>

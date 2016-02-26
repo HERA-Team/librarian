@@ -26,9 +26,9 @@ function test_setup() {
         $julian_date = time() - rand(0, 100*86400);
         $polarization = $pols[rand(0, 3)];
         $length = .1*rand(0, 864000);
-        $obs_id = $i;
+        $obsid = $i;
         $ret = create_observation(
-            TEST_SITE_NAME, $obs_id, $julian_date, $polarization, $length
+            TEST_SITE_NAME, $obsid, $julian_date, $polarization, $length
         );
         if (!$ret->success) {
             echo "create_observation() error: $ret->message\n";
@@ -38,7 +38,7 @@ function test_setup() {
         // Put them on store 0.
         //
         for ($j=0; $j<4; $j++) {
-            $f = "file_".$obs_id."_$j";
+            $f = "file_".$obsid."_$j";
             $store = $test_stores[0];
             if (1) {
                 $path = $store->path_prefix.'/'.$f;
@@ -51,7 +51,7 @@ function test_setup() {
                 $md5 = random_string();
             }
             $ret = create_file(
-                TEST_SITE_NAME, $store->name, $f, '', $obs_id, $size, $md5
+                TEST_SITE_NAME, $store->name, $f, '', $obsid, $size, $md5
             );
             if ($ret->success) {
                 echo "created file $f\n";

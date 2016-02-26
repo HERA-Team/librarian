@@ -10,12 +10,11 @@ create table source (
 );
 
 create table observation (
-    id              bigint          not null,
-    source_id       integer         not null,
-    julian_date     double precision          not null,
-    polarization    char(4)         not null,
-    length          double precision          not null,
-    primary key (id)
+    obsid              bigint          not null,
+    start_time_jd     double precision not null,
+    stop_time_jd     double precision,
+    lst_start_hr     double precision,
+    primary key (obsid)
 );
 
 create table store (
@@ -33,17 +32,26 @@ create table store (
 );
 
 create table file (
-    id              SERIAL, -- unique identifier for file, primary key
-    name            varchar(254)    not null, -- file name
-    type            char(64)        not null, -- file type
-    create_time     timestamp          not null, -- file creation time in librarian
-    obs_id          bigint          not null, -- observation id from M&C
-    source_id       integer         not null, -- where the file came from (foreign key into source table)
-    store_id        integer         not null, -- where the file is stored
-    size            double precision          not null, -- file size in bytes
-    md5             varchar(254)    not null, -- md5 hash
-    deleted         smallint         not null, -- boolean flag for deleted files (0=not deleted, 1=deleted)
-    deleted_time    timestamp          not null, -- time file was deleted in librarian
+    id           SERIAL,                    -- unique identifier for file, primary key
+    name         varchar(254)     not null, -- file name
+    type         varchar(64)      not null, -- file type
+    create_time  timestamp        not null, -- file creation time in librarian
+    obsid        bigint           not null, -- observation id from M&C
+    source_id    integer          not null, -- where the file came from (foreign key into source table)
+    store_id     integer          not null, -- where the file is stored
+    size         double precision not null, -- file size in bytes
+    md5          varchar(254)     not null, -- md5 hash
+    deleted      smallint         not null, -- boolean flag for deleted files (0=not deleted, 1=deleted)
+    deleted_time timestamp        not null, -- time file was deleted in librarian
+    primary key (id)
+);
+
+create table history (
+    id          SERIAL,       -- unique primary key
+    create_time timestamp,    -- when this history item was created
+    file_id     integer,      -- the file that this item refers to
+    type        varchar(254), -- general classification of this item; of the form "rtp.processed"
+    payload     varchar(512), -- extra data; interpretation depends on "type"
     primary key (id)
 );
 

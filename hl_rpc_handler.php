@@ -69,12 +69,6 @@ function get_file_info($store, $file_name) {
 // handler for create observation RPC
 //
 function create_observation($req) {
-    $source = source_lookup_auth($req->authenticator);
-    if (!$source) {
-        error("auth failure");
-        return;
-    }
-    $req->source_id = $source->id;
     if (!observation_insert($req)) {
         error(db_error());
         return;
@@ -147,6 +141,131 @@ function delete_file($req) {
     echo json_encode(success());
 }
 
+
+function create_history($req) {
+    // This RPC call creates a new record in the "history" table. It takes the
+    // following arguments:
+    //
+    // authenticator -- (weak) proof that we're a valid requestor
+    // store_name    -- the name of the store on which the associated file resides
+    // file_name     -- the name of the associated file within its store
+    // type          -- the type of this history event
+    // payload       -- the data associated with this event
+    //
+    // "type" and "payload" do not currently have any enforced structure,
+    // although "type" should be written in a hierarchical dot-separated form
+    // such as "rtp.processed". The interpretation of "payload" depends on
+    // "type"; we suggest JSON encoding for flexibility and future-proofness.
+
+    $source = source_lookup_auth($req->authenticator);
+    if (!$source) {
+        error("auth failure");
+        return;
+    }
+
+    $store = store_lookup_name($req->store_name);
+    if (!$store) {
+        error("bad store name");
+        return;
+    }
+
+    $file = file_lookup_name_store($req->file_name, $store->id);
+    if (!$file) {
+        error("no such file");
+        return;
+    }
+
+    if (empty ($req->type)) {
+        error("missing create_history event type");
+        return;
+    }
+
+    if (empty ($req->payload)) {
+        error("missing create_history event payload");
+        return;
+    }
+
+    $req->file_id = $file->id;
+    $ret = history_insert($req);
+    if (!$ret) {
+        error(db_error());
+        return;
+    }
+
+    echo json_encode(success());
+}
+
+
+function list_files_without_history_item($req) {
+    // Return a list of files that do not have a particular kind of history
+    // item. The RTP system uses this feature to identify new files that the
+    // correlator has delivered to the Librarian that it needs to process.
+    // Arguments are:
+    //
+    // authenticator -- (weak) proof that we're a valid requestor
+    // source        -- the name of the source of the files we want
+    // hist_type     -- the type of the history item we use to exclude files
+    //
+    // Right now we hardcode a limit of 1000 results being returned.
+    //
+    // TODO: document the fields that we return in the 'files' JSON element.
+
+    $authsource = source_lookup_auth($req->authenticator);
+    if (!$authsource) {
+        error("auth failure");
+        return;
+    }
+
+    $source = source_lookup_name($req->source);
+
+    if (empty ($req->hist_type)) {
+        error("missing hist_type in list_files_without_history_item");
+        return;
+    }
+
+    $hist_type = db_escape ($req->hist_type);
+
+    $files = enum_general(<<<SQL
+SELECT *, extract(epoch from create_time) as create_time, extract(epoch from deleted_time) as deleted_time
+FROM file
+WHERE source_id = $source->id
+AND deleted = 0
+AND id NOT IN (
+  SELECT file_id
+  FROM history
+  WHERE type = '$hist_type'
+)
+LIMIT 1000
+SQL
+        );
+
+    // Include some information that's needed for RTP ingest. This is not
+    // awesome SQL-wise but ... meh. It's not like the store table is going to
+    // be changing out from under us (famous last words?).
+
+    $store_map = array();
+    $stores = enum ('store');
+
+    foreach ($stores as $store) {
+        $store_map[$store->id] = $store;
+    }
+
+    // Clean up returned info; make sure not to leak database internals.
+
+    foreach ($files as $file) {
+        $file->store_ssh_prefix = $store_map[$file->store_id]->ssh_prefix;
+        $file->store_path_prefix = $store_map[$file->store_id]->path_prefix;
+
+        unset($file->id);
+        unset($file->store_id);
+        unset($file->source_id);
+    }
+
+    $reply = success();
+    $reply->files = $files;
+    echo json_encode($reply);
+}
+
 function create_copy_task($req) {
     $source = source_lookup_auth($req->authenticator);
     if (!$source) {
@@ -215,7 +334,9 @@ $req = json_decode($_POST['request']);
 switch ($req->operation) {
 case 'create_observation': create_observation($req); break;
 case 'create_file': create_file($req); break;
+case 'list_files_without_history_item': list_files_without_history_item($req); break;
 case 'delete_file': delete_file($req); break;
+case 'create_history': create_history($req); break;
 case 'create_copy_task': create_copy_task($req); break;
 case 'get_store_list': get_store_list($req); break;
 case 'recommended_store': recommended_store($req); break;

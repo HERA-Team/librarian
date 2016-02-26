@@ -31,6 +31,25 @@ def get_recommendation(site, file_size):
     return store, ssh_prefix, path
 
 
+def bash_command(command):
+    """
+    Issue a command to the bash shell, wait until command finishes before
+        returning, if there's an error then raise and exception with the
+        command that was called.
+
+    Parameters
+    ----------
+    command: list
+        all the elements of the command as seperate items in a list
+            (ie the command will be the list with spaces inserted between
+            the elements)
+    """
+    p = psutil.Popen(command)
+    if p.wait():
+        raise Exception('bash command failed, command was: ',
+                        ' '.join(command))
+
+
 def uploader(site, files):
     """
     Upload a list of file to the librarian
@@ -50,16 +69,19 @@ def uploader(site, files):
         head1, jd = os.path.split(head0)
         lib_file = os.path.join(jd, filename)
 
-        scp_cmd = ["scp", "-r", "-c", "arcfour256", "-o",
-                   "UserKnownHostsFile=/dev/null", "-o",
-                   "StrictHostKeyChecking=no", file,
-                   ssh_prefix + ":" + path + "/" + lib_file]
-        add_obs_cmd = ['ssh', ssh_prefix, "add_obs_librarian.py", "--site ", site,
-                       "--store", store, path + "/" + lib_file]
+        mkdir_cmd = ['ssh', ssh_prefix, 'mkdir', '-p', path + '/' + jd]
+
+        scp_cmd = ['scp', '-r', '-c', 'arcfour256', '-o',
+                   'UserKnownHostsFile=/dev/null', '-o',
+                   'StrictHostKeyChecking=no', file,
+                   ssh_prefix + ':' + path + '/' + lib_file]
+        add_obs_cmd = ['ssh', ssh_prefix, 'add_obs_librarian.py', '--site ',
+                       site, '--store', store, path + '/' + lib_file]
         print ' '.join(add_obs_cmd)
 
-        p = psutil.Popen(scp_cmd)
-        p = psutil.Popen(add_obs_cmd)
+        bash_command(mkdir_cmd)
+        bash_command(scp_cmd)
+        bash_command(add_obs_cmd)
 
 
 def main():

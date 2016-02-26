@@ -1,4 +1,4 @@
-#! /usr/bin/env php
+#! /usr/bin/php
 <?php
 
 // copier --task_id id
@@ -57,12 +57,12 @@ function do_rsync($task, $local_store, $file) {
 //
 function do_remote_register($task, $file, $observation) {
     $obs_ret = create_observation(
-        $task->remote_site, $file->obs_id, $observation->julian_date,
+        $task->remote_site, $file->obsid, $observation->julian_date,
         $observation->polarization, $observation->length
     );
     $ret = create_file(
         $task->remote_site, $task->remote_store, $file->name, $file->type,
-        $file->obs_id, $file->size, $file->md5
+        $file->obsid, $file->size, $file->md5
     );
     if (!$ret->success) {
         task_update_error($task->id, $ret->message);
@@ -86,9 +86,9 @@ function do_task($task_id) {
     if (!$file) {
         die("no such file: $task->file_name");
     }
-    $observation = observation_lookup_id($file->obs_id);
+    $observation = observation_lookup_id($file->obsid);
     if (!$observation) {
-        die("no such obeservation:\n $file->obs_id");
+        die("no such observation:\n $file->obsid");
     }
     if ($task->state == 0) {
         do_rsync($task, $local_store, $file);
