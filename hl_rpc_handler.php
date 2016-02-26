@@ -110,7 +110,7 @@ function create_file($req) {
         return;
     }
     list($id) = pg_fetch_row($result);
-    store_update($store->id, "used = used+$req->size");
+    //store_update($store->id, "used = used+$req->size");
     $reply = success();
     echo json_encode($reply);
 }
