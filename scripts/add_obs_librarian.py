@@ -80,6 +80,7 @@ for filename in args:
     fname = dirfilename(filename)
     #obsnum = jdpol2obsnum(jd, pol, djd)
     obsid = obsid_from_file(filename)
+    filetype=filename.split('.')[-1]
     if obsid is None:
         obsid = obsid_from_filename(filename)
     print jd, pol, djd, obsid
@@ -89,7 +90,7 @@ for filename in args:
         print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
 
     try:
-        client.create_file(opts.store, fname, "uv", obsid, -1, '')
+        client.create_file(opts.store, fname, filetype, obsid, -1, '')
     except hera_librarian.RPCFailedError as e:
         print >>sys.stderr, 'failed to create file record %s: %s' % (filename, e)
 print "done"
