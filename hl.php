@@ -150,12 +150,16 @@ function show_stores() {
     $stores = store_enum();
     foreach ($stores as $store) {
         $nfiles = file_count("store_id=$store->id");
+        $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df '.$store->path_prefix.' | tail -1');
+        $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
+        $capacity = $aTempDF[1];
+        $used = $aTempDF[2];
         table_row(array(
             "<a href=hl.php?action=store&id=$store->id>$store->name</a>",
             "<a href=hl.php?action=file_search_action&store_id=$store->id>$nfiles</a>",
-            size_str($store->capacity),
-            size_str($store->used),
-            progress_bar(100*$store->used/$store->capacity),
+            size_str($capacity),
+            size_str($used),
+            progress_bar(100*$used/$capacity),
             $store->unavailable?"No":"Yes"
         ));
     }
@@ -234,11 +238,16 @@ function show_store() {
     if (!$store) {
         error_page("no such store");
     }
+    $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df '.$store->path_prefix.' | tail -1');
+    $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
+    $capacity = $aTempDF[1];
+    $used = $aTempDF[2];
+
     page_head("$store->name");
     table_start();
     //row2("Name", $store->name);
-    row2("Capacity", size_str($store->capacity));
-    row2("Used", size_str($store->used));
+    row2("Capacity", size_str($capacity));
+    row2("Used", size_str($used));
     row2("rsync prefix", $store->rsync_prefix);
     row2("HTTP prefix", $store->http_prefix);
     row2("path prefix", $store->path_prefix);
