@@ -150,10 +150,14 @@ function show_stores() {
     $stores = store_enum();
     foreach ($stores as $store) {
         $nfiles = file_count("store_id=$store->id");
-        $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df '.$store->path_prefix.' | tail -1');
+        $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df -B1 '.$store->path_prefix.' | tail -1');
         $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
         $capacity = $aTempDF[1];
-        $used = $aTempDF[2];
+        //$used = $aTempDF[1];
+        $sTempDU = shell_exec('ssh '.$store->ssh_prefix.' du -s -B1 '.$store->path_prefix);
+        $aTempDU = preg_split("/\s+/", $sTempDU); //  Size | directory
+        $used = $aTempDU[0];
+
         table_row(array(
             "<a href=hl.php?action=store&id=$store->id>$store->name</a>",
             "<a href=hl.php?action=file_search_action&store_id=$store->id>$nfiles</a>",
@@ -238,10 +242,13 @@ function show_store() {
     if (!$store) {
         error_page("no such store");
     }
-    $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df '.$store->path_prefix.' | tail -1');
+    $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df -B1 '.$store->path_prefix.' | tail -1');
     $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
     $capacity = $aTempDF[1];
-    $used = $aTempDF[2];
+    //$used = $aTempDF[1];
+    $sTempDU = shell_exec('ssh '.$store->ssh_prefix.' du -s -B1 '.$store->path_prefix);
+    $aTempDU = preg_split("/\s+/", $sTempDU); //  Size | directory
+    $used = $aTempDU[0];
 
     page_head("$store->name");
     table_start();
