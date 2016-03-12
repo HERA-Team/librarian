@@ -153,7 +153,7 @@ function show_stores() {
         $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df -B1 '.$store->path_prefix.' | tail -1');
         $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
         $capacity = $aTempDF[1];
-        //$used = $aTempDF[1];
+        //$used = $aTempDF[2];
         $sTempDU = shell_exec('ssh '.$store->ssh_prefix.' du -s -B1 '.$store->path_prefix);
         $aTempDU = preg_split("/\s+/", $sTempDU); //  Size | directory
         $used = $aTempDU[0];
@@ -245,7 +245,7 @@ function show_store() {
     $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df -B1 '.$store->path_prefix.' | tail -1');
     $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
     $capacity = $aTempDF[1];
-    //$used = $aTempDF[1];
+    //$used = $aTempDF[2];
     $sTempDU = shell_exec('ssh '.$store->ssh_prefix.' du -s -B1 '.$store->path_prefix);
     $aTempDU = preg_split("/\s+/", $sTempDU); //  Size | directory
     $used = $aTempDU[0];
