@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Name<br><span class=small>click to download</span></th>
+	<th>Created</th>
+	<th>Observation</th>
+	<th>Type</th>
+	<th>Source</th>
+	<th>Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in files %}
+      <tr>
+	<td>{{f.name}}</td>
+	<td>{{f.create_time}}</td>
+	<td>{{f.obsid}}</td>
+	<td>{{f.type}}</td>
+	<td>{{f.source}}</td>
+	<td>{{f.size}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
