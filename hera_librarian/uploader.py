@@ -50,7 +50,7 @@ def bash_command(command):
                         ' '.join(command))
 
 
-def uploader(site, files):
+def uploader(site, files, paths):
     """
     Upload a list of file to the librarian
 
@@ -60,23 +60,33 @@ def uploader(site, files):
         name of librarian site
     files: list
         list of local files to upload
+    paths: list
+        list of paths for files (paths + files should be full paths to files)
     """
-    for file in files:
-        file_size = get_size(file)
+    if len(paths) != 1 and len(paths) != len(files):
+        raise ValueError('paths must be a list of length 1 or the same ' +
+                         'length as files')
+
+    for i, file in enumerate(files):
+        if len(paths) == 1:
+            full_filepath = paths[0] + file
+        else:
+            full_filepath = paths[i] + file
+
+        file_size = get_size(full_filepath)
         store, ssh_prefix, path = get_recommendation(site, file_size)
 
-        head0, filename = os.path.split(file)
-        head1, jd = os.path.split(head0)
-        lib_file = os.path.join(jd, filename)
+        dir_part, filename = os.path.split(file)
 
-        mkdir_cmd = ['ssh', ssh_prefix, 'mkdir', '-p', path + '/' + jd]
+        mkdir_cmd = ['ssh', ssh_prefix, 'mkdir', '-p', path + '/' + dir_part]
 
         scp_cmd = ['scp', '-r', '-c', 'arcfour256', '-o',
                    'UserKnownHostsFile=/dev/null', '-o',
-                   'StrictHostKeyChecking=no', file,
-                   ssh_prefix + ':' + path + '/' + lib_file]
+                   'StrictHostKeyChecking=no', full_filepath,
+                   ssh_prefix + ':' + path + '/' + file]
         add_obs_cmd = ['ssh', ssh_prefix, 'add_obs_librarian.py', '--site ',
-                       site, '--store', store, path + '/' + lib_file]
+                       site, '--store ', store, '--store_path ', path + '/',
+                       file]
         print ' '.join(add_obs_cmd)
 
         bash_command(mkdir_cmd)
