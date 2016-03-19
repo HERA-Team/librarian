@@ -50,7 +50,7 @@ def bash_command(command):
                         ' '.join(command))
 
 
-def uploader(site, files, paths):
+def uploader(site, files, root_paths):
     """
     Upload a list of file to the librarian
 
@@ -60,18 +60,19 @@ def uploader(site, files, paths):
         name of librarian site
     files: list
         list of local files to upload
-    paths: list
-        list of paths for files (paths + files should be full paths to files)
+    root_paths: list
+        list of root_paths for files (root_paths + files should give full paths
+            to files)
     """
-    if len(paths) != 1 and len(paths) != len(files):
-        raise ValueError('paths must be a list of length 1 or the same ' +
+    if len(root_paths) != 1 and len(root_paths) != len(files):
+        raise ValueError('root_paths must be a list of length 1 or the same ' +
                          'length as files')
 
     for i, file in enumerate(files):
-        if len(paths) == 1:
-            full_filepath = paths[0] + file
+        if len(root_paths) == 1:
+            full_filepath = root_paths[0] + file
         else:
-            full_filepath = paths[i] + file
+            full_filepath = root_paths[i] + file
 
         file_size = get_size(full_filepath)
         store, ssh_prefix, path = get_recommendation(site, file_size)
