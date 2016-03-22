@@ -52,7 +52,7 @@ def bash_command(command):
 
 def uploader(site, files, root_paths):
     """
-    Upload a list of file to the librarian
+    Upload a list of files to the librarian
 
     Parameters
     ----------
