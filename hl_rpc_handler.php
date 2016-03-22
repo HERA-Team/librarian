@@ -310,7 +310,9 @@ function recommended_store($req) {
     }
     $stores = store_enum('unavailable=0');
     foreach ($stores as $store) {
-        $space = $store->capacity - $store->used;
+        $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df -B1 '.$store->path_prefix.' | tail -1');
+        $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
+        $space = $aTempDF[3];
         if ($req->file_size < $space) {
             $reply = success();
             $reply->store = $store;
