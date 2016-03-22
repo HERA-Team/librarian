@@ -189,8 +189,6 @@ function edit_store_form() {
     } else {
         $store = new StdClass;
         $store->name = '';
-        $store->capacity = 0;
-        $store->used = 0;
         $store->rsync_prefix = '';
         $store->http_prefix = '';
         $store->path_prefix = '';
@@ -206,8 +204,6 @@ function edit_store_form() {
         ';
     }
     form_item("Name:", "text", "name", $store->name);
-    form_item("Capacity (GB):", "text", "capacity", $store->capacity/GIGA);
-    form_item("Used (GB):", "text", "used", $store->used/GIGA);
     form_item("rsync prefix:", "text", "rsync_prefix", $store->rsync_prefix);
     form_item("HTTP prefix:", "text", "http_prefix", $store->http_prefix);
     form_item("Path prefix:", "text", "path_prefix", $store->path_prefix);
@@ -268,8 +264,6 @@ function show_store() {
 function edit_store_action() {
     $store = new StdClass;
     $store->name = get_str("name");
-    $store->capacity = get_num("capacity")*GIGA;
-    $store->used = get_num("used")*GIGA;
     $store->rsync_prefix = get_str("rsync_prefix");
     $store->http_prefix = get_str("http_prefix");
     $store->path_prefix = get_str("path_prefix");

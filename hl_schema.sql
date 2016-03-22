@@ -21,8 +21,6 @@ create table store (
     id              SERIAL,
     name            varchar(254)    not null,
     create_time     timestamp          not null,
-    capacity        double precision          not null,
-    used            double precision          not null,
     rsync_prefix    varchar(254)    not null,
     http_prefix     varchar(254)    not null,
     path_prefix     varchar(254)    not null,
