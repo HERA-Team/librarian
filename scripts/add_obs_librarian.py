@@ -78,10 +78,12 @@ if not opts.store_path.endswith('/'):
     opts.store_path = opts.store_path + '/'
 
 full_filepaths = []
+files = []
 for filename in args:
-    files = glob.glob(opts.store_path+filename)
-    for f in files:
+    full_files = glob.glob(opts.store_path+filename)
+    for f in full_files:
         full_filepaths.append(f)
+        files.append(f[len(opts.store_path):])
 
 for filename in full_filepaths:
     if not os.path.exists(filename):
@@ -93,9 +95,10 @@ if errors:
 
 client = hera_librarian.LibrarianClient(opts.site)
 
-for filename in full_filepaths:
+for i, filename in enumerate(files):
+    full_filename = full_filepaths[i]
     start_jd = float(file2jd(filename))
-    obsid = obsid_from_file(filename)
+    obsid = obsid_from_file(full_filename)
     filetype = filename.split('.')[-1]
     if obsid is None:
         obsid = obsid_from_filename(filename)
@@ -106,7 +109,6 @@ for filename in full_filepaths:
         print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
 
     try:
-        print opts.store, filename, filetype, obsid, -1, ''
         client.create_file(opts.store, filename, filetype, obsid, -1, '')
 
     except hera_librarian.RPCFailedError as e:
