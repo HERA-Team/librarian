@@ -106,6 +106,7 @@ for filename in full_filepaths:
         print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
 
     try:
+        print opts.store, filename, filetype, obsid, -1, ''
         client.create_file(opts.store, filename, filetype, obsid, -1, '')
 
     except hera_librarian.RPCFailedError as e:
