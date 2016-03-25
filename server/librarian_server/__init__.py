@@ -38,6 +38,8 @@ app, db = _initialize ()
 
 from . import webutil
 from . import observation
+from . import store
+from . import file
 from . import misc
 
 

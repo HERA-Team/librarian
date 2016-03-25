@@ -4,71 +4,10 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from flask import (Response, escape, flash, redirect, render_template,
-                   request, session, url_for)
-import datetime, json, os, sys
-
+from flask import flash, redirect, render_template, url_for
 
 from . import app, db
 from .webutil import RPCError, json_api, login_required
-from .dbutil import NotNull
-from .observation import Observation
-
-
-# Now, the data structures that actually record files having to do with the
-# above information. Notably, we require that every file be associated with an
-# obsid.
-
-class Store (db.Model):
-    __tablename__ = 'store'
-
-    id = db.Column (db.Integer, primary_key=True)
-    name = NotNull (db.String (256))
-    path_prefix = NotNull (db.String (256))
-    ssh_host = NotNull (db.String (256))
-    http_prefix = db.Column (db.String (256))
-    available = NotNull (db.Boolean)
-
-    def __init__ (self, name, path_prefix, ssh_host):
-        self.name = name
-        self.path_prefix = path_prefix
-        self.ssh_host = ssh_host
-        self.available = True
-
-
-class File (db.Model):
-    __tablename__ = 'file'
-
-    name = db.Column (db.String (256), primary_key=True)
-    type = NotNull (db.String (32))
-    create_time = NotNull (db.DateTime)
-    obsid = db.Column (db.Integer, db.ForeignKey (Observation.obsid), nullable=False)
-    source = NotNull (db.String (64))
-    size = NotNull (db.Integer)
-    md5 = NotNull (db.String (32))
-
-    def __init__ (self, name, type, obsid, source, size, md5, create_time=None):
-        if create_time is None:
-            create_time = datetime.datetime.now ()
-
-        self.name = name
-        self.type = type
-        self.create_time = create_time
-        self.obsid = obsid
-        self.source = source
-        self.size = size
-        self.md5 = md5
-
-
-class FileInstance (db.Model):
-    __tablename__ = 'file_instance'
-
-    store = db.Column (db.Integer, db.ForeignKey (Store.id), primary_key=True)
-    parent_dirs = db.Column (db.String (128), primary_key=True)
-    name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
-
-
-# Actual RPC calls!
 
 
 @app.route ('/api/ping', methods=['GET', 'POST'])
@@ -77,21 +16,11 @@ def ping (args, sourcename=None):
     return {'message': 'hello'}
 
 
-@app.route ('/api/recommended_store', methods=['GET', 'POST'])
-@json_api
-def recommended_store (args, sourcename=None):
-    file_size = args.pop ('file_size', None)
-    if not isinstance (file_size, int) or not file_size >= 0:
-        raise RPCError ('illegal file_size argument')
-
-    raise RPCError ('not yet implemented')
-
-
-# The human-aimed web interface!
-
 @app.route ('/')
 @login_required
 def index ():
+    from .file import File
+
     q = File.query.order_by (File.create_time.desc ()).limit (50)
     return render_template (
         'filelisting.html',
@@ -103,7 +32,11 @@ def index ():
 @app.route ('/create-database')
 @login_required
 def create_database ():
-    db.create_all ()
-    db.session.add (File ('demofile', 'fake', 1, 'source', 0, 'md5sumhere'))
-    db.session.commit ()
+    if not app.config.get ('flask-debug', False):
+        flash ('can only initialize database in debug mode!')
+    else:
+        db.create_all ()
+        db.session.add (File ('demofile', 'fake', 1, 'source', 0, 'md5sumhere'))
+        db.session.commit ()
+
     return redirect (url_for ('index'))
