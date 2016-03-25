@@ -39,13 +39,22 @@ class LibrarianClient (object):
     config = None
     "The JSON config fragment corresponding to the desired site."
 
-    def __init__ (self, site_name):
+    def __init__ (self, site_name, site_config=None):
+        """If `site_config` is not None, it should be a dict containing at least the
+        entries "authenticator" and "url" that define how to talk to the
+        target Librarian. Otherwise, the file `~/.hl_client.cfg` will be used
+        to look up a dict containing the same information.
+
+        """
         self.site_name = site_name
 
-        config = get_client_config ()
-        self.config = config['sites'].get (site_name)
-        if self.config is None:
-            raise NoSuchSiteError (site_name)
+        if site_config is not None:
+            self.config = site_config
+        else:
+            config = get_client_config ()
+            self.config = config['sites'].get (site_name)
+            if self.config is None:
+                raise NoSuchSiteError (site_name)
 
 
     def _do_http_post(self, operation, **kwargs):
@@ -53,7 +62,6 @@ class LibrarianClient (object):
         JSON reply; return the decoded version of the latter.
 
         """
-        kwargs['operation'] = operation
         kwargs['authenticator'] = self.config['authenticator']
         for k in kwargs.keys():
             if kwargs[k] is None:
@@ -61,7 +69,7 @@ class LibrarianClient (object):
         req_json = json.dumps(kwargs)
 
         params = urllib.urlencode({'request': req_json})
-        url = self.config['url'] + '/hl_rpc_handler.php'
+        url = self.config['url'] + 'api/' + operation
         f = urllib.urlopen(url, params);
         reply = f.read()
         try:
