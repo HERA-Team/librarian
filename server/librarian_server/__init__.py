@@ -37,6 +37,7 @@ app, db = _initialize ()
 # right.
 
 from . import webutil
+from . import observation
 from . import misc
 
 

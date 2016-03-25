@@ -12,19 +12,7 @@ import datetime, json, os, sys
 from . import app, db
 from .webutil import RPCError, json_api, login_required
 from .dbutil import NotNull
-
-
-# The database. We start with abstract tables recording properties of
-# observations, etc., that don't have anything to do with stored data of any
-# kind ...
-
-class Observation (db.Model):
-    __tablename__ = 'observation'
-
-    obsid = db.Column (db.Integer, primary_key=True)
-    start_time_jd = NotNull (db.Float)
-    start_time_jd = NotNull (db.Float)
-    start_lst_hr = NotNull (db.Float)
+from .observation import Observation
 
 
 # Now, the data structures that actually record files having to do with the
