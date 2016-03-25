@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- mode: python; coding: utf-8 -*-
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
@@ -7,7 +6,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 from flask import (Flask, Response, escape, flash, redirect, render_template,
                    request, session, url_for)
-import datetime, json, sys
+import datetime, json, os, sys
 
 
 # In order to have the config loaded up in time to affect the database setup,
@@ -21,7 +20,8 @@ if 'SECRET_KEY' not in config:
            '"SECRET_KEY" in "server-config.json"', file=sys.stderr)
     sys.exit (1)
 
-app = Flask ('librarian')
+tf = os.path.join (os.path.dirname (os.path.abspath (__file__)), 'templates')  
+app = Flask ('librarian', template_folder=tf)
 app.config.update (config)
 
 
@@ -325,8 +325,3 @@ def create_database ():
 def commandline (argv):
     debug = app.config.get ('flask-debug', False)
     app.run (debug=debug)
-
-
-if __name__ == '__main__':
-    import sys
-    commandline (sys.argv)
