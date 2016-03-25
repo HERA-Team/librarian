@@ -11,14 +11,12 @@ import datetime, json, os, sys
 
 from . import app, db
 from .webutil import RPCError, json_api, login_required
+from .dbutil import NotNull
 
 
 # The database. We start with abstract tables recording properties of
 # observations, etc., that don't have anything to do with stored data of any
 # kind ...
-
-NotNull = lambda kind: db.Column (kind, nullable=False)
-
 
 class Observation (db.Model):
     __tablename__ = 'observation'
