@@ -10,6 +10,8 @@ __all__ = str('''
 Store
 ''').split ()
 
+from flask import render_template
+
 from . import app, db
 from .dbutil import NotNull
 from .webutil import RPCError, json_api, login_required
@@ -26,8 +28,8 @@ class Store (db.Model):
 
     id = db.Column (db.Integer, primary_key=True)
     name = NotNull (db.String (256))
-    path_prefix = NotNull (db.String (256))
     ssh_host = NotNull (db.String (256))
+    path_prefix = NotNull (db.String (256))
     http_prefix = db.Column (db.String (256))
     available = NotNull (db.Boolean)
 
@@ -50,4 +52,14 @@ def recommended_store (args, sourcename=None):
     raise RPCError ('not yet implemented')
 
 
-# TODO: Web user interface?
+# Web user interface
+
+@app.route ('/stores')
+@login_required
+def stores ():
+    q = Store.query.order_by (Store.name.asc ())
+    return render_template (
+        'store-listing.html',
+        title='Stores',
+        stores=q
+    )

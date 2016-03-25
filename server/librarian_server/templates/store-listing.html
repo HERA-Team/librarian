@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Name</th>
+	<th>SSH Host</th>
+	<th>Path Prefix</th>
+	<th>HTTP Prefix</th>
+	<th>Available?</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stores %}
+      <tr>
+	<td>{{s.name}}</td>
+	<td><tt>{{s.ssh_host}}</tt></td>
+	<td><tt>{{s.path_prefix}}</tt></td>
+	<td>
+	  {% if s.http_prefix %}
+	    <a href="{{s.http_prefix}}">{{s.http_prefix}}</a>
+	  {% else %}
+	    —
+	  {% endif %}
+	</td>
+	<td>
+	  {% if s.available %}
+	  <span class="bg-success">yes</span>
+	  {% else %}
+	  <span class="bg-danger">no</span>
+	  {% endif %}
+	</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
