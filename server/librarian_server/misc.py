@@ -10,6 +10,7 @@ import datetime, json, os, sys
 
 
 from . import app, db
+from .webutil import RPCError, json_api, login_required
 
 
 # The database. We start with abstract tables recording properties of
@@ -81,151 +82,8 @@ class FileInstance (db.Model):
     name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
 
 
-
-
-# Framework for the JSON API
-
-class AuthFailedError (Exception):
-    pass
-
-
-def check_authentication (auth):
-    """`auth` is the provided authentication string.
-
-    Currently, we operate in a sort of "username-free" mode, where only the
-    authenticator is provided. At the moment we just return the name of the
-    Source associated with the provided authenticator string, where these are
-    defined in the 'sources' section of the server config file.
-
-    If no matching source is found, we raise an exception. This means that if
-    you forget to handle this case, the code aborts, which is more secure than
-    proceeding along.
-
-    """
-    if auth is not None:
-        for name, info in app.config['sources'].iteritems ():
-            if info['authenticator'] == auth:
-                return name
-
-    raise AuthFailedError ()
-
-
-class RPCErrorBase (Exception):
-    def __init__ (self, status, fmt, args):
-        self.status = status
-
-        if len (args):
-            self.message = fmt % args
-        else:
-            self.message = str (fmt)
-
-
-class RPCError (RPCErrorBase):
-    """Raise this when an error is encountered in an API call. An error message
-    will be returned, and the HTTP request will return error 400, which is
-    usually what you want.
-
-    """
-    def __init__ (self, fmt, *args):
-        super (RPCError, self).__init__ (400, fmt, args)
-
-
-def _json_inner (f, **kwargs):
-    if len (request.form):
-        reqdata = request.form
-    else:
-        reqdata = request.args
-
-    reqtext = reqdata.get ('request')
-    if reqtext is None:
-        raise RPCError ('no request payload provided')
-
-    try:
-        payload = json.loads (reqtext)
-    except Exception as e:
-        raise RPCError ('couldn\'t parse request payload: %s', e)
-
-    if not isinstance (payload, dict):
-        raise RPCError ('request payload is %s, not dictionary',
-                        payload.__class__.__name__)
-
-    auth = payload.pop ('authenticator', None)
-    if auth is None:
-        raise RPCError ('no authentication provided')
-
-    try:
-        sourcename = check_authentication (auth)
-    except AuthFailedError:
-        raise RPCError ('authentication failed')
-
-    result = f (payload, sourcename=sourcename, **kwargs)
-
-    if not isinstance (result, dict):
-        raise RPCError ('internal error: response is %s, not a dictionary',
-                        result.__class__.__name__)
-
-    if 'success' not in result:
-        result['success'] = True # optimism!
-
-    return result
-
-
-from functools import wraps
-
-def json_api (f):
-    """This decorator wraps JSON API functions and does two things.
-
-    First, it converts the input from JSON to Python data structures, and does
-    the reverse with the return value of the function. The input is passed as
-    as a "request" URL query argument or POST data.
-
-    Second, it makes the the function require authentication in order to
-    proceed. The authentication is mapped to a Source name, which is passed to
-    the inner function as a "sourcename" keyword argument. The authenticator
-    is passed as a string "authenticator" in the JSON request payload, the
-    outermost level of which must be a dictionary.
-
-    Arguments can be provided as either URL query arguments or POST data; the
-    latter is preferred.
-
-    See also login_required() below.
-
-    """
-    @wraps (f)
-    def decorated_function (**kwargs):
-        try:
-            result = _json_inner (f, **kwargs)
-            status = 200
-        except RPCErrorBase as e:
-            result = {
-                'success': False,
-                'message': e.message,
-            }
-            status = e.status
-        except Exception as e:
-            app.log_exception (sys.exc_info ())
-            result = {
-                'success': False,
-                'message': 'internal exception: %s (details logged by server)' % e,
-            }
-            status = 400
-
-        try:
-            outtext = json.dumps (result)
-        except Exception as e:
-            result = {
-                'success': False,
-                'message': 'couldn\'t format response data: %s' % e
-            }
-            status = 400
-            outtext = json.dumps (result)
-
-        return Response (outtext, mimetype='application/json', status=status)
-
-    return decorated_function
-
-
 # Actual RPC calls!
+
 
 @app.route ('/api/ping', methods=['GET', 'POST'])
 @json_api
@@ -241,45 +99,6 @@ def recommended_store (args, sourcename=None):
         raise RPCError ('illegal file_size argument')
 
     raise RPCError ('not yet implemented')
-
-
-# User session handling
-
-def login_required (f):
-    # See also auth_required() above.
-    @wraps (f)
-    def decorated_function (*args, **kwargs):
-        if 'sourcename' not in session:
-            return redirect (url_for ('login', next=request.url))
-        return f (*args, **kwargs)
-    return decorated_function
-
-
-@app.route ('/login', methods=['GET', 'POST'])
-def login ():
-    next = request.form.get ('next')
-    if next is None:
-        next = url_for ('index')
-
-    if request.method == 'GET':
-        return render_template ('login.html', next=next)
-
-    # This is a POST request -- user is actually trying to log in.
-
-    try:
-        sourcename = check_authentication (request.form.get ('auth'))
-    except AuthFailedError:
-        flash ('Login failed.')
-        return render_template ('login.html', next=next)
-
-    session['sourcename'] = sourcename
-    return redirect (next)
-
-
-@app.route ('/logout')
-def logout ():
-    session.pop ('sourcename', None)
-    return redirect (url_for ('index'))
 
 
 # The human-aimed web interface!
