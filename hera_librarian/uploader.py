@@ -2,6 +2,11 @@ import hera_librarian
 import os
 import psutil
 import sys
+import re
+
+
+def file2jd(zenuv):
+    return re.findall(r'\d+\.\d+', zenuv)[0]
 
 
 def get_size(file):
@@ -50,7 +55,7 @@ def bash_command(command):
                         ' '.join(command))
 
 
-def uploader(site, files, root_paths):
+def uploader(site, files):
     """
     Upload a list of files to the librarian
 
@@ -64,30 +69,24 @@ def uploader(site, files, root_paths):
         list of root_paths for files (root_paths + files should give full paths
             to files)
     """
-    if len(root_paths) != 1 and len(root_paths) != len(files):
-        raise ValueError('root_paths must be a list of length 1 or the same ' +
-                         'length as files')
+    for i, full_file in enumerate(files):
+        file_size = get_size(full_file)
+        store, ssh_prefix, store_path = get_recommendation(site, file_size)
 
-    for i, file in enumerate(files):
-        if len(root_paths) == 1:
-            full_filepath = root_paths[0] + file
-        else:
-            full_filepath = root_paths[i] + file
+        directory, filename = os.path.split(full_file)
+        jd = file2jd(filename)
 
-        file_size = get_size(full_filepath)
-        store, ssh_prefix, path = get_recommendation(site, file_size)
-
-        dir_part, filename = os.path.split(file)
-
-        mkdir_cmd = ['ssh', ssh_prefix, 'mkdir', '-p', path + '/' + dir_part]
+        mkdir_cmd = ['ssh', ssh_prefix, 'mkdir', '-p', store_path + '/' + jd]
 
         scp_cmd = ['scp', '-r', '-c', 'arcfour256', '-o',
                    'UserKnownHostsFile=/dev/null', '-o',
-                   'StrictHostKeyChecking=no', full_filepath,
-                   ssh_prefix + ':' + path + '/' + file]
+                   'StrictHostKeyChecking=no', full_file,
+                   ssh_prefix + ':' + store_path + '/' + jd + '/' + filename]
+
         add_obs_cmd = ['ssh', ssh_prefix, 'add_obs_librarian.py', '--site ',
-                       site, '--store ', store, '--store_path ', path + '/',
-                       file]
+                       site, '--store ', store, '--store_path ',
+                       store_path + '/', jd + '/' + filename]
+
         print ' '.join(add_obs_cmd)
 
         bash_command(mkdir_cmd)
