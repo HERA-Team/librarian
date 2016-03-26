@@ -71,7 +71,7 @@ function store_insert($store) {
     $http_prefix = pg_escape_string($link, $store->http_prefix);
     $path_prefix = pg_escape_string($link, $store->path_prefix);
     $ssh_prefix = pg_escape_string($link, $store->ssh_prefix);
-    $query = "insert into store (name, create_time, capacity, used, rsync_prefix, http_prefix, path_prefix, ssh_prefix, unavailable) values ('$name', to_timestamp($store->create_time), $store->capacity, $store->used, '$rsync_prefix', '$http_prefix', '$path_prefix', '$ssh_prefix', 0) returning id";
+    $query = "insert into store (name, create_time, rsync_prefix, http_prefix, path_prefix, ssh_prefix, unavailable) values ('$name', to_timestamp($store->create_time), '$rsync_prefix', '$http_prefix', '$path_prefix', '$ssh_prefix', 0) returning id";
     return pg_query($link, $query);
 }
 
@@ -106,7 +106,7 @@ function store_update_all($id, $store) {
     $path_prefix = pg_escape_string($link, $store->path_prefix);
     $ssh_prefix = pg_escape_string($link, $store->ssh_prefix);
     $unavailable = $store->unavailable?1:0;
-    $query = "update store set name='$name', capacity=$store->capacity, used=$store->used, rsync_prefix='$rsync_prefix', http_prefix='$http_prefix', path_prefix='$path_prefix', ssh_prefix='$ssh_prefix', unavailable=$unavailable where id=$id";
+    $query = "update store set name='$name', rsync_prefix='$rsync_prefix', http_prefix='$http_prefix', path_prefix='$path_prefix', ssh_prefix='$ssh_prefix', unavailable=$unavailable where id=$id";
     return pg_query($link, $query);
 }
 
