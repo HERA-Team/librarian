@@ -16,7 +16,7 @@
     <tbody>
       {% for o in obs %}
       <tr>
-	<td>{{o.obsid}}</td>
+	<td><a href="/observations/{{o.obsid}}">{{o.obsid}}</a></td>
 	<td>{{o.start_time_jd}}</td>
 	<td>{{o.start_lst_hr}}</td>
 	<td>{{o.duration}}</td>
