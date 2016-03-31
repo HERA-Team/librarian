@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Obsid</th>
+	<th>Start JD</th>
+	<th>Start LST (hr)</th>
+	<th>Duration (days)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in obs %}
+      <tr>
+	<td>{{o.obsid}}</td>
+	<td>{{o.start_time_jd}}</td>
+	<td>{{o.start_lst_hr}}</td>
+	<td>{{o.duration}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -35,10 +35,12 @@ def create_database ():
     if not app.config.get ('flask-debug', False):
         flash ('can only initialize database in debug mode!')
     else:
+        from .observation import Observation
         from .file import File
         from .store import Store
         db.create_all ()
-        db.session.add (File ('demofile', 'fake', 1, 'source', 0, 'md5sumhere'))
+        db.session.add (Observation (1234, 2455555.5, 2455555.6, 12.))
+        db.session.add (File ('demofile', 'fake', 1234, 'source', 0, 'md5sumhere'))
         db.session.add (Store ('pot1', '/pot1data', 'pot1.fake'))
         db.session.add (Store ('pot2', '/pot2data', 'pot2.fake'))
         db.session.commit ()
