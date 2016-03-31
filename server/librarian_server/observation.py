@@ -56,3 +56,23 @@ def observations ():
         title='Observations',
         obs=q
     )
+
+
+@app.route ('/observations/<int:obsid>')
+@login_required
+def specific_observation (obsid):
+    obs = Observation.query.get (obsid)
+    if obs is None:
+        flash ('No such observation %r known' % obsid)
+        return redirect (url_for ('observations'))
+
+    from .file import File
+
+    files = list (File.query.filter (File.obsid == obsid).order_by (File.name.asc ()))
+
+    return render_template (
+        'obs-individual.html',
+        title='Observation %d' % obsid,
+        obs=obs,
+        files=files,
+    )

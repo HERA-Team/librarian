@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Property</th>
+	<th>Units</th>
+	<th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+	<td>Start time</td>
+	<td>JD</td>
+	<td>{{obs.start_time_jd}}</td>
+      </tr>
+      <tr>
+	<td>Stop time</td>
+	<td>JD</td>
+	<td>{{obs.stop_time_jd}}</td>
+      </tr>
+      <tr>
+	<td>Start LST</td>
+	<td>hours</td>
+	<td>{{obs.start_lst_hr}}</td>
+      </tr>
+      <tr>
+	<td>Duration</td>
+	<td>day</td>
+	<td>{{obs.stop_time_jd}}</td>
+      </tr>
+      <!--<tr>
+	<td>Number of files</td>
+	<td></td>
+	<td>{{files.len}}</td>
+      </tr>-->
+    </tbody>
+  </table>
+
+  <h2>Files</h2>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Name<br><span class=small>click to download</span></th>
+	<th>Created</th>
+	<th>Observation</th>
+	<th>Type</th>
+	<th>Source</th>
+	<th>Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in files %}
+      <tr>
+	<td>{{f.name}}</td>
+	<td>{{f.create_time}}</td>
+	<td>{{f.obsid}}</td>
+	<td>{{f.type}}</td>
+	<td>{{f.source}}</td>
+	<td>{{f.size}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
