@@ -8,39 +8,43 @@
     <thead>
       <tr>
 	<th>Property</th>
-	<th>Units</th>
 	<th>Value</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-	<td>Observation</td>
-	<td>obsid</td>
-	<td><a href="/observations/{{file.obsid}}">{{file.obsid}}</a></td>
+	<td>SSH host</td>
+	<td><tt>{{store.ssh_host}}</tt></td>
       </tr>
     </tbody>
   </table>
 
   {% if instances %}
-  <h2>Instances</h2>
+  <h2>File Instances</h2>
   <table class="table table-striped">
     <thead>
       <tr>
-	<th>Store</th>
 	<th>Subdirectory</th>
+	<th>Name</th>
+	<th>Obsid</th>
+	<th>Type</th>
+	<th>Size</th>
       </tr>
     </thead>
     <tbody>
       {% for i in instances %}
       <tr>
-	<td><a href="/stores/{{i.store_name}}">{{i.store_name}}</a></td>
 	<td>{{i.parent_dirs}}</td>
+	<td><a href="/files/{{i.file.name}}">{{i.file.name}}</a></td>
+	<td><a href="/observations/{{i.file.obsid}}">{{i.file.obsid}}</a></td>
+	<td>{{i.file.type}}</td>
+	<td>{{i.file.size}}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <p>This Librarian currently holds no copies of this file.</p>
+  <p>This store currently has no files.</p>
   {% endif %}
 </div>
 {% endblock %}

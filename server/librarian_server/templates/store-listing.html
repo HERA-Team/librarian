@@ -17,7 +17,7 @@
     <tbody>
       {% for s in stores %}
       <tr>
-	<td>{{s.name}}</td>
+	<td><a href="/stores/{{s.name}}">{{s.name}}</a></td>
 	<td><tt>{{s.ssh_host}}</tt></td>
 	<td><tt>{{s.path_prefix}}</tt></td>
 	<td>

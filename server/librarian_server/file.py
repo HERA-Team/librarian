@@ -36,7 +36,7 @@ class File (db.Model):
             create_time = datetime.datetime.now ()
 
         if '/' in name:
-            raise Exception ('illegal file name "%s": names may not contain "/"' % name)
+            raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
 
         self.name = name
         self.type = type
@@ -54,10 +54,22 @@ class FileInstance (db.Model):
     parent_dirs = db.Column (db.String (128), primary_key=True)
     name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
 
+    def __init__ (self, store_obj, parent_dirs, name):
+        if '/' in name:
+            raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
+
+        self.store = store_obj.id
+        self.parent_dirs = parent_dirs
+        self.name = name
+
     @property
     def store_name (self):
         from .store import Store
         return Store.query.get (self.store).name
+
+    @property
+    def file (self):
+        return File.query.get (self.name)
 
 
 # TODO: RPC

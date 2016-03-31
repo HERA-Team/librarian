@@ -36,13 +36,16 @@ def create_database ():
         flash ('can only initialize database in debug mode!')
     else:
         from .observation import Observation
-        from .file import File
+        from .file import File, FileInstance
         from .store import Store
         db.create_all ()
         db.session.add (Observation (1234, 2455555.5, 2455555.6, 12.))
         db.session.add (File ('demofile', 'fake', 1234, 'source', 0, 'md5sumhere'))
-        db.session.add (Store ('pot1', '/pot1data', 'pot1.fake'))
+        store1 = Store ('pot1', '/pot1data', 'pot1.fake')
+        db.session.add (store1)
         db.session.add (Store ('pot2', '/pot2data', 'pot2.fake'))
+        db.session.commit ()
+        db.session.add (FileInstance (store1, '2455555', 'demofile'))
         db.session.commit ()
 
     return redirect (url_for ('index'))

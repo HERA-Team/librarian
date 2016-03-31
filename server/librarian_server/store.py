@@ -20,8 +20,8 @@ from .webutil import RPCError, json_api, login_required
 class Store (db.Model):
     """A Store is a computer with a disk where we can store data. Several of the
     things we keep track of regarding stores are essentially configuration
-    items; but we also keep track of the available space and the machine's
-    availability, which is state that is better tracked in the database.
+    items; but we also keep track of the machine's availability, which is
+    state that is better tracked in the database.
 
     """
     __tablename__ = 'store'
@@ -62,4 +62,28 @@ def stores ():
         'store-listing.html',
         title='Stores',
         stores=q
+    )
+
+
+@app.route ('/stores/<string:name>')
+@login_required
+def specific_store (name):
+    stores = list (Store.query.filter (Store.name == name))
+    if not len (stores):
+        flash ('No such store "%s" known' % name)
+        return redirect (url_for ('stores'))
+
+    store = stores[0]
+
+    from .file import FileInstance
+    instances = list (FileInstance.query
+                      .filter (FileInstance.store == store.id)
+                      .order_by (FileInstance.parent_dirs.asc (),
+                                 FileInstance.name.asc ()))
+
+    return render_template (
+        'store-individual.html',
+        title='Store %s' % (store.name),
+        store=store,
+        instances=instances,
     )
