@@ -11,6 +11,7 @@ File
 ''').split ()
 
 import datetime
+from flask import flash, redirect, render_template, url_for
 
 from . import app, db
 from .dbutil import NotNull
@@ -34,6 +35,9 @@ class File (db.Model):
         if create_time is None:
             create_time = datetime.datetime.now ()
 
+        if '/' in name:
+            raise Exception ('illegal file name "%s": names may not contain "/"' % name)
+
         self.name = name
         self.type = type
         self.create_time = create_time
@@ -50,5 +54,30 @@ class FileInstance (db.Model):
     parent_dirs = db.Column (db.String (128), primary_key=True)
     name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
 
+    @property
+    def store_name (self):
+        from .store import Store
+        return Store.query.get (self.store).name
 
-# TODO: RPC / web UI calls
+
+# TODO: RPC
+
+
+# Web user interface
+
+@app.route ('/files/<string:name>')
+@login_required
+def specific_file (name):
+    file = File.query.get (name)
+    if file is None:
+        flash ('No such file "%s" known' % name)
+        return redirect (url_for ('index'))
+
+    instances = list (FileInstance.query.filter (FileInstance.name == name))
+
+    return render_template (
+        'file-individual.html',
+        title='%s File %s' % (file.type, file.name),
+        file=file,
+        instances=instances,
+    )

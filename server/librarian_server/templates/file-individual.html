@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Property</th>
+	<th>Units</th>
+	<th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+	<td>Observation</td>
+	<td>obsid</td>
+	<td><a href="/observations/{{file.obsid}}">{{file.obsid}}</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if instances %}
+  <h2>Instances</h2>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Store</th>
+	<th>Subdirectory</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in instances %}
+      <tr>
+	<td>{{i.store_name}}</td>
+	<td>{{i.parent_dirs}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>This Librarian currently holds no copies of this file.</p>
+  {% endif %}
+</div>
+{% endblock %}
