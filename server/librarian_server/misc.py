@@ -23,7 +23,7 @@ def index ():
 
     q = File.query.order_by (File.create_time.desc ()).limit (50)
     return render_template (
-        'filelisting.html',
+        'file-listing.html',
         title='Recent Files',
         files=q
     )
