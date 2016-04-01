@@ -3,30 +3,6 @@
 {% block content %}
 <h1>{{title}}</h1>
 
-<div class="table-responsive">
-  <table class="table table-striped">
-    <thead>
-      <tr>
-	<th>Name<br><span class=small>click to download</span></th>
-	<th>Created</th>
-	<th>Observation</th>
-	<th>Type</th>
-	<th>Source</th>
-	<th>Size</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for f in files %}
-      <tr>
-	<td><a href="/files/{{f.name}}">{{f.name}}</a></td>
-	<td>{{f.create_time}}</td>
-	<td><a href="/observations/{{f.obsid}}">{{f.obsid}}</a></td>
-	<td>{{f.type}}</td>
-	<td>{{f.source}}</td>
-	<td>{{f.size}}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+{{macros.file_listing(files)}}
+
 {% endblock %}
