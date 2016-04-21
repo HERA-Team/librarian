@@ -5,9 +5,8 @@ Register a list of files with the librarian. The paths must exist and must be
 absolute (i.e., begin with "/").
 
 """
-from ddr_compress.dbi import gethostname, jdpol2obsnum
 import optparse
-import os
+import os.path
 import sys
 import re
 import glob
@@ -15,16 +14,8 @@ import numpy as n
 from astropy.time import Time
 import aipy as a
 import hera_librarian
+from hera_librarian import utils
 
-# from /a/b/c/d, return c/d
-
-
-def file2jd(zenuv):
-    return re.findall(r'\d+\.\d+', zenuv)[0]
-
-
-def file2pol(zenuv):
-    return re.findall(r'\.(.{2})\.', zenuv)[0]
 
 o = optparse.OptionParser()
 o.set_usage('add_obs_librarian.py *.uv')
@@ -46,22 +37,6 @@ o.add_option('--store_path', type=str, default=None,
              'the full path')
 opts, args = o.parse_args(sys.argv[1:])
 
-
-def obsid_from_file(filename):
-    # Get the obsnum from the file
-    # return None if not found
-    uv = a.miriad.UV(filename)
-    try:
-        return uv['obsid']
-    except(KeyError):
-        return None
-
-
-def obsid_from_filename(filename):
-    # get the obsid from the file NAME
-    # only do this if we don't have a obsid in the file
-    jd = file2jd(filename)
-    return int(n.floor(Time(float(jd), scale='utc', format='jd').gps))
 
 # check that all files exist
 errors = False
@@ -97,20 +72,29 @@ client = hera_librarian.LibrarianClient(opts.site)
 
 for i, filename in enumerate(files):
     full_filename = full_filepaths[i]
-    start_jd = float(file2jd(filename))
-    obsid = obsid_from_file(full_filename)
-    filetype = filename.split('.')[-1]
-    if obsid is None:
-        obsid = obsid_from_filename(filename)
+
+    start_jd = utils.get_start_jd_from_path (full_filename)
+    type = utils.get_type_from_path (full_filename)
+    obsid = utils.get_obsid_from_path (full_filename)
+    size = utils.get_size_from_path (full_filename)
+    md5 = utils.get_md5_from_path (full_filename)
+
     print start_jd, obsid
+
     try:
         client.create_observation(obsid, start_jd)
     except hera_librarian.RPCFailedError as e:
         print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
 
     try:
-        client.create_file(opts.store, filename, filetype, obsid, -1, '')
-
+        client.create_file(
+            os.path.basename(full_filename),
+            type,
+            obsid,
+            size,
+            md5,
+        )
     except hera_librarian.RPCFailedError as e:
         print >>sys.stderr, 'failed to create file record %s: %s' % (filename, e)
+
 print "done"

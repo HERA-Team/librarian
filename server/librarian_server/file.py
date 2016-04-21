@@ -10,12 +10,12 @@ __all__ = str('''
 File
 ''').split ()
 
-import datetime
+import datetime, re
 from flask import flash, redirect, render_template, url_for
 
 from . import app, db
 from .dbutil import NotNull
-from .webutil import RPCError, json_api, login_required
+from .webutil import RPCError, json_api, login_required, optional_arg, required_arg
 from .observation import Observation
 from .store import Store
 
@@ -72,7 +72,41 @@ class FileInstance (db.Model):
         return File.query.get (self.name)
 
 
-# TODO: RPC
+# RPC endpoints
+
+_md5_re = re.compile (r'^[0-9a-f]{32}$')
+
+@app.route ('/api/create_or_update_file', methods=['GET', 'POST'])
+@json_api
+def create_or_update_file (args, sourcename=None):
+    name = required_arg (args, unicode, 'name')
+    type = required_arg (args, unicode, 'type')
+    create_time = optional_arg (args, int, 'create_time_unix') # XXX: MJD? something else?
+    obsid = required_arg (args, int, 'obsid')
+    size = required_arg (args, int, 'size')
+    md5 = required_arg (args, unicode, 'md5')
+
+    if len (name) < 1 or len (name) > 256:
+        raise RPCError ('ill-formed/overlong file name %r', name)
+    if '/' in name:
+        raise RPCError ('File names must not contain "/" characters; got %r', name)
+    if len (type) < 1 or len (type) > 32:
+        raise RPCError ('ill-formed file type %r for %r', type, name)
+    if size < 0:
+        raise RPCError ('File sizes must be nonnegative; got %r for %r', size, name)
+
+    md5 = md5.lower ()
+    if len (md5) != 32 or _md5_re.match (md5) is None:
+        raise RPCError ('Ill-formatted MD5 sum %r for file %r', md5, name)
+
+    if create_time is not None:
+        import datetime
+        create_time = datetime.datetime.fromtimestamp (create_time)
+
+    file = File (name, type, obsid, sourcename, size, md5, create_time)
+    db.session.merge (file)
+    db.session.commit ()
+    return {}
 
 
 # Web user interface
