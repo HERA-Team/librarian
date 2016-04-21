@@ -14,7 +14,7 @@ from flask import render_template
 
 from . import app, db
 from .dbutil import NotNull
-from .webutil import RPCError, json_api, login_required
+from .webutil import RPCError, json_api, login_required, optional_arg, required_arg
 
 
 class Store (db.Model):
@@ -45,11 +45,12 @@ class Store (db.Model):
 @app.route ('/api/recommended_store', methods=['GET', 'POST'])
 @json_api
 def recommended_store (args, sourcename=None):
-    file_size = args.pop ('file_size', None)
-    if not isinstance (file_size, int) or not file_size >= 0:
-        raise RPCError ('illegal file_size argument')
+    file_size = required_arg (args, int, 'file_size')
+    if not file_size >= 0:
+        raise RPCError ('"file_size" must be nonnegative')
 
     raise RPCError ('not yet implemented')
+    return {}
 
 
 # Web user interface
