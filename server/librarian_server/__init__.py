@@ -46,5 +46,12 @@ from . import misc
 # Finally ...
 
 def commandline (argv):
+    host = app.config.get ('host', None)
+    port = app.config.get ('port', 21106)
     debug = app.config.get ('flask-debug', False)
-    app.run (debug=debug)
+
+    if host is None:
+        print ('note: no "host" set in configuration; server will not be remotely accessible',
+               file=sys.stderr)
+
+    app.run (host=post, port=port, debug=debug)
