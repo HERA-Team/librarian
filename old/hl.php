@@ -150,12 +150,20 @@ function show_stores() {
     $stores = store_enum();
     foreach ($stores as $store) {
         $nfiles = file_count("store_id=$store->id");
+        $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df -B1 '.$store->path_prefix.' | tail -1');
+        $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
+        $capacity = $aTempDF[1];
+        $used = $aTempDF[2];
+        //$sTempDU = shell_exec('ssh '.$store->ssh_prefix.' du -s -B1 '.$store->path_prefix);
+        //$aTempDU = preg_split("/\s+/", $sTempDU); //  Size | directory
+        //$used = $aTempDU[0];
+
         table_row(array(
             "<a href=hl.php?action=store&id=$store->id>$store->name</a>",
             "<a href=hl.php?action=file_search_action&store_id=$store->id>$nfiles</a>",
-            size_str($store->capacity),
-            size_str($store->used),
-            progress_bar(100*$store->used/$store->capacity),
+            size_str($capacity),
+            size_str($used),
+            progress_bar(100*$used/$capacity),
             $store->unavailable?"No":"Yes"
         ));
     }
@@ -181,8 +189,6 @@ function edit_store_form() {
     } else {
         $store = new StdClass;
         $store->name = '';
-        $store->capacity = 0;
-        $store->used = 0;
         $store->rsync_prefix = '';
         $store->http_prefix = '';
         $store->path_prefix = '';
@@ -198,8 +204,6 @@ function edit_store_form() {
         ';
     }
     form_item("Name:", "text", "name", $store->name);
-    form_item("Capacity (GB):", "text", "capacity", $store->capacity/GIGA);
-    form_item("Used (GB):", "text", "used", $store->used/GIGA);
     form_item("rsync prefix:", "text", "rsync_prefix", $store->rsync_prefix);
     form_item("HTTP prefix:", "text", "http_prefix", $store->http_prefix);
     form_item("Path prefix:", "text", "path_prefix", $store->path_prefix);
@@ -234,11 +238,19 @@ function show_store() {
     if (!$store) {
         error_page("no such store");
     }
+    $sTempDF = shell_exec('ssh '.$store->ssh_prefix.' df -B1 '.$store->path_prefix.' | tail -1');
+    $aTempDF = preg_split("/\s+/", $sTempDF); // Filesystem | Size | Used | Avail | Use% | Mounted on
+    $capacity = $aTempDF[1];
+    $used = $aTempDF[2];
+    //$sTempDU = shell_exec('ssh '.$store->ssh_prefix.' du -s -B1 '.$store->path_prefix);
+    //$aTempDU = preg_split("/\s+/", $sTempDU); //  Size | directory
+    //$used = $aTempDU[0];
+
     page_head("$store->name");
     table_start();
     //row2("Name", $store->name);
-    row2("Capacity", size_str($store->capacity));
-    row2("Used", size_str($store->used));
+    row2("Capacity", size_str($capacity));
+    row2("Used", size_str($used));
     row2("rsync prefix", $store->rsync_prefix);
     row2("HTTP prefix", $store->http_prefix);
     row2("path prefix", $store->path_prefix);
@@ -252,8 +264,6 @@ function show_store() {
 function edit_store_action() {
     $store = new StdClass;
     $store->name = get_str("name");
-    $store->capacity = get_num("capacity")*GIGA;
-    $store->used = get_num("used")*GIGA;
     $store->rsync_prefix = get_str("rsync_prefix");
     $store->http_prefix = get_str("http_prefix");
     $store->path_prefix = get_str("path_prefix");

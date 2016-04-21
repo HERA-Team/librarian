@@ -2,6 +2,11 @@ import hera_librarian
 import os
 import psutil
 import sys
+import re
+
+
+def file2jd(zenuv):
+    return re.findall(r'\d+\.\d+', zenuv)[0]
 
 
 def get_size(file):
@@ -52,7 +57,7 @@ def bash_command(command):
 
 def uploader(site, files):
     """
-    Upload a list of file to the librarian
+    Upload a list of files to the librarian
 
     Parameters
     ----------
@@ -60,23 +65,28 @@ def uploader(site, files):
         name of librarian site
     files: list
         list of local files to upload
+    root_paths: list
+        list of root_paths for files (root_paths + files should give full paths
+            to files)
     """
-    for file in files:
-        file_size = get_size(file)
-        store, ssh_prefix, path = get_recommendation(site, file_size)
+    for i, full_file in enumerate(files):
+        file_size = get_size(full_file)
+        store, ssh_prefix, store_path = get_recommendation(site, file_size)
 
-        head0, filename = os.path.split(file)
-        head1, jd = os.path.split(head0)
-        lib_file = os.path.join(jd, filename)
+        directory, filename = os.path.split(full_file)
+        jd = file2jd(filename)
 
-        mkdir_cmd = ['ssh', ssh_prefix, 'mkdir', '-p', path + '/' + jd]
+        mkdir_cmd = ['ssh', ssh_prefix, 'mkdir', '-p', store_path + '/' + jd]
 
         scp_cmd = ['scp', '-r', '-c', 'arcfour256', '-o',
                    'UserKnownHostsFile=/dev/null', '-o',
-                   'StrictHostKeyChecking=no', file,
-                   ssh_prefix + ':' + path + '/' + lib_file]
+                   'StrictHostKeyChecking=no', full_file,
+                   ssh_prefix + ':' + store_path + '/' + jd + '/' + filename]
+
         add_obs_cmd = ['ssh', ssh_prefix, 'add_obs_librarian.py', '--site ',
-                       site, '--store', store, path + '/' + lib_file]
+                       site, '--store ', store, '--store_path ',
+                       store_path + '/', jd + '/' + filename]
+
         print ' '.join(add_obs_cmd)
 
         bash_command(mkdir_cmd)

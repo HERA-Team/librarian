@@ -10,8 +10,6 @@ if (gethostname() == "isaac") {
 
     $store_0 = new StdClass;
     $store_0->name = 'Store 0';
-    $store_0->capacity = 1e13;
-    $store_0->used = 0;
     $store_0->rsync_prefix = "boincadm@isaac.ssl.berkeley.edu:hera/store_0";
     $store_0->http_prefix = "http://isaac.ssl.berkeley.edu/test/store_0";
     $store_0->path_prefix = "/mydisks/a/users/boincadm/hera/store_0";
@@ -21,8 +19,6 @@ if (gethostname() == "isaac") {
     // store 1 is remote
     $store_1 = new StdClass;
     $store_1->name = 'Store 1';
-    $store_1->capacity = 1e13;
-    $store_1->used = 0;
     $store_1->rsync_prefix = "davea@clarke.ssl.berkeley.edu:hera";
     $store_1->http_prefix = "";
     $store_1->path_prefix = "hera";
@@ -37,8 +33,6 @@ if (gethostname() == "isaac") {
 
     $store_0 = new StdClass;
     $store_0->name = 'Store 0';
-    $store_0->capacity = 1e13;
-    $store_0->used = 0;
     $store_0->rsync_prefix = "";
     $store_0->http_prefix = "http://isaac.ssl.berkeley.edu:8088/store_0";
     $store_0->path_prefix = "/home/obs/librarian/store_0";
@@ -51,4 +45,3 @@ if (gethostname() == "isaac") {
 $test_source_names = array('RTP', 'Correlator');
 
 ?>
-
