@@ -61,7 +61,7 @@ def obsid_from_filename(filename):
     # get the obsid from the file NAME
     # only do this if we don't have a obsid in the file
     jd = file2jd(filename)
-    return n.floor(Time(float(jd), scale='utc', format='jd').gps)
+    return int(n.floor(Time(float(jd), scale='utc', format='jd').gps))
 
 # check that all files exist
 errors = False

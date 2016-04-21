@@ -86,7 +86,7 @@ class LibrarianClient (object):
 
     def create_observation(self, obsid, start_time_jd,
                            stop_time_jd=None, lst_start_hr=None):
-        return self._do_http_post('create_observation',
+        return self._do_http_post('create_or_update_observation',
             obsid=obsid,
             start_time_jd=start_time_jd,
             stop_time_jd=stop_time_jd,

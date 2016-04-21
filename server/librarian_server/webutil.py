@@ -167,6 +167,65 @@ def json_api (f):
     return decorated_function
 
 
+def _coerce (argtype, name, val):
+    """For now, we do not silently promote any types. If this becomes a pain we
+    can change that.
+
+    """
+    if argtype is int:
+        if not isinstance (val, (int, long)):
+            raise RPCError ('parameter "%s" should be an integer, but got %r', name, val)
+        return val
+
+    if argtype is unicode:
+        if not isinstance (val, unicode):
+            raise RPCError ('parameter "%s" should be text, but got %r', name, val)
+        return val
+
+    if argtype is float:
+        if not isinstance (val, float):
+            raise RPCError ('parameter "%s" should be a float, but got %r', name, val)
+        return val
+
+    if argtype is dict:
+        if not isinstance (val, dict):
+            raise RPCError ('parameter "%s" should be a dictionary, but got %r', name, val)
+        return val
+
+    if argtype is list:
+        if not isinstance (val, dict):
+            raise RPCError ('parameter "%s" should be a list, but got %r', name, val)
+        return val
+
+    raise RPCError ('internal bug: unexpected argument type %s', argtype)
+
+
+def required_arg (args, argtype, name):
+    """Helper for type checking in JSON API functions.
+
+    Might regret this, but we accepts ints and silently promote them to
+    floats.
+
+    """
+    val = args.get (name)
+    if val is None:
+        raise RPCError ('required parameter "%s" not provided', name)
+    return _coerce (argtype, name, val)
+
+
+def optional_arg (args, argtype, name):
+    """Helper for type checking in JSON API functions.
+
+    Might regret this, but we accepts ints and silently promote them to
+    floats.
+
+    """
+    val = args.get (name)
+    if val is None:
+        return None
+    return _coerce (argtype, name, val)
+
+
 # Human user session handling
 
 def login_required (f):
