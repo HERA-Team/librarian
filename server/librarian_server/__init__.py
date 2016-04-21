@@ -9,6 +9,8 @@ probably ways to work around that but things work well enough as is.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import sys
+
 
 def _initialize ():
     import json, os.path
@@ -54,7 +56,7 @@ def commandline (argv):
         print ('note: no "host" set in configuration; server will not be remotely accessible',
                file=sys.stderr)
 
-    app.run (host=post, port=port, debug=debug)
+    app.run (host=host, port=port, debug=debug)
 
 
 def init_database (argv):
