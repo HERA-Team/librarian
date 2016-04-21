@@ -55,3 +55,7 @@ def commandline (argv):
                file=sys.stderr)
 
     app.run (host=post, port=port, debug=debug)
+
+
+def init_database (argv):
+    db.create_all ()
