@@ -144,10 +144,10 @@ class LibrarianClient (object):
         return self._do_http_post ('get_store_list')
 
 
-    def recommended_store(self, file_size):
-        return self._do_http_post ('recommended_store',
-            file_size=file_size
-        )
+    def get_recommended_store(self, file_size):
+        from .store import Store
+        info = self._do_http_post ('recommended_store', file_size=file_size)
+        return Store (info['name'], info['path_prefix'], info['ssh_host'])
 
 
     def create_copy_task (self, task_type, local_store_name, file_name,
@@ -160,3 +160,26 @@ class LibrarianClient (object):
             remote_store_name=remote_store_name,
             delete_when_done=delete_when_done,
         )
+
+
+    def complete_upload(self, store_name, size, md5, obsid, start_jd, dest_store_path, create_time=None):
+        return self._do_http_post ('complete_upload',
+            store_name=store_name,
+            size=size,
+            md5=md5,
+            obsid=obsid,
+            start_jd=start_jd,
+            dest_store_path=dest_store_path,
+            create_time_unix=create_time,
+        )
+
+
+    def upload_file (self, local_path, dest_store_path, create_time=None):
+        from . import utils
+        size = utils.get_size_from_path (local_path)
+        md5 = utils.get_md5_from_path (local_path)
+        obsid = utils.get_obsid_from_path (local_path)
+        start_jd = utils.get_start_jd_from_path (local_path)
+        store = self.get_recommended_store (size)
+        store.stage_file_on_store (local_path)
+        self.complete_upload (store.name, size, md5, obsid, start_jd, dest_store_path, create_time=create_time)

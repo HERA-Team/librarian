@@ -2,7 +2,20 @@
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
 
-"Stores."
+"""Stores.
+
+So this gets a bit complicated. The `hera_librarian package`, which is used by
+both the server and clients, includes a Store class, since Librarian clients
+access stores directly by SSH'ing into them. However, here in the server, we
+also have database records for every store. I *think* it will not make things
+too complicated and crazy to do the multiple inheritance thing we do below, so
+that we get the functionality of the `hera_librarian.store.Store` class while
+also making our `ServerStore` objects use the SQLAlchemy ORM. If this turns
+out to be a dumb idea, we should have the ORM-Store class just be a thin
+wrapper that can easily be turned into a `hera_librarian.store.Store`
+instance.
+
+"""
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
@@ -10,14 +23,18 @@ __all__ = str('''
 Store
 ''').split ()
 
+import os.path
+
 from flask import render_template
+
+from hera_librarian.store import Store as BaseStore
 
 from . import app, db
 from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
-class Store (db.Model):
+class Store (db.Model, BaseStore):
     """A Store is a computer with a disk where we can store data. Several of the
     things we keep track of regarding stores are essentially configuration
     items; but we also keep track of the machine's availability, which is
@@ -34,111 +51,21 @@ class Store (db.Model):
     available = NotNull (db.Boolean)
 
     def __init__ (self, name, path_prefix, ssh_host):
-        self.name = name
-        self.path_prefix = path_prefix
-        self.ssh_host = ssh_host
+        db.Model.__init__ (self)
+        BaseStore.__init__ (self, name, path_prefix, ssh_host)
         self.available = True
 
 
     @classmethod
     def get_by_name (cls, name):
-        """Look up a store by name, or raise an RPCError on failure."""
+        """Look up a store by name, or raise an ServerError on failure."""
 
         stores = list (cls.query.filter (cls.name == name))
         if not len (stores):
-            raise RPCError ('No such store %r', name)
+            raise ServerError ('No such store %r', name)
         if len (stores) > 1:
-            raise RPCError ('Internal error: multiple stores with name %r', name)
+            raise ServerError ('Internal error: multiple stores with name %r', name)
         return stores[0]
-
-
-    def _ssh_slurp (self, command):
-        """SSH to the store host, run a command, and return its standard output. Raise
-        an RPCError with standard error output if anything goes wrong.
-
-        You MUST be careful about quoting! `command` is passed as an argument
-        to 'bash -c', so it goes through one layer of parsing by the shell on
-        the remote host. For instance, filenames containing '>' or ';' or '('
-        or ' ' will cause problems unless you quote them appropriately. We do
-        *not* launch our SSH process through a shell, so only one layer of
-        shell quoting is required -- you'd need two if you were just typing
-        the command in a terminal manually. BUT THEN, you're probably writing
-        your command string as a Python string, so you probably need another
-        layer of Python string literal quoting on top of that!
-
-        """
-        import subprocess
-
-        argv = ['ssh', self.ssh_host, command]
-        proc = subprocess.Popen (argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate ()
-
-        if proc.returncode != 0:
-            raise RPCError ('command "%s" failed: exit code %d; stdout:\n\n%s\n\nstderr:\n\n%s',
-                            ' '.join (argv), proc.returncode, stdout, stderr)
-
-        return stdout
-
-
-    def get_info_for_path (self, storepath):
-        """`storepath` is a path relative to our `path_prefix`. We assume that we are
-        not running on the store host, but can transparently SSH to it.
-
-        """
-        import json
-        text = self._ssh_slurp ("python -c \'import hera_librarian.utils as u; u.print_info_for_path(\"%s/%s\")\'"
-                                % (self.path_prefix, storepath))
-        return json.loads(text)
-
-
-    _cached_space_info = None
-    _space_info_timestamp = None
-
-    def get_space_info (self):
-        """Get information about how much space is available in the store. We have a
-        simpleminded cache since it's nice just to be able to call the
-        function, but SSHing into the store every time is going to be a bit
-        silly.
-
-        """
-        import time
-        now = time.time ()
-
-        # 30 second lifetime:
-        if self._cached_space_info is not None and now - self._space_info_timestamp < 30:
-            return self._cached_space_info
-
-        output = self._ssh_slurp ('df -B1 %s' % self.path_prefix)
-        bits = output.splitlines ()[-1].split ()
-        info = {}
-        info['used'] = int(bits[2]) # measured in bytes
-        info['available'] = int(bits[3]) # measured in bytes
-        info['total'] = info['used'] + info['available']
-
-        self._cached_space_info = info
-        self._space_info_timestamp = now
-
-        return info
-
-    @property
-    def capacity (self):
-        """Returns the total capacity of the store, in bytes.
-
-        Accessing this property may trigger an SSH into the store host!
-
-        """
-        return self.get_space_info ()['total']
-
-    @property
-    def usage_percentage (self):
-        """Returns the amount of the storage capacity that is currently used as a
-        percentage.
-
-        Accessing this property may trigger an SSH into the store host!
-
-        """
-        info = self.get_space_info ()
-        return 100. * info['used'] / (info['total'])
 
 
 # RPC API
@@ -171,6 +98,84 @@ def recommended_store (args, sourcename=None):
     info['path_prefix'] = store.path_prefix
     info['available'] = most_avail # might be helpful?
     return info
+
+
+@app.route ('/api/complete_upload', methods=['GET', 'POST'])
+@json_api
+def complete_upload (args, sourcename=None):
+    """Called after a Librarian client has finished uploading a file instance to
+    one of our Stores. We verify that the upload was successful and move the
+    file into its final destination.
+
+    This function is paired with hera_librarian.store.Store.stage_file_on_store.
+
+    """
+    store_name = required_arg (args, unicode, 'store_name')
+    expected_size = required_arg (args, int, 'size')
+    expected_md5 = required_arg (args, unicode, 'md5')
+    obsid = required_arg (args, int, 'obsid')
+    start_jd = required_arg (args, float, 'start_jd')
+    dest_store_path = required_arg (args, unicode, 'dest_store_path')
+    create_time = optional_arg (args, int, 'create_time_unix')
+
+    if create_time is not None:
+        import datetime
+        create_time = datetime.datetime.fromtimestamp (create_time)
+
+    store = Store.get_by_name (store_name) # ServerError if failure
+    stage_path = 'upload_%s_%s.staging' % (expected_size, expected_md5)
+
+    # Validate the staged file, abusing our argument-parsing helpers to make
+    # sure we got everything from the info call:
+
+    #try:
+    info = store.get_info_for_path (stage_path)
+    #except Exception as e:
+    #    raise ServerError ('cannot complete upload to %s:%s: %s',
+    #                       store_name, dest_store_path, e)
+
+    observed_type = required_arg (info, unicode, 'type')
+    observed_size = required_arg (info, int, 'size')
+    observed_md5 = required_arg (info, unicode, 'md5')
+
+    if observed_size != expected_size:
+        raise ServerError ('cannot complete upload to %s:%s: expected size %d; observed %d',
+                           store_name, dest_store_path, expected_size, observed_size)
+
+    if observed_md5 != expected_md5:
+        raise ServerError ('cannot complete upload to %s:%s: expected MD5 %s; observed %s',
+                           store_name, dest_store_path, expected_md5, observed_md5)
+
+    # Do we already have the intended instance? If so ... just delete the
+    # staged instance and return success, because the intended effect of this
+    # RPC call has already been achieved.
+
+    parent_dirs = os.path.dirname (dest_store_path)
+    name = os.path.basename (dest_store_path)
+
+    from .file import File, FileInstance
+    instance = FileInstance.query.get ((store.id, parent_dirs, name))
+    if instance is not None:
+        store._delete (stage_path)
+        return {}
+
+    # Staged file is OK and we're not redundant. Move it to its new home.
+
+    store._move (stage_path, dest_store_path)
+
+    # Finally, update the database.
+
+    from .observation import Observation
+
+    obs = Observation (obsid, start_jd, None, None)
+    file = File (name, observed_type, obsid, sourcename, observed_size, observed_md5, create_time)
+    inst = FileInstance (store, parent_dirs, name)
+    db.session.merge (obs)
+    db.session.merge (file)
+    db.session.merge (inst)
+    db.session.commit ()
+
+    return {}
 
 
 # Web user interface
