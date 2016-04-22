@@ -48,16 +48,20 @@ def get_obsid_from_path(path):
     We assume that it is a MIRIAD UV dataset.
 
     """
-    uv = a.miriad.UV(path)
-    try:
-        return uv['obsid']
-    except KeyError:
-        pass
+    if os.path.isdir(path):
+        try:
+            uv = a.miriad.UV(path)
+            try:
+                return uv['obsid']
+            except KeyError:
+                pass
+        except RuntimeError:
+            pass # this happens if this file is not actually a UV dataset
 
-    # If we're still here, the file is an older one that doesn't have its
-    # obsid embedded. In that case, we reconstruct it from the JD in the path.
-    # TODO: I don't think we're embedding obsids yet, so this is the code path
-    # that's always taken! (PKGW, 2016/04/21).
+    # If we're still here, the file is not a UV data set, or is an older one
+    # that doesn't have its obsid embedded. In that case, we reconstruct it
+    # from the JD in the path. TODO: I don't think we're embedding obsids yet,
+    # so this is the code path that's always taken! (PKGW, 2016/04/21).
 
     from astropy.time import Time
     jd = get_start_jd_from_path(path)
@@ -168,10 +172,18 @@ def print_info_for_path(path):
     import json, sys
 
     info = {}
-    info['start_jd'] = get_start_jd_from_path(path)
     info['type'] = get_type_from_path(path)
-    info['obsid'] = get_obsid_from_path(path)
     info['md5'] = get_md5_from_path(path)
     info['size'] = get_size_from_path(path)
+
+    try:
+        info['start_jd'] = get_start_jd_from_path(path)
+    except IndexError:
+        pass # this happens if the path does not have a JD-looking element in it
+
+    try:
+        info['obsid'] = get_obsid_from_path(path)
+    except IndexError:
+        pass # this happens if the path does not have a JD-looking element in it
 
     json.dump (info, sys.stdout)
