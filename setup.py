@@ -10,6 +10,7 @@ setup_args = {
     'scripts': [
         'scripts/add_obs_librarian.py',
         'scripts/upload_to_librarian.py',
+        'scripts/launch_librarian_copy.py',
     ],
     'version': __version__
 }

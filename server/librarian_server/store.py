@@ -262,36 +262,37 @@ def register_instance (args, sourcename=None):
 @app.route ('/api/launch_file_copy', methods=['GET', 'POST'])
 @json_api
 def launch_file_copy (args, sourcename=None):
-    """Launch a copy from a local store to a remote store.
+    """Launch a copy of a file to a remote store.
+
+    Note that we only take the file name as an input -- we use our DB to see
+    if there are any instances of it available locally.
 
     """
-    local_store_name = required_arg (args, unicode, 'local_store_name')
-    local_store_path = required_arg (args, unicode, 'local_store_path')
+    file_name = required_arg (args, unicode, 'file_name')
     connection_name = required_arg (args, unicode, 'connection_name')
     remote_store_path = optional_arg (args, unicode, 'remote_store_path')
 
-    store = Store.get_by_name (local_store_name) # ServerError if failure
+    # Find a local instance of the file
 
-    from .file import File
-    name = os.path.basename (local_store_path)
-    file = File.query.get (name)
-    if file is None:
-        raise ServerError ('cannot upload %s:%s: cannot look up File database record',
-                           local_store_name, local_store_path)
+    from .file import FileInstance
+    inst = FileInstance.query.filter (FileInstance.name == file_name).first ()
+    if inst is None:
+        raise ServerError ('cannot upload %s: no local file instances with that name', file_name)
 
-    # Note that we do not bother to verify if the associated FileInstance
-    # exists. Either the following function call will fail, or it won't.
+    store = inst.store_object
+    file = inst.file
+
+    # And launch away
 
     try:
-        store.upload_file_to_other_librarian (connection_name, local_store_path,
+        store.upload_file_to_other_librarian (connection_name, inst.store_path,
                                               remote_store_path=remote_store_path,
                                               type=file.type,
                                               obsid=file.obsid,
                                               start_jd=file.observation.start_time_jd,
                                               create_time=file.create_time_unix)
     except Exception as e:
-        raise ServerError ('launch of copy of %s:%s failed: %s',
-                           local_store_name, local_store_path, e)
+        raise ServerError ('launch of copy of %s failed: %s', file_name, e)
 
     return {}
 

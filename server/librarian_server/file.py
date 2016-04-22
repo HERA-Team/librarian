@@ -75,13 +75,22 @@ class FileInstance (db.Model):
         self.name = name
 
     @property
-    def store_name (self):
+    def store_object (self):
         from .store import Store
-        return Store.query.get (self.store).name
+        return Store.query.get (self.store)
+
+    @property
+    def store_name (self):
+        return self.store_object.name
 
     @property
     def file (self):
         return File.query.get (self.name)
+
+    @property
+    def store_path (self):
+        import os.path
+        return os.path.join (self.parent_dirs, self.name)
 
 
 # RPC endpoints -- none
