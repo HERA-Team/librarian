@@ -15,7 +15,7 @@ from flask import flash, redirect, render_template, url_for
 
 from . import app, db
 from .dbutil import NotNull
-from .webutil import RPCError, json_api, login_required, optional_arg, required_arg
+from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 from .observation import Observation
 from .store import Store
 
@@ -87,17 +87,17 @@ def create_or_update_file (args, sourcename=None):
     md5 = required_arg (args, unicode, 'md5')
 
     if len (name) < 1 or len (name) > 256:
-        raise RPCError ('ill-formed/overlong file name %r', name)
+        raise ServerError ('ill-formed/overlong file name %r', name)
     if '/' in name:
-        raise RPCError ('File names must not contain "/" characters; got %r', name)
+        raise ServerError ('File names must not contain "/" characters; got %r', name)
     if len (type) < 1 or len (type) > 32:
-        raise RPCError ('ill-formed file type %r for %r', type, name)
+        raise ServerError ('ill-formed file type %r for %r', type, name)
     if size < 0:
-        raise RPCError ('File sizes must be nonnegative; got %r for %r', size, name)
+        raise ServerError ('File sizes must be nonnegative; got %r for %r', size, name)
 
     md5 = md5.lower ()
     if len (md5) != 32 or _md5_re.match (md5) is None:
-        raise RPCError ('Ill-formatted MD5 sum %r for file %r', md5, name)
+        raise ServerError ('Ill-formatted MD5 sum %r for file %r', md5, name)
 
     if create_time is not None:
         import datetime
@@ -127,9 +127,9 @@ def create_or_update_file_instance (args, sourcename=None):
     storepath = required_arg (args, unicode, 'storepath')
 
     if os.path.isabs (storepath):
-        raise RPCError ('illegal store path %r: may not be absolute', storepath)
+        raise ServerError ('illegal store path %r: may not be absolute', storepath)
 
-    store = Store.get_by_name (storename) # will raise RPCError on failure
+    store = Store.get_by_name (storename) # will raise ServerError on failure
     parent_dirs = os.path.dirname (storepath)
     file_base = os.path.basename (storepath)
 

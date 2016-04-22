@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 __all__ = str('''
 AuthFailedError
-RPCError
+ServerError
 json_api
 login_required
 login
@@ -52,7 +52,7 @@ def _check_authentication (auth):
 
 # The RPC (Remote Procedure Call) interface
 
-class RPCErrorBase (Exception):
+class ServerErrorBase (Exception):
     def __init__ (self, status, fmt, args):
         self.status = status
 
@@ -62,14 +62,14 @@ class RPCErrorBase (Exception):
             self.message = str (fmt)
 
 
-class RPCError (RPCErrorBase):
+class ServerError (ServerErrorBase):
     """Raise this when an error is encountered in an API call. An error message
     will be returned, and the HTTP request will return error 400, which is
     usually what you want.
 
     """
     def __init__ (self, fmt, *args):
-        super (RPCError, self).__init__ (400, fmt, args)
+        super (ServerError, self).__init__ (400, fmt, args)
 
 
 def _json_inner (f, **kwargs):
@@ -80,31 +80,31 @@ def _json_inner (f, **kwargs):
 
     reqtext = reqdata.get ('request')
     if reqtext is None:
-        raise RPCError ('no request payload provided')
+        raise ServerError ('no request payload provided')
 
     try:
         payload = json.loads (reqtext)
     except Exception as e:
-        raise RPCError ('couldn\'t parse request payload: %s', e)
+        raise ServerError ('couldn\'t parse request payload: %s', e)
 
     if not isinstance (payload, dict):
-        raise RPCError ('request payload is %s, not dictionary',
-                        payload.__class__.__name__)
+        raise ServerError ('request payload is %s, not dictionary',
+                           payload.__class__.__name__)
 
     auth = payload.pop ('authenticator', None)
     if auth is None:
-        raise RPCError ('no authentication provided')
+        raise ServerError ('no authentication provided')
 
     try:
         sourcename = _check_authentication (auth)
     except AuthFailedError:
-        raise RPCError ('authentication failed')
+        raise ServerError ('authentication failed')
 
     result = f (payload, sourcename=sourcename, **kwargs)
 
     if not isinstance (result, dict):
-        raise RPCError ('internal error: response is %s, not a dictionary',
-                        result.__class__.__name__)
+        raise ServerError ('internal error: response is %s, not a dictionary',
+                           result.__class__.__name__)
 
     if 'success' not in result:
         result['success'] = True # optimism!
@@ -138,7 +138,7 @@ def json_api (f):
         try:
             result = _json_inner (f, **kwargs)
             status = 200
-        except RPCErrorBase as e:
+        except ServerErrorBase as e:
             result = {
                 'success': False,
                 'message': e.message,
@@ -174,30 +174,30 @@ def _coerce (argtype, name, val):
     """
     if argtype is int:
         if not isinstance (val, (int, long)):
-            raise RPCError ('parameter "%s" should be an integer, but got %r', name, val)
+            raise ServerError ('parameter "%s" should be an integer, but got %r', name, val)
         return val
 
     if argtype is unicode:
         if not isinstance (val, unicode):
-            raise RPCError ('parameter "%s" should be text, but got %r', name, val)
+            raise ServerError ('parameter "%s" should be text, but got %r', name, val)
         return val
 
     if argtype is float:
         if not isinstance (val, float):
-            raise RPCError ('parameter "%s" should be a float, but got %r', name, val)
+            raise ServerError ('parameter "%s" should be a float, but got %r', name, val)
         return val
 
     if argtype is dict:
         if not isinstance (val, dict):
-            raise RPCError ('parameter "%s" should be a dictionary, but got %r', name, val)
+            raise ServerError ('parameter "%s" should be a dictionary, but got %r', name, val)
         return val
 
     if argtype is list:
         if not isinstance (val, dict):
-            raise RPCError ('parameter "%s" should be a list, but got %r', name, val)
+            raise ServerError ('parameter "%s" should be a list, but got %r', name, val)
         return val
 
-    raise RPCError ('internal bug: unexpected argument type %s', argtype)
+    raise ServerError ('internal bug: unexpected argument type %s', argtype)
 
 
 def required_arg (args, argtype, name):
@@ -209,7 +209,7 @@ def required_arg (args, argtype, name):
     """
     val = args.get (name)
     if val is None:
-        raise RPCError ('required parameter "%s" not provided', name)
+        raise ServerError ('required parameter "%s" not provided', name)
     return _coerce (argtype, name, val)
 
 

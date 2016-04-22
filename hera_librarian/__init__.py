@@ -2,11 +2,13 @@
 # Copyright 2016 the HERA Team.
 # Licensed under the BSD License.
 
-import json, os, urllib
+from __future__ import absolute_import, division, print_function
+
+import json, os.path, urllib
 
 __all__ = str ('''
 NoSuchSiteError
-RPCFailedError
+RPCError
 LibrarianClient
 ''').split ()
 
@@ -25,9 +27,9 @@ def get_client_config():
     return json.loads(s)
 
 
-class RPCFailedError (Exception):
+class RPCError (Exception):
     def __init__ (self, req, message):
-        super (RPCFailedError, self).__init__ ("RPC call %r failed: %s" % (req, message))
+        super (RPCError, self).__init__ ("RPC call %r failed: %s" % (req, message))
         self.req = req
         self.message = message
 
@@ -78,11 +80,11 @@ class LibrarianClient (object):
         try:
             reply_json = json.loads(reply)
         except ValueError:
-            raise RPCFailedError (kwargs, 'failed to parse reply as JSON: ' + repr(reply))
+            raise RPCError (kwargs, 'failed to parse reply as JSON: ' + repr(reply))
 
         if not reply_json.get ('success', False):
-            raise RPCFailedError (kwargs,
-                                  reply_json.get ('message', '<no error message provided>'))
+            raise RPCError (kwargs,
+                            reply_json.get ('message', '<no error message provided>'))
 
         return reply_json
 

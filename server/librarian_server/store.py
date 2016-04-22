@@ -14,7 +14,7 @@ from flask import render_template
 
 from . import app, db
 from .dbutil import NotNull
-from .webutil import RPCError, json_api, login_required, optional_arg, required_arg
+from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
 class Store (db.Model):
@@ -148,7 +148,7 @@ class Store (db.Model):
 def recommended_store (args, sourcename=None):
     file_size = required_arg (args, int, 'file_size')
     if file_size < 0:
-        raise RPCError ('"file_size" must be nonnegative')
+        raise ServerError ('"file_size" must be nonnegative')
 
     # We are simpleminded and just choose the store with the most available
     # space.
@@ -163,7 +163,7 @@ def recommended_store (args, sourcename=None):
             most_avail_store = store
 
     if most_avail < file_size or most_avail_store is None:
-        raise RPCError ('unable to find a store able to hold %d bytes', file_size)
+        raise ServerError ('unable to find a store able to hold %d bytes', file_size)
 
     info = {}
     info['name'] = store.name
@@ -191,7 +191,7 @@ def stores ():
 def specific_store (name):
     try:
         store = Store.get_by_name (name)
-    except RPCError as e:
+    except ServerError as e:
         flash (str (e))
         return redirect (url_for ('stores'))
 

@@ -83,7 +83,7 @@ for i, filename in enumerate(files):
 
     try:
         client.create_file_instance(opts.store, full_filename[len(opts.store_path):])
-    except hera_librarian.RPCFailedError as e:
+    except hera_librarian.RPCError as e:
         print >>sys.stderr, 'failed to create instance record %s: %s' % (filename, e)
 
 print "done"

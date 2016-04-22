@@ -14,7 +14,7 @@ from flask import flash, redirect, render_template, url_for
 
 from . import app, db
 from .dbutil import NotNull
-from .webutil import RPCError, json_api, login_required, optional_arg, required_arg
+from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
 class Observation (db.Model):
