@@ -34,6 +34,37 @@ def _initialize ():
 app, db = _initialize ()
 
 
+# Asynchronous worker threads. Currently only used for background copies. It
+# is tricky to engineer these threads to work correctly in all cases (sudden
+# server shutdown, etc.) so avoid them if possible.
+
+_worker_pool = None
+
+def launch_thread (func, *args, **kwargs):
+    """apply_async() returns a result object that we could consult later, but
+    we're a web service so there's no real way to go back and check in on what
+    happened.
+
+    """
+    global _worker_pool
+
+    if _worker_pool is None:
+        from multiprocessing.pool import ThreadPool
+        _worker_pool = ThreadPool (app.config.get ('n_worker_threads', 8))
+
+    _worker_pool.apply_async (func, args, kwargs)
+
+
+def maybe_wait_for_threads_to_finish ():
+    if _worker_pool is None:
+        return
+
+    print ('Waiting for background jobs to complete ...')
+    _worker_pool.close ()
+    _worker_pool.join ()
+    print ('   ... done.')
+
+
 # We have to manually import the modules that implement services. It's not
 # crazy to worry about circular dependency issues, but everything will be all
 # right.
@@ -57,6 +88,7 @@ def commandline (argv):
                file=sys.stderr)
 
     app.run (host=host, port=port, debug=debug)
+    maybe_wait_for_threads_to_finish ()
 
 
 def init_database (argv):
