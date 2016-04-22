@@ -1,8 +1,0 @@
-{
-    "db_host": "localhost",
-    "db_user": "",
-    "db_name": "hera_lib",
-    "db_passwd": "",
-    "max_transfers": 10,
-    "title": "UC Berkeley"
-}
