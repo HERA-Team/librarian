@@ -259,6 +259,43 @@ def register_instance (args, sourcename=None):
     return {}
 
 
+@app.route ('/api/launch_file_copy', methods=['GET', 'POST'])
+@json_api
+def launch_file_copy (args, sourcename=None):
+    """Launch a copy from a local store to a remote store.
+
+    """
+    local_store_name = required_arg (args, unicode, 'local_store_name')
+    local_store_path = required_arg (args, unicode, 'local_store_path')
+    connection_name = required_arg (args, unicode, 'connection_name')
+    remote_store_path = optional_arg (args, unicode, 'remote_store_path')
+
+    store = Store.get_by_name (local_store_name) # ServerError if failure
+
+    from .file import File
+    name = os.path.basename (local_store_path)
+    file = File.query.get (name)
+    if file is None:
+        raise ServerError ('cannot upload %s:%s: cannot look up File database record',
+                           local_store_name, local_store_path)
+
+    # Note that we do not bother to verify if the associated FileInstance
+    # exists. Either the following function call will fail, or it won't.
+
+    try:
+        store.upload_file_to_other_librarian (connection_name, local_store_path,
+                                              remote_store_path=remote_store_path,
+                                              type=file.type,
+                                              obsid=file.obsid,
+                                              start_jd=file.observation.start_time_jd,
+                                              create_time=file.create_time_unix)
+    except Exception as e:
+        raise ServerError ('launch of copy of %s:%s failed: %s',
+                           local_store_name, local_store_path, e)
+
+    return {}
+
+
 # Web user interface
 
 @app.route ('/stores')

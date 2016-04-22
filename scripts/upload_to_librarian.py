@@ -23,7 +23,7 @@ o.set_usage('upload_to_librarian.py <connection-name> <path/to/local/file> <dest
 o.set_description(__doc__)
 o.add_option('--type', type=str,
              help='The "file type" that will be registered with the Librarian.')
-o.add_option('--obsid', type=float,
+o.add_option('--obsid', type=int,
              help='The file\'s associated observation ID that will be registered with the Librarian.')
 o.add_option('--start-jd', type=float,
              help='The file\'s associated start Julian Date that may be registered with the Librarian.')
@@ -55,6 +55,6 @@ client = hera_librarian.LibrarianClient (conn_name)
 
 try:
     client.upload_file (local_path, dest_store_path, type=opts.type, start_jd=opts.start_jd,
-                        obsid=opts.obsid, create_time=ops.create_time)
+                        obsid=opts.obsid, create_time=opts.create_time)
 except hera_librarian.RPCError as e:
     die ('upload failed: %s', e)

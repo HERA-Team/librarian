@@ -195,3 +195,36 @@ class Store (object):
         """
         info = self.get_space_info ()
         return 100. * info['used'] / (info['total'])
+
+
+    def upload_file_to_other_librarian (self, conn_name, local_store_path,
+                                        remote_store_path=None, type=None,
+                                        obsid=None, start_jd=None,
+                                        create_time=None):
+        """Fire off an SCP process on the store that will upload a given file to a
+        different Librarian.
+
+        TODO: we have no way of finding out if the copy succeeds or fails! The
+        script should optionally report its outcome to the local Librarian.
+
+        """
+        if remote_store_path is None:
+            remote_store_path = local_store_path
+
+        command = 'nohup upload_to_librarian.py'
+
+        if type is not None:
+            command += ' --type %s' % type
+
+        if obsid is not None:
+            command += ' --obsid %s' % obsid
+
+        if start_jd is not None:
+            command += ' --start-jd %.20f' % start_jd
+
+        if create_time is not None:
+            command += ' --create-time %d' % create_time
+
+        command += ' %s %s %s </dev/null >/tmp/COPYCOMMAND 2>&1 &' % (
+            conn_name, self._path(local_store_path), remote_store_path)
+        self._ssh_slurp (command)

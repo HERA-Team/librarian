@@ -33,7 +33,7 @@ class File (db.Model):
 
     def __init__ (self, name, type, obsid, source, size, md5, create_time=None):
         if create_time is None:
-            create_time = datetime.datetime.now ()
+            create_time = datetime.datetime.utcnow ()
 
         if '/' in name:
             raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
@@ -45,6 +45,18 @@ class File (db.Model):
         self.source = source
         self.size = size
         self.md5 = md5
+
+
+    @property
+    def create_time_unix (self):
+        import calendar
+        return calendar.timegm (self.create_time.timetuple ())
+
+
+    @property
+    def observation (self):
+        from .observation import Observation
+        return Observation.query.get (self.obsid)
 
 
 class FileInstance (db.Model):

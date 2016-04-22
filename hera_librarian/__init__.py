@@ -172,3 +172,12 @@ class LibrarianClient (object):
             start_jd=start_jd,
             create_time_unix=create_time,
         )
+
+
+    def launch_file_copy(self, local_store_name, local_store_path, connection_name, remote_store_path=None):
+        return self._do_http_post ('launch_file_copy',
+            local_store_name=local_store_name,
+            local_store_path=local_store_path,
+            connection_name=connection_name,
+            remote_store_path=remote_store_path,
+        )
