@@ -8,8 +8,12 @@
 Upload a file to a Librarian. This script is a bit clunky when used manually,
 but is invoked by other Librarians when copying files.
 
-"""
+Do NOT use this script if the file that you wish to upload is known to the
+local Librarian. In that case, use the "librarian_launch_copy.py" script -- it
+will make sure to preserve the associated metadata correctly. Under the hood,
+"librarian_launch_copy.py" ends up invoking this script.
 
+"""
 from __future__ import absolute_import, division, print_function
 
 import optparse, sys
@@ -48,6 +52,7 @@ if len (args) != 3:
     die ('expect exactly three non-option arguments')
 
 conn_name, local_path, dest_store_path = args
+
 
 # Let's do it.
 
