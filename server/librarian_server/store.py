@@ -91,6 +91,56 @@ class Store (db.Model):
         return json.loads(text)
 
 
+    _cached_space_info = None
+    _space_info_timestamp = None
+
+    def get_space_info (self):
+        """Get information about how much space is available in the store. We have a
+        simpleminded cache since it's nice just to be able to call the
+        function, but SSHing into the store every time is going to be a bit
+        silly.
+
+        """
+        import time
+        now = time.time ()
+
+        # 30 second lifetime:
+        if self._cached_space_info is not None and now - self._space_info_timestamp < 30:
+            return self._cached_space_info
+
+        output = self._ssh_slurp ('df -B1 %s' % self.path_prefix)
+        bits = output.splitlines ()[-1].split ()
+        info = {}
+        info['used'] = int(bits[2]) # measured in bytes
+        info['available'] = int(bits[3]) # measured in bytes
+        info['total'] = info['used'] + info['available']
+
+        self._cached_space_info = info
+        self._space_info_timestamp = now
+
+        return info
+
+    @property
+    def capacity (self):
+        """Returns the total capacity of the store, in bytes.
+
+        Accessing this property may trigger an SSH into the store host!
+
+        """
+        return self.get_space_info ()['total']
+
+    @property
+    def usage_percentage (self):
+        """Returns the amount of the storage capacity that is currently used as a
+        percentage.
+
+        Accessing this property may trigger an SSH into the store host!
+
+        """
+        info = self.get_space_info ()
+        return 100. * info['used'] / (info['total'])
+
+
 # RPC API
 
 @app.route ('/api/recommended_store', methods=['GET', 'POST'])

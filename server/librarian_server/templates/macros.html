@@ -1,3 +1,10 @@
+{% macro progress_bar(percentage) -%}
+<div class="progress">
+   <div class="progress-bar" role="progressbar" aria-valuenow="{{percentage}}"
+        aria-valuemin="0" aria-valuemax="100" style="width:{{percentage}}%">{{percentage|round(0)}}%</div>
+</div>
+{% endmacro %}
+
 {% macro file_listing(files) -%}
 <div class="table-responsive">
   <table class="table table-striped">
@@ -36,6 +43,8 @@
 	<th>SSH Host</th>
 	<th>Path Prefix</th>
 	<th>HTTP Prefix</th>
+	<th>Capacity</th>
+	<th>Usage</th>
 	<th>Available?</th>
       </tr>
     </thead>
@@ -52,6 +61,8 @@
 	    —
 	  {% endif %}
 	</td>
+	<td>{{s.capacity|filesizeformat}}</td>
+	<td>{{progress_bar(s.usage_percentage)}}</td>
 	<td>
 	  {% if s.available %}
 	  <span class="bg-success">yes</span>
