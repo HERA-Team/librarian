@@ -146,6 +146,12 @@ def json_api (f):
             status = e.status
         except Exception as e:
             app.log_exception (sys.exc_info ())
+
+            # I'm not sure what log_exception() does, but it doesn't seem to
+            # print a traceback to stderr, which is helpful.
+            import traceback
+            traceback.print_exc (file=sys.stderr)
+
             result = {
                 'success': False,
                 'message': 'internal exception: %s (details logged by server)' % e,
