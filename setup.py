@@ -1,5 +1,4 @@
 from distutils.core import setup
-import glob
 
 __version__ = '0.1'
 
@@ -10,7 +9,7 @@ setup_args = {
     'packages': ['hera_librarian'],
     'scripts': [
         'scripts/add_obs_librarian.py',
-        # TODO: port others from PHP
+        'scripts/upload_to_librarian.py',
     ],
     'version': __version__
 }
