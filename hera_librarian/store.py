@@ -128,7 +128,16 @@ class Store (object):
         from . import utils
         size = utils.get_size_from_path (local_path)
         md5 = utils.get_md5_from_path (local_path)
-        self._copy_to_store (local_path, 'upload_%s_%s.staging' % (size, md5))
+        staging_path = 'upload_%s_%s.staging' % (size, md5)
+
+        # If we're trying to copy a directory, a previous failure will result
+        # in a directory lying around that our copy will then land *inside*
+        # that directory, causing the copy to fail with a bad MD5 and size.
+        # This is of course racy, but attempt to protect against that by
+        # preemptively blowing away the destination.
+        self._delete (staging_path)
+
+        self._copy_to_store (local_path, staging_path)
 
 
     # Interrogations of the store -- these don't change anything so they don't
