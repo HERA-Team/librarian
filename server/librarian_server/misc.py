@@ -7,7 +7,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from flask import flash, redirect, render_template, url_for
 
 from . import app, db
-from .webutil import RPCError, json_api, login_required
+from .webutil import ServerError, json_api, login_required
 
 
 @app.route ('/api/ping', methods=['GET', 'POST'])
