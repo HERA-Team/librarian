@@ -147,11 +147,30 @@ class Store (db.Model):
 @json_api
 def recommended_store (args, sourcename=None):
     file_size = required_arg (args, int, 'file_size')
-    if not file_size >= 0:
+    if file_size < 0:
         raise RPCError ('"file_size" must be nonnegative')
 
-    raise RPCError ('not yet implemented')
-    return {}
+    # We are simpleminded and just choose the store with the most available
+    # space.
+
+    most_avail = -1
+    most_avail_store = None
+
+    for store in Store.query.filter (Store.available):
+        avail = store.get_space_info ()['available']
+        if avail > most_avail:
+            most_avail = avail
+            most_avail_store = store
+
+    if most_avail < file_size or most_avail_store is None:
+        raise RPCError ('unable to find a store able to hold %d bytes', file_size)
+
+    info = {}
+    info['name'] = store.name
+    info['ssh_host'] = store.ssh_host
+    info['path_prefix'] = store.path_prefix
+    info['available'] = most_avail # might be helpful?
+    return info
 
 
 # Web user interface
