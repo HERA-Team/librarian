@@ -17,7 +17,8 @@ def _initialize ():
     from flask import Flask
     from flask_sqlalchemy import SQLAlchemy
 
-    with open ('server-config.json') as f:
+    config_path = os.environ.get ('LIBRARIAN_CONFIG_PATH', 'server-config.json')
+    with open (config_path) as f:
         config = json.load (f)
 
     if 'SECRET_KEY' not in config:
@@ -87,9 +88,29 @@ def commandline (argv):
         print ('note: no "host" set in configuration; server will not be remotely accessible',
                file=sys.stderr)
 
+    initdb = app.config.get ('initialize-database', False)
+    if initdb:
+        init_database ()
+
     app.run (host=host, port=port, debug=debug)
     maybe_wait_for_threads_to_finish ()
 
 
-def init_database (argv):
+def init_database ():
+    """NB: make sure this code doesn't blow up if invoked on an
+    already-initialized database.
+
+    """
     db.create_all ()
+
+    from .store import Store
+
+    for name, cfg in app.config.get ('add-stores', {}).iteritems ():
+        prev = Store.query.filter (Store.name == name).first ()
+        if prev is None:
+            store = Store (name, cfg['path_prefix'], cfg['ssh_host'])
+            store.http_prefix = cfg.get ('http_prefix')
+            store.available = cfg.get ('available', True)
+            db.session.add (store)
+
+    db.session.commit ()

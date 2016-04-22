@@ -17,4 +17,5 @@ from . import db
 # Right now this module does almost nothing. Maybe that will change in the
 # future?
 
-NotNull = lambda kind: db.Column (kind, nullable=False)
+def NotNull (kind, **kwargs):
+    return db.Column (kind, nullable=False, **kwargs)
