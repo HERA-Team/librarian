@@ -45,6 +45,9 @@ class LibrarianClient (object):
         target Librarian. Otherwise, the file `~/.hl_client.cfg` will be used
         to look up a dict containing the same information.
 
+        A minimal `site_config` dict should contain keys "authenticator" and
+        "url", which are used to contact the Librarian's RPC API.
+
         """
         self.site_name = site_name
 
