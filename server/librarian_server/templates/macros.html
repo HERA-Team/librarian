@@ -64,10 +64,13 @@
 	<td>{{s.capacity|filesizeformat}}</td>
 	<td>{{progress_bar(s.usage_percentage)}}</td>
 	<td>
+	  <!-- Note: below, "yes" and "no" are surrounded by special
+	       non-breaking space characters to pad out the boxes a little
+	       bit. For some reason &nbsp; is not parsed. -->
 	  {% if s.available %}
-	  <span class="bg-success">yes</span>
+	  <span class="bg-success"> yes </span>
 	  {% else %}
-	  <span class="bg-danger">no</span>
+	  <span class="bg-danger"> no </span>
 	  {% endif %}
 	</td>
       </tr>
