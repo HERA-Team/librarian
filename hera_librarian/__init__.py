@@ -89,34 +89,6 @@ class LibrarianClient (object):
         return reply_json
 
 
-    def create_observation(self, obsid, start_time_jd,
-                           stop_time_jd=None, lst_start_hr=None):
-        return self._do_http_post('create_or_update_observation',
-            obsid=obsid,
-            start_time_jd=start_time_jd,
-            stop_time_jd=stop_time_jd,
-            lst_start_hr=lst_start_hr,
-        )
-
-
-    def create_file(self, name, type, obsid, size, md5, create_time=None):
-        return self._do_http_post ('create_or_update_file',
-            name=name,
-            type=type,
-            obsid=obsid,
-            size=size,
-            md5=md5,
-            create_time=create_time,
-        )
-
-
-    def create_file_instance(self, storename, storepath):
-        return self._do_http_post ('create_or_update_file_instance',
-            storename=storename,
-            storepath=storepath,
-        )
-
-
     def list_files_without_history_item (self, source, hist_type):
         return self._do_http_post ('list_files_without_history_item',
             source=source,
@@ -140,26 +112,10 @@ class LibrarianClient (object):
         )
 
 
-    def get_store_list(self):
-        return self._do_http_post ('get_store_list')
-
-
     def get_recommended_store(self, file_size):
         from .store import Store
         info = self._do_http_post ('recommended_store', file_size=file_size)
         return Store (info['name'], info['path_prefix'], info['ssh_host'])
-
-
-    def create_copy_task (self, task_type, local_store_name, file_name,
-                          remote_site_name, remote_store_name, delete_when_done):
-        return self._do_http_post ('create_copy_task',
-            task_type=task_type,
-            local_store_name=local_store_name,
-            file_name=file_name,
-            remote_site_name=remote_site_name,
-            remote_store_name=remote_store_name,
-            delete_when_done=delete_when_done,
-        )
 
 
     def complete_upload(self, store_name, size, md5, type, obsid, start_jd, dest_store_path, create_time=None):
