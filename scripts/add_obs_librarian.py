@@ -72,17 +72,11 @@ client = hera_librarian.LibrarianClient(opts.site)
 
 for i, filename in enumerate(files):
     full_filename = full_filepaths[i]
-
-    start_jd = utils.get_start_jd_from_path (full_filename)
-    type = utils.get_type_from_path (full_filename)
-    obsid = utils.get_obsid_from_path (full_filename)
-    size = utils.get_size_from_path (full_filename)
-    md5 = utils.get_md5_from_path (full_filename)
-
-    print start_jd, obsid
+    store_path = full_filename[len(opts.store_path):]
+    print store_path
 
     try:
-        client.create_file_instance(opts.store, full_filename[len(opts.store_path):])
+        client.register_instance(opts.store, store_path)
     except hera_librarian.RPCError as e:
         print >>sys.stderr, 'failed to create instance record %s: %s' % (filename, e)
 

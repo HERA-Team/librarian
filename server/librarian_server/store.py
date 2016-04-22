@@ -177,6 +177,88 @@ def complete_upload (args, sourcename=None):
     return {}
 
 
+@app.route ('/api/register_instance', methods=['GET', 'POST'])
+@json_api
+def register_instance (args, sourcename=None):
+    """This is similar to `complete_upload`, but should be called when a file has
+    magically appeared on a store rather than being "uploaded" from some
+    external source. There is no consistency checking and no staging. We will
+    attempt to infer the file's key properties if they are not provided.
+
+    If you are SCP'ing a file to a store, you should be using the
+    `complete_upload` call, likely via the
+    `hera_librarian.LibrarianClient.upload_file` routine, rather than this
+    function.
+
+    """
+    store_name = required_arg (args, unicode, 'store_name')
+    store_path = required_arg (args, unicode, 'store_path')
+    type = optional_arg (args, unicode, 'type')
+    obsid = optional_arg (args, int, 'obsid')
+    start_jd = optional_arg (args, float, 'start_jd')
+    create_time = optional_arg (args, int, 'create_time_unix')
+
+    if create_time is not None:
+        import datetime
+        create_time = datetime.datetime.fromtimestamp (create_time)
+
+    store = Store.get_by_name (store_name) # ServerError if failure
+
+    # Do we already have the intended instance? If so ... just return success,
+    # because the intended effect of this RPC call has already been achieved.
+
+    parent_dirs = os.path.dirname (store_path)
+    name = os.path.basename (store_path)
+
+    from .file import File, FileInstance
+    instance = FileInstance.query.get ((store.id, parent_dirs, name))
+    if instance is not None:
+        return {}
+
+    # Collect the necessary info, with ground-truth "size" and "md5"
+    # measurements.
+
+    try:
+        info = store.get_info_for_path (store_path)
+    except Exception as e:
+        raise ServerError ('cannot register %s:%s: %s', store_name, store_path, e)
+
+    size = required_arg (info, int, 'size')
+    md5 = required_arg (info, unicode, 'md5')
+
+    if type is None:
+        if 'type' not in info:
+            raise ServerError ('cannot register %s:%s: need to, but cannot, infer "type"',
+                               store_name, store_path)
+        type = required_arg (info, unicode, 'type')
+
+    if obsid is None:
+        if 'obsid' not in info:
+            raise ServerError ('cannot register %s:%s: need to, but cannot, infer "obsid"',
+                               store_name, store_path)
+        obsid = required_arg (info, int, 'obsid')
+
+    if start_jd is None:
+        if 'start_jd' not in info:
+            raise ServerError ('cannot register %s:%s: need to, but cannot, infer "start_jd"',
+                               store_name, store_path)
+        start_jd = required_arg (info, float, 'start_jd')
+
+    # We can now update the database.
+
+    from .observation import Observation
+
+    obs = Observation (obsid, start_jd, None, None)
+    file = File (name, type, obsid, sourcename, size, md5, create_time)
+    inst = FileInstance (store, parent_dirs, name)
+    db.session.merge (obs)
+    db.session.merge (file)
+    db.session.merge (inst)
+    db.session.commit ()
+
+    return {}
+
+
 # Web user interface
 
 @app.route ('/stores')
