@@ -40,6 +40,57 @@ class Store (db.Model):
         self.available = True
 
 
+    @classmethod
+    def get_by_name (cls, name):
+        """Look up a store by name, or raise an RPCError on failure."""
+
+        stores = list (cls.query.filter (cls.name == name))
+        if not len (stores):
+            raise RPCError ('No such store %r', name)
+        if len (stores) > 1:
+            raise RPCError ('Internal error: multiple stores with name %r', name)
+        return stores[0]
+
+
+    def _ssh_slurp (self, command):
+        """SSH to the store host, run a command, and return its standard output. Raise
+        an RPCError with standard error output if anything goes wrong.
+
+        You MUST be careful about quoting! `command` is passed as an argument
+        to 'bash -c', so it goes through one layer of parsing by the shell on
+        the remote host. For instance, filenames containing '>' or ';' or '('
+        or ' ' will cause problems unless you quote them appropriately. We do
+        *not* launch our SSH process through a shell, so only one layer of
+        shell quoting is required -- you'd need two if you were just typing
+        the command in a terminal manually. BUT THEN, you're probably writing
+        your command string as a Python string, so you probably need another
+        layer of Python string literal quoting on top of that!
+
+        """
+        import subprocess
+
+        argv = ['ssh', self.ssh_host, command]
+        proc = subprocess.Popen (argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = proc.communicate ()
+
+        if proc.returncode != 0:
+            raise RPCError ('command "%s" failed: exit code %d; stdout:\n\n%s\n\nstderr:\n\n%s',
+                            ' '.join (argv), proc.returncode, stdout, stderr)
+
+        return stdout
+
+
+    def get_info_for_path (self, storepath):
+        """`storepath` is a path relative to our `path_prefix`. We assume that we are
+        not running on the store host, but can transparently SSH to it.
+
+        """
+        import json
+        text = self._ssh_slurp ("python -c \'import hera_librarian.utils as u; u.print_info_for_path(\"%s/%s\")\'"
+                                % (self.path_prefix, storepath))
+        return json.loads(text)
+
+
 # RPC API
 
 @app.route ('/api/recommended_store', methods=['GET', 'POST'])
@@ -69,12 +120,11 @@ def stores ():
 @app.route ('/stores/<string:name>')
 @login_required
 def specific_store (name):
-    stores = list (Store.query.filter (Store.name == name))
-    if not len (stores):
-        flash ('No such store "%s" known' % name)
+    try:
+        store = Store.get_by_name (name)
+    except RPCError as e:
+        flash (str (e))
         return redirect (url_for ('stores'))
-
-    store = stores[0]
 
     from .file import FileInstance
     instances = list (FileInstance.query

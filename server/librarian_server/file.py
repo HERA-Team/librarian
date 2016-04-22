@@ -109,6 +109,51 @@ def create_or_update_file (args, sourcename=None):
     return {}
 
 
+@app.route ('/api/create_or_update_file_instance', methods=['GET', 'POST'])
+@json_api
+def create_or_update_file_instance (args, sourcename=None):
+    """Below, `storepath` is the path of a file instance relative to a store's
+    `path_prefix`. The full path of the file on the store is
+    `os.path.join(path_prefix, storepath)`. `storepath` should not be
+    absolute.
+
+    """
+    import os.path
+    from hera_librarian import utils
+    from .store import Store
+    from .observation import Observation
+
+    storename = required_arg (args, unicode, 'storename')
+    storepath = required_arg (args, unicode, 'storepath')
+
+    if os.path.isabs (storepath):
+        raise RPCError ('illegal store path %r: may not be absolute', storepath)
+
+    store = Store.get_by_name (storename) # will raise RPCError on failure
+    parent_dirs = os.path.dirname (storepath)
+    file_base = os.path.basename (storepath)
+
+    # SSH into the store to get info about the file, then abuse our argument-parsing
+    # helpers to make sure we got everything:
+    info = store.get_info_for_path (storepath)
+    type = required_arg (info, unicode, 'type')
+    obsid = required_arg (info, int, 'obsid')
+    size = required_arg (info, int, 'size')
+    md5 = required_arg (info, unicode, 'md5')
+    start_jd = required_arg (info, float, 'start_jd')
+
+    # Put everything in the DB!
+    obs = Observation (obsid, start_jd, None, None)
+    file = File (file_base, type, obsid, sourcename, size, md5)
+    inst = FileInstance (store, parent_dirs, file_base)
+    db.session.merge (obs)
+    db.session.merge (file)
+    db.session.merge (inst)
+    db.session.commit ()
+
+    return {}
+
+
 # Web user interface
 
 @app.route ('/files/<string:name>')

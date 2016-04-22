@@ -82,19 +82,8 @@ for i, filename in enumerate(files):
     print start_jd, obsid
 
     try:
-        client.create_observation(obsid, start_jd)
+        client.create_file_instance(opts.store, full_filename[len(opts.store_path):])
     except hera_librarian.RPCFailedError as e:
-        print >>sys.stderr, 'failed to create observation record %s: %s' % (filename, e)
-
-    try:
-        client.create_file(
-            os.path.basename(full_filename),
-            type,
-            obsid,
-            size,
-            md5,
-        )
-    except hera_librarian.RPCFailedError as e:
-        print >>sys.stderr, 'failed to create file record %s: %s' % (filename, e)
+        print >>sys.stderr, 'failed to create instance record %s: %s' % (filename, e)
 
 print "done"

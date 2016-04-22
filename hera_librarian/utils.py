@@ -157,3 +157,21 @@ def get_size_from_path(path):
             size += os.path.getsize(dirname + '/' + f)
 
     return size
+
+
+def print_info_for_path(path):
+    """This utility function is meant to run on a Librarian store. The librarian
+    server SSHes into us and runs this function, then parses the printed
+    output.
+
+    """
+    import json, sys
+
+    info = {}
+    info['start_jd'] = get_start_jd_from_path(path)
+    info['type'] = get_type_from_path(path)
+    info['obsid'] = get_obsid_from_path(path)
+    info['md5'] = get_md5_from_path(path)
+    info['size'] = get_size_from_path(path)
+
+    json.dump (info, sys.stdout)

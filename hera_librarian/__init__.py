@@ -105,6 +105,13 @@ class LibrarianClient (object):
         )
 
 
+    def create_file_instance(self, storename, storepath):
+        return self._do_http_post ('create_or_update_file_instance',
+            storename=storename,
+            storepath=storepath,
+        )
+
+
     def list_files_without_history_item (self, source, hist_type):
         return self._do_http_post ('list_files_without_history_item',
             source=source,
