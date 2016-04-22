@@ -162,11 +162,12 @@ class LibrarianClient (object):
         )
 
 
-    def complete_upload(self, store_name, size, md5, obsid, start_jd, dest_store_path, create_time=None):
+    def complete_upload(self, store_name, size, md5, type, obsid, start_jd, dest_store_path, create_time=None):
         return self._do_http_post ('complete_upload',
             store_name=store_name,
             size=size,
             md5=md5,
+            type=type,
             obsid=obsid,
             start_jd=start_jd,
             dest_store_path=dest_store_path,
@@ -174,12 +175,33 @@ class LibrarianClient (object):
         )
 
 
-    def upload_file (self, local_path, dest_store_path, create_time=None):
+    def upload_file (self, local_path, dest_store_path, type=None, start_jd=None, obsid=None, create_time=None):
         from . import utils
         size = utils.get_size_from_path (local_path)
         md5 = utils.get_md5_from_path (local_path)
-        obsid = utils.get_obsid_from_path (local_path)
-        start_jd = utils.get_start_jd_from_path (local_path)
+
+        # We can infer essential metadata from some kinds of files, but not all.
+
+        if type is None:
+            type = utils.get_type_from_path (local_path)
+
+        if type is None:
+            raise Exception ('need to, but cannot, infer type of %r' % local_path)
+
+        if obsid is None:
+            obsid = utils.get_obsid_from_path (local_path)
+
+        if obsid is None:
+            raise Exception ('need to, but cannot, infer obsid of %r' % local_path)
+
+        if start_jd is None:
+            start_jd = utils.get_start_jd_from_path (local_path)
+
+        if start_jd is None:
+            raise Exception ('need to, but cannot, infer start_jd of %r' % local_path)
+
+        # OK to go.
+
         store = self.get_recommended_store (size)
         store.stage_file_on_store (local_path)
-        self.complete_upload (store.name, size, md5, obsid, start_jd, dest_store_path, create_time=create_time)
+        self.complete_upload (store.name, size, md5, type, obsid, start_jd, dest_store_path, create_time=create_time)

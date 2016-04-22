@@ -113,6 +113,7 @@ def complete_upload (args, sourcename=None):
     store_name = required_arg (args, unicode, 'store_name')
     expected_size = required_arg (args, int, 'size')
     expected_md5 = required_arg (args, unicode, 'md5')
+    type = required_arg (args, unicode, 'type')
     obsid = required_arg (args, int, 'obsid')
     start_jd = required_arg (args, float, 'start_jd')
     dest_store_path = required_arg (args, unicode, 'dest_store_path')
@@ -128,13 +129,11 @@ def complete_upload (args, sourcename=None):
     # Validate the staged file, abusing our argument-parsing helpers to make
     # sure we got everything from the info call:
 
-    #try:
-    info = store.get_info_for_path (stage_path)
-    #except Exception as e:
-    #    raise ServerError ('cannot complete upload to %s:%s: %s',
-    #                       store_name, dest_store_path, e)
+    try:
+        info = store.get_info_for_path (stage_path)
+    except Exception as e:
+        raise ServerError ('cannot complete upload to %s:%s: %s', store_name, dest_store_path, e)
 
-    observed_type = required_arg (info, unicode, 'type')
     observed_size = required_arg (info, int, 'size')
     observed_md5 = required_arg (info, unicode, 'md5')
 
@@ -168,7 +167,7 @@ def complete_upload (args, sourcename=None):
     from .observation import Observation
 
     obs = Observation (obsid, start_jd, None, None)
-    file = File (name, observed_type, obsid, sourcename, observed_size, observed_md5, create_time)
+    file = File (name, type, obsid, sourcename, observed_size, observed_md5, create_time)
     inst = FileInstance (store, parent_dirs, name)
     db.session.merge (obs)
     db.session.merge (file)
