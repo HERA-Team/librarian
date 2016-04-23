@@ -26,7 +26,7 @@
 	<td><a href="/observations/{{f.obsid}}">{{f.obsid}}</a></td>
 	<td>{{f.type}}</td>
 	<td>{{f.source}}</td>
-	<td>{{f.size}}</td>
+	<td>{{f.size|filesizeformat}}</td>
       </tr>
       {% endfor %}
     </tbody>
