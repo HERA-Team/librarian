@@ -16,6 +16,22 @@
 	<td>SSH host</td>
 	<td><tt>{{store.ssh_host}}</tt></td>
       </tr>
+      <tr>
+	<td>Path prefix</td>
+	<td><tt>{{store.path_prefix}}</tt></td>
+      </tr>
+      <tr>
+	<td>Capacity</td>
+	<td>{{store.capacity|filesizeformat}}</td>
+      </tr>
+      <tr>
+	<td>Usage</td>
+	<td>{{macros.progress_bar(store.usage_percentage)}}</td>
+      </tr>
+      <tr>
+	<td>Available?</td>
+	<td>{{macros.true_good_boolean(store.available)}}</td>
+      </tr>
     </tbody>
   </table>
 </div>
