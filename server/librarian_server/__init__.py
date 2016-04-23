@@ -80,6 +80,7 @@ from . import misc
 # Finally ...
 
 def commandline (argv):
+    server = app.config.get ('server', 'flask')
     host = app.config.get ('host', None)
     port = app.config.get ('port', 21106)
     debug = app.config.get ('flask-debug', False)
@@ -92,7 +93,19 @@ def commandline (argv):
     if initdb:
         init_database ()
 
-    app.run (host=host, port=port, debug=debug)
+    if server == 'flask':
+        app.run (host=host, port=port, debug=debug)
+    elif server == 'tornado':
+        from tornado.wsgi import WSGIContainer
+        from tornado.httpserver import HTTPServer
+        from tornado.ioloop import IOLoop
+        http_server = HTTPServer(WSGIContainer(app))
+        http_server.listen (port, address=host)
+        IOLoop.instance ().start ()
+    else:
+        print ('error: unknown server type %r' % server, file=sys.stderr)
+        sys.exit (1)
+
     maybe_wait_for_threads_to_finish ()
 
 

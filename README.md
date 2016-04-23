@@ -25,10 +25,11 @@ installation with the following modules:
 1. [jinja2](http://jinja.pocoo.org/)
 1. [sqlalchemy](http://www.sqlalchemy.org/)
 1. [flask-sqlalchemy](http://flask-sqlalchemy.pocoo.org/)
+1. Whichever database driver sqlalchemy will need to talk to your database server.
 1. [aipy](https://github.com/AaronParsons/aipy)
 1. [numpy](http://www.numpy.org/)
 1. [astropy](http://www.astropy.org/)
-1. Whichever database driver sqlalchemy will need to talk to your database server.
+1. [tornado](http://www.tornadoweb.org/) optionally, for robust HTTP service
 
 A standard Anaconda Python installation can provide all of these except
 `flask-sqlalchemy` and `aipy`, the former of which is easily installable with

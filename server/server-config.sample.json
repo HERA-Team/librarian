@@ -1,6 +1,13 @@
 # Delete all lines beginning with "#" before deploying! JSON does not allow comments.
 
 {
+    # "server" is the code used to run the web server: "flask", the simple
+    # Flask builtin server, or "tornado", using the Tornado stack. "flask" is
+    # single-threaded and not suited for production use, but has useful
+    # debugging facilities. "tornado" is multithreaded and more robust.
+    # Default is "flask".
+    "server": "flask",
+
     # SECRET_KEY should be a random string. The Librarian uses it to prevent forgery
     # of login information. Easy way to generate some randomish numbers: "date |md5sum".
     # No configuration file containing a real SECRET_KEY should be posted anywhere it
