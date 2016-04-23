@@ -27,10 +27,12 @@ installation with the following modules:
 1. [flask-sqlalchemy](http://flask-sqlalchemy.pocoo.org/)
 1. [aipy](https://github.com/AaronParsons/aipy)
 1. [numpy](http://www.numpy.org/)
+1. [astropy](http://www.astropy.org/)
 1. Whichever database driver sqlalchemy will need to talk to your database server.
 
 A standard Anaconda Python installation can provide all of these except
-[flask-sqlalchemy](http://flask-sqlalchemy.pocoo.org/), which is easilly installable with `pip`.
+`flask-sqlalchemy` and `aipy`, the former of which is easily installable with
+`pip`.
 
 To run a server, create a file in the `server/` subdirectory called `server-config.json`, using
 `server-config.sample.json` as a template. There are a handful of values that need to be set.
