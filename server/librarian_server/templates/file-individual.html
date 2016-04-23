@@ -18,6 +18,26 @@
 	<td>obsid</td>
 	<td><a href="/observations/{{file.obsid}}">{{file.obsid}}</a></td>
       </tr>
+      <tr>
+	<td>Size</td>
+	<td>bytes</td>
+	<td>{{file.size}} ({{file.size|filesizeformat}})</td>
+      </tr>
+      <tr>
+	<td>MD5</td>
+	<td></td>
+	<td><tt>{{file.md5}}</tt></td>
+      </tr>
+      <tr>
+	<td>Source</td>
+	<td></td>
+	<td>{{file.source}}</td>
+      </tr>
+      <tr>
+	<td>Creation Time</td>
+	<td></td>
+	<td>{{file.create_time}}</td>
+      </tr>
     </tbody>
   </table>
 
