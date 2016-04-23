@@ -9,7 +9,7 @@
 
     # The SQLAlchemy database URI for connecting to the backing database. This example
     # value uses sqlite to avoid needing a server:
-    "SQLALCHEMY_DATABASE_URI": "sqlite:///tmp/librarian_testing.sqlite",
+    "SQLALCHEMY_DATABASE_URI": "sqlite:///librarian_testing.sqlite",
 
     # Some kind of magic that you shouldn't change.
     "SQLALCHEMY_TRACK_MODIFICATIONS": false,
