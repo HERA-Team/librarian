@@ -195,6 +195,19 @@ class Store (object):
 
 
     @property
+    def space_left (self):
+        """Returns the amount of space left in the store, in bytes.
+
+        Accessing this property may trigger an SSH into the store host!
+
+        Note: we can't call this "available" since that conflicts with the
+        boolean availability flag in the server.
+
+        """
+        return self.get_space_info ()['available']
+
+
+    @property
     def usage_percentage (self):
         """Returns the amount of the storage capacity that is currently used as a
         percentage.
