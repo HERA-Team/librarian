@@ -64,8 +64,8 @@
     #	    # i.e. "enterprise.sese.asu.edu" and not just "enterprise".
     #	    "ssh_host": "server.university.edu",
     #
-    #	    # If set, the store will be marked as "unavailable". This
-    #	    # feature is barely implemented.
+    #	    # If set to false, the store will be marked as "unavailable". This
+    #	    # feature is barely implemented. Default is true.
     #	    "available": true
     #	 }
     #},
