@@ -103,12 +103,15 @@ class LibrarianClient (object):
         )
 
 
-    def create_history(self, store_name, file_name, type, payload):
-        return self._do_http_post ('create_history',
-            store_name=store_name,
+    def create_file_event(self, file_name, type, **kwargs):
+        """Note that keyword arguments to this function will automagically be stuffed
+        inside the "payload" parameter.
+
+        """
+        return self._do_http_post ('create_file_event',
             file_name=file_name,
             type=type,
-            payload=payload,
+            payload=kwargs,
         )
 
 

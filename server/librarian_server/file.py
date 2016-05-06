@@ -192,7 +192,28 @@ class FileEvent (db.Model):
         return json.loads (self.payload)
 
 
-# RPC endpoints -- none
+# RPC endpoints
+
+@app.route ('/api/create_file_event', methods=['GET', 'POST'])
+@json_api
+def create_file_event (args, sourcename=None):
+    """Create a FileEvent record for a File.
+
+    We enforce basically no structure on the event data.
+
+    """
+    file_name = required_arg (args, unicode, 'file_name')
+    type = required_arg (args, unicode, 'type')
+    payload = required_arg (args, dict, 'payload')
+
+    file = File.query.get (file_name)
+    if file is None:
+        raise ServerError ('no known file "%s"', file_name)
+
+    event = file.make_generic_event (type, **payload)
+    db.session.add (event)
+    db.session.commit ()
+    return {}
 
 
 

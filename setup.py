@@ -8,6 +8,7 @@ setup_args = {
     'license': 'BSD',
     'packages': ['hera_librarian'],
     'scripts': [
+        'scripts/add_librarian_file_event.py',
         'scripts/add_obs_librarian.py',
         'scripts/upload_to_librarian.py',
         'scripts/launch_librarian_copy.py',
