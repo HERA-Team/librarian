@@ -3,9 +3,9 @@
 # Copyright 2016 the HERA Team.
 # Licensed under the BSD License.
 
-"""Upoad a file to a Librarian. This script is a bit clunky when used
+"""Upload a file to a Librarian. This script is a bit clunky when used
 manually, but is invoked by other Librarians when copying files. Do NOT use
-this script if the file that you wish to upload is known to the local
+this script if the file that you wish to upload is already known to the local
 Librarian. In that case, use the "launch_librarian_copy.py" script -- it will
 make sure to preserve the associated metadata correctly. Under the hood,
 "launch_librarian_copy.py" ends up invoking this script.
