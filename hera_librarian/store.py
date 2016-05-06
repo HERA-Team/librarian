@@ -83,9 +83,17 @@ class Store (object):
 
         """
         # flags: recursive; batch (no-password-asking) mode; compression; preserve
-        # times/modes; quiet mode.
+        # times/modes; quiet mode. Use arcfour256 cipher for speed. Turn off known
+        # hosts and host key checking to Just Work without needing prompts.
 
-        argv = ['scp', '-rBCpq', local_path, '%s:%s' % (self.ssh_host, self._path(store_path))]
+        argv = [
+            'scp',
+            '-rBCpq',
+            '-c', 'arcfour256',
+            '-o', 'UserKnownHostsFile=/dev/null',
+            '-o', 'StrictHostKeyChecking=no',
+            local_path, '%s:%s' % (self.ssh_host, self._path(store_path))
+        ]
         proc = subprocess.Popen (argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         output = proc.communicate ()[0]
 
