@@ -172,6 +172,7 @@ def complete_upload (args, sourcename=None):
     db.session.merge (obs)
     db.session.merge (file)
     db.session.merge (inst)
+    db.session.add (file.make_instance_creation_event (inst))
     db.session.commit ()
 
     return {}
@@ -254,6 +255,7 @@ def register_instance (args, sourcename=None):
     db.session.merge (obs)
     db.session.merge (file)
     db.session.merge (inst)
+    db.session.add (file.make_instance_creation_event (inst))
     db.session.commit ()
 
     return {}

@@ -41,8 +41,8 @@
     </tbody>
   </table>
 
-  {% if instances %}
   <h2>Instances</h2>
+  {% if instances %}
   <table class="table table-striped">
     <thead>
       <tr>
@@ -61,6 +61,30 @@
   </table>
   {% else %}
   <p>This Librarian currently holds no copies of this file.</p>
+  {% endif %}
+
+  <h2>Events</h2>
+  {% if events %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Time</th>
+	<th>Type</th>
+	<th>Data payload</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in events %}
+      <tr>
+	<td>{{e.time}}</td>
+	<td>{{e.type}}</td>
+	<td>{{e.payload}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>This Librarian has recorded no events relating to this file.</p>
   {% endif %}
 </div>
 {% endblock %}
