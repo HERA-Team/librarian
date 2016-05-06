@@ -296,6 +296,8 @@ def launch_file_copy (args, sourcename=None):
     except Exception as e:
         raise ServerError ('launch of copy of %s failed: %s', file_name, e)
 
+    db.session.add (file.make_copy_launched_event (connection_name, remote_store_path))
+    db.session.commit ()
     return {}
 
 

@@ -91,6 +91,12 @@ class File (db.Model):
                                         parent_dirs=instance.parent_dirs)
 
 
+    def make_copy_launched_event (self, connection_name, remote_store_path):
+        return self.make_generic_event ('launch_copy',
+                                        connection_name=connection_name,
+                                        remote_store_path=remote_store_path)
+
+
     def events (self):
         return FileEvent.query.filter (FileEvent.name == self.name)
 
