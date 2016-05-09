@@ -13,6 +13,7 @@ Librarian "files" are MIRIAD data sets that are actually directories.
 __all__ = str('''
 get_start_jd_from_path
 get_type_from_path
+get_pol_from_path
 get_obsid_from_path
 get_md5_from_path
 get_size_from_path
@@ -40,6 +41,17 @@ def get_type_from_path(path):
 
     """
     return path.split ('.')[-1]
+
+
+def get_pol_from_path(path):
+    """Get the data polarization from a path, assuming it follows HERA naming
+    conventions.
+
+    This is super fragile!!!! There should be a better way. Also we hardcode
+    the XY basis.
+
+    """
+    return re.findall (r'\.([xy][xy])\.', path)[0]
 
 
 def get_obsid_from_path(path):
