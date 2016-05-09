@@ -214,7 +214,7 @@ def specific_file (name):
         return redirect (url_for ('index'))
 
     instances = list (FileInstance.query.filter (FileInstance.name == name))
-    events = list (file.events ().order_by (FileEvent.time.desc ()))
+    events = sorted (file.events, key=lambda e: e.time, reverse=True)
 
     return render_template (
         'file-individual.html',
