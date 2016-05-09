@@ -227,6 +227,112 @@ def assign_observing_sessions (args, sourcename=None):
     return retval
 
 
+@app.route ('/api/describe_session_without_event', methods=['GET', 'POST'])
+@json_api
+def describe_session_without_event (args, sourcename=None):
+    """Return information about the files in a session that does not contain a
+    particular FileEvent.
+
+    This awfully-specific API call is part of the framework that allows the
+    RTP to ask the Librarian about new files that need processing. The RTP
+    needs to learn about all of the observations in a session at once since it
+    cares about "neighbors" in its processing. Within a session, it cares
+    about uv files that need processing; for each of those files, it needs to
+    be told:
+
+      date   -- the start (??) Julian Date of the relevant Observation
+      pol    -- the polarization of the data ("xx" or "yy")
+      path   -- the full path to a file instance in a store
+      host   -- the hostname of the store
+      length -- the duration of the observation in days
+
+    Of course, we only want to notify the RTP about data that it's not already
+    aware of. Once the RTP learns of a file it never deletes that information,
+    so we just need to keep track of sessions about which RTP has not been
+    notified. We have the caller give us the name of a FileEvent to use to
+    maintain that information (so in principle we could have two RTP instances
+    that each kept track separately, etc.).
+
+    As one final bit of hack, the caller specifies the "source" string of the
+    files that it cares about. For the RTP this will generally be whatever
+    "source" raw correlator data have.
+
+    """
+    source = required_arg (args, unicode, 'source')
+    event_type = required_arg (args, unicode, 'event_type')
+
+    # Search for a file that (1) is assigned to a session and (2) does not
+    # have the notification event
+
+    from .file import File, FileEvent, FileInstance
+
+    already_done_file_names = (db.session.query (File.name)
+                               .join (FileEvent)
+                               .filter (FileEvent.type == event_type,
+                                        File.name == FileEvent.name))
+    files_of_interest = (File.query.join (Observation)
+         .filter (Observation.session_id != None,
+                  File.name.notin_ (already_done_file_names)))
+
+    file = files_of_interest.first ()
+    if file is None:
+        # All currently known sessions have been reported.
+        return {'any_matching': False}
+
+    sessid = file.observation.session_id
+
+    # As a huge hack, we don't currently know the duration of individual
+    # observations, so we set up to infer them from the spacing of all of
+    # observations in the session.
+
+    import numpy as np
+    obs = list (Observation.query.filter (Observation.session_id == sessid))
+    start_jds = np.array (sorted (o.start_time_jd for o in obs))
+    djds = np.diff (start_jds)
+    typ_djd = np.median (djds)
+
+    def get_len (o):
+        if o.stop_time_jd is not None:
+            return o.duration
+        return typ_djd
+
+    djds = dict ((o.obsid, get_len (o)) for o in obs)
+
+    # Now collect information from relevant FileInstances. XXX: missing
+    # instance handling. NEED: sessid, obsid, pol, path, host => Observation
+    # (sessid), Store (host), FileInstance (name, parent_dirs, store_id), File
+    # (obsid). FILTER: source, sessid, at most one instance per file.
+
+    from .store import Store
+    from hera_librarian import utils
+
+    records = []
+    seen_names = set ()
+
+    for inst, f, obs, store in (db.session.query (FileInstance, File, Observation, Store)
+                                .filter (Observation.session_id == sessid,
+                                         File.name == FileInstance.name,
+                                         File.source == source,
+                                         Observation.obsid == File.obsid,
+                                         Store.id == FileInstance.store)).order_by (Observation.start_time_jd.asc ()):
+        if f.name in seen_names:
+            continue
+
+        records.append ({
+            'date': obs.start_time_jd,
+            'pol': utils.get_pol_from_path (f.name),
+            'path': inst.full_path_on_store (),
+            'host': store.ssh_host,
+            'length': djds[f.obsid],
+        })
+        seen_names.add (f.name)
+
+    return {
+        'any_matching': True,
+        'info': records,
+    }
+
+
 # Web user interface
 
 @app.route ('/observations')

@@ -89,13 +89,6 @@ class LibrarianClient (object):
         return reply_json
 
 
-    def list_files_without_history_item (self, source, hist_type):
-        return self._do_http_post ('list_files_without_history_item',
-            source=source,
-            hist_type=hist_type,
-        )
-
-
     def delete_file(self, file_name, store_name):
         return self._do_http_post ('delete_file',
             name=file_name,
@@ -186,4 +179,11 @@ class LibrarianClient (object):
             file_name=file_name,
             connection_name=connection_name,
             remote_store_path=remote_store_path,
+        )
+
+
+    def describe_session_without_event (self, source, event_type):
+        return self._do_http_post ('describe_session_without_event',
+            source=source,
+            event_type=event_type,
         )
