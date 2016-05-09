@@ -134,6 +134,10 @@ class LibrarianClient (object):
         )
 
 
+    def assign_observing_sessions(self):
+        return self._do_http_post ('assign_observing_sessions')
+
+
     def upload_file (self, local_path, dest_store_path, type=None, start_jd=None, obsid=None, create_time=None):
         from . import utils
         size = utils.get_size_from_path (local_path)
