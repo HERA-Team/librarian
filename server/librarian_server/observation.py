@@ -240,11 +240,12 @@ def describe_session_without_event (args, sourcename=None):
     about uv files that need processing; for each of those files, it needs to
     be told:
 
-      date   -- the start (??) Julian Date of the relevant Observation
-      pol    -- the polarization of the data ("xx" or "yy")
-      path   -- the full path to a file instance in a store
-      host   -- the hostname of the store
-      length -- the duration of the observation in days
+      date        -- the start (??) Julian Date of the relevant Observation
+      pol         -- the polarization of the data ("xx" or "yy")
+      store_path  -- the path of a file instance *within* a store
+      path_prefix -- the store's path prefix, used to construct full paths
+      host        -- the hostname of the store
+      length      -- the duration of the observation in days
 
     Of course, we only want to notify the RTP about data that it's not already
     aware of. Once the RTP learns of a file it never deletes that information,
@@ -298,10 +299,10 @@ def describe_session_without_event (args, sourcename=None):
 
     djds = dict ((o.obsid, get_len (o)) for o in obs)
 
-    # Now collect information from relevant FileInstances. XXX: missing
-    # instance handling. NEED: sessid, obsid, pol, path, host => Observation
-    # (sessid), Store (host), FileInstance (name, parent_dirs, store_id), File
-    # (obsid). FILTER: source, sessid, at most one instance per file.
+    # Now collect information from relevant FileInstances. To get everything
+    # we need to need to do a *big* join: FileInstance (store_path), File
+    # (source), Observation (start_time, session_id), Store (path_prefix,
+    # ssh_host).
 
     from .store import Store
     from hera_librarian import utils
@@ -321,7 +322,8 @@ def describe_session_without_event (args, sourcename=None):
         records.append ({
             'date': obs.start_time_jd,
             'pol': utils.get_pol_from_path (f.name),
-            'path': inst.full_path_on_store (),
+            'store_path': inst.store_path,
+            'path_prefix': store.path_prefix,
             'host': store.ssh_host,
             'length': djds[f.obsid],
         })
