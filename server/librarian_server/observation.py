@@ -48,6 +48,7 @@ class ObservingSession (db.Model):
     id = db.Column (db.Integer, primary_key=True)
     start_time_jd = NotNull (db.Float)
     stop_time_jd = NotNull (db.Float)
+    observations = db.relationship ('Observation', back_populates='session')
 
     def __init__ (self, id, start_time_jd, stop_time_jd):
         self.id = id
@@ -76,6 +77,8 @@ class Observation (db.Model):
     stop_time_jd = db.Column (db.Float)
     start_lst_hr = db.Column (db.Float)
     session_id = db.Column (db.Integer, db.ForeignKey (ObservingSession.id), nullable=True)
+    session = db.relationship ('ObservingSession', back_populates='observations')
+    files = db.relationship ('File', back_populates='observation')
 
     def __init__ (self, obsid, start_time_jd, stop_time_jd, start_lst_hr):
         self.obsid = obsid

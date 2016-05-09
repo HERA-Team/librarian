@@ -49,6 +49,7 @@ class Store (db.Model, BaseStore):
     path_prefix = NotNull (db.String (256))
     http_prefix = db.Column (db.String (256))
     available = NotNull (db.Boolean)
+    instances = db.relationship ('FileInstance', back_populates='store_object')
 
     def __init__ (self, name, path_prefix, ssh_host):
         db.Model.__init__ (self)
@@ -172,7 +173,7 @@ def complete_upload (args, sourcename=None):
     db.session.merge (obs)
     db.session.merge (file)
     db.session.merge (inst)
-    db.session.add (file.make_instance_creation_event (inst))
+    db.session.add (file.make_instance_creation_event (inst, store))
     db.session.commit ()
 
     return {}
@@ -255,7 +256,7 @@ def register_instance (args, sourcename=None):
     db.session.merge (obs)
     db.session.merge (file)
     db.session.merge (inst)
-    db.session.add (file.make_instance_creation_event (inst))
+    db.session.add (file.make_instance_creation_event (inst, store))
     db.session.commit ()
 
     return {}

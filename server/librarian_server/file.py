@@ -48,6 +48,9 @@ class File (db.Model):
     source = NotNull (db.String (64))
     size = NotNull (db.Integer)
     md5 = NotNull (db.String (32))
+    observation = db.relationship ('Observation', back_populates='files')
+    instances = db.relationship ('FileInstance', back_populates='file')
+    events = db.relationship ('FileEvent', back_populates='file')
 
     def __init__ (self, name, type, obsid, source, size, md5, create_time=None):
         if create_time is None:
@@ -71,12 +74,6 @@ class File (db.Model):
         return calendar.timegm (self.create_time.timetuple ())
 
 
-    @property
-    def observation (self):
-        from .observation import Observation
-        return Observation.query.get (self.obsid)
-
-
     def make_generic_event (self, type, **kwargs):
         """Create a new FileEvent record relating to this file. The new event is not
         added or committed to the database.
@@ -85,9 +82,9 @@ class File (db.Model):
         return FileEvent (self.name, type, kwargs)
 
 
-    def make_instance_creation_event (self, instance):
+    def make_instance_creation_event (self, instance, store):
         return self.make_generic_event ('create_instance',
-                                        store_name=instance.store_name,
+                                        store_name=store.name,
                                         parent_dirs=instance.parent_dirs)
 
 
@@ -95,10 +92,6 @@ class File (db.Model):
         return self.make_generic_event ('launch_copy',
                                         connection_name=connection_name,
                                         remote_store_path=remote_store_path)
-
-
-    def events (self):
-        return FileEvent.query.filter (FileEvent.name == self.name)
 
 
 class FileInstance (db.Model):
@@ -122,6 +115,8 @@ class FileInstance (db.Model):
     store = db.Column (db.Integer, db.ForeignKey (Store.id), primary_key=True)
     parent_dirs = db.Column (db.String (128), primary_key=True)
     name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
+    file = db.relationship ('File', back_populates='instances')
+    store_object = db.relationship ('Store', back_populates='instances')
 
     def __init__ (self, store_obj, parent_dirs, name):
         if '/' in name:
@@ -132,22 +127,17 @@ class FileInstance (db.Model):
         self.name = name
 
     @property
-    def store_object (self):
-        from .store import Store
-        return Store.query.get (self.store)
-
-    @property
     def store_name (self):
         return self.store_object.name
-
-    @property
-    def file (self):
-        return File.query.get (self.name)
 
     @property
     def store_path (self):
         import os.path
         return os.path.join (self.parent_dirs, self.name)
+
+    def full_path_on_store (self):
+        import os.path
+        return os.path.join (self.store_object.path_prefix, self.parent_dirs, self.name)
 
 
 class FileEvent (db.Model):
@@ -172,6 +162,7 @@ class FileEvent (db.Model):
     time = NotNull (db.DateTime)
     type = db.Column (db.String (64))
     payload = db.Column (db.String (512))
+    file = db.relationship ('File', back_populates='events')
 
     def __init__ (self, name, type, payload_struct):
         if '/' in name:
@@ -182,10 +173,6 @@ class FileEvent (db.Model):
         self.type = type
         self.payload = json.dumps (payload_struct)
 
-
-    @property
-    def file (self):
-        return File.query.get (self.name)
 
     @property
     def payload_json (self):
@@ -214,7 +201,6 @@ def create_file_event (args, sourcename=None):
     db.session.add (event)
     db.session.commit ()
     return {}
-
 
 
 # Web user interface
