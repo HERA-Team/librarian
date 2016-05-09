@@ -13,7 +13,7 @@ make sure to preserve the associated metadata correctly. Under the hood,
 """
 from __future__ import absolute_import, division, print_function
 
-import optparse, sys
+import optparse, os.path, sys
 
 import hera_librarian
 from hera_librarian import utils
@@ -49,6 +49,9 @@ if len (args) != 3:
     die ('expect exactly three non-option arguments')
 
 conn_name, local_path, dest_store_path = args
+
+if os.path.isabs (dest_store_path):
+    die ('destination path must be relative to store top; got %r', dest_store_path)
 
 
 # Let's do it.

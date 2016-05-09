@@ -132,6 +132,9 @@ class LibrarianClient (object):
 
 
     def upload_file (self, local_path, dest_store_path, type=None, start_jd=None, obsid=None, create_time=None):
+        if os.path.isabs (dest_store_path):
+            raise Exception ('destination path may not be absolute; got %r' % (dest_store_path,))
+
         from . import utils
         size = utils.get_size_from_path (local_path)
         md5 = utils.get_md5_from_path (local_path)
