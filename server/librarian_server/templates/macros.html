@@ -47,6 +47,31 @@ parsed. #}
 </div>
 {% endmacro %}
 
+{% macro obs_listing(obs) -%}
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Obsid</th>
+	<th>Start JD</th>
+	<th>Start LST (hr)</th>
+	<th>Duration (days)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in obs %}
+      <tr>
+	<td><a href="/observations/{{o.obsid}}">{{o.obsid}}</a></td>
+	<td>{{o.start_time_jd}}</td>
+	<td>{{o.start_lst_hr}}</td>
+	<td>{{o.duration}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
 {% macro store_listing(stores) -%}
 <div class="table-responsive">
   <table class="table table-striped">

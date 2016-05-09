@@ -55,6 +55,12 @@ class ObservingSession (db.Model):
         self.stop_time_jd = stop_time_jd
 
 
+    @property
+    def duration (self):
+        "The duration of the session in days."
+        return self.stop_time_jd - self.start_time_jd
+
+
 class Observation (db.Model):
     """An Observation is a span of time during which we have probably taken data.
     Every File is associated with a single Observation.
@@ -201,6 +207,8 @@ def assign_observing_sessions (args, sourcename=None):
 
         sess = ObservingSession (sess_obs[0].obsid, start, stop)
         db.session.add (sess)
+        db.session.commit ()
+
         new_sess_info.append (dict (
             start_time_jd = start,
             stop_time_jd = stop,
@@ -246,4 +254,33 @@ def specific_observation (obsid):
         title='Observation %d' % obsid,
         obs=obs,
         files=files,
+    )
+
+
+@app.route ('/sessions')
+@login_required
+def sessions ():
+    q = ObservingSession.query.order_by (ObservingSession.start_time_jd.desc ()).limit (50)
+    return render_template (
+        'session-listing.html',
+        title='Observing Sessions',
+        sess=q
+    )
+
+
+@app.route ('/sessions/<int:id>')
+@login_required
+def specific_session (id):
+    sess = ObservingSession.query.get (id)
+    if sess is None:
+        flash ('No such observing session %r known' % id)
+        return redirect (url_for ('sessions'))
+
+    obs = list (Observation.query.filter (Observation.session_id == id).order_by (Observation.start_time_jd.asc ()))
+
+    return render_template (
+        'session-individual.html',
+        title='Observing Session %d' % id,
+        sess=sess,
+        obs=obs,
     )

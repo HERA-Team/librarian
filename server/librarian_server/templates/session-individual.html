@@ -14,41 +14,29 @@
     </thead>
     <tbody>
       <tr>
-	<td>Session ID</td>
-	<td></td>
-	<td><a href="/sessions/{{obs.session_id}}">{{obs.session_id}}</a></td>
-      </tr>
-      <tr>
 	<td>Start time</td>
 	<td>JD</td>
-	<td>{{obs.start_time_jd}}</td>
+	<td>{{sess.start_time_jd}}</td>
       </tr>
       <tr>
 	<td>Stop time</td>
 	<td>JD</td>
-	<td>{{obs.stop_time_jd}}</td>
-      </tr>
-      <tr>
-	<td>Start LST</td>
-	<td>hours</td>
-	<td>{{obs.start_lst_hr}}</td>
+	<td>{{sess.stop_time_jd}}</td>
       </tr>
       <tr>
 	<td>Duration</td>
 	<td>day</td>
-	<td>{{obs.stop_time_jd}}</td>
+	<td>{{sess.duration}}</td>
       </tr>
-      <!--<tr>
-	<td>Number of files</td>
-	<td></td>
-	<td>{{files.len}}</td>
-      </tr>-->
     </tbody>
   </table>
 </div>
 
-<h2>Files</h2>
-{{ macros.file_listing(files) }}
+<h2>Observations</h2>
+
+<p>Session {{sess.id}} contains {{obs|length}} observations.</p>
+
+{{ macros.obs_listing(obs) }}
 
 </div>
 {% endblock %}

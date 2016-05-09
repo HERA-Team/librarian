@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Session ID</th>
+	<th>Start JD</th>
+	<th>Stop JD</th>
+	<th>Duration (days)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sess %}
+      <tr>
+	<td><a href="/sessions/{{s.id}}">{{s.id}}</a></td>
+	<td>{{s.start_time_jd}}</td>
+	<td>{{s.stop_time_jd}}</td>
+	<td>{{s.duration}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
