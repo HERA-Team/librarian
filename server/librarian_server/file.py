@@ -54,10 +54,24 @@ class File (db.Model):
 
     def __init__ (self, name, type, obsid, source, size, md5, create_time=None):
         if create_time is None:
-            create_time = datetime.datetime.utcnow ()
+            # We round our times to whole seconds so that they can be
+            # accurately represented as integer Unix times, just in case
+            # floating-point rounding could sneak in as an issue.
+            create_time = datetime.datetime.utcnow ().replace (microsecond=0)
+
+        # Aggressively validate arguments.
+
+        from hera_librarian import utils
 
         if '/' in name:
             raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
+
+        md5 = utils.normalize_and_validate_md5 (md5)
+
+        if not (size >= 0): # catches NaNs, just in case ...
+            raise ValueError ('illegal size %d of file "%s": negative' % (size, name))
+
+        # Looks good.
 
         self.name = name
         self.type = type
@@ -169,7 +183,7 @@ class FileEvent (db.Model):
             raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
 
         self.name = name
-        self.time = datetime.datetime.utcnow ()
+        self.time = datetime.datetime.utcnow ().replace (microsecond=0)
         self.type = type
         self.payload = json.dumps (payload_struct)
 
