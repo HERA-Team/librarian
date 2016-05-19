@@ -22,7 +22,6 @@ get_size_from_path
 import hashlib, locale, os.path, re
 
 import numpy as np
-import aipy as a
 
 
 def get_start_jd_from_path(path):
@@ -62,7 +61,8 @@ def get_obsid_from_path(path):
     """
     if os.path.isdir(path):
         try:
-            uv = a.miriad.UV(path)
+            import aipy
+            uv = aipy.miriad.UV(path)
             try:
                 return uv['obsid']
             except KeyError:
