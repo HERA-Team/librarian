@@ -17,6 +17,7 @@ get_pol_from_path
 get_obsid_from_path
 get_md5_from_path
 get_size_from_path
+normalize_and_validate_md5
 ''').split()
 
 import hashlib, locale, os.path, re
@@ -78,6 +79,22 @@ def get_obsid_from_path(path):
     from astropy.time import Time
     jd = get_start_jd_from_path(path)
     return int(np.floor(Time(jd, scale='utc', format='jd').gps))
+
+
+_lc_md5_pattern = re.compile ('^[0-9a-f]{32}$')
+
+def normalize_and_validate_md5 (text):
+    """Convert *text* into a normalized hexadecimal representation of an MD5 sum,
+    raising ValueError if it does not look like one.
+
+    The "normalization" consists only of stripping whitespace and lowercasing
+    hex letters.
+
+    """
+    norm_text = text.strip ().lower ()
+    if not len (_lc_md5_pattern.findall (norm_text)):
+        raise ValueError ('%r does not look like an MD5 sum' % (text,))
+    return norm_text
 
 
 def _md5_of_file(path):
