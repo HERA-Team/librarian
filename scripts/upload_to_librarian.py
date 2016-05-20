@@ -22,14 +22,8 @@ from hera_librarian import utils
 o = optparse.OptionParser()
 o.set_usage('upload_to_librarian.py <connection-name> <path/to/local/file> <destination/path>')
 o.set_description(__doc__)
-o.add_option('--type', type=str,
-             help='The "file type" that will be registered with the Librarian.')
-o.add_option('--obsid', type=int,
-             help='The file\'s associated observation ID that will be registered with the Librarian.')
-o.add_option('--start-jd', type=float,
-             help='The file\'s associated start Julian Date that may be registered with the Librarian.')
-o.add_option('--create-time', type=int,
-             help='The file\'s associated creation time that will be registered with the Librarian, as a Unix timestamp.')
+o.add_option('--meta', type=str, default='infer',
+             help='How to gather metadata: "json-stdin" or "infer"')
 
 opts, args = o.parse_args(sys.argv[1:])
 
@@ -53,13 +47,25 @@ conn_name, local_path, dest_store_path = args
 if os.path.isabs (dest_store_path):
     die ('destination path must be relative to store top; got %r', dest_store_path)
 
+if opts.meta == 'json-stdin':
+    import json
+    try:
+        rec_info = json.load (sys.stdin)
+    except Exception as e:
+        die ('cannot parse stdin as JSON data: %s', e)
+    meta_mode = 'direct'
+elif opts.meta == 'infer':
+    rec_info = {}
+    meta_mode = 'infer'
+else:
+    die ('unexpected metadata-gathering method %r', opts.meta)
+
 
 # Let's do it.
 
 client = hera_librarian.LibrarianClient (conn_name)
 
 try:
-    client.upload_file (local_path, dest_store_path, type=opts.type, start_jd=opts.start_jd,
-                        obsid=opts.obsid, create_time=opts.create_time)
+    client.upload_file (local_path, dest_store_path, meta_mode, rec_info)
 except hera_librarian.RPCError as e:
     die ('upload failed: %s', e)

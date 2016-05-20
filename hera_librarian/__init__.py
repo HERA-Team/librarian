@@ -108,62 +108,65 @@ class LibrarianClient (object):
         )
 
 
-    def get_recommended_store(self, file_size):
-        from .store import Store
-        info = self._do_http_post ('recommended_store', file_size=file_size)
-        return Store (info['name'], info['path_prefix'], info['ssh_host'])
-
-
-    def complete_upload(self, store_name, size, md5, type, obsid, start_jd, dest_store_path, create_time=None):
-        return self._do_http_post ('complete_upload',
-            store_name=store_name,
-            size=size,
-            md5=md5,
-            type=type,
-            obsid=obsid,
-            start_jd=start_jd,
-            dest_store_path=dest_store_path,
-            create_time_unix=create_time,
-        )
-
-
     def assign_observing_sessions(self):
         return self._do_http_post ('assign_observing_sessions')
 
 
-    def upload_file (self, local_path, dest_store_path, type=None, start_jd=None, obsid=None, create_time=None):
+    def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={}):
+        """Upload the file located at `local_path` to the Librarian. We suggest a
+        destination "store path" (something like "2345678/mydata.uv"), but the
+        Librarian has to tell us which store to actually put the file on.
+
+        The Librarian needs to contextual metadata to organize the new file
+        appropriately (obsid, etc). This can be obtain in several ways:
+
+        * If `meta_mode` is "direct", the appropriate information is stored in
+          the the `rec_info` dict. That dict's contents have been provided to
+          us from a different (probably local) Librarian; see
+          `librarian_server.misc:gather_records`.
+        * If `meta_mode` is "infer", the destination Librarian will attempt to
+          infer metadata from the file itself. It can only do this for certain
+          kinds of files, and there are certain kinds of value-added data that
+          cannot be inferred. This mode should therefore be avoided when
+          possible.
+
+        This function invokes an SCP that is potentially trying to copy
+        gigabytes of data across oceans. It may take a looong time to return
+        and will not infrequently raise an exception.
+
+        """
         if os.path.isabs (dest_store_path):
             raise Exception ('destination path may not be absolute; got %r' % (dest_store_path,))
 
+        # In the first stage, we tell the Librarian how much data we're going to upload,
+        # send it the database records, and get told the staging directory.
+
         from . import utils
-        size = utils.get_size_from_path (local_path)
-        md5 = utils.get_md5_from_path (local_path)
+        kwargs = {'upload_size': utils.get_size_from_path (local_path)}
+        kwargs.update (rec_info)
+        info = self._do_http_post ('initiate_upload', **kwargs)
 
-        # We can infer essential metadata from some kinds of files, but not all.
+        from .store import Store
+        store = Store (info['name'], info['path_prefix'], info['ssh_host'])
+        staging_dir = info['staging_dir']
 
-        if type is None:
-            type = utils.get_type_from_path (local_path)
+        # Now, (try to) actually copy the data. This runs an SCP, potentially
+        # across the globe, that in the real world will occasionally stall or
+        # die or whatever.
 
-        if type is None:
-            raise Exception ('need to, but cannot, infer type of %r' % local_path)
+        staged_path = os.path.join (staging_dir, os.path.basename (local_path))
+        store.copy_to_store (local_path, staged_path)
 
-        if obsid is None:
-            obsid = utils.get_obsid_from_path (local_path)
+        # If we made it here, though, the upload succeeded and we can tell
+        # that Librarian that the data are ready to go. It will verify the
+        # upload and ingest it.
 
-        if obsid is None:
-            raise Exception ('need to, but cannot, infer obsid of %r' % local_path)
-
-        if start_jd is None:
-            start_jd = utils.get_start_jd_from_path (local_path)
-
-        if start_jd is None:
-            raise Exception ('need to, but cannot, infer start_jd of %r' % local_path)
-
-        # OK to go.
-
-        store = self.get_recommended_store (size)
-        store.stage_file_on_store (local_path)
-        self.complete_upload (store.name, size, md5, type, obsid, start_jd, dest_store_path, create_time=create_time)
+        return self._do_http_post ('complete_upload',
+            store_name=store.name,
+            staging_dir=staging_dir,
+            dest_store_path=dest_store_path,
+            meta_mode=meta_mode,
+        )
 
 
     def register_instance(self, store_name, store_path, type=None, obsid=None, start_jd=None, create_time=None):

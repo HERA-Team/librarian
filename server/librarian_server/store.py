@@ -69,17 +69,34 @@ class Store (db.Model, BaseStore):
         return stores[0]
 
 
+    def convert_to_base_object (self):
+        """Asynchronous store operations are run on worker threads, which means that
+        they're not allowed to access the database. But we'd like to be able
+        to pass Store references around and reuse the functionality
+        implemented in the `hera_librarian.store.Store` class. So we have this
+        helper function that converts this fancy, database-enabled object into
+        a simpler one that can be passed to other threads and so on.
+
+        """
+        return BaseStore (self.name, self.path_prefix, self.ssh_host)
+
+
 # RPC API
 
-@app.route ('/api/recommended_store', methods=['GET', 'POST'])
+@app.route ('/api/initiate_upload', methods=['GET', 'POST'])
 @json_api
-def recommended_store (args, sourcename=None):
-    file_size = required_arg (args, int, 'file_size')
-    if file_size < 0:
-        raise ServerError ('"file_size" must be nonnegative')
+def initiate_upload (args, sourcename=None):
+    """Called when Librarian client wants to upload a file instance to one of our
+    Stores. We verify that there's room, make a staging directory, and ingest
+    the database records that we'll need to make sense of the file.
 
-    # We are simpleminded and just choose the store with the most available
-    # space.
+    """
+    upload_size = required_arg (args, int, 'upload_size')
+    if upload_size < 0:
+        raise ServerError ('"upload_size" must be nonnegative')
+
+    # First, figure out where the upload will go. We are simpleminded and just
+    # choose the store with the most available space.
 
     most_avail = -1
     most_avail_store = None
@@ -90,14 +107,27 @@ def recommended_store (args, sourcename=None):
             most_avail = avail
             most_avail_store = store
 
-    if most_avail < file_size or most_avail_store is None:
-        raise ServerError ('unable to find a store able to hold %d bytes', file_size)
+    if most_avail < upload_size or most_avail_store is None:
+        raise ServerError ('unable to find a store able to hold %d bytes', upload_size)
 
     info = {}
     info['name'] = store.name
     info['ssh_host'] = store.ssh_host
     info['path_prefix'] = store.path_prefix
     info['available'] = most_avail # might be helpful?
+
+    # Now, create a staging directory where the uploader can put their files.
+    # This avoids multiple uploads stepping on each others' toes.
+
+    info['staging_dir'] = store._create_tempdir ('staging')
+
+    # Finally, the caller will also want to inform us about new database
+    # records pertaining to the files that are about to be uploaded. Ingest
+    # that information.
+
+    from .misc import create_records
+    create_records (args, sourcename)
+
     return info
 
 
@@ -108,74 +138,88 @@ def complete_upload (args, sourcename=None):
     one of our Stores. We verify that the upload was successful and move the
     file into its final destination.
 
-    This function is paired with hera_librarian.store.Store.stage_file_on_store.
-
     """
     store_name = required_arg (args, unicode, 'store_name')
-    expected_size = required_arg (args, int, 'size')
-    expected_md5 = required_arg (args, unicode, 'md5')
-    type = required_arg (args, unicode, 'type')
-    obsid = required_arg (args, int, 'obsid')
-    start_jd = required_arg (args, float, 'start_jd')
+    staging_dir = required_arg (args, unicode, 'staging_dir')
     dest_store_path = required_arg (args, unicode, 'dest_store_path')
-    create_time = optional_arg (args, int, 'create_time_unix')
-
-    if create_time is not None:
-        import datetime
-        create_time = datetime.datetime.fromtimestamp (create_time)
+    meta_mode = required_arg (args, unicode, 'meta_mode')
 
     store = Store.get_by_name (store_name) # ServerError if failure
-    stage_path = 'upload_%s_%s.staging' % (expected_size, expected_md5)
+    file_name = os.path.basename (dest_store_path)
+    staged_path = os.path.join (staging_dir, file_name)
 
-    # Validate the staged file, abusing our argument-parsing helpers to make
-    # sure we got everything from the info call:
-
-    try:
-        info = store.get_info_for_path (stage_path)
-    except Exception as e:
-        raise ServerError ('cannot complete upload to %s:%s: %s', store_name, dest_store_path, e)
-
-    observed_size = required_arg (info, int, 'size')
-    observed_md5 = required_arg (info, unicode, 'md5')
-
-    if observed_size != expected_size:
-        raise ServerError ('cannot complete upload to %s:%s: expected size %d; observed %d',
-                           store_name, dest_store_path, expected_size, observed_size)
-
-    if observed_md5 != expected_md5:
-        raise ServerError ('cannot complete upload to %s:%s: expected MD5 %s; observed %s',
-                           store_name, dest_store_path, expected_md5, observed_md5)
+    from .file import File, FileInstance
 
     # Do we already have the intended instance? If so ... just delete the
     # staged instance and return success, because the intended effect of this
     # RPC call has already been achieved.
 
     parent_dirs = os.path.dirname (dest_store_path)
-    name = os.path.basename (dest_store_path)
-
-    from .file import File, FileInstance
-    instance = FileInstance.query.get ((store.id, parent_dirs, name))
+    instance = FileInstance.query.get ((store.id, parent_dirs, file_name))
     if instance is not None:
-        store._delete (stage_path)
+        store._delete (staging_dir)
         return {}
+
+    # Every file has associated metadata. Either we've already been given the
+    # right info, or we need to infer it from the file instance -- the latter
+    # technique only working for certain kinds of files that we know how to
+    # deal with.
+
+    if meta_mode == 'direct':
+        # In this case, the `initiate_upload` call should have created all of
+        # the database records that we need to make sense of this file. In
+        # particular, we should have a File record ready to go.
+
+        file = File.query.get (file_name)
+
+        if file is None:
+            # If this happens, it doesn't seem particularly helpful for debugging
+            # to leave the staged file lying around.
+            store._delete (staging_dir)
+            raise ServerError ('cannot complete upload to %s:%s: proper metadata were '
+                               'not uploaded in initiate_upload call',
+                               store_name, dest_store_path)
+
+        # Validate the staged file, abusing our argument-parsing helpers to make
+        # sure we got everything from the info call. Note that we leave the file
+        # around if we fail, in case that's helpful for debugging.
+
+        try:
+            info = store.get_info_for_path (staged_path)
+        except Exception as e:
+            raise ServerError ('cannot complete upload to %s:%s: %s', store_name, dest_store_path, e)
+
+        observed_size = required_arg (info, int, 'size')
+        observed_md5 = required_arg (info, unicode, 'md5')
+
+        if observed_size != file.size:
+            raise ServerError ('cannot complete upload to %s:%s: expected size %d; observed %d',
+                               store_name, dest_store_path, file.size, observed_size)
+
+        if observed_md5 != file.md5:
+            raise ServerError ('cannot complete upload to %s:%s: expected MD5 %s; observed %s',
+                               store_name, dest_store_path, file.md5, observed_md5)
+    elif meta_mode == 'infer':
+        # In this case, we must infer the metadata from the file instance itself.
+        # This mode should be avoided, since we're unable to verify that the file
+        # upload succeeded.
+
+        file = File.get_inferring_info (store, staged_path, sourcename)
+    else:
+        raise ServerError ('unrecognized "meta_mode" value %r', meta_mode)
 
     # Staged file is OK and we're not redundant. Move it to its new home.
 
-    store._move (stage_path, dest_store_path)
+    store._move (staged_path, dest_store_path)
 
-    # Finally, update the database.
+    # Finally, update the database. NOTE: there is an inevitable race between
+    # the move and the database modification. Would it be safer to switch the
+    # ordering?
 
-    from .observation import Observation
-
-    obs = Observation (obsid, start_jd, None, None)
-    file = File (name, type, obsid, sourcename, observed_size, observed_md5, create_time)
-    inst = FileInstance (store, parent_dirs, name)
-    db.session.merge (obs)
-    db.session.merge (file)
-    db.session.merge (inst)
+    inst = FileInstance (store, parent_dirs, file_name)
+    db.session.add (inst)
     db.session.add (file.make_instance_creation_event (inst, store))
     db.session.commit ()
-
     return {}
 
 
@@ -195,14 +239,6 @@ def register_instance (args, sourcename=None):
     """
     store_name = required_arg (args, unicode, 'store_name')
     store_path = required_arg (args, unicode, 'store_path')
-    type = optional_arg (args, unicode, 'type')
-    obsid = optional_arg (args, int, 'obsid')
-    start_jd = optional_arg (args, float, 'start_jd')
-    create_time = optional_arg (args, int, 'create_time_unix')
-
-    if create_time is not None:
-        import datetime
-        create_time = datetime.datetime.fromtimestamp (create_time)
 
     store = Store.get_by_name (store_name) # ServerError if failure
 
@@ -217,49 +253,31 @@ def register_instance (args, sourcename=None):
     if instance is not None:
         return {}
 
-    # Collect the necessary info, with ground-truth "size" and "md5"
-    # measurements.
+    # OK, we have to create some stuff.
 
-    try:
-        info = store.get_info_for_path (store_path)
-    except Exception as e:
-        raise ServerError ('cannot register %s:%s: %s', store_name, store_path, e)
-
-    size = required_arg (info, int, 'size')
-    md5 = required_arg (info, unicode, 'md5')
-
-    if type is None:
-        if 'type' not in info:
-            raise ServerError ('cannot register %s:%s: need to, but cannot, infer "type"',
-                               store_name, store_path)
-        type = required_arg (info, unicode, 'type')
-
-    if obsid is None:
-        if 'obsid' not in info:
-            raise ServerError ('cannot register %s:%s: need to, but cannot, infer "obsid"',
-                               store_name, store_path)
-        obsid = required_arg (info, int, 'obsid')
-
-    if start_jd is None:
-        if 'start_jd' not in info:
-            raise ServerError ('cannot register %s:%s: need to, but cannot, infer "start_jd"',
-                               store_name, store_path)
-        start_jd = required_arg (info, float, 'start_jd')
-
-    # We can now update the database.
-
-    from .observation import Observation
-
-    obs = Observation (obsid, start_jd, None, None)
-    file = File (name, type, obsid, sourcename, size, md5, create_time)
+    file = File.get_inferring_info (store, store_path, sourcename)
     inst = FileInstance (store, parent_dirs, name)
-    db.session.merge (obs)
-    db.session.merge (file)
-    db.session.merge (inst)
+    db.session.add (inst)
     db.session.add (file.make_instance_creation_event (inst, store))
     db.session.commit ()
-
     return {}
+
+
+def _upload_background_worker (store, connection_name, rec_info, store_path, remote_store_path):
+    store.upload_file_to_other_librarian (connection_name, rec_info,
+                                          store_path, remote_store_path)
+
+
+def _upload_wrapup (func_args, func_kwargs, retval, exc):
+    import logging
+    store, conn_name, rec_info, store_path, remote_store_path = func_args
+
+    if exc is None:
+        logging.info ('upload of %s:%s => %s:%s succeeded',
+                      store.name, store_path, conn_name, remote_store_path)
+    else:
+        logging.warn ('upload of %s:%s => %s:%s FAILED: %s',
+                      store.name, store_path, conn_name, remote_store_path, exc)
 
 
 @app.route ('/api/launch_file_copy', methods=['GET', 'POST'])
@@ -282,21 +300,20 @@ def launch_file_copy (args, sourcename=None):
     if inst is None:
         raise ServerError ('cannot upload %s: no local file instances with that name', file_name)
 
-    store = inst.store_object
+    basestore = inst.store_object.convert_to_base_object ()
     file = inst.file
+
+    # Gather up information describing the database records that the other
+    # Librarian will need.
+
+    from .misc import gather_records
+    rec_info = gather_records (file)
 
     # And launch away
 
-    try:
-        store.upload_file_to_other_librarian (connection_name, inst.store_path,
-                                              remote_store_path=remote_store_path,
-                                              type=file.type,
-                                              obsid=file.obsid,
-                                              start_jd=file.observation.start_time_jd,
-                                              create_time=file.create_time_unix)
-    except Exception as e:
-        raise ServerError ('launch of copy of %s failed: %s', file_name, e)
-
+    from . import launch_background_task
+    launch_background_task (_upload_background_worker, _upload_wrapup,
+                            basestore, connection_name, rec_info, inst.store_path, remote_store_path)
     db.session.add (file.make_copy_launched_event (connection_name, remote_store_path))
     db.session.commit ()
     return {}

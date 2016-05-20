@@ -88,8 +88,13 @@ class Store (object):
     # through an RPC call (if you're a client) or a direct change (if you're
     # the server).
 
-    def _copy_to_store (self, local_path, store_path):
+    def copy_to_store (self, local_path, store_path):
         """SCP a file to a particular path in the store.
+
+        You should not copy files directly to their intended destinations. You
+        should use the Librarian `prepare_upload` RPC call to get a staging
+        directory and copy your files there; then use the `complete_upload`
+        RPC call to tell the Librarian that you're done.
 
         """
         # flags: recursive; batch (no-password-asking) mode; compression; preserve
@@ -112,7 +117,7 @@ class Store (object):
 
 
     def _move (self, source_store_path, dest_store_path):
-        """Move a file in the store.
+        """Move a path in the store.
 
         We make sure that parent directories exist if needed.
 
@@ -124,38 +129,25 @@ class Store (object):
 
 
     def _delete (self, store_path):
-        """Delete a file instance from the store.
+        """Delete a path from the store.
 
         """
         self._ssh_slurp ("rm -rf '%s'" % self._path(store_path))
 
 
-    def stage_file_on_store (self, local_path):
-        """Stage a file instance on a store.
-
-        This uploads the data to a special staging location. After the upload
-        is complete, use a Librarian RPC call to complete the transaction.
-
-        The motivation for this design is that uploads WILL crash without
-        completing, and we want to be very sure that we do not accidentally
-        propagate broken files. So we do the upload in a two-step fashion with
-        sanity checks so that the Librarian can be sure that it's getting good
-        data.
+    def _create_tempdir (self, key='libtmp'):
+        """Create a temporary directory in the store's root and return its "store
+        path".
 
         """
-        from . import utils
-        size = utils.get_size_from_path (local_path)
-        md5 = utils.get_md5_from_path (local_path)
-        staging_path = 'upload_%s_%s.staging' % (size, md5)
+        output = self._ssh_slurp ('mktemp -d -p %s %s.XXXXXX' % (self.path_prefix, key))
+        fullpath = output.splitlines ()[-1].strip ()
 
-        # If we're trying to copy a directory, a previous failure will result
-        # in a directory lying around that our copy will then land *inside*
-        # that directory, causing the copy to fail with a bad MD5 and size.
-        # This is of course racy, but attempt to protect against that by
-        # preemptively blowing away the destination.
-        self._delete (staging_path)
+        if not fullpath.startswith (self.path_prefix):
+            raise RPCError ('unexpected output from mktemp on %s: %s'
+                            % (self.name, fullpath))
 
-        self._copy_to_store (local_path, staging_path)
+        return fullpath[len (self.path_prefix)+1:]
 
 
     # Interrogations of the store -- these don't change anything so they don't
@@ -237,34 +229,25 @@ class Store (object):
         return 100. * info['used'] / (info['total'])
 
 
-    def upload_file_to_other_librarian (self, conn_name, local_store_path,
-                                        remote_store_path=None, type=None,
-                                        obsid=None, start_jd=None,
-                                        create_time=None):
+    def upload_file_to_other_librarian (self, conn_name, rec_info, local_store_path,
+                                        remote_store_path=None):
         """Fire off an SCP process on the store that will upload a given file to a
-        different Librarian.
+        different Librarian. This function will SSH into the store host, from
+        which it will launch an SCP, and it will not return until everything
+        is done! This means that in the real world it may not return for hours, and
+        it will not infrequently raise an exception.
 
-        TODO: we have no way of finding out if the copy succeeds or fails! The
-        script should optionally report its outcome to the local Librarian.
+        TODO: there is no progress tracking; we just block and eventually
+        return some textual output from the SCP-within-SSH. This is far from
+        ideal.
 
         """
         if remote_store_path is None:
             remote_store_path = local_store_path
 
-        command = 'nohup upload_to_librarian.py'
+        import json
+        rec_text = json.dumps (rec_info)
 
-        if type is not None:
-            command += ' --type %s' % type
-
-        if obsid is not None:
-            command += ' --obsid %s' % obsid
-
-        if start_jd is not None:
-            command += ' --start-jd %.20f' % start_jd
-
-        if create_time is not None:
-            command += ' --create-time %d' % create_time
-
-        command += ' %s %s %s </dev/null >/tmp/COPYCOMMAND 2>&1 &' % (
+        command = 'upload_to_librarian.py --meta=json-stdin %s %s %s' % (
             conn_name, self._path(local_store_path), remote_store_path)
-        self._ssh_slurp (command)
+        return self._ssh_slurp (command, input=rec_text)
