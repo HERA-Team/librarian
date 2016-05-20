@@ -36,12 +36,6 @@ class ObservingSession (db.Model):
 
     ObservingSessions should not overlap.
 
-    TODO: we ought to synchronize these records between Librarians when
-    copying data, but currently don't. Implementation of that is blocking on
-    figuring out a coherent story for general Librarian data syncing. We can
-    get away with this since Observations are not *required* to be associated
-    with a session in the DB.
-
     """
     __tablename__ = 'observing_session'
 
