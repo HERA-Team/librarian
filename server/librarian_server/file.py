@@ -89,14 +89,15 @@ class File (db.Model):
 
 
     @classmethod
-    def get_inferring_info (cls, store, store_path, source_name):
+    def get_inferring_info (cls, store, store_path, source_name, info=None):
         """Get a File instance based on a file currently located in a store. We infer
         the file's properties and those of any dependent database records
         (Observation, ObservingSession), which means that we can only do this
         for certain kinds of files whose formats we understand.
 
         If new File and Observation records need to be created in the DB, that
-        is done.
+        is done. If *info* is given, we use it; otherwise we SSH into the
+        store to gather the info ourselves.
 
         """
         parent_dirs = os.path.dirname (store_path)
@@ -111,10 +112,11 @@ class File (db.Model):
         # Darn. We're going to have to create the File, and maybe its
         # Observation too. Get to it.
 
-        try:
-            info = store.get_info_for_path (store_path)
-        except Exception as e:
-            raise ServerError ('cannot register %s:%s: %s', store.name, store_path, e)
+        if info is None:
+            try:
+                info = store.get_info_for_path (store_path)
+            except Exception as e:
+                raise ServerError ('cannot register %s:%s: %s', store.name, store_path, e)
 
         size = required_arg (info, int, 'size')
         md5 = required_arg (info, unicode, 'md5')

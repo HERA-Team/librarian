@@ -223,42 +223,59 @@ def complete_upload (args, sourcename=None):
     return {}
 
 
-@app.route ('/api/register_instance', methods=['GET', 'POST'])
+@app.route ('/api/register_instances', methods=['GET', 'POST'])
 @json_api
-def register_instance (args, sourcename=None):
-    """This is similar to `complete_upload`, but should be called when a file has
-    magically appeared on a store rather than being "uploaded" from some
-    external source. There is no consistency checking and no staging. We will
-    attempt to infer the file's key properties if they are not provided.
+def register_instances (args, sourcename=None):
+    """In principle, this RPC call is similar to what `initiate_upload` and
+    `complete_upload` do. However, this function should be called when files
+    have magically appeared on a store rather than being "uploaded" from some
+    external source. There is no consistency checking and no staging, and we
+    always attempt to infer the files' key properties.
 
     If you are SCP'ing a file to a store, you should be using the
     `complete_upload` call, likely via the
     `hera_librarian.LibrarianClient.upload_file` routine, rather than this
     function.
 
+    Because this API call is most sensibly initiated from a store, the caller
+    already goes to the work of gathering the basic file info (MD5, size,
+    etc.) that we're going to need in our inference step. See
+    `scripts/add_obs_librarian.py` for the implementation.
+
     """
     store_name = required_arg (args, unicode, 'store_name')
-    store_path = required_arg (args, unicode, 'store_path')
-
-    store = Store.get_by_name (store_name) # ServerError if failure
-
-    # Do we already have the intended instance? If so ... just return success,
-    # because the intended effect of this RPC call has already been achieved.
-
-    parent_dirs = os.path.dirname (store_path)
-    name = os.path.basename (store_path)
+    file_info = required_arg (args, dict, 'file_info')
 
     from .file import File, FileInstance
-    instance = FileInstance.query.get ((store.id, parent_dirs, name))
-    if instance is not None:
-        return {}
 
-    # OK, we have to create some stuff.
+    store = Store.get_by_name (store_name) # ServerError if failure
+    slashed_prefix = store.path_prefix + '/'
 
-    file = File.get_inferring_info (store, store_path, sourcename)
-    inst = FileInstance (store, parent_dirs, name)
-    db.session.add (inst)
-    db.session.add (file.make_instance_creation_event (inst, store))
+    # Sort the files to get the creation times to line up.
+
+    for full_path in sorted (file_info.iterkeys ()):
+        if not full_path.startswith (slashed_prefix):
+            raise ServerError ('file path %r should start with "%s"',
+                               full_path, slashed_prefix)
+
+        # Do we already know about this instance? If so, just ignore it.
+
+        store_path = full_path[len (slashed_prefix):]
+        parent_dirs = os.path.dirname (store_path)
+        name = os.path.basename (store_path)
+
+        instance = FileInstance.query.get ((store.id, parent_dirs, name))
+        if instance is not None:
+            continue
+
+        # OK, we have to create some stuff.
+
+        file = File.get_inferring_info (store, store_path, sourcename,
+                                        info=file_info[full_path])
+        inst = FileInstance (store, parent_dirs, name)
+        db.session.add (inst)
+        db.session.add (file.make_instance_creation_event (inst, store))
+
     db.session.commit ()
     return {}
 

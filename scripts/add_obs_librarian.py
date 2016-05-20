@@ -1,83 +1,54 @@
 #!/usr/bin/env python
-"""add_obs_librarian.py /path/to/file1 /path/to/file2 ...
-
-Register a list of files with the librarian. The paths must exist and must be
-absolute (i.e., begin with "/").
+"""Register a list of files with the librarian.
 
 """
-import optparse
-import os.path
-import sys
-import re
-import glob
-import numpy as n
-from astropy.time import Time
-import aipy as a
+from __future__ import absolute_import, division, print_function
+
+import optparse, os.path, sys
 import hera_librarian
 from hera_librarian import utils
 
 
 o = optparse.OptionParser()
-o.set_usage('add_obs_librarian.py *.uv')
+o.set_usage('add_obs_librarian.py <connection-name> <store-name> <paths...>')
 o.set_description(__doc__)
-o.add_option('-t', action='store_true',
-             help='Test. Only print, do not touch db')
-o.add_option('--overwrite', action='store_true',
-             help='Default action is to skip obsrvations already in the db. ' +
-             'Setting this option overrides this safety feature and ' +
-             'attempts anyway')
-o.add_option('--site', type=str, default='Karoo',
-             help='The "site" name to use when creating the new records ' +
-             '(default: %default).')
-o.add_option('--store', type=str, default='pot2_data1',
-             help='The "store" name to use when creating the new records ' +
-             '(default: %default).')
-o.add_option('--store_path', type=str, default=None,
-             help='The store paths, to be prepended to the filenames to get ' +
-             'the full path')
 opts, args = o.parse_args(sys.argv[1:])
 
 
-# check that all files exist
-errors = False
+def die (fmt, *args):
+    if not len (args):
+        text = str (fmt)
+    else:
+        text = fmt % args
+    print ('error:', text, file=sys.stderr)
+    sys.exit (1)
 
-if opts.store_path is None:
-    print >>sys.stderr, 'error: store_path must be set'
-    errors = True
 
-if not opts.store_path.startswith('/'):
-    print >>sys.stderr, 'error: store_path must be an absolute path; got %r' % (opts.store_path,)
-    errors = True
+# Check args
 
-if not opts.store_path.endswith('/'):
-    opts.store_path = opts.store_path + '/'
+if len (args) < 3:
+    die ('expect at least three non-option arguments')
 
-full_filepaths = []
-files = []
-for filename in args:
-    full_files = glob.glob(opts.store_path+filename)
-    for f in full_files:
-        full_filepaths.append(f)
-        files.append(f[len(opts.store_path):])
+conn_name, store_name = args[:2]
+paths = args[2:]
 
-for filename in full_filepaths:
-    if not os.path.exists(filename):
-        print >>sys.stderr, 'error: file argument %r does not exist' % (filename,)
-        errors = True
 
-if errors:
-    sys.exit(1)
+# Load the info ...
 
-client = hera_librarian.LibrarianClient(opts.site)
+print ('Gathering information ...')
+file_info = {}
 
-for i, filename in enumerate(files):
-    full_filename = full_filepaths[i]
-    store_path = full_filename[len(opts.store_path):]
-    print store_path
+for path in paths:
+    path = os.path.abspath (path)
+    print ('   ', path)
+    file_info[path] = utils.gather_info_for_path (path)
 
-    try:
-        client.register_instance(opts.store, store_path)
-    except hera_librarian.RPCError as e:
-        print >>sys.stderr, 'failed to create instance record %s: %s' % (filename, e)
 
-print "done"
+# ... and upload what we learned.
+
+print ('Registering with Librarian.')
+client = hera_librarian.LibrarianClient (conn_name)
+try:
+    client.register_instances (store_name, file_info)
+except hera_librarian.RPCError as e:
+    die ('RPC failed: %s' % e)

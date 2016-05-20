@@ -169,14 +169,10 @@ class LibrarianClient (object):
         )
 
 
-    def register_instance(self, store_name, store_path, type=None, obsid=None, start_jd=None, create_time=None):
-        return self._do_http_post ('register_instance',
+    def register_instances(self, store_name, file_info):
+        return self._do_http_post ('register_instances',
             store_name=store_name,
-            store_path=store_path,
-            type=type,
-            obsid=obsid,
-            start_jd=start_jd,
-            create_time_unix=create_time,
+            file_info=file_info,
         )
 
 

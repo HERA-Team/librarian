@@ -11,6 +11,7 @@ Librarian "files" are MIRIAD data sets that are actually directories.
 """
 
 __all__ = str('''
+gather_info_for_path
 get_start_jd_from_path
 get_type_from_path
 get_pol_from_path
@@ -18,6 +19,7 @@ get_obsid_from_path
 get_md5_from_path
 get_size_from_path
 normalize_and_validate_md5
+print_info_for_path
 ''').split()
 
 import hashlib, locale, os.path, re
@@ -192,14 +194,7 @@ def get_size_from_path(path):
     return size
 
 
-def print_info_for_path(path):
-    """This utility function is meant to run on a Librarian store. The librarian
-    server SSHes into us and runs this function, then parses the printed
-    output.
-
-    """
-    import json, sys
-
+def gather_info_for_path(path):
     info = {}
     info['type'] = get_type_from_path(path)
     info['md5'] = get_md5_from_path(path)
@@ -215,4 +210,14 @@ def print_info_for_path(path):
     except IndexError:
         pass # this happens if the path does not have a JD-looking element in it
 
-    json.dump (info, sys.stdout)
+    return info
+
+
+def print_info_for_path(path):
+    """This utility function is meant to be run on a Librarian store. The
+    librarian server SSHes into us and runs this function, then parses the
+    printed output.
+
+    """
+    import json, sys
+    json.dump (gather_info_for_path (path), sys.stdout)
