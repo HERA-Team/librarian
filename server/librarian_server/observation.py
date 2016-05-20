@@ -273,6 +273,7 @@ def assign_observing_sessions (args, sourcename=None):
         db.session.commit ()
 
         new_sess_info.append (dict (
+            id = sess.id,
             start_time_jd = start,
             stop_time_jd = stop,
             n_obs = len (sess_obs),

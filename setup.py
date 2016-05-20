@@ -10,8 +10,9 @@ setup_args = {
     'scripts': [
         'scripts/add_librarian_file_event.py',
         'scripts/add_obs_librarian.py',
-        'scripts/upload_to_librarian.py',
         'scripts/launch_librarian_copy.py',
+        'scripts/librarian_assign_sessions.py',
+        'scripts/upload_to_librarian.py',
     ],
     'version': __version__
 }
