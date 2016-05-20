@@ -47,7 +47,7 @@ class Store (object):
         return os.path.join (self.path_prefix, *pieces)
 
 
-    def _ssh_slurp (self, command):
+    def _ssh_slurp (self, command, input=None):
         """SSH to the store host, run a command, and return its standard output. Raise
         an RPCError with standard error output if anything goes wrong.
 
@@ -63,8 +63,18 @@ class Store (object):
 
         """
         argv = ['ssh', self.ssh_host, command]
-        proc = subprocess.Popen (argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate ()
+
+        if input is None:
+            import os
+            stdin = open (os.devnull, 'wb')
+        else:
+            stdin = subprocess.PIPE
+
+        proc = subprocess.Popen (argv, shell=False, stdin=stdin,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if input is None:
+            stdin.close ()
+        stdout, stderr = proc.communicate (input=input)
 
         if proc.returncode != 0:
             raise RPCError (argv, 'exit code %d; stdout:\n\n%s\n\nstderr:\n\n%s'
