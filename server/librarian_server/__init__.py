@@ -35,25 +35,43 @@ def _initialize ():
 app, db = _initialize ()
 
 
-# Asynchronous worker threads. Currently only used for background copies. It
-# is tricky to engineer these threads to work correctly in all cases (sudden
-# server shutdown, etc.) so avoid them if possible.
+# Background tasks. Currently only used for background copies. It is tricky to
+# engineer these threads to work correctly in all cases (sudden server
+# shutdown, etc.) so avoid them if possible.
 
 _worker_pool = None
 
-def launch_thread (func, *args, **kwargs):
-    """apply_async() returns a result object that we could consult later, but
-    we're a web service so there's no real way to go back and check in on what
-    happened.
+def _task_wrapper (bg_func, wrapup_func, args, kwargs):
+    try:
+        result = bg_func (*args, **kwargs)
+        exc = None
+    except Exception as e:
+        result = None
+        exc = e
+
+    from tornado.ioloop import IOLoop
+    IOLoop.instance ().add_callback (wrapup_func, args, kwargs, result, exc)
+
+
+def launch_background_task (bg_func, wrapup_func, *args, **kwargs):
+    """Run a function in a background thread, then deal with its outcome back on
+    the main thread.
+
+    apply_async() returns a result object, but we're a web service so we can't
+    wait around to see what it is. Instead we run the function in a wrapper
+    that uses Tornado's infrastructure to let the main thread know what
+    happened to it.
 
     """
     global _worker_pool
 
     if _worker_pool is None:
+        import multiprocessing.util
+        multiprocessing.util.log_to_stderr (5)
         from multiprocessing.pool import ThreadPool
         _worker_pool = ThreadPool (app.config.get ('n_worker_threads', 8))
 
-    _worker_pool.apply_async (func, args, kwargs)
+    _worker_pool.apply_async (_task_wrapper, (bg_func, wrapup_func, args, kwargs))
 
 
 def maybe_wait_for_threads_to_finish ():
@@ -94,6 +112,8 @@ def commandline (argv):
         init_database ()
 
     if server == 'flask':
+        print ('note: using "flask" server, so background operations will not work',
+               file=sys.stderr)
         app.run (host=host, port=port, debug=debug)
     elif server == 'tornado':
         from tornado.wsgi import WSGIContainer
