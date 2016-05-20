@@ -12,7 +12,7 @@ FileInstance
 FileEvent
 ''').split ()
 
-import datetime, json, re
+import datetime, json, os.path, re
 from flask import flash, redirect, render_template, url_for
 
 from . import app, db
@@ -43,11 +43,12 @@ class File (db.Model):
 
     name = db.Column (db.String (256), primary_key=True)
     type = NotNull (db.String (32))
-    create_time = NotNull (db.DateTime)
+    create_time = NotNull (db.DateTime) # rounded to integer seconds
     obsid = db.Column (db.Integer, db.ForeignKey (Observation.obsid), nullable=False)
-    source = NotNull (db.String (64))
     size = NotNull (db.Integer)
     md5 = NotNull (db.String (32))
+
+    source = NotNull (db.String (64))
     observation = db.relationship ('Observation', back_populates='files')
     instances = db.relationship ('FileInstance', back_populates='file')
     events = db.relationship ('FileEvent', back_populates='file')
@@ -59,19 +60,8 @@ class File (db.Model):
             # floating-point rounding could sneak in as an issue.
             create_time = datetime.datetime.utcnow ().replace (microsecond=0)
 
-        # Aggressively validate arguments.
-
         from hera_librarian import utils
-
-        if '/' in name:
-            raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
-
         md5 = utils.normalize_and_validate_md5 (md5)
-
-        if not (size >= 0): # catches NaNs, just in case ...
-            raise ValueError ('illegal size %d of file "%s": negative' % (size, name))
-
-        # Looks good.
 
         self.name = name
         self.type = type
@@ -80,12 +70,97 @@ class File (db.Model):
         self.source = source
         self.size = size
         self.md5 = md5
+        self._validate ()
+
+
+    def _validate (self):
+        """Check that this object's fields follow our invariants.
+
+        """
+        from hera_librarian import utils
+
+        if '/' in self.name:
+            raise ValueError ('illegal file name "%s": names may not contain "/"' % self.name)
+
+        utils.normalize_and_validate_md5 (self.md5)
+
+        if not (self.size >= 0): # catches NaNs, just in case ...
+            raise ValueError ('illegal size %d of file "%s": negative' % (self.size, self.name))
+
+
+    @classmethod
+    def get_inferring_info (cls, store, store_path, source_name):
+        """Get a File instance based on a file currently located in a store. We infer
+        the file's properties and those of any dependent database records
+        (Observation, ObservingSession), which means that we can only do this
+        for certain kinds of files whose formats we understand.
+
+        If new File and Observation records need to be created in the DB, that
+        is done.
+
+        """
+        parent_dirs = os.path.dirname (store_path)
+        name = os.path.basename (store_path)
+
+        prev = cls.query.get (name)
+        if prev is not None:
+            # If there's already a record for this File name, then its corresponding
+            # Observation etc must already be available. Let's leave well enough alone:
+            return prev
+
+        # Darn. We're going to have to create the File, and maybe its
+        # Observation too. Get to it.
+
+        try:
+            info = store.get_info_for_path (store_path)
+        except Exception as e:
+            raise ServerError ('cannot register %s:%s: %s', store.name, store_path, e)
+
+        size = required_arg (info, int, 'size')
+        md5 = required_arg (info, unicode, 'md5')
+        type = required_arg (info, unicode, 'type')
+
+        from .observation import Observation
+        obsid = required_arg (info, int, 'obsid')
+        obs = Observation.query.get (obsid)
+
+        if obs is None:
+            start_jd = required_arg (info, float, 'start_jd')
+            db.session.add (Observation (obsid, start_jd, None, None))
+
+        inst = File (name, type, obsid, source_name, size, md5)
+        db.session.add (inst)
+        db.session.commit ()
+        return inst
 
 
     @property
     def create_time_unix (self):
         import calendar
         return calendar.timegm (self.create_time.timetuple ())
+
+
+    def to_dict (self):
+        """Note that 'source' is not a propagated quantity."""
+        return dict (
+            name = self.name,
+            type = self.type,
+            create_time = self.create_time_unix,
+            obsid = self.obsid,
+            size = self.size,
+            md5 = self.md5
+        )
+
+
+    @classmethod
+    def from_dict (cls, source, info):
+        name = required_arg (info, unicode, 'name')
+        type = required_arg (info, unicode, 'type')
+        ctime_unix = required_arg (info, int, 'create_time')
+        obsid = required_arg (info, int, 'obsid')
+        size = required_arg (info, int, 'size')
+        md5 = required_arg (info, unicode, 'md5')
+        return cls (name, type, obsid, source, size, md5, datetime.datetime.fromtimestamp (ctime_unix))
 
 
     def make_generic_event (self, type, **kwargs):

@@ -54,12 +54,38 @@ class ObservingSession (db.Model):
         self.id = id
         self.start_time_jd = start_time_jd
         self.stop_time_jd = stop_time_jd
+        self._validate ()
+
+
+    def _validate (self):
+        """Check that this object's fields follow our invariants.
+
+        """
+        if not (self.start_time_jd < self.stop_time_jd): # catches NaNs, just in case ...
+            raise ValueError ('session start time must precede stop time; got %f, %f'
+                              % (self.start_time_jd, self.stop_time_jd))
 
 
     @property
     def duration (self):
         "The duration of the session in days."
         return self.stop_time_jd - self.start_time_jd
+
+
+    def to_dict (self):
+        return dict (
+            id = self.id,
+            start_time_jd = self.start_time_jd,
+            stop_time_jd = self.stop_time_jd,
+        )
+
+
+    @classmethod
+    def from_dict (cls, info):
+        id = required_arg (info, int, 'id')
+        start = required_arg (info, float, 'start_time_jd')
+        stop = required_arg (info, float, 'stop_time_jd')
+        return cls (id, start, stop)
 
 
 class Observation (db.Model):
@@ -85,6 +111,17 @@ class Observation (db.Model):
         self.start_time_jd = start_time_jd
         self.stop_time_jd = stop_time_jd
         self.start_lst_hr = start_lst_hr
+        self._validate ()
+
+
+    def _validate (self):
+        """Check that this object's fields follow our invariants.
+
+        """
+        if self.stop_time_jd is not None and not (self.start_time_jd < self.stop_time_jd):
+            raise ValueError ('observation start time must precede stop time; got %f, %f'
+                              % (self.start_time_jd, self.stop_time_jd))
+
 
     @property
     def duration (self):
@@ -92,6 +129,29 @@ class Observation (db.Model):
         if self.stop_time_jd is None or self.start_time_jd is None:
             return float ('NaN')
         return self.stop_time_jd - self.start_time_jd
+
+
+    def to_dict (self):
+        return dict (
+            obsid = self.obsid,
+            start_time_jd = self.start_time_jd,
+            stop_time_jd = self.stop_time_jd,
+            start_lst_hr = self.start_lst_hr,
+            session_id = self.session_id,
+        )
+
+
+    @classmethod
+    def from_dict (cls, info):
+        obsid = required_arg (info, int, 'obsid')
+        start_jd = required_arg (info, float, 'start_time_jd')
+        stop_jd = optional_arg (info, float, 'stop_time_jd')
+        start_hr = optional_arg (info, float, 'start_lst_hr')
+        sessid = optional_arg (info, int, 'session_id')
+
+        obj = cls (obsid, start_jd, stop_jd, start_hr)
+        obj.session_id = sessid
+        return obj
 
 
 # RPC endpoints
