@@ -183,6 +183,15 @@ class File (db.Model):
                                         remote_store_path=remote_store_path)
 
 
+    def make_copy_finished_event (self, connection_name, remote_store_path,
+                                  error_code, error_message):
+        return self.make_generic_event ('copy_finished',
+                                        connection_name=connection_name,
+                                        remote_store_path=remote_store_path,
+                                        error_code=error_code,
+                                        error_message=error_message)
+
+
 class FileInstance (db.Model):
     """A FileInstance is a copy of a File that lives on one of this Librarian's
     stores.

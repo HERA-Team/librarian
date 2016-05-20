@@ -272,12 +272,27 @@ def _upload_wrapup (func_args, func_kwargs, retval, exc):
     import logging
     store, conn_name, rec_info, store_path, remote_store_path = func_args
 
+    # In principle, we might want different integer error codes if there are
+    # specific failure modes that we want to be able to analyze without
+    # parsing the error messages. At the time being, we just use "1" to mean
+    # that some exception happened. An "error" code of 0 always means success.
+
     if exc is None:
         logging.info ('upload of %s:%s => %s:%s succeeded',
                       store.name, store_path, conn_name, remote_store_path)
+        error_code = 0
+        error_message = 'success'
     else:
         logging.warn ('upload of %s:%s => %s:%s FAILED: %s',
                       store.name, store_path, conn_name, remote_store_path, exc)
+        error_code = 1
+        error_message = str (exc)
+
+    from .file import File
+    file = File.query.get (os.path.basename (store_path))
+    db.session.add (file.make_copy_finished_event (conn_name, remote_store_path,
+                                                   error_code, error_message))
+    db.session.commit ()
 
 
 @app.route ('/api/launch_file_copy', methods=['GET', 'POST'])
