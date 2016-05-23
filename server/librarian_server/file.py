@@ -261,7 +261,7 @@ class FileEvent (db.Model):
     name = db.Column (db.String (256), db.ForeignKey (File.name))
     time = NotNull (db.DateTime)
     type = db.Column (db.String (64))
-    payload = db.Column (db.String (512))
+    payload = db.Column (db.Text)
     file = db.relationship ('File', back_populates='events')
 
     def __init__ (self, name, type, payload_struct):
