@@ -44,8 +44,8 @@ class File (db.Model):
     name = db.Column (db.String (256), primary_key=True)
     type = NotNull (db.String (32))
     create_time = NotNull (db.DateTime) # rounded to integer seconds
-    obsid = db.Column (db.Integer, db.ForeignKey (Observation.obsid), nullable=False)
-    size = NotNull (db.Integer)
+    obsid = db.Column (db.BigInteger, db.ForeignKey (Observation.obsid), nullable=False)
+    size = NotNull (db.BigInteger)
     md5 = NotNull (db.String (32))
 
     source = NotNull (db.String (64))
@@ -212,7 +212,7 @@ class FileInstance (db.Model):
     """
     __tablename__ = 'file_instance'
 
-    store = db.Column (db.Integer, db.ForeignKey (Store.id), primary_key=True)
+    store = db.Column (db.BigInteger, db.ForeignKey (Store.id), primary_key=True)
     parent_dirs = db.Column (db.String (128), primary_key=True)
     name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
     file = db.relationship ('File', back_populates='instances')
@@ -257,7 +257,7 @@ class FileEvent (db.Model):
     """
     __tablename__ = 'file_event'
 
-    id = db.Column (db.Integer, primary_key=True)
+    id = db.Column (db.BigInteger, primary_key=True)
     name = db.Column (db.String (256), db.ForeignKey (File.name))
     time = NotNull (db.DateTime)
     type = db.Column (db.String (64))

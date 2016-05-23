@@ -43,7 +43,7 @@ class Store (db.Model, BaseStore):
     """
     __tablename__ = 'store'
 
-    id = db.Column (db.Integer, primary_key=True)
+    id = db.Column (db.BigInteger, primary_key=True)
     name = NotNull (db.String (256), unique=True)
     ssh_host = NotNull (db.String (256))
     path_prefix = NotNull (db.String (256))
