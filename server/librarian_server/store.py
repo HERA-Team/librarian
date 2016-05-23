@@ -212,14 +212,19 @@ def complete_upload (args, sourcename=None):
 
     store._move (staged_path, dest_store_path)
 
-    # Finally, update the database. NOTE: there is an inevitable race between
-    # the move and the database modification. Would it be safer to switch the
-    # ordering?
+    # Update the database. NOTE: there is an inevitable race between the move
+    # and the database modification. Would it be safer to switch the ordering?
 
     inst = FileInstance (store, parent_dirs, file_name)
     db.session.add (inst)
     db.session.add (file.make_instance_creation_event (inst, store))
     db.session.commit ()
+
+    # Finally, kill the staging directory. We save this for last just in case
+    # it fails, so that the key operations (the move and the DB update) are
+    # already locked in.
+
+    store._delete (staging_dir)
     return {}
 
 
