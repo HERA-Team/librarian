@@ -345,7 +345,7 @@ class UploaderTask (bgtasks.BackgroundTask):
         db.session.add (file.make_copy_finished_event (self.conn_name, self.remote_store_path,
                                                        error_code, error_message))
 
-        if self.standing_order_name is not None:
+        if self.standing_order_name is not None and error_code == 0:
             # XXX keep this name synched with that in search.py:StandingOrder
             type = 'standing_order_succeeded:' + self.standing_order_name
             db.session.add (file.make_generic_event (type))
