@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Property</th>
+	<th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+	<td>Name</td>
+	<td>{{storder.name}}</td>
+      </tr>
+      <tr>
+	<td>Destination Connection</td>
+	<td>{{storder.conn_name}}</td>
+      </tr>
+      <tr>
+	<td>Search</td>
+	<td>{{storder.search}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

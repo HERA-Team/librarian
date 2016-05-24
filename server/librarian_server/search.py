@@ -231,3 +231,18 @@ def standing_orders ():
         title='Standing Orders',
         storders=q,
     )
+
+
+@app.route ('/standing-orders/<string:name>')
+@login_required
+def specific_standing_order (name):
+    storder = StandingOrder.query.filter (StandingOrder.name == name).first ()
+    if storder is None:
+        flash ('No such standing order "%s"' % name)
+        return redirect (url_for ('standing_orders'))
+
+    return render_template (
+        'standing-order-individual.html',
+        title='Standing Order %s' % (storder.name),
+        storder=storder,
+    )
