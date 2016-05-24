@@ -3,29 +3,28 @@
 {% block content %}
 <h1>{{title}}</h1>
 
-<div class="table-responsive">
-  <table class="table table-striped">
-    <thead>
-      <tr>
-	<th>Property</th>
-	<th>Value</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-	<td>Name</td>
-	<td>{{storder.name}}</td>
-      </tr>
-      <tr>
-	<td>Destination Connection</td>
-	<td>{{storder.conn_name}}</td>
-      </tr>
-      <tr>
-	<td>Search</td>
-	<td>{{storder.search}}</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+<form role="form" action="/" method="post">
+  <input type="hidden" name="id" value="{{storder.id}}">
+
+  <div class="form-group">
+    <label for="storder-name">Name</label>
+    <input type="text" class="form-control" name="name" id="storder-name" value="{{storder.name}}">
+  </div>
+
+  <div class="form-group">
+    <label for="storder-conn">Destination Connection</label>
+    <input type="text" class="form-control" name="conn" id="storder-conn" value="{{storder.conn_name}}">
+  </div>
+
+  <div class="form-group">
+    <label for="storder-search">Search specification</label>
+    <textarea class="form-control" rows="10" name="search" id="storder-search">{{storder.search}}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-default" name="update"
+	  formaction="/standing-orders/{{storder.name}}/update">Update</button>
+  <button type="submit" class="btn btn-danger pull-right" name="delete"
+	  formaction="/standing-orders/{{storder.name}}/delete">Delete</button>
+</form>
 
 {% endblock %}

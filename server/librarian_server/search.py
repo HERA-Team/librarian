@@ -18,7 +18,7 @@ queue_standing_order_copies
 
 import datetime, logging, os.path, time
 
-from flask import flash, redirect, render_template, url_for
+from flask import flash, redirect, render_template, request, url_for
 
 from . import app, db
 from .dbutil import NotNull
@@ -246,3 +246,45 @@ def specific_standing_order (name):
         title='Standing Order %s' % (storder.name),
         storder=storder,
     )
+
+
+@app.route ('/standing-orders/<string:name>/update', methods=['POST'])
+@login_required
+def update_standing_order (name):
+    storder = StandingOrder.query.filter (StandingOrder.name == name).first ()
+    if storder is None:
+        flash ('No such standing order "%s"' % name)
+        return redirect (url_for ('standing_orders'))
+
+    new_name = required_arg (request.form, unicode, 'name')
+    new_conn = required_arg (request.form, unicode, 'conn')
+    new_search = required_arg (request.form, unicode, 'search')
+
+    try:
+        storder.name = new_name
+        storder.conn_name = new_conn
+        storder.search = new_search
+        storder._validate ()
+        db.session.merge (storder)
+        db.session.commit ()
+    except Exception as e:
+        flash ('Cannot update "%s": %s' % (name, e))
+        return redirect (url_for ('standing_orders'))
+
+    flash ('Updated standing order "%s"' % new_name)
+    return redirect (url_for ('standing_orders'))
+
+
+@app.route ('/standing-orders/<string:name>/delete', methods=['POST'])
+@login_required
+def delete_standing_order (name):
+    storder = StandingOrder.query.filter (StandingOrder.name == name).first ()
+    if storder is None:
+        flash ('No such standing order "%s"' % name)
+        return redirect (url_for ('standing_orders'))
+
+    db.session.delete (storder)
+    db.session.commit ()
+
+    flash ('Deleted standing order "%s"' % name)
+    return redirect (url_for ('standing_orders'))
