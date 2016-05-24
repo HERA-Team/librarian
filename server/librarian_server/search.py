@@ -28,10 +28,16 @@ from .webutil import ServerError, json_api, login_required, optional_arg, requir
 def select_files (search_string):
     from .file import File
 
-    if search_string == 'special':
+    if search_string == 'special-test-1':
         two_weeks_ago = datetime.datetime.utcnow () - datetime.timedelta (days=14)
         return File.query.filter (File.create_time > two_weeks_ago,
                                   File.name.like ('%22130%'))
+    elif search_string == 'special-test-2':
+        two_weeks_ago = datetime.datetime.utcnow () - datetime.timedelta (days=14)
+        return File.query.filter (File.create_time > two_weeks_ago,
+                                  File.name.like ('zen%HH.uvc'))
+    elif search_string == 'empty-search':
+        return File.query.filter (File.size != File.size)
 
     raise NotImplementedError ('general searching not actually implemented')
 
@@ -99,14 +105,17 @@ class StandingOrder (db.Model):
         query = query.filter (~File.name.in_ (already_done))
 
         # Finally we filter out files that already have copy tasks associated
-        # with this standing order.
+        # with this standing order, exceping those tasks that encountered an
+        # error.
 
         from .store import UploaderTask
         from .bgtasks import the_task_manager
 
         already_launched = set (os.path.basename (t.store_path)
                                 for t in the_task_manager.tasks
-                                if isinstance (t, UploaderTask) and self.name == t.standing_order_name)
+                                if (isinstance (t, UploaderTask) and
+                                    self.name == t.standing_order_name and
+                                    t.exception is None))
 
         for file in query:
             if file.name not in already_launched:
@@ -204,22 +213,6 @@ def queue_standing_order_copies ():
 
 
 # Web user interface
-
-@app.route ('/SOTEST')
-@login_required
-def SOTEST ():
-    so = StandingOrder.query.filter (StandingOrder.name == 'tmptest').first ()
-    if so is None:
-        so = StandingOrder ('tmptest', 'special', 'offsite-karoo')
-        db.session.add (so)
-        db.session.commit ()
-
-    return render_template (
-        'file-listing.html',
-        title='STANDING ORDER TEST',
-        files=so.get_files_to_copy (),
-    )
-
 
 @app.route ('/standing-orders')
 @login_required
