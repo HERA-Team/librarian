@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>Server Tasks</h1>
+
+<h3>Active tasks</h3>
+
+{% if active %}
+<p>There are {{active|length}} active tasks.</p>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Start Time</th>
+	<th>Description</th>
+	<th>Runtime</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in active %}
+      <tr>
+	<td>{{t.start_time|strftime}}</td>
+	<td>{{t.desc}}</td>
+	<td>{{t.runtime|duration}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<p>There are no active tasks right now.</p>
+{% endif %}
+
+<h3>Pending tasks</h3>
+
+{% if pending %}
+<p>There are {{pending|length}} pending tasks.</p>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Submit Time</th>
+	<th>Description</th>
+	<th>Wait time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in pending %}
+      <tr>
+	<td>{{t.submit_time|strftime}}</td>
+	<td>{{t.desc}}</td>
+	<td>{{t.wait_time|duration}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<p>There are no pending tasks right now.</p>
+{% endif %}
+
+<h3>Recent completed tasks</h3>
+
+{% if finished %}
+<p>There are {{finished|length}} recently-completed tasks.</p>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Finish Time</th>
+	<th>Description</th>
+	<th>Wait time</th>
+	<th>Runtime</th>
+	<th>Outcome</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in finished %}
+      <tr>
+	<td>{{t.finish_time|strftime}}</td>
+	<td>{{t.desc}}</td>
+	<td>{{t.wait_time|duration}}</td>
+	<td>{{t.runtime|duration}}</td>
+	<td>{{t.outcome_str}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<p>There are no recently-completed tasks.</p>
+{% endif %}
+
+{% endblock %}

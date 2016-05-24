@@ -63,6 +63,25 @@ def create_records (info, sourcename):
     db.session.commit ()
 
 
+# Misc ...
+
+@app.template_filter('strftime')
+def _jinja2_filter_datetime (unixtime, fmt=None):
+    import time
+    return time.strftime ('%c', time.localtime (unixtime))
+
+
+@app.template_filter('duration')
+def _jinja2_filter_duration (seconds, fmt=None):
+    if seconds < 90:
+        return '%.0f seconds' % seconds
+    if seconds < 4000:
+        return '%.1f minutes' % (seconds / 60)
+    if seconds < 100000:
+        return '%.1f hours' % (seconds / 3600)
+    return '%.1f days' % (seconds / 86400)
+
+
 # JSON API
 
 @app.route ('/api/ping', methods=['GET', 'POST'])

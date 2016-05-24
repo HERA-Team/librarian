@@ -285,36 +285,49 @@ def register_instances (args, sourcename=None):
     return {}
 
 
-def _upload_background_worker (store, connection_name, rec_info, store_path, remote_store_path):
-    store.upload_file_to_other_librarian (connection_name, rec_info,
-                                          store_path, remote_store_path)
+from . import bgtasks
+
+class UploaderTask (bgtasks.BackgroundTask):
+    def __init__ (self, store, conn_name, rec_info, store_path, remote_store_path):
+        self.store = store
+        self.conn_name = conn_name
+        self.rec_info = rec_info
+        self.store_path = store_path
+        self.remote_store_path = remote_store_path
+
+        self.desc = 'upload %s:%s to %s:%s' % (store.name, store_path,
+                                               conn_name, remote_store_path)
+
+    def thread_function (self):
+        self.store.upload_file_to_other_librarian (
+            self.conn_name, self.rec_info,
+            self.store_path, self.remote_store_path)
 
 
-def _upload_wrapup (func_args, func_kwargs, retval, exc):
-    import logging
-    store, conn_name, rec_info, store_path, remote_store_path = func_args
+    def wrapup_function (self, retval, exc):
+        import logging
 
-    # In principle, we might want different integer error codes if there are
-    # specific failure modes that we want to be able to analyze without
-    # parsing the error messages. At the time being, we just use "1" to mean
-    # that some exception happened. An "error" code of 0 always means success.
+        # In principle, we might want different integer error codes if there are
+        # specific failure modes that we want to be able to analyze without
+        # parsing the error messages. At the time being, we just use "1" to mean
+        # that some exception happened. An "error" code of 0 always means success.
 
-    if exc is None:
-        logging.info ('upload of %s:%s => %s:%s succeeded',
-                      store.name, store_path, conn_name, remote_store_path)
-        error_code = 0
-        error_message = 'success'
-    else:
-        logging.warn ('upload of %s:%s => %s:%s FAILED: %s',
-                      store.name, store_path, conn_name, remote_store_path, exc)
-        error_code = 1
-        error_message = str (exc)
+        if exc is None:
+            logging.info ('upload of %s:%s => %s:%s succeeded',
+                          self.store.name, self.store_path, self.conn_name, self.remote_store_path)
+            error_code = 0
+            error_message = 'success'
+        else:
+            logging.warn ('upload of %s:%s => %s:%s FAILED: %s',
+                          self.store.name, self.store_path, self.conn_name, self.remote_store_path, exc)
+            error_code = 1
+            error_message = str (exc)
 
-    from .file import File
-    file = File.query.get (os.path.basename (store_path))
-    db.session.add (file.make_copy_finished_event (conn_name, remote_store_path,
-                                                   error_code, error_message))
-    db.session.commit ()
+        from .file import File
+        file = File.query.get (os.path.basename (self.store_path))
+        db.session.add (file.make_copy_finished_event (self.conn_name, self.remote_store_path,
+                                                       error_code, error_message))
+        db.session.commit ()
 
 
 @app.route ('/api/launch_file_copy', methods=['GET', 'POST'])
@@ -341,16 +354,13 @@ def launch_file_copy (args, sourcename=None):
     file = inst.file
 
     # Gather up information describing the database records that the other
-    # Librarian will need.
+    # Librarian will need, then launch.
 
     from .misc import gather_records
     rec_info = gather_records (file)
+    bgtasks.submit_background_task (UploaderTask (
+        basestore, connection_name, rec_info, inst.store_path, remote_store_path))
 
-    # And launch away
-
-    from . import launch_background_task
-    launch_background_task (_upload_background_worker, _upload_wrapup,
-                            basestore, connection_name, rec_info, inst.store_path, remote_store_path)
     db.session.add (file.make_copy_launched_event (connection_name, remote_store_path))
     db.session.commit ()
     return {}
