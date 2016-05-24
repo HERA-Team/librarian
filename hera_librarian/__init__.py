@@ -176,6 +176,12 @@ class LibrarianClient (object):
         )
 
 
+    def locate_file_instance(self, file_name):
+        return self._do_http_post ('locate_file_instance',
+            file_name=file_name,
+        )
+
+
     def launch_file_copy(self, file_name, connection_name, remote_store_path=None):
         return self._do_http_post ('launch_file_copy',
             file_name=file_name,

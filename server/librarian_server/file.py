@@ -303,6 +303,29 @@ def create_file_event (args, sourcename=None):
     return {}
 
 
+@app.route ('/api/locate_file_instance', methods=['GET', 'POST'])
+@json_api
+def locate_file_instance (args, sourcename=None):
+    """Tell the caller where to find an instance of the named file.
+
+    """
+    file_name = required_arg (args, unicode, 'file_name')
+
+    file = File.query.get (file_name)
+    if file is None:
+        raise ServerError ('no known file "%s"', file_name)
+
+    for inst in file.instances:
+        return {
+            'full_path_on_store': inst.full_path_on_store (),
+            'store_name': inst.store_name,
+            'store_path': inst.store_path,
+            'store_ssh_host': inst.store_object.ssh_host,
+        }
+
+    raise ServerError ('no instances of file "%s" on this librarian', file_name)
+
+
 # Web user interface
 
 @app.route ('/files/<string:name>')
