@@ -221,11 +221,16 @@ def complete_upload (args, sourcename=None):
     db.session.add (file.make_instance_creation_event (inst, store))
     db.session.commit ()
 
-    # Finally, kill the staging directory. We save this for last just in case
-    # it fails, so that the key operations (the move and the DB update) are
-    # already locked in.
+    # Kill the staging directory. We save this til after the DB update in case
+    # it fails.
 
     store._delete (staging_dir)
+
+    # Finally, trigger a look at our standing orders.
+
+    from .search import queue_standing_order_copies
+    queue_standing_order_copies ()
+
     return {}
 
 
@@ -283,6 +288,12 @@ def register_instances (args, sourcename=None):
         db.session.add (file.make_instance_creation_event (inst, store))
 
     db.session.commit ()
+
+    # Finally, trigger a look at our standing orders.
+
+    from .search import queue_standing_order_copies
+    queue_standing_order_copies ()
+
     return {}
 
 

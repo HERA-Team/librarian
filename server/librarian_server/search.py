@@ -11,8 +11,12 @@ This code will likely need a lot of expansion, but we'll start simple.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 __all__ = str('''
-
+select_files
+StandingOrder
+queue_standing_order_copies
 ''').split ()
+
+import datetime, logging, os.path, time
 
 from flask import flash, redirect, render_template, url_for
 
@@ -22,7 +26,6 @@ from .webutil import ServerError, json_api, login_required, optional_arg, requir
 
 
 def select_files (search_string):
-    import datetime
     from .file import File
 
     if search_string == 'special':
@@ -31,6 +34,11 @@ def select_files (search_string):
                                   File.name.like ('%22130%'))
 
     raise NotImplementedError ('general searching not actually implemented')
+
+
+# "Standing orders" to copy files from one Librarian to another.
+
+stord_logger = logging.getLogger ('librarian.standingorders')
 
 
 class StandingOrder (db.Model):
@@ -47,7 +55,7 @@ class StandingOrder (db.Model):
     __tablename__ = 'standing_order'
 
     id = db.Column (db.Integer, primary_key=True, autoincrement=True)
-    name = NotNull (db.String (64))
+    name = NotNull (db.String (64), unique=True)
     search = NotNull (db.Text)
     conn_name = NotNull (db.String (64))
 
@@ -95,9 +103,8 @@ class StandingOrder (db.Model):
 
         from .store import UploaderTask
         from .bgtasks import the_task_manager
-        from os.path import basename
 
-        already_launched = set (basename (t.store_path)
+        already_launched = set (os.path.basename (t.store_path)
                                 for t in the_task_manager.tasks
                                 if isinstance (t, UploaderTask) and self.name == t.standing_order_name)
 
@@ -111,14 +118,89 @@ class StandingOrder (db.Model):
         StandingOrder's specification.
 
         """
-        import logging
         from .store import launch_copy_by_file_name
+        stord_logger.debug ('evaluating standing order %s', self.name)
 
         for file in self.get_files_to_copy ():
+            stord_logger.debug ('got a hit: %s', file.name)
             if launch_copy_by_file_name (file.name, self.conn_name,
                                          standing_order_name=self.name, no_instance='return'):
-                logging.warn ('standing order %s should copy file %s to %s, but no instances '
-                              'of it are available', self.name, file.name, self.conn_name)
+                stord_logger.warn ('standing order %s should copy file %s to %s, but no instances '
+                                   'of it are available', self.name, file.name, self.conn_name)
+
+
+# A simple little manager for running standing orders. We have a timeout to
+# not evaluate them that often, although doing so shouldn't be too expensive.
+
+MIN_STANDING_ORDER_INTERVAL = 300 # seconds
+DEFAULT_STANDING_ORDER_DELAY = 90 # seconds
+
+
+def _launch_copy_timeout ():
+    stord_logger.debug ('timeout invoked')
+
+    if the_standing_order_manager.maybe_launch_copies ():
+        # The checks actually ran.
+        the_standing_order_manager.launch_queued = False
+    else:
+        # We didn't run the checks because we did so recently. If a new file
+        # was uploaded we want to make sure that it's eventually checked, so
+        # re-queue ourselves to run again.
+        from tornado.ioloop import IOLoop
+        stord_logger.debug ('re-scheduling timeout')
+        IOLoop.instance ().call_later (DEFAULT_STANDING_ORDER_DELAY, _launch_copy_timeout)
+
+
+class StandingOrderManager (object):
+    """A simple, singleton class for managing our standing orders.
+
+    Other folks should primarily access the manager via the
+    `queue_standing_order_copies` function. That function *queues* a command
+    to examine our standing orders and launch any needed copy commands, with a
+    default delay of 90 seconds. The delay is in place since uploads of files
+    to the Librarian are likely to occur in batches, but it's easiest to just
+    command the manager to "do its thing" whenever a file is uploaded. The
+    delay makes it so that when we actually look for files to copy, there's
+    probably a bunch of them ready to go, not just the very first one that was
+    uploaded.
+
+    """
+    last_check = 0
+    launch_queued = False
+
+    def maybe_launch_copies (self):
+        """Returns True unless nothing happened because we've run a search recently.
+
+        """
+        now = time.time ()
+
+        if now - self.last_check < MIN_STANDING_ORDER_INTERVAL:
+            return False # Don't evaluate too often
+
+        stord_logger.debug ('running searches')
+        self.last_check = now
+
+        for storder in StandingOrder.query.all ():
+            storder.maybe_launch_copies ()
+
+        return True
+
+
+    def queue_launch_copy (self):
+        stord_logger.debug ('called queue_launch_copy')
+        if self.launch_queued:
+            return
+
+        self.launch_queued = True
+        from tornado.ioloop import IOLoop
+        stord_logger.debug ('timeout actually scheduled')
+        IOLoop.instance ().call_later (DEFAULT_STANDING_ORDER_DELAY, _launch_copy_timeout)
+
+
+the_standing_order_manager = StandingOrderManager ()
+
+def queue_standing_order_copies ():
+    the_standing_order_manager.queue_launch_copy ()
 
 
 # Web user interface
@@ -126,12 +208,14 @@ class StandingOrder (db.Model):
 @app.route ('/SOTEST')
 @login_required
 def SOTEST ():
-    so = StandingOrder ('test', 'special', 'offsite-karoo')
-    todo = list (so.get_files_to_copy ())
-    so.maybe_launch_copies ()
+    so = StandingOrder.query.filter (StandingOrder.name == 'tmptest').first ()
+    if so is None:
+        so = StandingOrder ('tmptest', 'special', 'offsite-karoo')
+        db.session.add (so)
+        db.session.commit ()
 
     return render_template (
         'file-listing.html',
         title='STANDING ORDER TEST',
-        files=todo,
+        files=so.get_files_to_copy (),
     )
