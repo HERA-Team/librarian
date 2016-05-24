@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Name</th>
+	<th>Destination connection</th>
+	<th>Search</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in storders %}
+      <tr>
+	<td><a href="/standing-orders/{{s.name}}">{{s.name}}</a></td>
+	<td><tt>{{s.conn_name}}</tt></td>
+	<td><tt>{{s.search|truncate (40)}}</tt></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

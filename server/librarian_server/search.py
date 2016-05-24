@@ -219,3 +219,15 @@ def SOTEST ():
         title='STANDING ORDER TEST',
         files=so.get_files_to_copy (),
     )
+
+
+@app.route ('/standing-orders')
+@login_required
+def standing_orders ():
+    q = StandingOrder.query.order_by (StandingOrder.name.asc ())
+
+    return render_template (
+        'standing-order-listing.html',
+        title='Standing Orders',
+        storders=q,
+    )
