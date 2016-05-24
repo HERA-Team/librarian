@@ -119,20 +119,27 @@ class Store (object):
     def _move (self, source_store_path, dest_store_path):
         """Move a path in the store.
 
-        We make sure that parent directories exist if needed.
+        We make sure that parent directories exist if needed. We refuse to
+        overwrite existing files. If `dest_store_path` is an existing
+        directory, we refuse to place the source file inside of it.
+
+        I can't actually find a way to get `mv` to indicate an error in the
+        case that it refuses to overwrite the destination, so we test that the
+        mv succeeded by seeing if the source file disappeared. This approach
+        has the important attribute of not being racy.
 
         """
         dest_parent = os.path.dirname (dest_store_path)
-        self._ssh_slurp ("mkdir -p '%s' && mv '%s' '%s'" %
-                         (self._path(dest_parent), self._path(source_store_path),
-                          self._path(dest_store_path)))
+        return self._ssh_slurp ("mkdir -p '%s' && mv -nT '%s' '%s' && test ! -e '%s'" %
+                                (self._path(dest_parent), self._path(source_store_path),
+                                 self._path(dest_store_path), self._path(source_store_path)))
 
 
     def _delete (self, store_path):
         """Delete a path from the store.
 
         """
-        self._ssh_slurp ("rm -rf '%s'" % self._path(store_path))
+        return self._ssh_slurp ("rm -rf '%s'" % self._path(store_path))
 
 
     def _create_tempdir (self, key='libtmp'):

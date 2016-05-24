@@ -24,7 +24,7 @@ Store
 UploaderTask
 ''').split ()
 
-import os.path
+import logging, os.path
 
 from flask import render_template
 
@@ -209,9 +209,16 @@ def complete_upload (args, sourcename=None):
     else:
         raise ServerError ('unrecognized "meta_mode" value %r', meta_mode)
 
-    # Staged file is OK and we're not redundant. Move it to its new home.
+    # Staged file is OK and we're not redundant. Move it to its new home. We
+    # refuse to clobber an existing file; if one exists, there must be
+    # something in the store's filesystem of which the Librarian is unaware,
+    # which is a big red flag. If that happens, call that an error.
 
-    store._move (staged_path, dest_store_path)
+    try:
+        logging.warn ('AWOO: %s', store._move (staged_path, dest_store_path))
+    except Exception as e:
+        raise ServerError ('cannot move upload to its destination (is there already '
+                           'a file there, unknown to this Librarian?): %s' % e)
 
     # Update the database. NOTE: there is an inevitable race between the move
     # and the database modification. Would it be safer to switch the ordering?
