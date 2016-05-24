@@ -193,10 +193,13 @@ def assign_observing_sessions (args, sourcename=None):
 
     examine_obs = []
 
-    for obs in Observation.query.filter (Observation.session_id == None).order_by (Observation.start_time_jd.asc ()):
+    for obs in (Observation.query
+                .filter (Observation.session_id == None)
+                .order_by (Observation.start_time_jd.asc ())):
         # TODO: we've got some N^2 scaling here; we could do a better job.
         for sess in existing_sessions:
             if (obs.start_time_jd >= sess.start_time_jd and
+                obs.start_time_jd <= sess.stop_time_jd and
                 (obs.stop_time_jd is None or (obs.stop_time_jd <= sess.stop_time_jd))):
                 obs.session_id = sess.id
                 break
