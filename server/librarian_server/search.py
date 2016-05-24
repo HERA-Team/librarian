@@ -234,10 +234,17 @@ def specific_standing_order (name):
         flash ('No such standing order "%s"' % name)
         return redirect (url_for ('standing_orders'))
 
+    try:
+        cur_files = list (storder.get_files_to_copy ())
+    except Exception as e:
+        flash ('Cannot run this order’s search: %s' % e)
+        cur_files = []
+
     return render_template (
         'standing-order-individual.html',
         title='Standing Order %s' % (storder.name),
         storder=storder,
+        cur_files=cur_files,
     )
 
 

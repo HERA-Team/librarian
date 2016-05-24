@@ -29,4 +29,17 @@
 	  formaction="/standing-orders/{{storder.name}}/delete">Delete</button>
 </form>
 
+<h3>Files currently matching this order</h3>
+
+<p>Not including files that have active or pending copy tasks
+  (see <a href="/tasks">the task listing</a>) or that are marked with the file
+  event <tt>standing_order_succeeded:{{storder.name}}</tt>. Most orders will
+  also only match recently-created files.</p>
+
+{% if cur_files %}
+{{macros.file_listing(cur_files)}}
+{% else %}
+<p class="text-center"><i>(No files currently match this order.)</i></p>
+{% endif %}
+
 {% endblock %}
