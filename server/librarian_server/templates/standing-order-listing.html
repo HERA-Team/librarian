@@ -24,4 +24,15 @@
   </table>
 </div>
 
+<p>You can also create a new order:</p>
+
+<form role="form" action="/standing-orders/_/create" class="form-inline" method="post">
+  <div class="form-group">
+    <label for="storder-name">Name</label>
+    <input type="text" class="form-control" name="name" id="storder-name" placeholder="order-name">
+  </div>
+
+  <button type="submit" class="btn btn-primary" name="create">Create</button>
+</form>
+
 {% endblock %}

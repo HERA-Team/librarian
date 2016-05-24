@@ -21,8 +21,10 @@
     <textarea class="form-control" rows="10" name="search" id="storder-search">{{storder.search}}</textarea>
   </div>
 
-  <button type="submit" class="btn btn-default" name="update"
+  <button type="submit" class="btn btn-primary" name="update"
 	  formaction="/standing-orders/{{storder.name}}/update">Update</button>
+  <a href="/standing-orders" class="btn btn-default">Back to standing orders</a>
+
   <button type="submit" class="btn btn-danger pull-right" name="delete"
 	  formaction="/standing-orders/{{storder.name}}/delete">Delete</button>
 </form>

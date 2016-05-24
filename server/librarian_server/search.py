@@ -248,6 +248,30 @@ def specific_standing_order (name):
     )
 
 
+@app.route ('/standing-orders/<string:ignored_name>/create', methods=['POST'])
+@login_required
+def create_standing_order (ignored_name):
+    """Note that we ignore the order name and instead takes its value from the
+    POST data; this is basically an implementation/consistency thing.
+
+    """
+    name = required_arg (request.form, unicode, 'name')
+
+    try:
+        if not len (name):
+            raise Exception ('order name may not be empty')
+
+        storder = StandingOrder (name, 'empty-search', 'undefined-connection')
+        storder._validate ()
+        db.session.add (storder)
+        db.session.commit ()
+    except Exception as e:
+        flash ('Cannot create "%s": %s' % (name, e))
+        return redirect (url_for ('standing_orders'))
+
+    return redirect (url_for ('standing_orders') + '/' + name)
+
+
 @app.route ('/standing-orders/<string:name>/update', methods=['POST'])
 @login_required
 def update_standing_order (name):
