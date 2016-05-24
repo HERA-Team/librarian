@@ -252,7 +252,8 @@ def assign_observing_sessions (args, sourcename=None):
         if len (sess_obs) == 1:
             # We're inferring stop times from start time gaps so we can't work
             # with a one-Obs session. Shouldn't happen anyway, but ...
-            raise ServerError ('not implemented: making session out of single observation')
+            raise ServerError ('not implemented: making session out of single '
+                               'observation (ID %s)', sess_obs[0].obsid)
 
         start = sess_obs[0].start_time_jd
         typ_djd = np.median (djds[i0:i1-1]) # note: fewer DJDs than start times since they're differential
