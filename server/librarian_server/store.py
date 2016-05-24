@@ -21,6 +21,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 __all__ = str('''
 Store
+UploaderTask
 ''').split ()
 
 import os.path
@@ -285,20 +286,36 @@ def register_instances (args, sourcename=None):
     return {}
 
 
+# File uploads and copies -- maybe this should be separated into its own file?
+
 from . import bgtasks
 
 class UploaderTask (bgtasks.BackgroundTask):
-    def __init__ (self, store, conn_name, rec_info, store_path, remote_store_path):
+    """Object that manages the task of copying a file to anothe Librarian.
+
+    `remote_store_path` may be None, in which case we will request the same
+    "store path" as the file was used in this Librarian by whichever
+    FileInstance we happen to have located.
+
+    """
+    def __init__ (self, store, conn_name, rec_info, store_path, remote_store_path, standing_order_name=None):
         self.store = store
         self.conn_name = conn_name
         self.rec_info = rec_info
         self.store_path = store_path
         self.remote_store_path = remote_store_path
+        self.standing_order_name = standing_order_name
 
         self.desc = 'upload %s:%s to %s:%s' % (store.name, store_path,
-                                               conn_name, remote_store_path)
+                                               conn_name, remote_store_path or '<any>')
+
+        if standing_order_name is not None:
+            self.desc += ' (standing order "%s")' % standing_order_name
+
 
     def thread_function (self):
+        # TODO: retry 5 times in case the failure is a transient connection
+        # issue.
         self.store.upload_file_to_other_librarian (
             self.conn_name, self.rec_info,
             self.store_path, self.remote_store_path)
@@ -327,7 +344,65 @@ class UploaderTask (bgtasks.BackgroundTask):
         file = File.query.get (os.path.basename (self.store_path))
         db.session.add (file.make_copy_finished_event (self.conn_name, self.remote_store_path,
                                                        error_code, error_message))
+
+        if self.standing_order_name is not None:
+            # XXX keep this name synched with that in search.py:StandingOrder
+            type = 'standing_order_succeeded:' + self.standing_order_name
+            db.session.add (file.make_generic_event (type))
+
         db.session.commit ()
+
+
+def launch_copy_by_file_name (file_name, connection_name, remote_store_path=None,
+                              standing_order_name=None, no_instance='raise'):
+    """Launch a copy of a file to a remote Librarian.
+
+    A ServerError will be raised if no instance of the file is available.
+
+    The copy will be registered as a "background task" that the server will
+    execute in a separate thread. If the server crashes, information about the
+    background task will be lost.
+
+    If `remote_store_path` is None, we request that the instance be located in
+    whatever "store path" was used by the instance we locate.
+
+    If `no_instance` is "raise", an exception is raised if no instance of the
+    file is available on this location. If it is "return", we return True.
+    Other values are not allowed.
+
+    """
+    # Find a local instance of the file
+
+    from .file import FileInstance
+    inst = FileInstance.query.filter (FileInstance.name == file_name).first ()
+    if inst is None:
+        if no_instance == 'raise':
+            raise ServerError ('cannot upload %s: no local file instances with that name', file_name)
+        elif no_instance == 'return':
+            return True
+        else:
+            raise ValueError ('unknown value for no_instance: %r' % (no_instance, ))
+
+    file = inst.file
+
+    # Gather up information describing the database records that the other
+    # Librarian will need.
+
+    from .misc import gather_records
+    rec_info = gather_records (file)
+
+    # Launch the background task. We need to conver the Store to a base object since
+    # the background task can't access the database.
+
+    basestore = inst.store_object.convert_to_base_object ()
+    bgtasks.submit_background_task (UploaderTask (
+        basestore, connection_name, rec_info, inst.store_path,
+        remote_store_path, standing_order_name))
+
+    # Remember that we launched this copy.
+
+    db.session.add (file.make_copy_launched_event (connection_name, remote_store_path))
+    db.session.commit ()
 
 
 @app.route ('/api/launch_file_copy', methods=['GET', 'POST'])
@@ -335,34 +410,11 @@ class UploaderTask (bgtasks.BackgroundTask):
 def launch_file_copy (args, sourcename=None):
     """Launch a copy of a file to a remote store.
 
-    Note that we only take the file name as an input -- we use our DB to see
-    if there are any instances of it available locally.
-
     """
     file_name = required_arg (args, unicode, 'file_name')
     connection_name = required_arg (args, unicode, 'connection_name')
     remote_store_path = optional_arg (args, unicode, 'remote_store_path')
-
-    # Find a local instance of the file
-
-    from .file import FileInstance
-    inst = FileInstance.query.filter (FileInstance.name == file_name).first ()
-    if inst is None:
-        raise ServerError ('cannot upload %s: no local file instances with that name', file_name)
-
-    basestore = inst.store_object.convert_to_base_object ()
-    file = inst.file
-
-    # Gather up information describing the database records that the other
-    # Librarian will need, then launch.
-
-    from .misc import gather_records
-    rec_info = gather_records (file)
-    bgtasks.submit_background_task (UploaderTask (
-        basestore, connection_name, rec_info, inst.store_path, remote_store_path))
-
-    db.session.add (file.make_copy_launched_event (connection_name, remote_store_path))
-    db.session.commit ()
+    launch_copy_by_file_name (file_name, connection_name, remote_store_path)
     return {}
 
 

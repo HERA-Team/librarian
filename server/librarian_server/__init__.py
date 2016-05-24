@@ -44,6 +44,7 @@ from . import observation
 from . import store
 from . import file
 from . import bgtasks
+from . import search
 from . import misc
 
 
