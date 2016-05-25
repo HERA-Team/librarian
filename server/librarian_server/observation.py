@@ -40,8 +40,8 @@ class ObservingSession (db.Model):
     __tablename__ = 'observing_session'
 
     id = db.Column (db.BigInteger, primary_key=True)
-    start_time_jd = NotNull (db.Float)
-    stop_time_jd = NotNull (db.Float)
+    start_time_jd = NotNull (db.Float (precision='53'))
+    stop_time_jd = NotNull (db.Float (precision='53'))
     observations = db.relationship ('Observation', back_populates='session')
 
     def __init__ (self, id, start_time_jd, stop_time_jd):
@@ -90,12 +90,12 @@ class Observation (db.Model):
     __tablename__ = 'observation'
 
     obsid = db.Column (db.BigInteger, primary_key=True)
-    start_time_jd = NotNull (db.Float)
+    start_time_jd = NotNull (db.Float (precision='53'))
     # XXX HACK: these should probably be NotNull. But in testing, we are creating
     # observations with add_obs_librarian, and it doesn't know these pieces of
     # information. Yet.
-    stop_time_jd = db.Column (db.Float)
-    start_lst_hr = db.Column (db.Float)
+    stop_time_jd = db.Column (db.Float (precision='53'))
+    start_lst_hr = db.Column (db.Float (precision='53'))
     session_id = db.Column (db.BigInteger, db.ForeignKey (ObservingSession.id), nullable=True)
     session = db.relationship ('ObservingSession', back_populates='observations')
     files = db.relationship ('File', back_populates='observation')
