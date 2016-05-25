@@ -33,7 +33,7 @@ p = argparse.ArgumentParser (
     """
 )
 
-p.add_argument ('--meta', dest='meta', nargs=1, default='infer',
+p.add_argument ('--meta', dest='meta', default='infer',
                 help='How to gather metadata: "json-stdin" or "infer"')
 p.add_argument ('conn_name', metavar='CONNECTION-NAME',
                 help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
