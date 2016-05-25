@@ -27,7 +27,7 @@ from .webutil import ServerError, json_api, login_required, optional_arg, requir
 
 # The search parser. We save searches in a (hopefully) simple JSON format. The
 # format is documented in the template file
-# `server/librarian_server/templates/standing-order-individual.html`. IF YOU
+# `server/librarian_server/templates/search-instructions-fragment.html`. IF YOU
 # ADD FEATURES HERE, UPDATE THE DOCUMENTATION!!!
 
 def _compile_clause (name, value):

@@ -20,34 +20,7 @@
 
   <div class="form-group">
     <label for="storder-search">Search specification</label>
-
-    <p>Searches are written
-      in <a href="http://guide.couchdb.org/draft/json.html">JSON format</a>. The
-      outermost part of every search is a dictionary of <i>clauses</i>
-      that are combined with a boolean “and” operation. Each clause consists of
-      a pair data items: its <i>type</i> and its <i>data</i>. The following
-      clause types are implemented:</p>
-
-    <dl class="dl-horizontal">
-      <dt>and</dt>
-      <dd>Boolean “and”. The <i>data</i> is a dictionary of sub-clauses to be and-ed together.</dd>
-
-      <dt>or</dt>
-      <dd>Boolean “or”. The <i>data</i> is a dictionary of sub-clauses to be or-ed together.</dd>
-
-      <dt>name-like</dt>
-      <dd>Matches files with names “like” the <i>data</i> specification, according to the
-	<a href="https://www.postgresql.org/docs/9.5/static/functions-matching.html">SQL
-	  LIKE operator</a>. Keep in mind that the file name is its “basename”,
-	without any directory components. Every file in the Librarian must have
-	a unique name.</dd>
-
-      <dt>not-older-than</dt>
-      <dd>Matches files with creation times that are never than <i>data</i> days
-	ago. For example, <tt>"not-older-than": 14</tt> matches files that are
-	not more than two weeks old.</dd>
-    </dl>
-
+    {% include 'search-instructions-fragment.html' %}
     <textarea class="form-control" rows="10" name="search" id="storder-search">{{storder.search}}</textarea>
   </div>
 
