@@ -215,7 +215,7 @@ def complete_upload (args, sourcename=None):
     # which is a big red flag. If that happens, call that an error.
 
     try:
-        logging.warn ('AWOO: %s', store._move (staged_path, dest_store_path))
+        store._move (staged_path, dest_store_path)
     except Exception as e:
         raise ServerError ('cannot move upload to its destination (is there already '
                            'a file there, unknown to this Librarian?): %s' % e)
