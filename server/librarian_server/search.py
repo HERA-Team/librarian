@@ -36,6 +36,10 @@ def select_files (search_string):
         two_weeks_ago = datetime.datetime.utcnow () - datetime.timedelta (days=14)
         return File.query.filter (File.create_time > two_weeks_ago,
                                   File.name.like ('zen%HH.uvc'))
+    elif search_string == 'special-test-3':
+        two_weeks_ago = datetime.datetime.utcnow () - datetime.timedelta (days=14)
+        return File.query.filter (File.create_time > two_weeks_ago,
+                                  File.name.like ('%autos.png'))
     elif search_string == 'empty-search':
         return File.query.filter (File.size != File.size)
 
