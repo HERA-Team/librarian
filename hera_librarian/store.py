@@ -66,7 +66,7 @@ class Store (object):
 
         if input is None:
             import os
-            stdin = open (os.devnull, 'wb')
+            stdin = open (os.devnull, 'rb')
         else:
             stdin = subprocess.PIPE
 
@@ -81,6 +81,25 @@ class Store (object):
                             % (proc.returncode, stdout, stderr))
 
         return stdout
+
+
+    def _stream_path (self, store_path):
+        """Return a subprocess.Popen instance that streams file contents on its
+        standard output. If the file is a flat file, this is well-defined; if
+        the file is a directory, the "contents" are its tar-ification, inside
+        one level of subdirectory named as the directory is. For instance, if
+        the target is a directory "/data/foo/bar", containing files "a" and
+        "b", the returned tar file will contain "bar/a" and "bar/b".
+
+        """
+        import os
+        argv = ['ssh', self.ssh_host, "librarian_stream_file_or_directory.sh '%s'" %
+                self._path (store_path)]
+        stdin = open (os.devnull, 'rb')
+        proc = subprocess.Popen (argv, shell=False, stdin=stdin,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdin.close ()
+        return proc
 
 
     # Modifications of the store host. These should always be paired with

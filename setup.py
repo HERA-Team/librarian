@@ -13,6 +13,7 @@ setup_args = {
         'scripts/launch_librarian_copy.py',
         'scripts/librarian_assign_sessions.py',
         'scripts/librarian_locate_file.py',
+        'scripts/librarian_stream_file_or_directory.sh',
         'scripts/upload_to_librarian.py',
     ],
     'version': __version__

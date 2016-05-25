@@ -72,7 +72,16 @@ def commandline (argv):
         from tornado.wsgi import WSGIContainer
         from tornado.httpserver import HTTPServer
         from tornado.ioloop import IOLoop
-        http_server = HTTPServer(WSGIContainer(app))
+        from tornado import web
+        from .webutil import StreamFile
+
+        flask_app = WSGIContainer (app)
+        tornado_app = web.Application ([
+            (r'/stream/.*', StreamFile),
+            (r'.*', web.FallbackHandler, {'fallback': flask_app}),
+        ])
+
+        http_server = HTTPServer(tornado_app)
         http_server.listen (port, address=host)
         IOLoop.instance ().start ()
     else:

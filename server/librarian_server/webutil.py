@@ -18,7 +18,7 @@ logout
 ''').split ()
 
 from flask import Response, flash, redirect, render_template, request, session, url_for
-import json, sys
+import json, os, sys
 
 from . import app
 
@@ -268,3 +268,66 @@ def login ():
 def logout ():
     session.pop ('sourcename', None)
     return redirect (url_for ('index'))
+
+
+# Streaming of data through the tornado asynchronous API
+
+from tornado import gen, iostream, web
+
+class StreamFile (web.RequestHandler):
+    uri_prefix = '/stream/'
+
+    @gen.coroutine
+    def get (self):
+        import logging
+
+        if not self.request.uri.startswith (self.uri_prefix):
+            self.clear ()
+            self.set_status (500)
+            self.finish ('internal server error: bad URI prefix')
+            return
+
+        file_name = self.request.uri[len (self.uri_prefix):]
+
+        # Find an instance
+
+        from .file import FileInstance
+        inst = FileInstance.query.filter (FileInstance.name == file_name).first ()
+        if inst is None:
+            self.clear ()
+            self.set_status (404)
+            self.finish ('no file named "%s" available at this Librarian' % file_name)
+            return
+
+        # Get an SSH-based process that will stream data to us.
+
+        proc = inst.store_object._stream_path (inst.store_path)
+
+        # And now forward all of the data to the caller.
+
+        try:
+            stream = iostream.PipeIOStream (os.dup (proc.stdout.fileno ()))
+
+            while True:
+                try:
+                    data = yield stream.read_bytes (4096, partial=True)
+                except iostream.StreamClosedError as e:
+                    break
+                self.write (data)
+
+            stream.close ()
+            proc.wait ()
+
+            if proc.returncode != 0:
+                try:
+                    msg = proc.stderr.read ()
+                except Exception as e:
+                    msg = '(could not fetch error output)'
+                raise Exception ('streaming proxy exited with error code %d: %s' %
+                                 (proc.returncode, msg))
+        except Exception as e:
+            self.clear ()
+            self.set_status (503)
+            self.write (str (e))
+        finally:
+            self.finish ()
