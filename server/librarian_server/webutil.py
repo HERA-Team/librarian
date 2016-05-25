@@ -303,7 +303,10 @@ class StreamFile (web.RequestHandler):
 
         proc = inst.store_object._stream_path (inst.store_path)
 
-        # And now forward all of the data to the caller.
+        # And now forward all of the data to the caller. We sniff the first batch
+        # to set the right Content-Type.
+
+        first = True
 
         try:
             stream = iostream.PipeIOStream (os.dup (proc.stdout.fileno ()))
@@ -313,6 +316,16 @@ class StreamFile (web.RequestHandler):
                     data = yield stream.read_bytes (4096, partial=True)
                 except iostream.StreamClosedError as e:
                     break
+
+                if first:
+                    ctype = 'text/plain'
+                    if data.startswith (b'\x89PNG\x0d\x0a\x1a\x0a'):
+                        ctype = 'image/png'
+                    elif len (data) > 260 and data[257:].startswith (b'ustar'):
+                        ctype = 'application/tar'
+                    self.set_header ('Content-Type', ctype)
+                    first = False
+
                 self.write (data)
 
             stream.close ()
