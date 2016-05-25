@@ -34,7 +34,8 @@ parsed. #}
     <tbody>
       {% for f in files %}
       <tr>
-	<td><a href="/files/{{f.name}}">{{f.name}}</a></td>
+	<!-- note: spaces on next line are magic nonbreaking spaces -->
+	<td><a href="/stream/{{f.name}}">{{f.name}}</a>   <a href="/files/{{f.name}}">details</a></td>
 	<td>{{f.create_time}}</td>
 	<td><a href="/observations/{{f.obsid}}">{{f.obsid}}</a></td>
 	<td>{{f.type}}</td>
