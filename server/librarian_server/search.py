@@ -11,12 +11,12 @@ This code will likely need a lot of expansion, but we'll start simple.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 __all__ = str('''
-select_files
+compile_search
 StandingOrder
 queue_standing_order_copies
 ''').split ()
 
-import datetime, logging, os.path, time
+import datetime, json, logging, os.path, time
 
 from flask import flash, redirect, render_template, request, url_for
 
@@ -25,25 +25,74 @@ from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
-def select_files (search_string):
+# The search parser. We save searches in a (hopefully) simple JSON format. The
+# format is documented in the template file
+# `server/librarian_server/templates/standing-order-individual.html`. IF YOU
+# ADD FEATURES HERE, UPDATE THE DOCUMENTATION!!!
+
+def _compile_clause (name, value):
     from .file import File
 
-    if search_string == 'special-test-1':
-        two_weeks_ago = datetime.datetime.utcnow () - datetime.timedelta (days=14)
-        return File.query.filter (File.create_time > two_weeks_ago,
-                                  File.name.like ('%22130%'))
-    elif search_string == 'special-test-2':
-        two_weeks_ago = datetime.datetime.utcnow () - datetime.timedelta (days=14)
-        return File.query.filter (File.create_time > two_weeks_ago,
-                                  File.name.like ('zen%HH.uvc'))
-    elif search_string == 'special-test-3':
-        two_weeks_ago = datetime.datetime.utcnow () - datetime.timedelta (days=14)
-        return File.query.filter (File.create_time > two_weeks_ago,
-                                  File.name.like ('%autos.png'))
-    elif search_string == 'empty-search':
-        return File.query.filter (File.size != File.size)
+    if name == 'and':
+        if not isinstance (value, dict):
+            raise ServerError ('can\'t parse "and" clause: contents must be a dict, '
+                               'but got %s', value.__class__.__name__)
+        from sqlalchemy import and_
+        return and_ (*[_compile_clause (*t) for t in value.iteritems ()])
+    elif name == 'or':
+        if not isinstance (value, dict):
+            raise ServerError ('can\'t parse "or" clause: contents must be a dict, '
+                               'but got %s', value.__class__.__name__)
+        from sqlalchemy import or_
+        return or_ (*[_compile_clause (*t) for t in value.iteritems ()])
+    elif name == 'name-like':
+        if not isinstance (value, unicode):
+            raise ServerError ('can\'t parse "name-like" clause: contents must be text, '
+                               'but got %s', value.__class__.__name__)
+        return File.name.like (value)
+    elif name == 'not-older-than':
+        if not isinstance (value, (int, float)):
+            raise ServerError ('can\'t parse "not-older-than" clause: contents must be '
+                               'numeric, but got %s', value.__class__.__name__)
+        cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
+        return (File.create_time > cutoff)
+    else:
+        raise ServerError ('can\'t parse search clause: unrecognized name "%s"', name)
 
-    raise NotImplementedError ('general searching not actually implemented')
+
+def compile_search (search_string):
+    """This function returns a query on the File table that will return the File
+    items matching the search.
+
+    """
+    from .file import File
+
+    # As a convenience, we strip out #-delimited comments from the input text.
+    # The default JSON parser doesn't accept them, but they're nice for users.
+
+    def filter_comments ():
+        for line in search_string.splitlines ():
+            yield line.split ('#', 1)[0]
+
+    search_string = '\n'.join (filter_comments ())
+
+    # Parse JSON.
+
+    try:
+        search = json.loads (search_string)
+    except Exception as e:
+        raise ServerError ('can\'t parse search as JSON: %s', e)
+
+    # The outermost item must be a dict (of clauses that are ANDed) or a magic
+    # string.
+
+    if search == 'empty-search':
+        return File.query.filter (File.size != File.size)
+    elif not isinstance (search, dict):
+        raise ServerError ('can\'t parse search: outermost JSON level must '
+                           'be a dict; got %s', search.__class__.__name__)
+
+    return File.query.filter (_compile_clause ('and', search))
 
 
 # "Standing orders" to copy files from one Librarian to another.
@@ -80,8 +129,7 @@ class StandingOrder (db.Model):
         """Check that this object's fields follow our invariants.
 
         """
-        # TODO: validate the search string
-        pass
+        compile_search (self.search) # will raise a ServerError if there's a problem.
 
 
     @property
@@ -98,7 +146,7 @@ class StandingOrder (db.Model):
 
         # The core query is something freeform specified by the user.
 
-        query = select_files (self.search)
+        query = compile_search (self.search)
 
         # We then layer on a check that the files don't have the specified
         # marker event.
@@ -252,6 +300,11 @@ def specific_standing_order (name):
     )
 
 
+default_search = """{
+  "name-like": "any-file-named-like-%-this",
+  "not-older-than": 14 # days
+}"""
+
 @app.route ('/standing-orders/<string:ignored_name>/create', methods=['POST'])
 @login_required
 def create_standing_order (ignored_name):
@@ -265,7 +318,7 @@ def create_standing_order (ignored_name):
         if not len (name):
             raise Exception ('order name may not be empty')
 
-        storder = StandingOrder (name, 'empty-search', 'undefined-connection')
+        storder = StandingOrder (name, default_search, 'undefined-connection')
         storder._validate ()
         db.session.add (storder)
         db.session.commit ()
