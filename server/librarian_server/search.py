@@ -14,6 +14,7 @@ __all__ = str('''
 compile_search
 StandingOrder
 queue_standing_order_copies
+register_standing_order_checkin
 ''').split ()
 
 import datetime, json, logging, os.path, time
@@ -268,7 +269,26 @@ class StandingOrderManager (object):
 the_standing_order_manager = StandingOrderManager ()
 
 def queue_standing_order_copies ():
+    stord_logger.debug ('queueing check of standing orders')
     the_standing_order_manager.queue_launch_copy ()
+
+
+def register_standing_order_checkin ():
+    """Create a Tornado PeriodicCallback that will periodically check the
+    standing orders to see if there's anything to do.
+
+    Since we know all events related to files, in theory this shouldn't be
+    needed, but in practice this can't hurt.
+
+    The timeout for the callback is measured in milliseconds, so we queue an
+    evaluation every 10 minutes.
+
+    """
+    from tornado import ioloop
+
+    cb = ioloop.PeriodicCallback (queue_standing_order_copies, 60 * 10 * 1000)
+    cb.start ()
+    return cb
 
 
 # Web user interface

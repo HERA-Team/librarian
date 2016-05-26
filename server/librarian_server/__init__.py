@@ -83,8 +83,9 @@ def commandline (argv):
 
         # Set up to check out whether there's anything to do with our standing
         # orders.
-        from .search import queue_standing_order_copies
-        IOLoop.instance ().add_callback (queue_standing_order_copies)
+        from . import search
+        IOLoop.instance ().add_callback (search.queue_standing_order_copies)
+        search.register_standing_order_checkin ()
 
         http_server = HTTPServer(tornado_app)
         http_server.listen (port, address=host)
