@@ -16,6 +16,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 __all__ = str ('''
 BackgroundTask
 submit_background_task
+register_background_task_reporter
 ''').split ()
 
 import logging, time
@@ -28,6 +29,10 @@ from flask import flash, redirect, render_template, url_for
 from . import app, db
 from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
+
+
+bgtask_logger = logging.getLogger ('librarian.tasks')
+bgtask_logger.setLevel (logging.INFO) # so that our periodic checkins show up
 
 
 class BackgroundTask (object):
@@ -217,6 +222,34 @@ def submit_background_task (task):
 
 def maybe_wait_for_threads_to_finish ():
     the_task_manager.maybe_wait_for_threads_to_finish ()
+
+
+def log_background_task_status ():
+    active = [t for t in the_task_manager.tasks
+              if t.start_time is not None and t.finish_time is None]
+    pending = [t for t in the_task_manager.tasks
+               if t.start_time is None]
+    finished = [t for t in the_task_manager.tasks
+                if t.finish_time is not None]
+
+    bgtask_logger.info ('%d background tasks: %d active, %d pending, %d finished',
+                        len (the_task_manager.tasks), len (active),
+                        len (pending), len (finished))
+
+
+def register_background_task_reporter ():
+    """Create a Tornado PeriodicCallback that will periodically report on the
+    status of background tasks.
+
+    The timeout for the callback is measured in milliseconds, so we queue an
+    evaluation every 3 minutes.
+
+    """
+    from tornado import ioloop
+
+    cb = ioloop.PeriodicCallback (log_background_task_status, 10 * 3 * 1000)
+    cb.start ()
+    return cb
 
 
 # Web user interface

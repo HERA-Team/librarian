@@ -87,6 +87,11 @@ def commandline (argv):
         IOLoop.instance ().add_callback (search.queue_standing_order_copies)
         search.register_standing_order_checkin ()
 
+        # Set up periodic report on background task status; also reminds us
+        # that the server is alive.
+        from . import bgtasks
+        bgtasks.register_background_task_reporter ()
+
         http_server = HTTPServer(tornado_app)
         http_server.listen (port, address=host)
         IOLoop.instance ().start ()
