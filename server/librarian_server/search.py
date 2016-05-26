@@ -18,7 +18,7 @@ queue_standing_order_copies
 
 import datetime, json, logging, os.path, time
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import Response, flash, redirect, render_template, request, url_for
 
 from . import app, db
 from .dbutil import NotNull
@@ -60,7 +60,7 @@ def _compile_clause (name, value):
         raise ServerError ('can\'t parse search clause: unrecognized name "%s"', name)
 
 
-def compile_search (search_string):
+def compile_search (search_string, query_type='files'):
     """This function returns a query on the File table that will return the File
     items matching the search.
 
@@ -87,12 +87,19 @@ def compile_search (search_string):
     # string.
 
     if search == 'empty-search':
-        return File.query.filter (File.size != File.size)
-    elif not isinstance (search, dict):
+        filter = (File.size != File.size)
+    elif isinstance (search, dict):
+        filter = _compile_clause ('and', search)
+    else:
         raise ServerError ('can\'t parse search: outermost JSON level must '
                            'be a dict; got %s', search.__class__.__name__)
 
-    return File.query.filter (_compile_clause ('and', search))
+    if query_type == 'files':
+        return File.query.filter (filter)
+    elif query_type == 'names':
+        return db.session.query (File.name).filter (filter)
+    else:
+        raise ServerError ('unhandled query_type %r', query_type)
 
 
 # "Standing orders" to copy files from one Librarian to another.
@@ -369,3 +376,84 @@ def delete_standing_order (name):
 
     flash ('Deleted standing order "%s"' % name)
     return redirect (url_for ('standing_orders'))
+
+
+# Web interface to searches outside of the standing order system
+
+sample_search = '{ "name-like": "%12345%.uv" }'
+
+@app.route ('/search-form', methods=['GET', 'POST'])
+@login_required
+def search_form ():
+    return render_template (
+        'search-form.html',
+        title='Search Files',
+        sample_search=sample_search,
+    )
+
+
+# These formats are defined in templates/search-form.html:
+full_path_format = 'File of full instance paths'
+human_format = 'List of files'
+
+@app.route ('/search', methods=['GET', 'POST'])
+@login_required
+def execute_search ():
+    if len (request.form):
+        reqdata = request.form
+    else:
+        reqdata = request.args
+
+    search_text = required_arg (reqdata, unicode, 'search')
+    output_format = optional_arg (reqdata, unicode, 'output_format', 'ui')
+    for_humans = True
+    query_type = 'files'
+
+    if output_format == full_path_format:
+        for_humans = False
+        query_type = 'names'
+    elif output_format == human_format:
+        for_humans = True
+    else:
+        return Response ('Illegal search output type %r' % (output_format, ), status=400)
+
+    status = 200
+
+    if for_humans:
+        mimetype = 'text/html'
+    else:
+        mimetype = 'text/plain'
+
+    try:
+        search = compile_search (search_text, query_type=query_type)
+
+        if output_format == full_path_format:
+            from .file import FileInstance
+            instances = FileInstance.query.filter (FileInstance.name.in_ (search))
+            text = '\n'.join (i.full_path_on_store () for i in instances)
+        elif output_format == human_format:
+            files = list (search)
+            text = render_template (
+                'search-results.html',
+                title='Search Results: %d Files' % len(files),
+                search_text=search_text,
+                files=files,
+                error_message=None,
+            )
+        else:
+            raise ServerError ('internal logic failure mishandled output format')
+    except Exception as e:
+        status = 400
+
+        if for_humans:
+            text = render_template (
+                'search-results.html',
+                title='Search Results: Error',
+                search_text=search_text,
+                files=[],
+                error_message=str (e),
+            )
+        else:
+            text = 'Search resulted in error: %s' % e
+
+    return Response (text, status=status, mimetype=mimetype)

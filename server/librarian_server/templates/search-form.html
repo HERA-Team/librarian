@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<form role="form" action="/" method="get">
+  <div class="form-group">
+    <label for="format">Output format</label>
+    <select class="form-control" name="output_format" style="width: 20em">
+      <option>List of files</option>
+      <option>File of full instance paths</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="search">Search specification</label>
+    {% include 'search-instructions-fragment.html' %}
+    <textarea class="form-control" rows="10" name="search" id="search" placeholder="{{sample_search}}"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary" name="update"
+	  formaction="/search">Search</button>
+  <a href="/" class="btn btn-default">Back to home</a>
+</form>
+
+{% endblock %}

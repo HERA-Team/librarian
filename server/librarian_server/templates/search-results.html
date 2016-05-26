@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<p>The search string was:</p>
+
+<textarea readonly>{{search_text}}</textarea>
+
+{% if error_message %}
+
+<p>It produced the error:</p>
+
+<textarea readonly>{{error_message}}</textarea>
+
+{% else %}
+
+{% if files %}
+
+<p>The matched files are:</p>
+
+{{macros.file_listing(files)}}
+
+{% else %}
+
+<p>No files matched this search.</p>
+
+{% endif %}
+
+{% endif %}
+
+{% endblock %}
