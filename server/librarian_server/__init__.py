@@ -81,6 +81,11 @@ def commandline (argv):
             (r'.*', web.FallbackHandler, {'fallback': flask_app}),
         ])
 
+        # Set up to check out whether there's anything to do with our standing
+        # orders.
+        from .search import queue_standing_order_copies
+        IOLoop.instance ().add_callback (queue_standing_order_copies)
+
         http_server = HTTPServer(tornado_app)
         http_server.listen (port, address=host)
         IOLoop.instance ().start ()

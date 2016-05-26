@@ -359,6 +359,9 @@ def update_standing_order (name):
         flash ('Cannot update "%s": %s' % (name, e))
         return redirect (url_for ('standing_orders'))
 
+    # There might be new things to look at!
+    queue_standing_order_copies ()
+
     flash ('Updated standing order "%s"' % new_name)
     return redirect (url_for ('standing_orders'))
 
