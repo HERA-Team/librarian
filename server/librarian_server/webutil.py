@@ -219,7 +219,7 @@ def required_arg (args, argtype, name):
     return _coerce (argtype, name, val)
 
 
-def optional_arg (args, argtype, name):
+def optional_arg (args, argtype, name, default=None):
     """Helper for type checking in JSON API functions.
 
     Might regret this, but we accepts ints and silently promote them to
@@ -228,7 +228,7 @@ def optional_arg (args, argtype, name):
     """
     val = args.get (name)
     if val is None:
-        return None
+        return default
     return _coerce (argtype, name, val)
 
 
