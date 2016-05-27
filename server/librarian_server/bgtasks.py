@@ -247,7 +247,7 @@ def register_background_task_reporter ():
     """
     from tornado import ioloop
 
-    cb = ioloop.PeriodicCallback (log_background_task_status, 10 * 3 * 1000)
+    cb = ioloop.PeriodicCallback (log_background_task_status, 60 * 3 * 1000)
     cb.start ()
     return cb
 
