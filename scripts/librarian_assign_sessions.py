@@ -13,15 +13,22 @@ night's data.
 """
 from __future__ import absolute_import, division, print_function
 
-import optparse, os.path, sys
+import argparse, os.path, sys
 
 import hera_librarian
 
 
-o = optparse.OptionParser()
-o.set_usage('librarian_assign_sessions.py <connection>')
-o.set_description(__doc__)
-opts, args = o.parse_args(sys.argv[1:])
+p = argparse.ArgumentParser (
+    description=__doc__,
+)
+p.add_argument ('--min-start-jd', dest='minimum_start_jd', metavar='JD', type=float,
+                help='Only consider observations starting after JD.')
+p.add_argument ('--max-start-jd', dest='maximum_start_jd', metavar='JD', type=float,
+                help='Only consider observations starting before JD.')
+p.add_argument ('conn_name', metavar='CONNECTION-NAME',
+                help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
+
+args = p.parse_args ()
 
 
 def die (fmt, *args):
@@ -33,20 +40,15 @@ def die (fmt, *args):
     sys.exit (1)
 
 
-# Argument validation is pretty simple
-
-if len (args) != 1:
-    die ('expect exactly one non-option argument')
-
-connection = args[0]
-
-
 # Let's do it.
 
-client = hera_librarian.LibrarianClient (connection)
+client = hera_librarian.LibrarianClient (args.conn_name)
 
 try:
-    result = client.assign_observing_sessions ()
+    result = client.assign_observing_sessions (
+        minimum_start_jd = args.minimum_start_jd,
+        maximum_start_jd = args.maximum_start_jd,
+    )
 except hera_librarian.RPCError as e:
     die ('assignment failed: %s', e)
 

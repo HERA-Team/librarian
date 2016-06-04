@@ -172,6 +172,11 @@ def assign_observing_sessions (args, sourcename=None):
     information to infer when the sessions in fact occurred, and create
     session objects and assign Observations to them.
 
+    The optional "minimum_start_jd" and "maximum_start_jd" arguments can be
+    used to limit the range of observations that are considered for session
+    assignment. These can be useful if session assignment needs to happen when
+    a new day's worth of data has been partially ingested.
+
     This should not be called while observing is ongoing! I'd like to avoid
     modifying records after creation when possible, and if we create a session
     whilst taking observations, the new observations will end up being
@@ -180,6 +185,9 @@ def assign_observing_sessions (args, sourcename=None):
     previous session, which sounds tricky.)
 
     """
+    minimum_start_jd = optional_arg (args, float, 'minimum_start_jd')
+    maximum_start_jd = optional_arg (args, float, 'maximum_start_jd')
+
     new_sess_info = []
     retval = {'new_sessions': new_sess_info}
 
@@ -192,10 +200,13 @@ def assign_observing_sessions (args, sourcename=None):
     # preexisting one (if they fall inside), or save them for followup.
 
     examine_obs = []
+    query = Observation.query.filter (Observation.session_id == None)
+    if minimum_start_jd is not None:
+        query = query.filter (Observation.start_time_jd >= minimum_start_jd)
+    if maximum_start_jd is not None:
+        query = query.filter (Observation.start_time_jd <= maximum_start_jd)
 
-    for obs in (Observation.query
-                .filter (Observation.session_id == None)
-                .order_by (Observation.start_time_jd.asc ())):
+    for obs in query.order_by (Observation.start_time_jd.asc ()):
         # TODO: we've got some N^2 scaling here; we could do a better job.
         for sess in existing_sessions:
             if (obs.start_time_jd >= sess.start_time_jd and

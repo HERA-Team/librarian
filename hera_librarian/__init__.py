@@ -108,8 +108,11 @@ class LibrarianClient (object):
         )
 
 
-    def assign_observing_sessions(self):
-        return self._do_http_post ('assign_observing_sessions')
+    def assign_observing_sessions(self, minimum_start_jd=None, maximum_start_jd=None):
+        return self._do_http_post ('assign_observing_sessions',
+            minimum_start_jd=minimum_start_jd,
+            maximum_start_jd=maximum_start_jd,
+        )
 
 
     def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={}):
