@@ -332,14 +332,15 @@ def describe_session_without_event (args, sourcename=None):
     source = required_arg (args, unicode, 'source')
     event_type = required_arg (args, unicode, 'event_type')
 
-    # Search for a file that (1) is assigned to a session and (2) does not
-    # have the notification event
+    # Search for files that (1) are assigned to a session, (2) come from the
+    # desired source, and (3) do not (yet) have the notification event.
 
     from .file import File, FileEvent, FileInstance
 
     already_done_file_names = (db.session.query (File.name)
                                .join (FileEvent)
                                .filter (FileEvent.type == event_type,
+                                        File.source == source,
                                         File.name == FileEvent.name))
     files_of_interest = (File.query.join (Observation)
          .filter (Observation.session_id != None,
