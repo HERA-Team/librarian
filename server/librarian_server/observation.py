@@ -340,10 +340,10 @@ def describe_session_without_event (args, sourcename=None):
     already_done_file_names = (db.session.query (File.name)
                                .join (FileEvent)
                                .filter (FileEvent.type == event_type,
-                                        File.source == source,
                                         File.name == FileEvent.name))
     files_of_interest = (File.query.join (Observation)
          .filter (Observation.session_id != None,
+                  File.source == source,
                   File.name.notin_ (already_done_file_names)))
 
     file = files_of_interest.first ()
