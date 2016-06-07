@@ -122,7 +122,7 @@ class Store (object):
 
         argv = [
             'scp',
-            '-rBpq',
+            '-rBp',
             '-c', 'arcfour256',
             '-o', 'UserKnownHostsFile=/dev/null',
             '-o', 'StrictHostKeyChecking=no',
