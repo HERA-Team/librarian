@@ -309,7 +309,7 @@ def register_instances (args, sourcename=None):
 from . import bgtasks
 
 class UploaderTask (bgtasks.BackgroundTask):
-    """Object that manages the task of copying a file to anothe Librarian.
+    """Object that manages the task of copying a file to another Librarian.
 
     `remote_store_path` may be None, in which case we will request the same
     "store path" as the file was used in this Librarian by whichever
@@ -332,8 +332,6 @@ class UploaderTask (bgtasks.BackgroundTask):
 
 
     def thread_function (self):
-        # TODO: retry 5 times in case the failure is a transient connection
-        # issue.
         self.store.upload_file_to_other_librarian (
             self.conn_name, self.rec_info,
             self.store_path, self.remote_store_path)

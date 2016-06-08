@@ -20,6 +20,8 @@ import subprocess, os.path
 
 from . import RPCError
 
+NUM_RSYNC_TRIES = 6
+
 
 class Store (object):
     """Note that the Librarian server code subclasses this class, so do not change
@@ -108,7 +110,7 @@ class Store (object):
     # the server).
 
     def copy_to_store (self, local_path, store_path):
-        """SCP a file to a particular path in the store.
+        """Rsync a file to a particular path in the store.
 
         You should not copy files directly to their intended destinations. You
         should use the Librarian `prepare_upload` RPC call to get a staging
@@ -116,22 +118,39 @@ class Store (object):
         RPC call to tell the Librarian that you're done.
 
         """
-        # flags: recursive; batch (no-password-asking) mode; compression; preserve
-        # times/modes; quiet mode. Use arcfour256 cipher for speed. Turn off known
-        # hosts and host key checking to Just Work without needing prompts.
+        # Rsync will nest directories in a way that we don't want if we don't
+        # end their names with "/", but it will error if we end a file name
+        # with "/". So we have to check:
+
+        if os.path.isdir (local_path) and not local_path.endswith ('/'):
+            local_suffix = '/'
+        else:
+            local_suffix = ''
+
+        # flags: archive mode; keep partial transfers. Have SSH work in batch
+        # mode, use the arcfour256 cipher for speed, and turn off known hosts
+        # and host key checking to Just Work without needing prompts. We used
+        # to have SSH use compression, but this put too high of a CPU load on
+        # the paper1 correlator machine. You could imagine making that an
+        # option if it helped with data transfer from Karoo to US.
 
         argv = [
-            'scp',
-            '-rBp',
-            '-c', 'arcfour256',
-            '-o', 'UserKnownHostsFile=/dev/null',
-            '-o', 'StrictHostKeyChecking=no',
-            local_path, '%s:%s' % (self.ssh_host, self._path(store_path))
+            'rsync',
+            '-aP',
+            '-e', 'ssh -c arcfour256 -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
+            local_path + local_suffix, '%s:%s' % (self.ssh_host, self._path(store_path))
         ]
-        proc = subprocess.Popen (argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        output = proc.communicate ()[0]
+        success = False
 
-        if proc.returncode != 0:
+        for i in xrange (NUM_RSYNC_TRIES):
+            proc = subprocess.Popen (argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            output = proc.communicate ()[0]
+
+            if proc.returncode == 0:
+                success = True
+                break
+
+        if not success:
             raise RPCError (argv, 'exit code %d; output:\n\n%s' % (proc.returncode, output))
 
 
@@ -257,14 +276,14 @@ class Store (object):
 
     def upload_file_to_other_librarian (self, conn_name, rec_info, local_store_path,
                                         remote_store_path=None):
-        """Fire off an SCP process on the store that will upload a given file to a
+        """Fire off an rsync process on the store that will upload a given file to a
         different Librarian. This function will SSH into the store host, from
-        which it will launch an SCP, and it will not return until everything
-        is done! This means that in the real world it may not return for hours, and
-        it will not infrequently raise an exception.
+        which it will launch an rsync, and it will not return until everything
+        is done! This means that in the real world it may not return for
+        hours, and it will not infrequently raise an exception.
 
         TODO: there is no progress tracking; we just block and eventually
-        return some textual output from the SCP-within-SSH. This is far from
+        return some textual output from the rsync-within-SSH. This is far from
         ideal.
 
         """
