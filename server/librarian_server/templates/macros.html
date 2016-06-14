@@ -57,6 +57,7 @@ parsed. #}
 	<th>Start JD</th>
 	<th>Start LST (hr)</th>
 	<th>Duration (days)</th>
+	<th>Total size</th>
       </tr>
     </thead>
     <tbody>
@@ -66,6 +67,7 @@ parsed. #}
 	<td>{{o.start_time_jd}}</td>
 	<td>{{o.start_lst_hr}}</td>
 	<td>{{o.duration}}</td>
+	<td>{{o.total_size|filesizeformat}}</td>
       </tr>
       {% endfor %}
     </tbody>

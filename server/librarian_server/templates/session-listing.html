@@ -13,6 +13,7 @@
 	<th>Duration (days)</th>
 	<th>Num. Observations</th>
 	<th>Num. Files (with instances)</th>
+	<th>Total size</th>
       </tr>
     </thead>
     <tbody>
@@ -24,6 +25,7 @@
 	<td>{{s.duration}}</td>
 	<td>{{s.num_obs}}</td>
 	<td>{{s.num_files}} ({{s.num_files_with_instances}})</td>
+	<td>{{s.total_size|filesizeformat}}</td>
       </tr>
       {% endfor %}
     </tbody>

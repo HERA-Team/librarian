@@ -101,6 +101,17 @@ class ObservingSession (db.Model):
                 .scalar ())
 
 
+    @property
+    def total_size (self):
+        "The total size (in bytes) of all Files associated with this session."
+        from sqlalchemy import func
+        from .file import File
+        my_obsids = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
+        return (db.session.query (func.sum (File.size))
+                .filter (File.obsid.in_ (my_obsids))
+                .scalar ())
+
+
     def to_dict (self):
         return dict (
             id = self.id,
@@ -158,6 +169,16 @@ class Observation (db.Model):
         if self.stop_time_jd is None or self.start_time_jd is None:
             return float ('NaN')
         return self.stop_time_jd - self.start_time_jd
+
+
+    @property
+    def total_size (self):
+        "The total size (in bytes) of all Files associated with this observation."
+        from sqlalchemy import func
+        from .file import File
+        return (db.session.query (func.sum (File.size))
+                .filter (File.obsid == self.obsid)
+                .scalar ())
 
 
     def to_dict (self):
