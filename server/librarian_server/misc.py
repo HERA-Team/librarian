@@ -95,13 +95,16 @@ def ping (args, sourcename=None):
 @app.route ('/')
 @login_required
 def index ():
+    from .observation import ObservingSession
     from .file import File
 
-    q = File.query.order_by (File.create_time.desc ()).limit (50)
+    rs = ObservingSession.query.order_by (ObservingSession.start_time_jd.desc ()).limit (7)
+    rf = File.query.order_by (File.create_time.desc ()).limit (50)
     return render_template (
         'main-page.html',
-        title='Recent Files',
-        files=q
+        title='Librarian Homepage',
+        recent_files=rf,
+        recent_sessions=rs,
     )
 
 
