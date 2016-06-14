@@ -66,6 +66,26 @@ class ObservingSession (db.Model):
         return self.stop_time_jd - self.start_time_jd
 
 
+    @property
+    def num_obs (self):
+        "The number of Observations associated with this session."
+        from sqlalchemy import func
+        return (db.session.query (func.count (Observation.obsid))
+                .filter (Observation.session_id == self.id)
+                .scalar ())
+
+
+    @property
+    def num_files (self):
+        "The number of Files associated with this session."
+        from sqlalchemy import func
+        from .file import File
+        my_obs = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
+        return (db.session.query (func.count (File.name))
+                .filter (File.obsid.in_ (my_obs))
+                .scalar ())
+
+
     def to_dict (self):
         return dict (
             id = self.id,
