@@ -9,7 +9,7 @@ probably ways to work around that but things work well enough as is.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import sys
+import logging, sys
 
 
 def _initialize ():
@@ -26,13 +26,25 @@ def _initialize ():
                '"SECRET_KEY" in "server-config.json"', file=sys.stderr)
         sys.exit (1)
 
+    # TODO: configurable logging parameters will likely be helpful. We use UTC
+    # for timestamps using standard ISO-8601 formatting. The Python docs claim
+    # that 8601 is the default format but this does not appear to be true.
+    logging.basicConfig (
+        level = logging.INFO,
+        format = '%(asctime)s %(levelname)s: %(message)s',
+        datefmt = '%Y-%m-%dT%H:%M:%SZ'
+    )
+    import time
+    logging.getLogger ('').handlers[0].formatter.converter = time.gmtime
+    logger = logging.getLogger ('librarian')
+
     tf = os.path.join (os.path.dirname (os.path.abspath (__file__)), 'templates')
     app = Flask ('librarian', template_folder=tf)
     app.config.update (config)
     db = SQLAlchemy (app)
-    return app, db
+    return logger, app, db
 
-app, db = _initialize ()
+logger, app, db = _initialize ()
 
 
 # We have to manually import the modules that implement services. It's not

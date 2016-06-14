@@ -26,13 +26,9 @@ from tornado.ioloop import IOLoop
 
 from flask import flash, redirect, render_template, url_for
 
-from . import app, db
+from . import app, db, logger
 from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
-
-
-bgtask_logger = logging.getLogger ('librarian.tasks')
-bgtask_logger.setLevel (logging.INFO) # so that our periodic checkins show up
 
 
 class BackgroundTask (object):
@@ -232,9 +228,9 @@ def log_background_task_status ():
     finished = [t for t in the_task_manager.tasks
                 if t.finish_time is not None]
 
-    bgtask_logger.info ('%d background tasks: %d active, %d pending, %d finished',
-                        len (the_task_manager.tasks), len (active),
-                        len (pending), len (finished))
+    logger.info ('%d background tasks: %d active, %d pending, %d finished',
+                 len (the_task_manager.tasks), len (active),
+                 len (pending), len (finished))
 
 
 def register_background_task_reporter ():
