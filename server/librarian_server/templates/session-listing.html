@@ -12,7 +12,7 @@
 	<th>Stop JD</th>
 	<th>Duration (days)</th>
 	<th>Num. Observations</th>
-	<th>Num. Files</th>
+	<th>Num. Files (with instances)</th>
       </tr>
     </thead>
     <tbody>
@@ -23,7 +23,7 @@
 	<td>{{s.stop_time_jd}}</td>
 	<td>{{s.duration}}</td>
 	<td>{{s.num_obs}}</td>
-	<td>{{s.num_files}}</td>
+	<td>{{s.num_files}} ({{s.num_files_with_instances}})</td>
       </tr>
       {% endfor %}
     </tbody>

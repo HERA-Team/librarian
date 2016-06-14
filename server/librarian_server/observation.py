@@ -80,9 +80,24 @@ class ObservingSession (db.Model):
         "The number of Files associated with this session."
         from sqlalchemy import func
         from .file import File
-        my_obs = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
+        my_obsids = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
         return (db.session.query (func.count (File.name))
-                .filter (File.obsid.in_ (my_obs))
+                .filter (File.obsid.in_ (my_obsids))
+                .scalar ())
+
+
+    @property
+    def num_files_with_instances (self):
+        """The number of Files associated with this session for which we have at least
+        one FileInstance.
+
+        """
+        from sqlalchemy import distinct, func
+        from .file import File, FileInstance
+        my_obsids = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
+        my_filenames = db.session.query (File.name).filter (File.obsid.in_ (my_obsids))
+        return (db.session.query (func.count (distinct (FileInstance.name)))
+                .filter (FileInstance.name.in_ (my_filenames))
                 .scalar ())
 
 
