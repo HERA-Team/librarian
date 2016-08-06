@@ -28,13 +28,13 @@ include directory components: `cal.2557561.66007.phases.hdf` is acceptable,
 but `2557561/cal.2457561.66007.phases.hdf` is not.
 
 Each file is immutable. Once you upload a file of a given name, you cannot
-upload a new, different version. This is a powerful and important invariant to
-maintain for reproducibility and synchronization. If you have data products
-that you expect will need updating, devise a naming scheme for them that
-allows you to distinguish different versions, and then maintain a list of
-"most recent versions" outside of the Librarian (e.g., in a text file in a Git
-repository, so that its history can be tracked and it can easily be processed
-programmatically).
+update it — a new version must be given a new name. This is a powerful and
+important invariant to maintain for reproducibility and synchronization. If
+you have data products that you expect will need updating, devise a naming
+scheme for them that allows you to distinguish different versions, and then
+maintain a list of "most recent versions" outside of the Librarian (e.g., in a
+text file in a Git repository, so that its history can be tracked and it can
+easily be processed programmatically).
 
 Each “file” is either a regular flat computer file, or a directory. The latter
 feature can make life a bit of a hassle sometimes, but it is very valuable to
@@ -66,14 +66,13 @@ another. This is how we implement data transfer from the Karoo the the US.
 It’s important to understand that the Librarian distinguishes between the
 abstract concept of a “file” and an actual copy of a given file, which it
 calls a “file instance”. A Librarian may be aware of the existence of a file
-named `20200317_calibration_params.hdf` — and know some of its metadata —
-without actually having a local copy of it. In the other direction, it is
-possible for the Librarian’s data storage to contain multiple instances of the
-same file — this may not be as silly as it sounds of one of its storage hosts
-is flaky, or different storage hosts are connected to different portions of
-the local network. When processing data, the first step is often to ask the
-Librarian for the specific paths where instances of your files of interest may
-be found.
+named `cal.2557561.66007.phases.hdf` — and know some of its metadata — without
+actually having a local copy of it. In the other direction, it is possible for
+the Librarian’s data storage to contain multiple instances of the same file —
+this may not be as silly as it sounds of one of its storage hosts is flaky, or
+different storage hosts are connected to different portions of the local
+network. When processing data, the first step is often to ask the Librarian
+for the specific paths where instances of your files of interest may be found.
 
 
 Logging into the Librarian
@@ -85,7 +84,7 @@ HERA’s Librarians are not visible on the open Internet, so you need to set up
 an SSH tunnel in order to be able to connect to them.
 
 The login info for HERA’s Librarians is not public. It may be found
-[here on the HERA Wiki](http://herawiki.berkeley.edu/doku.php/librarian#authenticators_and_client_configuration_examples).
+[here on the HERA Wiki](http://herawiki.berkeley.edu/doku.php/librarian).
 
 
 Programmatic Access to the Librarian
@@ -186,7 +185,9 @@ Finally, you might recall that we said that Librarian filenames may not
 contain directory parts — “/” characters. But in the example above, the
 destination path has one! What gives? What’s happening here is that the
 directory piece is a hint to the Librarian of what directory to stash the file
-in *in its local storage*. The name of the uploaded file will always be the
-final piece of whatever path you give it, but this helps keeps the files
-organized sensibly on the storage disks. By convention, files are stored in
-directories named according to the integer part of their JD.
+in *in its local storage*. The Official Librarian Name of the uploaded file
+will always be the final piece of whatever path you give it, but this helps
+keeps the files organized sensibly on the storage disks. By convention, files
+are stored in directories named according to the integer part of their JD.
+Also, note that the name of your file on disk does not need to match the name
+that it will be given on the Librarian.
