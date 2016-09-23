@@ -79,7 +79,7 @@ class Store (object):
         stdout, stderr = proc.communicate (input=input)
 
         if proc.returncode != 0:
-            raise RPCError (argv, 'exit code %d; stdout:\n\n%s\n\nstderr:\n\n%s'
+            raise RPCError (argv, 'exit code %d; stdout:\n\n%r\n\nstderr:\n\n%r'
                             % (proc.returncode, stdout, stderr))
 
         return stdout
@@ -151,7 +151,7 @@ class Store (object):
                 break
 
         if not success:
-            raise RPCError (argv, 'exit code %d; output:\n\n%s' % (proc.returncode, output))
+            raise RPCError (argv, 'exit code %d; output:\n\n%r' % (proc.returncode, output))
 
 
     def _move (self, source_store_path, dest_store_path):
