@@ -316,6 +316,9 @@ class UploaderTask (bgtasks.BackgroundTask):
     FileInstance we happen to have located.
 
     """
+    t_start = None
+    t_finish = None
+
     def __init__ (self, store, conn_name, rec_info, store_path, remote_store_path, standing_order_name=None):
         self.store = store
         self.conn_name = conn_name
@@ -332,9 +335,12 @@ class UploaderTask (bgtasks.BackgroundTask):
 
 
     def thread_function (self):
+        import time
+        self.t_start = time.time ()
         self.store.upload_file_to_other_librarian (
             self.conn_name, self.rec_info,
             self.store_path, self.remote_store_path)
+        self.t_finish = time.time ()
 
 
     def wrapup_function (self, retval, exc):
@@ -365,6 +371,13 @@ class UploaderTask (bgtasks.BackgroundTask):
             # XXX keep this name synched with that in search.py:StandingOrder
             type = 'standing_order_succeeded:' + self.standing_order_name
             db.session.add (file.make_generic_event (type))
+
+        if error_code == 0:
+            dt = self.t_finish - self.t_start # seconds
+            dt_eff = max (dt, 0.5) # avoid div-by-zero just in case
+            rate = file.size / (dt_eff * 1024.) # kilobytes/sec (AKA kB/s)
+            logging.info ('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
+                          self.store.name, self.store_path, dt, rate)
 
         db.session.commit ()
 
