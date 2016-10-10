@@ -364,8 +364,17 @@ class UploaderTask (bgtasks.BackgroundTask):
 
         from .file import File
         file = File.query.get (os.path.basename (self.store_path))
+
+        if error_code != 0:
+            dt = rate = None
+        else:
+            dt = self.t_finish - self.t_start # seconds
+            dt_eff = max (dt, 0.5) # avoid div-by-zero just in case
+            rate = file.size / (dt_eff * 1024.) # kilobytes/sec (AKA kB/s)
+
         db.session.add (file.make_copy_finished_event (self.conn_name, self.remote_store_path,
-                                                       error_code, error_message))
+                                                       error_code, error_message, duration=dt,
+                                                       average_rate=rate))
 
         if self.standing_order_name is not None and error_code == 0:
             # XXX keep this name synched with that in search.py:StandingOrder
@@ -373,9 +382,6 @@ class UploaderTask (bgtasks.BackgroundTask):
             db.session.add (file.make_generic_event (type))
 
         if error_code == 0:
-            dt = self.t_finish - self.t_start # seconds
-            dt_eff = max (dt, 0.5) # avoid div-by-zero just in case
-            rate = file.size / (dt_eff * 1024.) # kilobytes/sec (AKA kB/s)
             logging.info ('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
                           self.store.name, self.store_path, dt, rate)
 

@@ -186,12 +186,21 @@ class File (db.Model):
 
 
     def make_copy_finished_event (self, connection_name, remote_store_path,
-                                  error_code, error_message):
+                                  error_code, error_message, duration=None,
+                                  average_rate=None):
+        extras = {}
+
+        if duration is not None:
+            extras['duration'] = duration # seconds
+        if average_rate is not None:
+            extras['average_rate'] = average_rate # kilobytes/sec
+
         return self.make_generic_event ('copy_finished',
                                         connection_name=connection_name,
                                         remote_store_path=remote_store_path,
                                         error_code=error_code,
-                                        error_message=error_message)
+                                        error_message=error_message,
+                                        **extras)
 
 
 class FileInstance (db.Model):
