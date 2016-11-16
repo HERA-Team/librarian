@@ -21,6 +21,9 @@
     # Some kind of magic that you shouldn't change.
     "SQLALCHEMY_TRACK_MODIFICATIONS": false,
 
+    # Logging verbosity level. "debug", "info", "warning", "error". Default "info".
+    #"log_level": "info",
+
     # The web UI bills itself as "<displayed_site_name> HERA Librarian".
     "displayed_site_name": "Sample",
 

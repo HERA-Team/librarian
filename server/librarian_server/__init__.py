@@ -12,6 +12,13 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import logging, sys
 
 
+_log_level_names = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+}
+
 def _initialize ():
     import json, os.path
     from flask import Flask
@@ -29,14 +36,23 @@ def _initialize ():
     # TODO: configurable logging parameters will likely be helpful. We use UTC
     # for timestamps using standard ISO-8601 formatting. The Python docs claim
     # that 8601 is the default format but this does not appear to be true.
+    loglevel_cfg = config.get ('log_level', 'info')
+    loglevel = _log_level_names.get (loglevel_cfg)
+    warn_loglevel = (loglevel is None)
+    if warn_loglevel:
+        loglevel = logging.INFO
+
     logging.basicConfig (
-        level = logging.INFO,
+        level = loglevel,
         format = '%(asctime)s %(levelname)s: %(message)s',
         datefmt = '%Y-%m-%dT%H:%M:%SZ'
     )
     import time
     logging.getLogger ('').handlers[0].formatter.converter = time.gmtime
     logger = logging.getLogger ('librarian')
+
+    if warn_loglevel:
+        logger.warn ('unrecognized value %r for "log_level" config item', loglevel_cfg)
 
     tf = os.path.join (os.path.dirname (os.path.abspath (__file__)), 'templates')
     app = Flask ('librarian', template_folder=tf)
