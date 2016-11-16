@@ -199,9 +199,10 @@ class StandingOrder (db.Model):
 
 
 # A simple little manager for running standing orders. We have a timeout to
-# not evaluate them that often, although doing so shouldn't be too expensive.
+# not evaluate them that often ... in the current setup, evaluating certain
+# orders can be quite hard on the database.
 
-MIN_STANDING_ORDER_INTERVAL = 300 # seconds
+MIN_STANDING_ORDER_INTERVAL = 1200 # seconds
 DEFAULT_STANDING_ORDER_DELAY = 90 # seconds
 
 
@@ -246,6 +247,19 @@ class StandingOrderManager (object):
         if now - self.last_check < MIN_STANDING_ORDER_INTERVAL:
             return False # Don't evaluate too often
 
+        # Check if there are any restrictions on what we do with standing
+        # orders. TODO: it's been requested that we also add time constraints
+        # on the uploads (Github issue #23).
+
+        mode = app.config.get ('standing_order_mode', 'normal')
+
+        if mode == 'disabled':
+            stord_logger.debug ('not checking standing orders: explicitly disabled')
+            return True
+        elif mode != 'normal':
+            stord_logger.warn ('unrecognized standing_order_mode %r; treating as "normal"', mode)
+            mode = 'normal'
+
         stord_logger.debug ('running searches')
         self.last_check = now
 
@@ -256,6 +270,10 @@ class StandingOrderManager (object):
 
 
     def queue_launch_copy (self):
+        """Queue a main-thread callback to check whether we need to launch any copies
+        associated with our standing orders.
+
+        """
         stord_logger.debug ('called queue_launch_copy')
         if self.launch_queued:
             return
