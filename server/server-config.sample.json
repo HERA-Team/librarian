@@ -35,15 +35,20 @@
     # If set to "true", Flask will start up in debug mode, which means that it will
     # print tracebacks and auto-reload itself if you edit files in the running server.
     # This should always be disabled for production use. Default is false.
-    #"flask-debug": true,
+    #"flask_debug": true,
 
     # If set to "true", the Librarian will make sure that its database tables
     # are initialized when it starts up. Should never be used in a situation
     # where the slightest possibility of data loss is a concern.
-    #"initialize-database": false,
+    #"initialize_database": false,
 
     # Use this many worker threads for background activities.
     #"n_worker_threads": 8,
+
+    # Control over processing of standing orders. Default "normal". If "disabled",
+    # then standing order uploads are disabled. (Implemented for the time that Penn
+    # ran out of disk space.)
+    #"standing_order_mode": "normal",
 
     # Here is a set of "sources" of data. Programs or people logging into the
     # Librarian provide an authenticator, which indirectly associates them

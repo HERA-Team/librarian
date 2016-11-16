@@ -66,13 +66,13 @@ def commandline (argv):
     server = app.config.get ('server', 'flask')
     host = app.config.get ('host', None)
     port = app.config.get ('port', 21106)
-    debug = app.config.get ('flask-debug', False)
+    debug = app.config.get ('flask_debug', False)
 
     if host is None:
         print ('note: no "host" set in configuration; server will not be remotely accessible',
                file=sys.stderr)
 
-    initdb = app.config.get ('initialize-database', False)
+    initdb = app.config.get ('initialize_database', False)
     if initdb:
         init_database ()
 
