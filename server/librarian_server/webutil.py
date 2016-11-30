@@ -20,7 +20,7 @@ logout
 from flask import Response, flash, redirect, render_template, request, session, url_for
 import json, os, sys
 
-from . import app
+from . import app, logger
 
 
 # Generic authentication stuff
@@ -323,6 +323,17 @@ class StreamFile (web.RequestHandler):
                         ctype = 'image/png'
                     elif len (data) > 260 and data[257:].startswith (b'ustar'):
                         ctype = 'application/tar'
+                        # Bonus: we auto-tar directories, so it's helpful to
+                        # tweak the filename to reflect that fact. Github
+                        # issue #19. We also try to have an ASCII-only name,
+                        # although probably other things will break if the
+                        # name isn't ASCII anyway.
+                        ret_name = file_name
+                        if not ret_name.endswith ('.tar'):
+                            ret_name += '.tar'
+                        ret_name = ret_name.encode ('ascii', 'replace').replace ('?', '_')
+                        self.set_header ('Content-disposition', 'attachment; filename=' + ret_name)
+
                     self.set_header ('Content-Type', ctype)
                     first = False
 
