@@ -121,6 +121,7 @@ class File (db.Model):
         size = required_arg (info, int, 'size')
         md5 = required_arg (info, unicode, 'md5')
         type = required_arg (info, unicode, 'type')
+        lst = required_arg (info,'float','lst')
 
         from .observation import Observation
         obsid = required_arg (info, int, 'obsid')
@@ -128,7 +129,7 @@ class File (db.Model):
 
         if obs is None:
             start_jd = required_arg (info, float, 'start_jd')
-            db.session.add (Observation (obsid, start_jd, None, None))
+            db.session.add (Observation (obsid, start_jd, None, lst)) 
 
         inst = File (name, type, obsid, source_name, size, md5)
         db.session.add (inst)
