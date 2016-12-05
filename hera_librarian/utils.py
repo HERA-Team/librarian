@@ -55,6 +55,22 @@ def get_pol_from_path(path):
     """
     return re.findall (r'\.([xy][xy])\.', path)[0]
 
+def get_lst_from_file(filename):
+    """
+    Get the lst from the data set (assuming its a miriad file)
+    """
+    if os.path.isdir(filename):
+        try:
+            import aipy
+            uv = aipy.miriad.UV(filename)
+            try:
+                return uv['lst'] * 12/np.pi
+            except KeyError:
+                return None
+        except RuntimeError:
+            return None
+    else:
+        return None
 
 def get_obsid_from_path(path):
     """Get the obsid from a path.
@@ -199,6 +215,7 @@ def gather_info_for_path(path):
     info['type'] = get_type_from_path(path)
     info['md5'] = get_md5_from_path(path)
     info['size'] = get_size_from_path(path)
+    info['lst'] = get_lst_from_file(path)
 
     try:
         info['start_jd'] = get_start_jd_from_path(path)
