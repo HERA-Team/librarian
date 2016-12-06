@@ -88,9 +88,7 @@ def commandline (argv):
         print ('note: no "host" set in configuration; server will not be remotely accessible',
                file=sys.stderr)
 
-    initdb = app.config.get ('initialize_database', False)
-    if initdb:
-        init_database ()
+    maybe_add_stores ()
 
     if server == 'flask':
         print ('note: using "flask" server, so background operations will not work',
@@ -130,13 +128,11 @@ def commandline (argv):
     bgtasks.maybe_wait_for_threads_to_finish ()
 
 
-def init_database ():
-    """NB: make sure this code doesn't blow up if invoked on an
-    already-initialized database.
+def maybe_add_stores ():
+    """Add any stores specified in the configuration file that we didn't already
+    know about.
 
     """
-    db.create_all ()
-
     from .store import Store
 
     for name, cfg in app.config.get ('add-stores', {}).iteritems ():

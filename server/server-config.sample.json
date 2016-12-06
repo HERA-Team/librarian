@@ -40,11 +40,6 @@
     # This should always be disabled for production use. Default is false.
     #"flask_debug": true,
 
-    # If set to "true", the Librarian will make sure that its database tables
-    # are initialized when it starts up. Should never be used in a situation
-    # where the slightest possibility of data loss is a concern.
-    #"initialize_database": false,
-
     # Use this many worker threads for background activities.
     #"n_worker_threads": 8,
 
