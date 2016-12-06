@@ -57,13 +57,23 @@ except hera_librarian.RPCError as e:
     die ('multi-delete failed: %s', e)
 
 n_files = 0
+n_noinst = 0
 n_deleted = 0
 n_error = 0
 
 for fname, stats in sorted (allstats.iteritems (), key=lambda t: t[0]):
+    nd = stats.get ('n_deleted', 0)
+    nk = stats.get ('n_kept', 0)
+    ne = stats.get ('n_error', 0)
+
+    if nd + nk + ne == 0:
+        # This file had no instances. Don't bother printing it.
+        n_noinst += 1
+        continue
+
     n_files += 1
-    n_deleted += stats.get ('n_deleted', 0)
-    n_error += stats.get ('n_error', 0)
+    n_deleted += nd
+    n_error += ne
     deltext = str_or_huh (stats.get ('n_deleted'))
     kepttext = str_or_huh (stats.get ('n_kept'))
     errtext = str_or_huh (stats.get ('n_error'))
@@ -72,7 +82,8 @@ for fname, stats in sorted (allstats.iteritems (), key=lambda t: t[0]):
 
 if n_files:
     print ('')
-print ('%d files were matched; %d instances were deleted' % (n_files, n_deleted))
+print ('%d files were matched, %d had instances; %d instances were deleted'
+       % (n_files + n_noinst, n_files, n_deleted))
 
 if n_error:
     print ('WARNING: %d error(s) occurred; see server logs for information' % n_error)
