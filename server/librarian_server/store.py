@@ -144,12 +144,22 @@ def complete_upload (args, sourcename=None):
     staging_dir = required_arg (args, unicode, 'staging_dir')
     dest_store_path = required_arg (args, unicode, 'dest_store_path')
     meta_mode = required_arg (args, unicode, 'meta_mode')
+    deletion_policy = optional_arg (args, unicode, 'deletion_policy', 'disallowed')
 
     store = Store.get_by_name (store_name) # ServerError if failure
     file_name = os.path.basename (dest_store_path)
     staged_path = os.path.join (staging_dir, file_name)
 
-    from .file import File, FileInstance
+    from .file import DeletionPolicy, File, FileInstance
+
+    # Turn the specified deletion policy into one of our integer codes.
+    # If the text is unrecognized, we go with DISALLOWED. That seems
+    # better than erroring out, since if we've gotten here then the
+    # client has already successfully uploaded the data -- we don't
+    # want that to go to waste. And DISALLOWED is pretty clearly the
+    # "safe" option.
+
+    deletion_policy = DeletionPolicy.parse_safe (deletion_policy)
 
     # Do we already have the intended instance? If so ... just delete the
     # staged instance and return success, because the intended effect of this
@@ -223,7 +233,7 @@ def complete_upload (args, sourcename=None):
     # Update the database. NOTE: there is an inevitable race between the move
     # and the database modification. Would it be safer to switch the ordering?
 
-    inst = FileInstance (store, parent_dirs, file_name)
+    inst = FileInstance (store, parent_dirs, file_name, deletion_policy=deletion_policy)
     db.session.add (inst)
     db.session.add (file.make_instance_creation_event (inst, store))
     db.session.commit ()

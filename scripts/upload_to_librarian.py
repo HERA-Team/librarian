@@ -35,6 +35,8 @@ p = argparse.ArgumentParser (
 
 p.add_argument ('--meta', dest='meta', default='infer',
                 help='How to gather metadata: "json-stdin" or "infer"')
+p.add_argument ('--deletion', dest='deletion', default='disallowed',
+                help='Whether the created file instance will be deletable: "allowed" or "disallowed"')
 p.add_argument ('conn_name', metavar='CONNECTION-NAME',
                 help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
 p.add_argument ('local_path', metavar='LOCAL-PATH',
@@ -72,12 +74,12 @@ elif args.meta == 'infer':
 else:
     die ('unexpected metadata-gathering method %r', args.meta)
 
-
 # Let's do it.
 
 client = hera_librarian.LibrarianClient (args.conn_name)
 
 try:
-    client.upload_file (args.local_path, args.dest_store_path, meta_mode, rec_info)
+    client.upload_file (args.local_path, args.dest_store_path, meta_mode, rec_info,
+                        deletion_policy=args.deletion)
 except hera_librarian.RPCError as e:
     die ('upload failed: %s', e)

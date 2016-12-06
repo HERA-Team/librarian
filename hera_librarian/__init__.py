@@ -108,7 +108,7 @@ class LibrarianClient (object):
         )
 
 
-    def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={}):
+    def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={}, deletion_policy='disallowed'):
         """Upload the file located at `local_path` to the Librarian. We suggest a
         destination "store path" (something like "2345678/mydata.uv"), but the
         Librarian has to tell us which store to actually put the file on.
@@ -126,6 +126,14 @@ class LibrarianClient (object):
           cannot be inferred. This mode should therefore be avoided when
           possible.
 
+        The caller can also specify whether the file instance that it creates is
+        allowed to be deleted:
+
+        * If `deletion_policy` is "disallowed", the default, it is not.
+        * If `deletion_policy` is "allowed", it is.
+
+        (In the future we might add more options.)
+
         This function invokes an SCP that is potentially trying to copy
         gigabytes of data across oceans. It may take a looong time to return
         and will not infrequently raise an exception.
@@ -133,6 +141,10 @@ class LibrarianClient (object):
         """
         if os.path.isabs (dest_store_path):
             raise Exception ('destination path may not be absolute; got %r' % (dest_store_path,))
+
+        # Keep this test in sync with librarian_server/file.py:DeletionPolicy.parse_safe()
+        if deletion_policy not in ('allowed', 'disallowed'):
+            raise Exception ('unrecognized deletion policy %r' % (deletion_policy,))
 
         # In the first stage, we tell the Librarian how much data we're going to upload,
         # send it the database records, and get told the staging directory.
@@ -155,13 +167,16 @@ class LibrarianClient (object):
 
         # If we made it here, though, the upload succeeded and we can tell
         # that Librarian that the data are ready to go. It will verify the
-        # upload and ingest it.
+        # upload and ingest it. This call is when the server's FileInstance
+        # record is created, so it's where the deletion_policy option comes
+        # into play.
 
         return self._do_http_post ('complete_upload',
             store_name=store.name,
             staging_dir=staging_dir,
             dest_store_path=dest_store_path,
             meta_mode=meta_mode,
+            deletion_policy=deletion_policy,
         )
 
 

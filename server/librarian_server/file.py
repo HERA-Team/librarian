@@ -217,7 +217,18 @@ class DeletionPolicy (object):
     """
     DISALLOWED = 0
     ALLOWED = 1
+
     def __init__ (self): assert False, 'instantiation of enum not allowed'
+
+    @classmethod
+    def parse_safe (cls, text):
+        if text == 'disallowed':
+            return cls.DISALLOWED
+        if text == 'allowed':
+            return cls.ALLOWED
+
+        logger.warn ('unrecognized deletion policy %r; using DISALLOWED', text)
+        return cls.DISALLOWED
 
 
 class FileInstance (db.Model):
