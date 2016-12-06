@@ -57,6 +57,12 @@ def _compile_clause (name, value):
                                'numeric, but got %s', value.__class__.__name__)
         cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
         return (File.create_time > cutoff)
+    elif name == 'not-newer-than':
+        if not isinstance (value, (int, float)):
+            raise ServerError ('can\'t parse "not-newer-than" clause: contents must be '
+                               'numeric, but got %s', value.__class__.__name__)
+        cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
+        return (File.create_time < cutoff)
     else:
         raise ServerError ('can\'t parse search clause: unrecognized name "%s"', name)
 
