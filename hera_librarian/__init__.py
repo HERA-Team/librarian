@@ -89,13 +89,6 @@ class LibrarianClient (object):
         return reply_json
 
 
-    def delete_file(self, file_name, store_name):
-        return self._do_http_post ('delete_file',
-            name=file_name,
-            store_name=store_name,
-        )
-
-
     def create_file_event(self, file_name, type, **kwargs):
         """Note that keyword arguments to this function will automagically be stuffed
         inside the "payload" parameter.
@@ -181,6 +174,12 @@ class LibrarianClient (object):
 
     def locate_file_instance(self, file_name):
         return self._do_http_post ('locate_file_instance',
+            file_name=file_name,
+        )
+
+
+    def delete_file_instances(self, file_name):
+        return self._do_http_post ('delete_file_instances',
             file_name=file_name,
         )
 

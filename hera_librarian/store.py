@@ -176,8 +176,11 @@ class Store (object):
     def _delete (self, store_path):
         """Delete a path from the store.
 
+        We use the `-r` flag of `rm` to delete recursively, but not the `-f`
+        flag, so an error will be raised if the intended path does not exist.
+
         """
-        return self._ssh_slurp ("rm -rf '%s'" % self._path(store_path))
+        return self._ssh_slurp ("rm -r '%s'" % self._path(store_path))
 
 
     def _create_tempdir (self, key='libtmp'):

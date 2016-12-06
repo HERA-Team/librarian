@@ -15,7 +15,7 @@ FileEvent
 import datetime, json, os.path, re
 from flask import flash, redirect, render_template, url_for
 
-from . import app, db
+from . import app, db, logger
 from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 from .observation import Observation
@@ -180,6 +180,12 @@ class File (db.Model):
                                         parent_dirs=instance.parent_dirs)
 
 
+    def make_instance_deletion_event (self, instance, store):
+        return self.make_generic_event ('delete_instance',
+                                        store_name=store.name,
+                                        parent_dirs=instance.parent_dirs)
+
+
     def make_copy_launched_event (self, connection_name, remote_store_path):
         return self.make_generic_event ('launch_copy',
                                         connection_name=connection_name,
@@ -261,6 +267,9 @@ class FileInstance (db.Model):
     def full_path_on_store (self):
         import os.path
         return os.path.join (self.store_object.path_prefix, self.parent_dirs, self.name)
+
+    def descriptive_name (self):
+        return self.store_name + ':' + self.store_path
 
 
 class FileEvent (db.Model):
@@ -347,6 +356,70 @@ def locate_file_instance (args, sourcename=None):
         }
 
     raise ServerError ('no instances of file "%s" on this librarian', file_name)
+
+
+@app.route ('/api/delete_file_instances', methods=['GET', 'POST'])
+@json_api
+def delete_file_instances (args, sourcename=None):
+    """DANGER ZONE! Delete instances of the named file on all stores!
+
+    We have a safety interlock: each FileInstance has a "deletion_policy" flag
+    that specifies, well, the internal policy about whether it can be deleted.
+    The default is that no deletions are allowed.
+
+    Of course, this command will only execute deletions that are allowed under
+    the policy. It returns status information about how many deletions
+    actually occurred.
+
+    """
+    file_name = required_arg (args, unicode, 'file_name')
+
+    file = File.query.get (file_name)
+    if file is None:
+        raise ServerError ('no known file "%s"', file_name)
+
+    n_deleted = 0
+    n_kept = 0
+    n_error = 0
+
+    for inst in file.instances:
+        # Currently, the policy is just binary: allowed, or not. Be very
+        # careful about changing the logic here, since this is the core of the
+        # safety interlock that prevents us from accidentally blowing away the
+        # entire data archive! Don't be That Guy or That Gal!
+
+        if inst.deletion_policy != DeletionPolicy.ALLOWED:
+            n_kept += 1
+            continue
+
+        # OK. If we've gotten here, we are 100% sure that it is OK to delete
+        # this instance.
+
+        store = inst.store_object
+
+        try:
+            logger.info('attempting to delete instance "%s"', inst.descriptive_name())
+            store._delete (inst.store_path)
+        except Exception as e:
+            # This could happen if we can't SSH to the store or something.
+            # Safest course of action seems to be to not modify the database
+            # or anything else.
+            n_error += 1
+            logger.warn('failed to delete instance "%s": %s', inst.descriptive_name(), e)
+            continue
+
+        # Looks like we succeeded in blowing it away.
+
+        db.session.add (file.make_instance_deletion_event (inst, store))
+        db.session.delete (inst)
+        n_deleted += 1
+
+    db.session.commit ()
+    return {
+        'n_deleted': n_deleted,
+        'n_kept': n_kept,
+        'n_error': n_error,
+    }
 
 
 # Web user interface
