@@ -286,6 +286,14 @@ class DeletionPolicy (object):
         logger.warn ('unrecognized deletion policy %r; using DISALLOWED', text)
         return cls.DISALLOWED
 
+    @classmethod
+    def textualize (cls, value):
+        if value == cls.DISALLOWED:
+            return 'disallowed'
+        if value == cls.ALLOWED:
+            return 'allowed'
+        return '???(%r)' % (value, )
+
 
 class FileInstance (db.Model):
     """A FileInstance is a copy of a File that lives on one of this Librarian's
@@ -337,6 +345,10 @@ class FileInstance (db.Model):
 
     def descriptive_name (self):
         return self.store_name + ':' + self.store_path
+
+    @property
+    def deletion_policy_text (self):
+        return DeletionPolicy.textualize (self.deletion_policy)
 
 
 class FileEvent (db.Model):

@@ -48,6 +48,7 @@
       <tr>
 	<th>Store</th>
 	<th>Subdirectory</th>
+	<th>Deletion Policy</th>
       </tr>
     </thead>
     <tbody>
@@ -55,6 +56,7 @@
       <tr>
 	<td><a href="/stores/{{i.store_name}}">{{i.store_name}}</a></td>
 	<td>{{i.parent_dirs}}</td>
+	<td>{{i.deletion_policy_text}}</td>
       </tr>
       {% endfor %}
     </tbody>
