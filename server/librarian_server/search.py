@@ -63,6 +63,11 @@ def _compile_clause (name, value):
                                'numeric, but got %s', value.__class__.__name__)
         cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
         return (File.create_time < cutoff)
+    elif name == 'source-is':
+        if not isinstance (value, unicode):
+            raise ServerError ('can\'t parse "source-is" clause: contents must be '
+                               'text, but got %s', value.__class__.__name__)
+        return (File.source == value)
     else:
         raise ServerError ('can\'t parse search clause: unrecognized name "%s"', name)
 
