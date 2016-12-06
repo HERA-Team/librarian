@@ -204,6 +204,16 @@ class File (db.Model):
                                         **extras)
 
 
+class DeletionPolicy (object):
+    """A simple enumeration of symbolic constants for the "deletion_policy"
+    column in the FileInstance table.
+
+    """
+    DISALLOWED = 0
+    ALLOWED = 1
+    def __init__ (self): assert False, 'instantiation of enum not allowed'
+
+
 class FileInstance (db.Model):
     """A FileInstance is a copy of a File that lives on one of this Librarian's
     stores.
@@ -225,16 +235,19 @@ class FileInstance (db.Model):
     store = db.Column (db.BigInteger, db.ForeignKey (Store.id), primary_key=True)
     parent_dirs = db.Column (db.String (128), primary_key=True)
     name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
+    deletion_policy = NotNull (db.Integer, default=DeletionPolicy.DISALLOWED)
+
     file = db.relationship ('File', back_populates='instances')
     store_object = db.relationship ('Store', back_populates='instances')
 
-    def __init__ (self, store_obj, parent_dirs, name):
+    def __init__ (self, store_obj, parent_dirs, name, deletion_policy=DeletionPolicy.DISALLOWED):
         if '/' in name:
             raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
 
         self.store = store_obj.id
         self.parent_dirs = parent_dirs
         self.name = name
+        self.deletion_policy = deletion_policy
 
     @property
     def store_name (self):
