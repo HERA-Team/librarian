@@ -199,6 +199,12 @@ class LibrarianClient (object):
         )
 
 
+    def delete_file_instances_matching_query(self, query):
+        return self._do_http_post ('delete_file_instances_matching_query',
+            query=query,
+        )
+
+
     def launch_file_copy(self, file_name, connection_name, remote_store_path=None):
         return self._do_http_post ('launch_file_copy',
             file_name=file_name,
