@@ -178,6 +178,8 @@ class Store (object):
 
         We use the `-r` flag of `rm` to delete recursively, but not the `-f`
         flag, so an error will be raised if the intended path does not exist.
+        Note that the standard input of `rm` will not be a terminal, so it
+        should never attempt to prompt if the file is read-only.
 
         """
         return self._ssh_slurp ("rm -r '%s'" % self._path(store_path))
