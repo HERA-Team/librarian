@@ -34,6 +34,13 @@ class RPCError (Exception):
         self.message = message
 
 
+def _normalize_deletion_policy (deletion_policy):
+    # Keep this test in sync with librarian_server/file.py:DeletionPolicy.parse_safe()
+    if deletion_policy not in ('allowed', 'disallowed'):
+        raise Exception ('unrecognized deletion policy %r' % (deletion_policy,))
+    return deletion_policy
+
+
 class LibrarianClient (object):
     site_name = None
     "The name of the Librarian site we target."
@@ -142,9 +149,7 @@ class LibrarianClient (object):
         if os.path.isabs (dest_store_path):
             raise Exception ('destination path may not be absolute; got %r' % (dest_store_path,))
 
-        # Keep this test in sync with librarian_server/file.py:DeletionPolicy.parse_safe()
-        if deletion_policy not in ('allowed', 'disallowed'):
-            raise Exception ('unrecognized deletion policy %r' % (deletion_policy,))
+        deletion_policy = _normalize_deletion_policy (deletion_policy)
 
         # In the first stage, we tell the Librarian how much data we're going to upload,
         # send it the database records, and get told the staging directory.
@@ -190,6 +195,15 @@ class LibrarianClient (object):
     def locate_file_instance(self, file_name):
         return self._do_http_post ('locate_file_instance',
             file_name=file_name,
+        )
+
+
+    def set_one_file_deletion_policy(self, file_name, deletion_policy):
+        deletion_policy = _normalize_deletion_policy (deletion_policy)
+
+        return self._do_http_post ('set_one_file_deletion_policy',
+            file_name=file_name,
+            deletion_policy=deletion_policy,
         )
 
 

@@ -425,6 +425,39 @@ def locate_file_instance (args, sourcename=None):
     raise ServerError ('no instances of file "%s" on this librarian', file_name)
 
 
+@app.route ('/api/set_one_file_deletion_policy', methods=['GET', 'POST'])
+@json_api
+def set_one_file_deletion_policy (args, sourcename=None):
+    """Set the deletion policy of one instance of a file.
+
+    The "one instance" restriction is just a bit of a sanity-check to throw up
+    barriers against deleting all instances of a file if more than one
+    instance actually exists.
+
+    """
+    file_name = required_arg (args, unicode, 'file_name')
+    deletion_policy = required_arg (args, unicode, 'deletion_policy')
+
+    file = File.query.get (file_name)
+    if file is None:
+        raise ServerError ('no known file "%s"', file_name)
+
+    deletion_policy = DeletionPolicy.parse_safe (deletion_policy)
+
+    for inst in file.instances:
+        inst.deletion_policy = deletion_policy
+        break # just one!
+    else:
+        raise ServerError ('no instances of file "%s" on this librarian', file_name)
+
+    db.session.add (file.make_generic_event ('instance_deletion_policy_changed',
+                                             store_name = inst.store_object.name,
+                                             parent_dirs = inst.parent_dirs,
+                                             new_policy = deletion_policy))
+    db.session.commit ()
+    return {}
+
+
 @app.route ('/api/delete_file_instances', methods=['GET', 'POST'])
 @json_api
 def delete_file_instances (args, sourcename=None):

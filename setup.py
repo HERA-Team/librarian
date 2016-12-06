@@ -14,6 +14,7 @@ setup_args = {
         'scripts/librarian_assign_sessions.py',
         'scripts/librarian_delete_files.py',
         'scripts/librarian_locate_file.py',
+        'scripts/librarian_set_file_deletion_policy.py',
         'scripts/librarian_stream_file_or_directory.sh',
         'scripts/upload_to_librarian.py',
     ],
