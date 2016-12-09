@@ -4,15 +4,22 @@
 """
 from __future__ import absolute_import, division, print_function
 
-import optparse, os.path, sys
+import argparse, os.path, sys
 import hera_librarian
 from hera_librarian import utils
 
 
-o = optparse.OptionParser()
-o.set_usage('add_obs_librarian.py <connection-name> <store-name> <paths...>')
-o.set_description(__doc__)
-opts, args = o.parse_args(sys.argv[1:])
+p = argparse.ArgumentParser (
+    description = __doc__,
+)
+
+p.add_argument ('conn_name', metavar='CONNECTION-NAME',
+                help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
+p.add_argument ('store_name', metavar='NAME',
+                help='The \"store\" name under which the Librarian knows this computer.')
+p.add_argument ('paths', metavar='PATHS', nargs='+',
+                help='The paths to the files on this computer.')
+args = p.parse_args ()
 
 
 def die (fmt, *args):
@@ -24,21 +31,12 @@ def die (fmt, *args):
     sys.exit (1)
 
 
-# Check args
-
-if len (args) < 3:
-    die ('expect at least three non-option arguments')
-
-conn_name, store_name = args[:2]
-paths = args[2:]
-
-
 # Load the info ...
 
 print ('Gathering information ...')
 file_info = {}
 
-for path in paths:
+for path in args.paths:
     path = os.path.abspath (path)
     print ('   ', path)
     file_info[path] = utils.gather_info_for_path (path)
@@ -47,8 +45,8 @@ for path in paths:
 # ... and upload what we learned.
 
 print ('Registering with Librarian.')
-client = hera_librarian.LibrarianClient (conn_name)
+client = hera_librarian.LibrarianClient (args.conn_name)
 try:
-    client.register_instances (store_name, file_info)
+    client.register_instances (args.store_name, file_info)
 except hera_librarian.RPCError as e:
     die ('RPC failed: %s' % e)
