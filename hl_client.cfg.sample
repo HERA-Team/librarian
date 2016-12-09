@@ -1,5 +1,5 @@
 {
-    "sites":{
+    "connections":{
         "Correlator-Karoo":{
             "url":"http://paperqmaster.karoo.kat.ac.za:8080/librarian",
             "authenticator":"9876543211"

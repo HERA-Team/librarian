@@ -120,7 +120,7 @@ Folio, your file should look like:
 
 ```
 {
-    "sites": {
+    "connections": {
         "human@folio": {
             "url": "http://folio2:51110/",
             "authenticator": "HIDDEN-SECRET"

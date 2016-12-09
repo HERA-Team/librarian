@@ -7,16 +7,16 @@ from __future__ import absolute_import, division, print_function
 import json, os.path, urllib
 
 __all__ = str ('''
-NoSuchSiteError
+NoSuchConnectionError
 RPCError
 LibrarianClient
 ''').split ()
 
 
-class NoSuchSiteError (Exception):
-    def __init__ (self, site_name):
-        super (NoSuchSiteError, self).__init__ ("no such site " + repr (site_name))
-        self.site_name = site_name
+class NoSuchConnectionError (Exception):
+    def __init__ (self, conn_name):
+        super (NoSuchConnectionError, self).__init__ ("no such connection " + repr (conn_name))
+        self.conn_name = conn_name
 
 
 def get_client_config():
@@ -42,31 +42,31 @@ def _normalize_deletion_policy (deletion_policy):
 
 
 class LibrarianClient (object):
-    site_name = None
-    "The name of the Librarian site we target."
+    conn_name = None
+    "The name of the Librarian connection we target."
 
     config = None
-    "The JSON config fragment corresponding to the desired site."
+    "The JSON config fragment corresponding to the desired connection."
 
-    def __init__ (self, site_name, site_config=None):
-        """If `site_config` is not None, it should be a dict containing at least the
+    def __init__ (self, conn_name, conn_config=None):
+        """If `conn_config` is not None, it should be a dict containing at least the
         entries "authenticator" and "url" that define how to talk to the
         target Librarian. Otherwise, the file `~/.hl_client.cfg` will be used
         to look up a dict containing the same information.
 
-        A minimal `site_config` dict should contain keys "authenticator" and
+        A minimal `conn_config` dict should contain keys "authenticator" and
         "url", which are used to contact the Librarian's RPC API.
 
         """
-        self.site_name = site_name
+        self.conn_name = conn_name
 
-        if site_config is not None:
-            self.config = site_config
+        if conn_config is not None:
+            self.config = conn_config
         else:
             config = get_client_config ()
-            self.config = config['sites'].get (site_name)
+            self.config = config['connections'].get (conn_name)
             if self.config is None:
-                raise NoSuchSiteError (site_name)
+                raise NoSuchConnectionError (conn_name)
 
 
     def _do_http_post(self, operation, **kwargs):
