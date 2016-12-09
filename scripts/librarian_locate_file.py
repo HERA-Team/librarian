@@ -9,15 +9,20 @@ as an SCP-ready string of the form "<host>:<full-path-on-host>".
 """
 from __future__ import absolute_import, division, print_function
 
-import optparse, os.path, sys
+import argparse, os.path, sys
 
 import hera_librarian
 
 
-o = optparse.OptionParser()
-o.set_usage('librarian_locate_file.py <connection> <file-name>')
-o.set_description(__doc__)
-opts, args = o.parse_args(sys.argv[1:])
+p = argparse.ArgumentParser(
+    description = __doc__,
+)
+
+p.add_argument ('conn_name', metavar='CONNECTION-NAME',
+                help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
+p.add_argument ('file_name', metavar='PATH',
+                help='The name of the file to locate.')
+args = p.parse_args ()
 
 
 def die (fmt, *args):
@@ -29,18 +34,11 @@ def die (fmt, *args):
     sys.exit (1)
 
 
-# Argument validation is pretty simple
-
-if len (args) != 2:
-    die ('expect exactly two non-option arguments')
-
-connection, file_name = args
-file_name = os.path.basename (file_name) # in case it's got directory components
-
-
 # Let's do it.
 
-client = hera_librarian.LibrarianClient (connection)
+# In case the user has provided directory components:
+file_name = os.path.basename (args.file_name)
+client = hera_librarian.LibrarianClient (args.conn_name)
 
 try:
     result = client.locate_file_instance (file_name)
