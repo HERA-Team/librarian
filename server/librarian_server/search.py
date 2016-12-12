@@ -267,6 +267,12 @@ class StandingOrderManager (object):
         if mode == 'disabled':
             stord_logger.debug ('not checking standing orders: explicitly disabled')
             return True
+        elif mode == 'nighttime':
+            hour = time.localtime (now).tm_hour
+            if hour >= 8 and hour < 20:
+                stord_logger.debug ('not checking standing orders: "nighttime" '
+                                    'mode and hour = %d', hour)
+                return True
         elif mode != 'normal':
             stord_logger.warn ('unrecognized standing_order_mode %r; treating as "normal"', mode)
             mode = 'normal'

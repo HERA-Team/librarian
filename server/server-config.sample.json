@@ -45,7 +45,9 @@
 
     # Control over processing of standing orders. Default "normal". If "disabled",
     # then standing order uploads are disabled. (Implemented for the time that Penn
-    # ran out of disk space.)
+    # ran out of disk space.) If "nighttime", uploads are *not* launched between
+    # 8 AM and 8 PM local time. (Implemented because we were sucking up Karoo
+    # bandwidth used by humans.)
     #"standing_order_mode": "normal",
 
     # Here is a set of "sources" of data. Programs or people logging into the
