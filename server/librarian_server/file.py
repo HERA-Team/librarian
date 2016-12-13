@@ -375,6 +375,8 @@ class FileEvent (db.Model):
     payload = db.Column (db.Text)
     file = db.relationship ('File', back_populates='events')
 
+    name_index = db.Index ('file_event_name', name)
+
     def __init__ (self, name, type, payload_struct):
         if '/' in name:
             raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
