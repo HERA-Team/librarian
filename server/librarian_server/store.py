@@ -30,7 +30,7 @@ from flask import render_template
 
 from hera_librarian.store import Store as BaseStore
 
-from . import app, db
+from . import app, db, logger
 from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
@@ -219,10 +219,29 @@ def complete_upload (args, sourcename=None):
     else:
         raise ServerError ('unrecognized "meta_mode" value %r', meta_mode)
 
-    # Staged file is OK and we're not redundant. Move it to its new home. We
-    # refuse to clobber an existing file; if one exists, there must be
-    # something in the store's filesystem of which the Librarian is unaware,
-    # which is a big red flag. If that happens, call that an error.
+    # Staged file is OK and we're not redundant. We're going to keep it.
+    # First, change its permissions if configured to do so.
+    #
+    # NOTE: if you add more permissions modes here, make sure to update
+    # File.delete_instances() to handle them appropriately.
+
+    pmode = app.config.get ('permissions_mode', 'readonly')
+    modespec = None
+
+    if pmode == 'readonly':
+        modespec = 'ugoa-w'
+    elif pmode == 'unchanged':
+        pass
+    else:
+        logger.warn('unrecognized value %r for configuration option "permissions_mode"', pmode)
+
+    if modespec is not None:
+        store._chmod(staged_path, modespec)
+
+    # Finally, move the file to its new home. We refuse to clobber an existing
+    # file; if one exists, there must be something in the store's filesystem
+    # of which the Librarian is unaware, which is a big red flag. If that
+    # happens, call that an error.
 
     try:
         store._move (staged_path, dest_store_path)

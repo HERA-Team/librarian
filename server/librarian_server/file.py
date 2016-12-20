@@ -153,6 +153,13 @@ class File (db.Model):
         n_kept = 0
         n_error = 0
 
+        # If we make Librarian files read-only, we'll need to chmod them back
+        # to writeable before we can blow them away -- this wouldn't be
+        # necessary if we only stored flat files, but we store directories
+        # too.
+        pmode = app.config.get('permissions_mode', 'readonly')
+        need_chmod = (pmode == 'readonly')
+
         for inst in self.instances:
             # Currently, the policy is just binary: allowed, or not. Be very
             # careful about changing the logic here, since this is the core of
@@ -170,7 +177,7 @@ class File (db.Model):
 
             try:
                 logger.info('attempting to delete instance "%s"', inst.descriptive_name())
-                store._delete (inst.store_path)
+                store._delete (inst.store_path, chmod_before=need_chmod)
             except Exception as e:
                 # This could happen if we can't SSH to the store or something.
                 # Safest course of action seems to be to not modify the database

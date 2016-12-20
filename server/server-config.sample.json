@@ -50,6 +50,11 @@
     # bandwidth used by humans.)
     #"standing_order_mode": "normal",
 
+    # How to set the permissions on files that are uploaded to the Librarian.
+    # If "unchanged", do not change from whatever the upload left us
+    # with. If "readonly", the default, remove write permissions.
+    #"permissions_mode": "unchanged",
+
     # Here is a set of "sources" of data. Programs or people logging into the
     # Librarian provide an authenticator, which indirectly associates them
     # with one of the following usernames. As the name suggests, the

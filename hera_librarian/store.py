@@ -154,6 +154,23 @@ class Store (object):
             raise RPCError (argv, 'exit code %d; output:\n\n%r' % (proc.returncode, output))
 
 
+    def _chmod (self, store_path, modespec):
+        """Change Unix permissions on a path in the store.
+
+        `modespec` is a textual specification that is passed to the `chmod`
+        command. This is useful since Librarian "files" can be either Unix
+        files or directories, so for many use cases we do not necessarily want
+        to be operating in terms of numerical mode specifications. For the
+        same reason, we always provide the `-R` option to `chmod`.
+
+        Returns the standard output of `chmod`, which should be empty on
+        success. RPCError will be raised if the invoked command exits with a
+        failure code.
+
+        """
+        return self._ssh_slurp ("chmod -R '%s' '%s'" % (modespec, self._path(store_path)))
+
+
     def _move (self, source_store_path, dest_store_path):
         """Move a path in the store.
 
@@ -173,7 +190,7 @@ class Store (object):
                                  self._path(dest_store_path), self._path(source_store_path)))
 
 
-    def _delete (self, store_path):
+    def _delete (self, store_path, chmod_before=False):
         """Delete a path from the store.
 
         We use the `-r` flag of `rm` to delete recursively, but not the `-f`
@@ -181,8 +198,16 @@ class Store (object):
         Note that the standard input of `rm` will not be a terminal, so it
         should never attempt to prompt if the file is read-only.
 
+        The Librarian can be configured to make items read-only on ingest. If
+        that happens, in order to delete a directory we need to chmod it
+        first. Hence the `chmod_before` flag.
+
         """
-        return self._ssh_slurp ("rm -r '%s'" % self._path(store_path))
+        if chmod_before:
+            part1 = "chmod -R u+w '%s' && " % self._path(store_path)
+        else:
+            part1 = ''
+        return self._ssh_slurp (part1 + "rm -r '%s'" % self._path(store_path))
 
 
     def _create_tempdir (self, key='libtmp'):
