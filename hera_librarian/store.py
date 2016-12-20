@@ -171,7 +171,7 @@ class Store (object):
         return self._ssh_slurp ("chmod -R '%s' '%s'" % (modespec, self._path(store_path)))
 
 
-    def _move (self, source_store_path, dest_store_path):
+    def _move (self, source_store_path, dest_store_path, chmod_spec=None):
         """Move a path in the store.
 
         We make sure that parent directories exist if needed. We refuse to
@@ -183,11 +183,22 @@ class Store (object):
         mv succeeded by seeing if the source file disappeared. This approach
         has the important attribute of not being racy.
 
+        To enable read-only uploads with minimal racing, the `chmod_spec`
+        argument enables a post-mv chmod. See store.py:complete_upload() for
+        an explanation of why things are done this way.
+
         """
         dest_parent = os.path.dirname (dest_store_path)
-        return self._ssh_slurp ("mkdir -p '%s' && mv -nT '%s' '%s' && test ! -e '%s'" %
-                                (self._path(dest_parent), self._path(source_store_path),
-                                 self._path(dest_store_path), self._path(source_store_path)))
+        ssp = self._path(source_store_path)
+        dsp = self._path(dest_store_path)
+
+        if chmod_spec is not None:
+            piece = " && chmod -R '%s' '%s'" % (chmod_spec, dsp)
+        else:
+            piece = ''
+
+        return self._ssh_slurp ("mkdir -p '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
+                                (self._path(dest_parent), ssp, dsp, ssp, piece))
 
 
     def _delete (self, store_path, chmod_before=False):

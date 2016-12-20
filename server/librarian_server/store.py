@@ -219,11 +219,18 @@ def complete_upload (args, sourcename=None):
     else:
         raise ServerError ('unrecognized "meta_mode" value %r', meta_mode)
 
-    # Staged file is OK and we're not redundant. We're going to keep it.
-    # First, change its permissions if configured to do so.
+    # Staged file is OK and we're not redundant. Move it to its new home. We
+    # refuse to clobber an existing file; if one exists, there must be
+    # something in the store's filesystem of which the Librarian is unaware,
+    # which is a big red flag. If that happens, call that an error.
     #
-    # NOTE: if you add more permissions modes here, make sure to update
-    # File.delete_instances() to handle them appropriately.
+    # We also change the file permissions if requested. I originally tried to
+    # do this *before* the mv to avoid a race, but it turns out that if you're
+    # non-root, you can't mv a directory that you don't have write permissions
+    # on. (That is always true if you don't have write access on the
+    # *containing* directory, but here I mean the directory itself.) To make
+    # things as un-racy as possible, though, we include the chmod in the same
+    # SSH invocation as the 'mv'.
 
     pmode = app.config.get ('permissions_mode', 'readonly')
     modespec = None
@@ -235,16 +242,8 @@ def complete_upload (args, sourcename=None):
     else:
         logger.warn('unrecognized value %r for configuration option "permissions_mode"', pmode)
 
-    if modespec is not None:
-        store._chmod(staged_path, modespec)
-
-    # Finally, move the file to its new home. We refuse to clobber an existing
-    # file; if one exists, there must be something in the store's filesystem
-    # of which the Librarian is unaware, which is a big red flag. If that
-    # happens, call that an error.
-
     try:
-        store._move (staged_path, dest_store_path)
+        store._move (staged_path, dest_store_path, chmod_spec=modespec)
     except Exception as e:
         raise ServerError ('cannot move upload to its destination (is there already '
                            'a file there, unknown to this Librarian?): %s' % e)
