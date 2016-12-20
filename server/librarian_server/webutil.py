@@ -279,8 +279,6 @@ class StreamFile (web.RequestHandler):
 
     @gen.coroutine
     def get (self):
-        import logging
-
         if not self.request.uri.startswith (self.uri_prefix):
             self.clear ()
             self.set_status (500)

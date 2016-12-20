@@ -24,7 +24,7 @@ Store
 UploaderTask
 ''').split ()
 
-import logging, os.path
+import os.path
 
 from flask import render_template
 
@@ -373,21 +373,19 @@ class UploaderTask (bgtasks.BackgroundTask):
 
 
     def wrapup_function (self, retval, exc):
-        import logging
-
         # In principle, we might want different integer error codes if there are
         # specific failure modes that we want to be able to analyze without
         # parsing the error messages. At the time being, we just use "1" to mean
         # that some exception happened. An "error" code of 0 always means success.
 
         if exc is None:
-            logging.info ('upload of %s:%s => %s:%s succeeded',
-                          self.store.name, self.store_path, self.conn_name, self.remote_store_path)
+            logger.info ('upload of %s:%s => %s:%s succeeded',
+                         self.store.name, self.store_path, self.conn_name, self.remote_store_path)
             error_code = 0
             error_message = 'success'
         else:
-            logging.warn ('upload of %s:%s => %s:%s FAILED: %s',
-                          self.store.name, self.store_path, self.conn_name, self.remote_store_path, exc)
+            logger.warn ('upload of %s:%s => %s:%s FAILED: %s',
+                         self.store.name, self.store_path, self.conn_name, self.remote_store_path, exc)
             error_code = 1
             error_message = str (exc)
 
@@ -411,8 +409,8 @@ class UploaderTask (bgtasks.BackgroundTask):
             db.session.add (file.make_generic_event (type))
 
         if error_code == 0:
-            logging.info ('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
-                          self.store.name, self.store_path, dt, rate)
+            logger.info ('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
+                         self.store.name, self.store_path, dt, rate)
 
         db.session.commit ()
 

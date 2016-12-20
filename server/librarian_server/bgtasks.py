@@ -19,7 +19,7 @@ submit_background_task
 register_background_task_reporter
 ''').split ()
 
-import logging, time
+import time
 
 from tornado.ioloop import IOLoop
 
@@ -124,7 +124,7 @@ def _wrapup_wrapper (task, thread_retval, thread_exc):
     try:
         task.wrapup_function (thread_retval, thread_exc)
     except Exception as e:
-        logging.warn ('exception in %s wrapup function: %s', task, e)
+        logger.warn ('exception in %s wrapup function: %s', task, e)
         task.exception = thread_exc = e
 
     # We let the task linger in task list for a little while so that it's
