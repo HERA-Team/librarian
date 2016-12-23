@@ -183,9 +183,24 @@ class Store (object):
         mv succeeded by seeing if the source file disappeared. This approach
         has the important attribute of not being racy.
 
-        To enable read-only uploads with minimal racing, the `chmod_spec`
-        argument enables a post-mv chmod. See store.py:complete_upload() for
-        an explanation of why things are done this way.
+        If the source file is already in the Librarian or is an upload from a
+        different Librarian, it may be read-only. You can't move a read-only
+        directory -- because its '..' entry needs to be altered, I think.
+        (This is not true for flat files -- the read/write permission that
+        matters is usually just that of the containing directory, not the item
+        itself.) So, we make the source item writable before moving in case it
+        it's a read-only directory.
+
+        If a file was uploaded to this Librarian in read-write mode but we
+        want our files to be read-only, the uploaded data need to be made
+        read-only -- but, as per the previous paragraph, this must happen
+        after moving the data to their final destination. The `chmod_spec`
+        argument enables a recursive post-mv `chmod` to support this
+        functionality; the `chmod` could be done through a separate call, but
+        this way it can all be taken care of in one SSH invocation with a
+        minimal window of writeability. In principle it would be nice to have
+        *zero* window of writeability but so long as we support "files" that
+        are really directories, I believe that is simply not possible.
 
         """
         dest_parent = os.path.dirname (dest_store_path)
