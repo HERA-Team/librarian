@@ -197,8 +197,8 @@ class Store (object):
         else:
             piece = ''
 
-        return self._ssh_slurp ("mkdir -p '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
-                                (self._path(dest_parent), ssp, dsp, ssp, piece))
+        return self._ssh_slurp ("mkdir -p '%s' && chmod u+w '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
+                                (self._path(dest_parent), ssp, ssp, dsp, ssp, piece))
 
 
     def _delete (self, store_path, chmod_before=False):
