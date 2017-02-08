@@ -108,19 +108,21 @@ def initiate_upload (args, sourcename=None):
             most_avail = avail
             most_avail_store = store
 
+    del store # paranoia; had a bug where we used this below!
+
     if most_avail < upload_size or most_avail_store is None:
         raise ServerError ('unable to find a store able to hold %d bytes', upload_size)
 
     info = {}
-    info['name'] = store.name
-    info['ssh_host'] = store.ssh_host
-    info['path_prefix'] = store.path_prefix
+    info['name'] = most_avail_store.name
+    info['ssh_host'] = most_avail_store.ssh_host
+    info['path_prefix'] = most_avail_store.path_prefix
     info['available'] = most_avail # might be helpful?
 
     # Now, create a staging directory where the uploader can put their files.
     # This avoids multiple uploads stepping on each others' toes.
 
-    info['staging_dir'] = store._create_tempdir ('staging')
+    info['staging_dir'] = most_avail_store._create_tempdir ('staging')
 
     # Finally, the caller will also want to inform us about new database
     # records pertaining to the files that are about to be uploaded. Ingest
