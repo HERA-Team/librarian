@@ -57,6 +57,6 @@ elif result['outcome'] == 'task-launched':
     print ()
     print ('A noop-ified command to delete offloaded instances from the source store is:')
     print ("  librarian_delete_files.py --noop --store '%s' '%s' '{\"at-least-instances\": 2}'" %
-           (args.souce_name, args.conn_name))
+           (args.source_name, args.conn_name))
 else:
     die ('malformed server response (unrecognized "outcome" field): %s', repr(result))
