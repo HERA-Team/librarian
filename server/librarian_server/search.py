@@ -36,7 +36,7 @@ class SearchCompiler (object):
         self.n_subquery = 0
 
     def _compile_clause (self, name, value):
-        from .file import File
+        from .file import File, FileInstance
         from sqlalchemy import func
 
         if name == 'and':
@@ -73,8 +73,15 @@ class SearchCompiler (object):
                 raise ServerError ('can\'t parse "source-is" clause: contents must be '
                                    'text, but got %s', value.__class__.__name__)
             return (File.source == value)
+        elif name == 'at-least-instances':
+            if not isinstance (value, int):
+                raise ServerError ('can\'t parse "at-least-instances" clause: contents must be '
+                                   'integer, but got %s', value.__class__.__name__)
+            q = db.session.query (func.count()).filter (FileInstance.name == File.name).as_scalar()
+            return (q >= value)
         else:
             raise ServerError ('can\'t parse search clause: unrecognized name "%s"', name)
+
 
     def compile_json (self, search):
         # The outermost item must be a dict (of clauses that are ANDed) or a magic
