@@ -56,6 +56,7 @@ client = hera_librarian.LibrarianClient (args.conn_name)
 
 if args.noop:
     print('No-op mode enabled: files will not actually be deleted.')
+    print()
     itemtext = 'todelete'
     summtext = 'would have been deleted'
     mode = 'noop'
