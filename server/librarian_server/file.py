@@ -356,6 +356,8 @@ class FileInstance (db.Model):
     file = db.relationship ('File', back_populates='instances')
     store_object = db.relationship ('Store', back_populates='instances')
 
+    name_index = db.Index ('file_instance_name', name)
+
     def __init__ (self, store_obj, parent_dirs, name, deletion_policy=DeletionPolicy.DISALLOWED):
         if '/' in name:
             raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
