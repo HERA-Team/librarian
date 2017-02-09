@@ -485,9 +485,18 @@ def set_one_file_deletion_policy (args, sourcename=None):
     barriers against deleting all instances of a file if more than one
     instance actually exists.
 
+    If the optional 'restrict_to_store' argument is supplied, only instances
+    on the specified store will be modified. This is useful when clearing out
+    a store for deactivation (see also the "offload" functionality). Note that
+    the "one instance" limit still applies.
+
     """
     file_name = required_arg (args, unicode, 'file_name')
     deletion_policy = required_arg (args, unicode, 'deletion_policy')
+    restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
+    if restrict_to_store is not None:
+        from .store import Store
+        restrict_to_store = Store.get_by_name (restrict_to_store) # ServerError if lookup fails
 
     file = File.query.get (file_name)
     if file is None:
@@ -496,6 +505,11 @@ def set_one_file_deletion_policy (args, sourcename=None):
     deletion_policy = DeletionPolicy.parse_safe (deletion_policy)
 
     for inst in file.instances:
+        # We could do this filter in SQL but it's easier to just do it this way;
+        # you can't call filter() on `file.instances`.
+        if restrict_to_store is not None and inst.store != restrict_to_store.id:
+            continue
+
         inst.deletion_policy = deletion_policy
         break # just one!
     else:

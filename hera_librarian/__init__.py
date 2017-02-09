@@ -198,12 +198,13 @@ class LibrarianClient (object):
         )
 
 
-    def set_one_file_deletion_policy(self, file_name, deletion_policy):
+    def set_one_file_deletion_policy(self, file_name, deletion_policy, restrict_to_store=None):
         deletion_policy = _normalize_deletion_policy (deletion_policy)
 
         return self._do_http_post ('set_one_file_deletion_policy',
             file_name=file_name,
             deletion_policy=deletion_policy,
+            restrict_to_store=restrict_to_store,
         )
 
 
