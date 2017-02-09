@@ -54,5 +54,9 @@ if result['outcome'] == 'store-shut-down':
     print ('The store has no more file instances and was placed offline. It may be deactivated.')
 elif result['outcome'] == 'task-launched':
     print ('Task launched, intending to offload %s instances.' % (result.get ('instance-count', '???')))
+    print ()
+    print ('A noop-ified command to delete offloaded instances from the source store is:')
+    print ("  librarian_delete_files.py --noop --store '%s' '%s' '{\"at-least-instances\": 2}'" %
+           (args.souce_name, args.conn_name))
 else:
     die ('malformed server response (unrecognized "outcome" field): %s', repr(result))

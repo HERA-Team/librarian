@@ -550,7 +550,7 @@ class OffloaderTask (bgtasks.BackgroundTask):
 
 
     def wrapup_function (self, retval, exc):
-        from .file import FileInstance
+        from .file import DeletionPolicy, FileInstance
 
         # Yay, we can access the database again! We need it to delete all of
         # the instances that we *successfully* copied. We also need to turn
@@ -571,9 +571,12 @@ class OffloaderTask (bgtasks.BackgroundTask):
                          source_store.name, dest_store.name, exc)
 
         # For all successful copies, we need to un-stage the file in the usual
-        # way. If that worked, we delete the original instance -- bypassing
-        # the standard deletion policy flag!!! Here we *are* paranoid about
-        # exceptions.
+        # way. If that worked, we mark the original instance as being
+        # deleteable. The command-line client give the user a query that will
+        # safely remove thee redundant instances using the standard deletion
+        # mechanism.
+        #
+        # Here we *are* paranoid about exceptions.
 
         pmode = app.config.get('permissions_mode', 'readonly')
         need_chmod = (pmode == 'readonly')
@@ -594,35 +597,25 @@ class OffloaderTask (bgtasks.BackgroundTask):
             stagepath = os.path.join (self.staging_dir, str(i) + '_' + source_inst.name)
 
             try:
-                dest_inst = dest_store.process_staged_file (stagepath, source_inst.store_path,
-                                                            'direct', source_inst.deletion_policy)
+                dest_store.process_staged_file (stagepath, source_inst.store_path,
+                                                'direct', source_inst.deletion_policy)
             except Exception as e:
                 logger.warn ('offloader failed to complete upload of %s', source_inst.descriptive_name())
                 continue
 
-            # This check is basically totally superfluous but we want to be
-            # *really* sure that the file was actually copied before deleting.
-            # `process_staged_file()` really ought to crash if anything at all
-            # goes wrong with the un-staging process.
-
-            if dest_inst is None:
-                logger.warn ('offloader bug: no error but no new instance of %s?', source_inst.descriptive_name())
-                continue
-
             # If we're still here, the copy succeeded and the destination
-            # store has a shiny new instance. Try to delete the instance on
-            # the source store.
+            # store has a shiny new instance. Mark the source instance as
+            # deleteable.
 
-            logger.info('offloader: attempting to delete instance "%s"', source_inst.descriptive_name())
+            logger.info('offloader: marking "%s" for deletion', source_inst.descriptive_name())
+            source_inst.deletion_policy = DeletionPolicy.ALLOWED
+            db.session.add (source_inst.file.make_generic_event ('instance_deletion_policy_changed',
+                                                                 store_name = source_inst.store_object.name,
+                                                                 parent_dirs = source_inst.parent_dirs,
+                                                                 new_policy = DeletionPolicy.ALLOWED,
+                                                                 context = 'offload'))
 
-            try:
-                source_store._delete (source_inst.store_path, chmod_before=need_chmod)
-                db.session.add (source_inst.file.make_instance_deletion_event (source_inst, source_store))
-                db.session.delete (source_inst)
-                db.session.commit ()
-            except Exception as e:
-                logger.warn ('offloader failed to delete instance "%s": %s',
-                             source_inst.descriptive_name(), e)
+        db.session.commit ()
 
         # Finally, we can blow away the staging directory.
 
@@ -638,10 +631,11 @@ def initiate_offload (args, sourcename=None):
     """Launch a task to offload file instances from one store to another.
 
     This launches a background task that copies file instances from a source
-    store to a destination store, then deletes the source instances. If the
-    source store is out of instances, it is marked as unavailable. Repeated
-    calls will therefore eventually drain the source store of all its contents
-    so that it can be shut down.
+    store to a destination store, then marks the source instances for
+    deletion. If the source store is out of instances, it is marked as
+    unavailable. Repeated calls, combined with appropriate deletion commands,
+    will therefore eventually drain the source store of all its contents so
+    that it can be shut down.
 
     To keep each task reasonably-sized, there is a limit to the number of
     files that may be offloaded in each call to this API. Just keep calling it
@@ -665,6 +659,8 @@ def initiate_offload (args, sourcename=None):
     source_store_name = required_arg (args, unicode, 'source_store_name')
     dest_store_name = required_arg (args, unicode, 'dest_store_name')
 
+    from sqlalchemy import func
+    from sqlalchemy.orm import aliased
     from .file import FileInstance
 
     source_store = Store.get_by_name (source_store_name) # ServerError if failure
@@ -672,17 +668,30 @@ def initiate_offload (args, sourcename=None):
 
     # Gather information about instances in the source store that we'll try to
     # transfer. Background tasks can't access the database, so we need to
-    # pre-collect this information.
+    # pre-collect this information. We want instances this store that do not
+    # correspond to files that have instances on other stores, which results in
+    # some moderately messy SQL.
 
-    info = [InstanceOffloadInfo (i)
-            for i in FileInstance.query.filter (FileInstance.store == source_store.id).limit(OFFLOAD_BATCH_SIZE)]
+    inst_alias = aliased (FileInstance)
 
-    # ... but, if the source store is empty, mark it as unavailable,
-    # essentially clearing it for deletion, and return.
+    n_other_stores = (db.session.query (func.count())
+            .filter (inst_alias.name == FileInstance.name)
+            .filter (inst_alias.store != source_store.id)
+            .as_scalar ())
+
+    q = (FileInstance.query
+         .filter (FileInstance.store == source_store.id)
+         .filter (n_other_stores == 0)
+         .limit(OFFLOAD_BATCH_SIZE))
+
+    info = [InstanceOffloadInfo (i) for i in q]
+
+    # If no such instances exist, mark the store as unavailable, essentially
+    # clearing it for deletion, and return.
 
     if not len (info):
         source_store.available = False
-        db.commit ()
+        db.session.commit ()
         return {'outcome': 'store-shut-down'}
 
     # Otherwise, we're going to launch an offloader task. Create a staging
