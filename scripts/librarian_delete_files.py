@@ -26,6 +26,8 @@ p = argparse.ArgumentParser (
     """
 )
 
+p.add_argument ('-n', '--noop', dest='noop', action='store_true',
+                help='Enable no-op mode: nothing is actually deleted.')
 p.add_argument ('conn_name', metavar='CONNECTION-NAME',
                 help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
 p.add_argument ('query', metavar='QUERY',
@@ -50,8 +52,16 @@ def str_or_huh (x):
 
 client = hera_librarian.LibrarianClient (args.conn_name)
 
+if args.noop:
+    print('No-op mode enabled: files will not actually be deleted.')
+    itemtext = 'todelete'
+    summtext = 'would have been deleted'
+else:
+    itemtext = 'deleted'
+    summtext = 'were deleted'
+
 try:
-    result = client.delete_file_instances_matching_query (args.query)
+    result = client.delete_file_instances_matching_query (args.query, noop=args.noop)
     allstats = result['stats']
 except hera_librarian.RPCError as e:
     die ('multi-delete failed: %s', e)
@@ -78,12 +88,12 @@ for fname, stats in sorted (allstats.iteritems (), key=lambda t: t[0]):
     kepttext = str_or_huh (stats.get ('n_kept'))
     errtext = str_or_huh (stats.get ('n_error'))
 
-    print ('%s: deleted=%s kept=%s error=%s' % (fname, deltext, kepttext, errtext))
+    print ('%s: %s=%s kept=%s error=%s' % (fname, itemtext, deltext, kepttext, errtext))
 
 if n_files:
     print ('')
-print ('%d files were matched, %d had instances; %d instances were deleted'
-       % (n_files + n_noinst, n_files, n_deleted))
+print ('%d files were matched, %d had instances; %d instances %s'
+       % (n_files + n_noinst, n_files, n_deleted, summtext))
 
 if n_error:
     print ('WARNING: %d error(s) occurred; see server logs for information' % n_error)

@@ -137,7 +137,7 @@ class File (db.Model):
         return inst
 
 
-    def delete_instances (self):
+    def delete_instances (self, noop=False):
         """DANGER ZONE! Delete instances of this file on all stores!
 
         We have a safety interlock: each FileInstance has a "deletion_policy"
@@ -147,6 +147,9 @@ class File (db.Model):
         Of course, this command will only execute deletions that are allowed
         under the policy. It returns status information about how many
         deletions actually occurred.
+
+        If `noop` is true, the logic is exercised but the deletions are not
+        run.
 
         """
         n_deleted = 0
@@ -176,8 +179,11 @@ class File (db.Model):
             store = inst.store_object
 
             try:
-                logger.info('attempting to delete instance "%s"', inst.descriptive_name())
-                store._delete (inst.store_path, chmod_before=need_chmod)
+                if noop:
+                    logger.info('NOOP-delete call matched instance "%s"', inst.descriptive_name())
+                else:
+                    logger.info('attempting to delete instance "%s"', inst.descriptive_name())
+                    store._delete (inst.store_path, chmod_before=need_chmod)
             except Exception as e:
                 # This could happen if we can't SSH to the store or something.
                 # Safest course of action seems to be to not modify the database
@@ -188,11 +194,14 @@ class File (db.Model):
 
             # Looks like we succeeded in blowing it away.
 
-            db.session.add (self.make_instance_deletion_event (inst, store))
-            db.session.delete (inst)
+            if not noop:
+                db.session.add (self.make_instance_deletion_event (inst, store))
+                db.session.delete (inst)
             n_deleted += 1
 
-        db.session.commit ()
+        if not noop:
+            db.session.commit ()
+
         return {
             'n_deleted': n_deleted,
             'n_kept': n_kept,
@@ -488,12 +497,15 @@ def delete_file_instances (args, sourcename=None):
 
     """
     file_name = required_arg (args, unicode, 'file_name')
+    noop = optional_arg (args, bool, 'noop')
+    if noop is None:
+        noop = False # the default is to go ahead and do it ...
 
     file = File.query.get (file_name)
     if file is None:
         raise ServerError ('no known file "%s"', file_name)
 
-    return file.delete_instances ()
+    return file.delete_instances (noop=noop)
 
 
 @app.route ('/api/delete_file_instances_matching_query', methods=['GET', 'POST'])
@@ -505,13 +517,16 @@ def delete_file_instances_matching_query (args, sourcename=None):
 
     """
     query = required_arg (args, unicode, 'query')
+    noop = optional_arg (args, bool, 'noop')
+    if noop is None:
+        noop = False # the default is to go ahead and do it ...
 
     from .search import compile_search
     query = compile_search (query, query_type='files')
     stats = {}
 
     for file in query:
-        stats[file.name] = file.delete_instances ()
+        stats[file.name] = file.delete_instances (noop=noop)
 
     return {
         'stats': stats,

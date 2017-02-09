@@ -207,15 +207,17 @@ class LibrarianClient (object):
         )
 
 
-    def delete_file_instances(self, file_name):
+    def delete_file_instances(self, file_name, noop=False):
         return self._do_http_post ('delete_file_instances',
             file_name=file_name,
+            noop=noop,
         )
 
 
-    def delete_file_instances_matching_query(self, query):
+    def delete_file_instances_matching_query(self, query, noop=False):
         return self._do_http_post ('delete_file_instances_matching_query',
             query=query,
+            noop=noop,
         )
 
 
