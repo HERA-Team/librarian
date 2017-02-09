@@ -28,6 +28,8 @@ p = argparse.ArgumentParser (
 
 p.add_argument ('-n', '--noop', dest='noop', action='store_true',
                 help='Enable no-op mode: nothing is actually deleted.')
+p.add_argument ('--store', metavar='STORE-NAME',
+                help='Only delete instances found on the named store.')
 p.add_argument ('conn_name', metavar='CONNECTION-NAME',
                 help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
 p.add_argument ('query', metavar='QUERY',
@@ -61,7 +63,9 @@ else:
     summtext = 'were deleted'
 
 try:
-    result = client.delete_file_instances_matching_query (args.query, noop=args.noop)
+    result = client.delete_file_instances_matching_query (args.query,
+                                                          noop=args.noop,
+                                                          restrict_to_store=args.store)
     allstats = result['stats']
 except hera_librarian.RPCError as e:
     die ('multi-delete failed: %s', e)

@@ -137,7 +137,7 @@ class File (db.Model):
         return inst
 
 
-    def delete_instances (self, noop=False):
+    def delete_instances (self, noop=False, restrict_to_store=None):
         """DANGER ZONE! Delete instances of this file on all stores!
 
         We have a safety interlock: each FileInstance has a "deletion_policy"
@@ -150,6 +150,10 @@ class File (db.Model):
 
         If `noop` is true, the logic is exercised but the deletions are not
         run.
+
+        If `restrict_to_store` is not None, it should be a Store class
+        instance. Only instances kept on the specified store will be deleted
+        -- all other instances will be kept.
 
         """
         n_deleted = 0
@@ -170,6 +174,14 @@ class File (db.Model):
             # away the entire data archive! Don't be That Guy or That Gal!
 
             if inst.deletion_policy != DeletionPolicy.ALLOWED:
+                n_kept += 1
+                continue
+
+            # Implement the `restrict_to_store` feature. We could move this
+            # into the SQL query (implicit in `self.instances` above) but meh,
+            # this keeps things more uniform regarding n_kept etc.
+
+            if restrict_to_store is not None and inst.store != restrict_to_store.id:
                 n_kept += 1
                 continue
 
@@ -500,12 +512,16 @@ def delete_file_instances (args, sourcename=None):
     noop = optional_arg (args, bool, 'noop')
     if noop is None:
         noop = False # the default is to go ahead and do it ...
+    restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
+    if restrict_to_store is not None:
+        from .store import Store
+        restrict_to_store = Store.get_by_name (restrict_to_store) # ServerError if lookup fails
 
     file = File.query.get (file_name)
     if file is None:
         raise ServerError ('no known file "%s"', file_name)
 
-    return file.delete_instances (noop=noop)
+    return file.delete_instances (noop=noop, restrict_to_store=restrict_to_store)
 
 
 @app.route ('/api/delete_file_instances_matching_query', methods=['GET', 'POST'])
@@ -520,13 +536,17 @@ def delete_file_instances_matching_query (args, sourcename=None):
     noop = optional_arg (args, bool, 'noop')
     if noop is None:
         noop = False # the default is to go ahead and do it ...
+    restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
+    if restrict_to_store is not None:
+        from .store import Store
+        restrict_to_store = Store.get_by_name (restrict_to_store) # ServerError if lookup fails
 
     from .search import compile_search
     query = compile_search (query, query_type='files')
     stats = {}
 
     for file in query:
-        stats[file.name] = file.delete_instances (noop=noop)
+        stats[file.name] = file.delete_instances (noop=noop, restrict_to_store=restrict_to_store)
 
     return {
         'stats': stats,
