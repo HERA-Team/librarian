@@ -207,18 +207,18 @@ class LibrarianClient (object):
         )
 
 
-    def delete_file_instances(self, file_name, noop=False, restrict_to_store=None):
+    def delete_file_instances(self, file_name, mode='standard', restrict_to_store=None):
         return self._do_http_post ('delete_file_instances',
             file_name=file_name,
-            noop=noop,
+            mode=mode,
             restrict_to_store=restrict_to_store,
         )
 
 
-    def delete_file_instances_matching_query(self, query, noop=False, restrict_to_store=None):
+    def delete_file_instances_matching_query(self, query, mode='standard', restrict_to_store=None):
         return self._do_http_post ('delete_file_instances_matching_query',
             query=query,
-            noop=noop,
+            mode=mode,
             restrict_to_store=restrict_to_store,
         )
 

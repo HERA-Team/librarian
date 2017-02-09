@@ -58,13 +58,15 @@ if args.noop:
     print('No-op mode enabled: files will not actually be deleted.')
     itemtext = 'todelete'
     summtext = 'would have been deleted'
+    mode = 'noop'
 else:
     itemtext = 'deleted'
     summtext = 'were deleted'
+    mode = 'standard'
 
 try:
     result = client.delete_file_instances_matching_query (args.query,
-                                                          noop=args.noop,
+                                                          mode=mode,
                                                           restrict_to_store=args.store)
     allstats = result['stats']
 except hera_librarian.RPCError as e:

@@ -137,7 +137,7 @@ class File (db.Model):
         return inst
 
 
-    def delete_instances (self, noop=False, restrict_to_store=None):
+    def delete_instances (self, mode='standard', restrict_to_store=None):
         """DANGER ZONE! Delete instances of this file on all stores!
 
         We have a safety interlock: each FileInstance has a "deletion_policy"
@@ -148,14 +148,21 @@ class File (db.Model):
         under the policy. It returns status information about how many
         deletions actually occurred.
 
-        If `noop` is true, the logic is exercised but the deletions are not
-        run.
+        If `mode` is "noop", the logic is exercised but the deletions are not
+        run. Currently, the only other allowed mode is "standard".
 
         If `restrict_to_store` is not None, it should be a Store class
         instance. Only instances kept on the specified store will be deleted
         -- all other instances will be kept.
 
         """
+        if mode == 'standard':
+            noop = False
+        elif mode == 'noop':
+            noop = True
+        else:
+            raise ServerError ('unexpected deletion operations mode %r' % (mode,))
+
         n_deleted = 0
         n_kept = 0
         n_error = 0
@@ -509,9 +516,7 @@ def delete_file_instances (args, sourcename=None):
 
     """
     file_name = required_arg (args, unicode, 'file_name')
-    noop = optional_arg (args, bool, 'noop')
-    if noop is None:
-        noop = False # the default is to go ahead and do it ...
+    mode = optional_arg (args, unicode, 'mode', 'standard')
     restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
@@ -521,7 +526,7 @@ def delete_file_instances (args, sourcename=None):
     if file is None:
         raise ServerError ('no known file "%s"', file_name)
 
-    return file.delete_instances (noop=noop, restrict_to_store=restrict_to_store)
+    return file.delete_instances (mode=mode, restrict_to_store=restrict_to_store)
 
 
 @app.route ('/api/delete_file_instances_matching_query', methods=['GET', 'POST'])
@@ -533,9 +538,7 @@ def delete_file_instances_matching_query (args, sourcename=None):
 
     """
     query = required_arg (args, unicode, 'query')
-    noop = optional_arg (args, bool, 'noop')
-    if noop is None:
-        noop = False # the default is to go ahead and do it ...
+    mode = optional_arg (args, unicode, 'mode', 'standard')
     restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
@@ -546,7 +549,7 @@ def delete_file_instances_matching_query (args, sourcename=None):
     stats = {}
 
     for file in query:
-        stats[file.name] = file.delete_instances (noop=noop, restrict_to_store=restrict_to_store)
+        stats[file.name] = file.delete_instances (mode=mode, restrict_to_store=restrict_to_store)
 
     return {
         'stats': stats,
