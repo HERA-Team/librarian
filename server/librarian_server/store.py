@@ -623,7 +623,7 @@ class OffloaderTask (bgtasks.BackgroundTask):
         dest_store._delete (self.staging_dir)
 
 
-OFFLOAD_BATCH_SIZE = 20
+OFFLOAD_BATCH_SIZE = 200
 
 @app.route ('/api/initiate_offload', methods=['GET', 'POST'])
 @json_api
