@@ -51,7 +51,7 @@ if 'outcome' not in result:
     die ('malformed server response (no "outcome" field): %s', repr(result))
 
 if result['outcome'] == 'store-shut-down':
-    print ('The store has no more file instances and was placed offline. It may be deactivated.')
+    print ('The store has no file instances needing offloading. It was placed offline and may now be closed out.')
 elif result['outcome'] == 'task-launched':
     print ('Task launched, intending to offload %s instances.' % (result.get ('instance-count', '???')))
     print ()
