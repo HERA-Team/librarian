@@ -31,45 +31,63 @@ from .webutil import ServerError, json_api, login_required, optional_arg, requir
 # `server/librarian_server/templates/search-instructions-fragment.html`. IF YOU
 # ADD FEATURES HERE, UPDATE THE DOCUMENTATION!!!
 
-def _compile_clause (name, value):
-    from .file import File
+class SearchCompiler (object):
+    def __init__ (self):
+        self.n_subquery = 0
 
-    if name == 'and':
-        if not isinstance (value, dict):
-            raise ServerError ('can\'t parse "and" clause: contents must be a dict, '
-                               'but got %s', value.__class__.__name__)
-        from sqlalchemy import and_
-        return and_ (*[_compile_clause (*t) for t in value.iteritems ()])
-    elif name == 'or':
-        if not isinstance (value, dict):
-            raise ServerError ('can\'t parse "or" clause: contents must be a dict, '
-                               'but got %s', value.__class__.__name__)
-        from sqlalchemy import or_
-        return or_ (*[_compile_clause (*t) for t in value.iteritems ()])
-    elif name == 'name-like':
-        if not isinstance (value, unicode):
-            raise ServerError ('can\'t parse "name-like" clause: contents must be text, '
-                               'but got %s', value.__class__.__name__)
-        return File.name.like (value)
-    elif name == 'not-older-than':
-        if not isinstance (value, (int, float)):
-            raise ServerError ('can\'t parse "not-older-than" clause: contents must be '
-                               'numeric, but got %s', value.__class__.__name__)
-        cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
-        return (File.create_time > cutoff)
-    elif name == 'not-newer-than':
-        if not isinstance (value, (int, float)):
-            raise ServerError ('can\'t parse "not-newer-than" clause: contents must be '
-                               'numeric, but got %s', value.__class__.__name__)
-        cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
-        return (File.create_time < cutoff)
-    elif name == 'source-is':
-        if not isinstance (value, unicode):
-            raise ServerError ('can\'t parse "source-is" clause: contents must be '
-                               'text, but got %s', value.__class__.__name__)
-        return (File.source == value)
-    else:
-        raise ServerError ('can\'t parse search clause: unrecognized name "%s"', name)
+    def _compile_clause (self, name, value):
+        from .file import File
+        from sqlalchemy import func
+
+        if name == 'and':
+            if not isinstance (value, dict):
+                raise ServerError ('can\'t parse "and" clause: contents must be a dict, '
+                                   'but got %s', value.__class__.__name__)
+            from sqlalchemy import and_
+            return and_ (*[self._compile_clause (*t) for t in value.iteritems ()])
+        elif name == 'or':
+            if not isinstance (value, dict):
+                raise ServerError ('can\'t parse "or" clause: contents must be a dict, '
+                                   'but got %s', value.__class__.__name__)
+            from sqlalchemy import or_
+            return or_ (*[self._compile_clause (*t) for t in value.iteritems ()])
+        elif name == 'name-like':
+            if not isinstance (value, unicode):
+                raise ServerError ('can\'t parse "name-like" clause: contents must be text, '
+                                   'but got %s', value.__class__.__name__)
+            return File.name.like (value)
+        elif name == 'not-older-than':
+            if not isinstance (value, (int, float)):
+                raise ServerError ('can\'t parse "not-older-than" clause: contents must be '
+                                   'numeric, but got %s', value.__class__.__name__)
+            cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
+            return (File.create_time > cutoff)
+        elif name == 'not-newer-than':
+            if not isinstance (value, (int, float)):
+                raise ServerError ('can\'t parse "not-newer-than" clause: contents must be '
+                                   'numeric, but got %s', value.__class__.__name__)
+            cutoff = datetime.datetime.utcnow () - datetime.timedelta (days=value)
+            return (File.create_time < cutoff)
+        elif name == 'source-is':
+            if not isinstance (value, unicode):
+                raise ServerError ('can\'t parse "source-is" clause: contents must be '
+                                   'text, but got %s', value.__class__.__name__)
+            return (File.source == value)
+        else:
+            raise ServerError ('can\'t parse search clause: unrecognized name "%s"', name)
+
+    def compile_json (self, search):
+        # The outermost item must be a dict (of clauses that are ANDed) or a magic
+        # string.
+
+        if search == 'empty-search':
+            return (File.size != File.size)
+
+        if isinstance (search, dict):
+            return self._compile_clause ('and', search)
+
+        raise ServerError ('can\'t parse search: outermost JSON level must '
+                           'be a dict; got %s', search.__class__.__name__)
 
 
 def compile_search (search_string, query_type='files'):
@@ -95,16 +113,9 @@ def compile_search (search_string, query_type='files'):
     except Exception as e:
         raise ServerError ('can\'t parse search as JSON: %s', e)
 
-    # The outermost item must be a dict (of clauses that are ANDed) or a magic
-    # string.
+    # Offload to state-maintaining helper class.
 
-    if search == 'empty-search':
-        filter = (File.size != File.size)
-    elif isinstance (search, dict):
-        filter = _compile_clause ('and', search)
-    else:
-        raise ServerError ('can\'t parse search: outermost JSON level must '
-                           'be a dict; got %s', search.__class__.__name__)
+    filter = SearchCompiler ().compile_json (search)
 
     if query_type == 'files':
         return File.query.filter (filter)
