@@ -22,6 +22,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 __all__ = str('''
 Store
 UploaderTask
+OffloaderTask
 ''').split ()
 
 import os.path
@@ -80,6 +81,120 @@ class Store (db.Model, BaseStore):
 
         """
         return BaseStore (self.name, self.path_prefix, self.ssh_host)
+
+
+    def process_staged_file (self, staged_path, dest_store_path, meta_mode,
+                             deletion_policy, source_name=None):
+        """Called after a file has been placed in a staging directory on a store. We
+        validate the upload and, if it's OK, put the file into its final
+        destination and create the relevant database entries.
+
+        """
+        parent_dirs = os.path.dirname (dest_store_path)
+        file_name = os.path.basename (dest_store_path)
+
+        from .file import File, FileInstance
+
+        # Do we already have the intended instance? If so ... just delete the
+        # staged instance and return success, because the intended effect has
+        # already been achieved.
+
+        instance = FileInstance.query.get ((self.id, parent_dirs, file_name))
+        if instance is not None:
+            self._delete (staged_path)
+            return
+
+        # Every file has associated metadata. Either we've already been given the
+        # right info, or we need to infer it from the file instance -- the latter
+        # technique only working for certain kinds of files that we know how to
+        # deal with.
+
+        if meta_mode == 'direct':
+            # In this case, something like the `initiate_upload` call should
+            # have created all of the database records that we need to make
+            # sense of this file. In particular, we should have a File record
+            # ready to go.
+
+            file = File.query.get (file_name)
+
+            if file is None:
+                # If this happens, it doesn't seem particularly helpful for debugging
+                # to leave the staged file lying around.
+                self._delete (staged_path)
+                raise ServerError ('cannot complete upload to %s:%s: proper metadata were '
+                                   'not uploaded in initiate_upload call',
+                                   self.name, dest_store_path)
+
+            # Validate the staged file, abusing our argument-parsing helpers to make
+            # sure we got everything from the info call. Note that we leave the file
+            # around if we fail, in case that's helpful for debugging.
+
+            try:
+                info = self.get_info_for_path (staged_path)
+            except Exception as e:
+                raise ServerError ('cannot complete upload to %s:%s: %s', self.name, dest_store_path, e)
+
+            observed_size = required_arg (info, int, 'size')
+            observed_md5 = required_arg (info, unicode, 'md5')
+
+            if observed_size != file.size:
+                raise ServerError ('cannot complete upload to %s:%s: expected size %d; observed %d',
+                                   self.name, dest_store_path, file.size, observed_size)
+
+            if observed_md5 != file.md5:
+                raise ServerError ('cannot complete upload to %s:%s: expected MD5 %s; observed %s',
+                                   self.name, dest_store_path, file.md5, observed_md5)
+        elif meta_mode == 'infer':
+            # In this case, we must infer the metadata from the file instance
+            # itself. This mode should be avoided, since we're unable to
+            # verify that the file upload succeeded, but sometimes it's
+            # necessary.
+
+            if source_name is None:
+                raise ServerError ('internal bug on upload of %s:%s: must specify source_name '
+                                   'if inferring file properties', self.name, dest_store_path)
+
+            file = File.get_inferring_info (self, staged_path, source_name)
+        else:
+            raise ServerError ('unrecognized "meta_mode" value %r', meta_mode)
+
+        # Staged file is OK and we're not redundant. Move it to its new home. We
+        # refuse to clobber an existing file; if one exists, there must be
+        # something in the store's filesystem of which the Librarian is unaware,
+        # which is a big red flag. If that happens, call that an error.
+        #
+        # We also change the file permissions if requested. I originally tried to
+        # do this *before* the mv to avoid a race, but it turns out that if you're
+        # non-root, you can't mv a directory that you don't have write permissions
+        # on. (That is always true if you don't have write access on the
+        # *containing* directory, but here I mean the directory itself.) To make
+        # things as un-racy as possible, though, we include the chmod in the same
+        # SSH invocation as the 'mv'.
+
+        pmode = app.config.get ('permissions_mode', 'readonly')
+        modespec = None
+
+        if pmode == 'readonly':
+            modespec = 'ugoa-w'
+        elif pmode == 'unchanged':
+            pass
+        else:
+            logger.warn('unrecognized value %r for configuration option "permissions_mode"', pmode)
+
+        try:
+            self._move (staged_path, dest_store_path, chmod_spec=modespec)
+        except Exception as e:
+            raise ServerError ('cannot move upload to its destination (is there already '
+                               'a file there, unknown to this Librarian?): %s' % e)
+
+        # Update the database. NOTE: there is an inevitable race between the move
+        # and the database modification. Would it be safer to switch the ordering?
+
+        inst = FileInstance (self, parent_dirs, file_name, deletion_policy=deletion_policy)
+        db.session.add (inst)
+        db.session.add (file.make_instance_creation_event (inst, self))
+        db.session.commit ()
+        return inst
 
 
 # RPC API
@@ -164,103 +279,10 @@ def complete_upload (args, sourcename=None):
 
     deletion_policy = DeletionPolicy.parse_safe (deletion_policy)
 
-    # Do we already have the intended instance? If so ... just delete the
-    # staged instance and return success, because the intended effect of this
-    # RPC call has already been achieved.
+    store.process_staged_file (staged_path, dest_store_path, meta_mode,
+                               deletion_policy, source_name=sourcename)
 
-    parent_dirs = os.path.dirname (dest_store_path)
-    instance = FileInstance.query.get ((store.id, parent_dirs, file_name))
-    if instance is not None:
-        store._delete (staging_dir)
-        return {}
-
-    # Every file has associated metadata. Either we've already been given the
-    # right info, or we need to infer it from the file instance -- the latter
-    # technique only working for certain kinds of files that we know how to
-    # deal with.
-
-    if meta_mode == 'direct':
-        # In this case, the `initiate_upload` call should have created all of
-        # the database records that we need to make sense of this file. In
-        # particular, we should have a File record ready to go.
-
-        file = File.query.get (file_name)
-
-        if file is None:
-            # If this happens, it doesn't seem particularly helpful for debugging
-            # to leave the staged file lying around.
-            store._delete (staging_dir)
-            raise ServerError ('cannot complete upload to %s:%s: proper metadata were '
-                               'not uploaded in initiate_upload call',
-                               store_name, dest_store_path)
-
-        # Validate the staged file, abusing our argument-parsing helpers to make
-        # sure we got everything from the info call. Note that we leave the file
-        # around if we fail, in case that's helpful for debugging.
-
-        try:
-            info = store.get_info_for_path (staged_path)
-        except Exception as e:
-            raise ServerError ('cannot complete upload to %s:%s: %s', store_name, dest_store_path, e)
-
-        observed_size = required_arg (info, int, 'size')
-        observed_md5 = required_arg (info, unicode, 'md5')
-
-        if observed_size != file.size:
-            raise ServerError ('cannot complete upload to %s:%s: expected size %d; observed %d',
-                               store_name, dest_store_path, file.size, observed_size)
-
-        if observed_md5 != file.md5:
-            raise ServerError ('cannot complete upload to %s:%s: expected MD5 %s; observed %s',
-                               store_name, dest_store_path, file.md5, observed_md5)
-    elif meta_mode == 'infer':
-        # In this case, we must infer the metadata from the file instance itself.
-        # This mode should be avoided, since we're unable to verify that the file
-        # upload succeeded.
-
-        file = File.get_inferring_info (store, staged_path, sourcename)
-    else:
-        raise ServerError ('unrecognized "meta_mode" value %r', meta_mode)
-
-    # Staged file is OK and we're not redundant. Move it to its new home. We
-    # refuse to clobber an existing file; if one exists, there must be
-    # something in the store's filesystem of which the Librarian is unaware,
-    # which is a big red flag. If that happens, call that an error.
-    #
-    # We also change the file permissions if requested. I originally tried to
-    # do this *before* the mv to avoid a race, but it turns out that if you're
-    # non-root, you can't mv a directory that you don't have write permissions
-    # on. (That is always true if you don't have write access on the
-    # *containing* directory, but here I mean the directory itself.) To make
-    # things as un-racy as possible, though, we include the chmod in the same
-    # SSH invocation as the 'mv'.
-
-    pmode = app.config.get ('permissions_mode', 'readonly')
-    modespec = None
-
-    if pmode == 'readonly':
-        modespec = 'ugoa-w'
-    elif pmode == 'unchanged':
-        pass
-    else:
-        logger.warn('unrecognized value %r for configuration option "permissions_mode"', pmode)
-
-    try:
-        store._move (staged_path, dest_store_path, chmod_spec=modespec)
-    except Exception as e:
-        raise ServerError ('cannot move upload to its destination (is there already '
-                           'a file there, unknown to this Librarian?): %s' % e)
-
-    # Update the database. NOTE: there is an inevitable race between the move
-    # and the database modification. Would it be safer to switch the ordering?
-
-    inst = FileInstance (store, parent_dirs, file_name, deletion_policy=deletion_policy)
-    db.session.add (inst)
-    db.session.add (file.make_instance_creation_event (inst, store))
-    db.session.commit ()
-
-    # Kill the staging directory. We save this til after the DB update in case
-    # it fails.
+    # If we're still here, we're good and can kill the staging directory.
 
     store._delete (staging_dir)
 
@@ -480,6 +502,200 @@ def launch_file_copy (args, sourcename=None):
     remote_store_path = optional_arg (args, unicode, 'remote_store_path')
     launch_copy_by_file_name (file_name, connection_name, remote_store_path)
     return {}
+
+
+# Offloading files. This functionality was developed for a time when we had to
+# use the RTP "still" machines as temporary emergency Librarian stores. After
+# the emergency was over, we wanted to transfer their files back to the main
+# storage "pot" machine and deactivate the temporary stores.
+
+class InstanceOffloadInfo (object):
+    def __init__ (self, file_instance):
+        self.parent_dirs = file_instance.parent_dirs
+        self.name = file_instance.name
+        self.success = False
+
+
+class OffloaderTask (bgtasks.BackgroundTask):
+    """Object that manages the task of offloading file instances from one store to
+    another, staying on this Librarian.
+
+    """
+    def __init__ (self, source_store, dest_store, staging_dir, instance_info):
+        self.source_store = source_store
+        self.dest_store = dest_store
+        self.staging_dir = staging_dir
+        self.instance_info = instance_info
+        self.desc = 'offload ~%d instances from %s to %s' \
+                    % (len(instance_info), source_store.name, dest_store.name)
+
+
+    def thread_function (self):
+        # I think it's better to just let the thread crash if anything goes
+        # wrong, rather than catching exceptions for each file. The offload
+        # operation is one that should be reliable; if something surprising
+        # happens, the cautious course of action is to stop trying to futz
+        # with things.
+
+        for i, info in enumerate (self.instance_info):
+            # It's conceivable that we could be attempting to move two
+            # instances of the same file. In that case, their basenames would
+            # clash in our staging directory. Therefore we mix in the index of
+            # the instance_info item to uniquify things.
+
+            sourcepath = os.path.join (info.parent_dirs, info.name)
+            stagepath = os.path.join (self.staging_dir, str(i) + '_' + info.name)
+            self.source_store.upload_file_to_local_store (sourcepath, self.dest_store, stagepath)
+            info.success = True
+
+
+    def wrapup_function (self, retval, exc):
+        from .file import FileInstance
+
+        # Yay, we can access the database again! We need it to delete all of
+        # the instances that we *successfully* copied. We also need to turn
+        # the stores back into a DB-ified objects to do what we need to do.
+
+        source_store = Store.get_by_name (self.source_store.name)
+        dest_store = Store.get_by_name (self.dest_store.name)
+
+        if exc is None:
+            logger.info ('instance offload %s => %s succeeded',
+                         source_store.name, dest_store.name)
+        else:
+            # If the thread crashed, our state information should still be
+            # reasonable, and we might as well complete any offloads that may
+            # have actually copied successfully. So we pretty much ignore the
+            # fact that an exception occurred.
+            logger.warn ('instance offload %s => %s FAILED: %s',
+                         source_store.name, dest_store.name, exc)
+
+        # For all successful copies, we need to un-stage the file in the usual
+        # way. If that worked, we delete the original instance -- bypassing
+        # the standard deletion policy flag!!! Here we *are* paranoid about
+        # exceptions.
+
+        pmode = app.config.get('permissions_mode', 'readonly')
+        need_chmod = (pmode == 'readonly')
+
+        for i, info in enumerate (self.instance_info):
+            desc_name = '%s:%s/%s' % (source_store.name, info.parent_dirs, info.name)
+
+            if not info.success:
+                logger.warn ('offload thread did not succeed on instance %s', desc_name)
+                continue
+
+            try:
+                source_inst = FileInstance.query.get ((source_store.id, info.parent_dirs, info.name))
+            except Exception as e:
+                logger.warn ('offloader wrapup: no instance %s; already deleted?', desc_name)
+                continue
+
+            stagepath = os.path.join (self.staging_dir, str(i) + '_' + source_inst.name)
+
+            try:
+                dest_inst = dest_store.process_staged_file (stagepath, source_inst.store_path,
+                                                            'direct', source_inst.deletion_policy)
+            except Exception as e:
+                logger.warn ('offloader failed to complete upload of %s', source_inst.descriptive_name())
+                continue
+
+            # This check is basically totally superfluous but we want to be
+            # *really* sure that the file was actually copied before deleting.
+            # `process_staged_file()` really ought to crash if anything at all
+            # goes wrong with the un-staging process.
+
+            if dest_inst is None:
+                logger.warn ('offloader bug: no error but no new instance of %s?', source_inst.descriptive_name())
+                continue
+
+            # If we're still here, the copy succeeded and the destination
+            # store has a shiny new instance. Try to delete the instance on
+            # the source store.
+
+            logger.info('offloader: attempting to delete instance "%s"', source_inst.descriptive_name())
+
+            try:
+                source_store._delete (source_inst.store_path, chmod_before=need_chmod)
+                db.session.add (source_inst.file.make_instance_deletion_event (source_inst, source_store))
+                db.session.delete (source_inst)
+                db.session.commit ()
+            except Exception as e:
+                logger.warn ('offloader failed to delete instance "%s": %s',
+                             source_inst.descriptive_name(), e)
+
+        # Finally, we can blow away the staging directory.
+
+        logger.info('offloader: processing complete; clearing staging directory "%s"', self.staging_dir)
+        dest_store._delete (self.staging_dir)
+
+
+OFFLOAD_BATCH_SIZE = 20
+
+@app.route ('/api/initiate_offload', methods=['GET', 'POST'])
+@json_api
+def initiate_offload (args, sourcename=None):
+    """Launch a task to offload file instances from one store to another.
+
+    This launches a background task that copies file instances from a source
+    store to a destination store, then deletes the source instances. If the
+    source store is out of instances, it is marked as unavailable. Repeated
+    calls will therefore eventually drain the source store of all its contents
+    so that it can be shut down.
+
+    To keep each task reasonably-sized, there is a limit to the number of
+    files that may be offloaded in each call to this API. Just keep calling it
+    until the source store is emptied. The actual number of instances
+    transferred in each batch is unpredictable because instances may be added
+    to or removed from the store while the offload operation is running.
+
+    Note that this API just launches the background task and returns quickly,
+    so it can't provide the caller with any information about whether the
+    offload operation is successful. You need to look at the Librarian logs or
+    task monitoring UI to check that.
+
+    This API is motivated by a time when we needed to create some temporary
+    stores to provide emergency backstop disk space. Once the emergency was
+    over, we wanted to shut down these temporary stores.
+
+    Due to this origin, this API is quite limited: for instance, you cannot
+    choose *which* file instances to offload in each call.
+
+    """
+    source_store_name = required_arg (args, unicode, 'source_store_name')
+    dest_store_name = required_arg (args, unicode, 'dest_store_name')
+
+    from .file import FileInstance
+
+    source_store = Store.get_by_name (source_store_name) # ServerError if failure
+    dest_store = Store.get_by_name (dest_store_name)
+
+    # Gather information about instances in the source store that we'll try to
+    # transfer. Background tasks can't access the database, so we need to
+    # pre-collect this information.
+
+    info = [InstanceOffloadInfo (i)
+            for i in FileInstance.query.filter (FileInstance.store == source_store.id).limit(OFFLOAD_BATCH_SIZE)]
+
+    # ... but, if the source store is empty, mark it as unavailable,
+    # essentially clearing it for deletion, and return.
+
+    if not len (info):
+        source_store.available = False
+        db.commit ()
+        return {'outcome': 'store-shut-down'}
+
+    # Otherwise, we're going to launch an offloader task. Create a staging
+    # directory and fire off the task.
+
+    staging_dir = dest_store._create_tempdir ('offloader')
+    base_source = source_store.convert_to_base_object () # again: can't access DB
+    base_dest = dest_store.convert_to_base_object ()
+
+    bgtasks.submit_background_task (OffloaderTask (
+        base_source, base_dest, staging_dir, info))
+
+    return {'outcome': 'task-launched', 'instance-count': len(info)}
 
 
 # Web user interface

@@ -227,6 +227,13 @@ class LibrarianClient (object):
         )
 
 
+    def initiate_offload(self, source_store_name, dest_store_name):
+        return self._do_http_post ('initiate_offload',
+            source_store_name=source_store_name,
+            dest_store_name=dest_store_name,
+        )
+
+
     def describe_session_without_event (self, source, event_type):
         return self._do_http_post ('describe_session_without_event',
             source=source,

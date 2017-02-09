@@ -352,3 +352,22 @@ class Store (object):
         command = 'upload_to_librarian.py --meta=json-stdin %s %s %s' % (
             conn_name, self._path(local_store_path), remote_store_path)
         return self._ssh_slurp (command, input=rec_text)
+
+
+    def upload_file_to_local_store (self, local_store_path, dest_store, dest_rel):
+        """Fire off an rsync process on the store that will upload a given file to
+        another store *on the same Librarian*. Like
+        `upload_file_to_other_librarian`, this function will SSH into the
+        store host launch an rsync, and not return until everything is done.
+
+        `destrel` is the "store path" of where the file should be placed on
+        the destination Librarian. This should be a staging directory.
+
+        This function is needed to implement the Librarian's "offload"
+        feature.
+
+        """
+        c = ("librarian_offload_helper.py --name '%s' --pp '%s' --host '%s' "
+             "--destrel '%s' '%s'" % (dest_store.name, dest_store.path_prefix,
+                                      dest_store.ssh_host, dest_rel, self._path(local_store_path)))
+        return self._ssh_slurp (c)
