@@ -97,7 +97,8 @@ def initiate_upload (args, sourcename=None):
         raise ServerError ('"upload_size" must be nonnegative')
 
     # First, figure out where the upload will go. We are simpleminded and just
-    # choose the store with the most available space.
+    # choose the store that is marked as available that has the most available
+    # space.
 
     most_avail = -1
     most_avail_store = None
