@@ -12,7 +12,9 @@ available store) and copy it over.
 """
 from __future__ import absolute_import, division, print_function
 
-import optparse, os.path, sys
+import optparse
+import os.path
+import sys
 
 import hera_librarian
 from hera_librarian import utils
@@ -27,29 +29,29 @@ o.add_option('--dest', type=str,
 opts, args = o.parse_args(sys.argv[1:])
 
 
-def die (fmt, *args):
-    if not len (args):
-        text = str (fmt)
+def die(fmt, *args):
+    if not len(args):
+        text = str(fmt)
     else:
         text = fmt % args
-    print ('error:', text, file=sys.stderr)
-    sys.exit (1)
+    print('error:', text, file=sys.stderr)
+    sys.exit(1)
 
 
 # Argument validation is pretty simple
 
-if len (args) != 3:
-    die ('expect exactly three non-option arguments')
+if len(args) != 3:
+    die('expect exactly three non-option arguments')
 
 source_connection, dest_connection, file_name = args
 
 
 # Let's do it.
 
-file_name = os.path.basename (file_name) # in case the user has spelled out a path
-client = hera_librarian.LibrarianClient (source_connection)
+file_name = os.path.basename(file_name)  # in case the user has spelled out a path
+client = hera_librarian.LibrarianClient(source_connection)
 
 try:
-    client.launch_file_copy (file_name, dest_connection, remote_store_path=opts.dest)
+    client.launch_file_copy(file_name, dest_connection, remote_store_path=opts.dest)
 except hera_librarian.RPCError as e:
-    die ('launch failed: %s', e)
+    die('launch failed: %s', e)

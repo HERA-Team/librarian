@@ -21,9 +21,9 @@ def upgrade():
     op.add_column('file_instance',
                   sa.Column('deletion_policy', sa.Integer(),
                             nullable=False,
-                            server_default='0', # = DeletionPolicies.DISALLOWED
+                            server_default='0',  # = DeletionPolicies.DISALLOWED
+                            )
                   )
-    )
 
 
 def downgrade():

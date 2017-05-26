@@ -10,7 +10,7 @@ from __future__ import with_statement
 
 # A hack so that we can get the librarian_server module.
 import sys
-sys.path.insert (0, '.')
+sys.path.insert(0, '.')
 
 from alembic import context
 
@@ -20,6 +20,7 @@ fileConfig(config.config_file_name)
 
 from librarian_server import app, db
 target_metadata = db.metadata
+
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode -- all we need is a URL.

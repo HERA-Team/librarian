@@ -10,9 +10,12 @@ __all__ = str('''
 File
 FileInstance
 FileEvent
-''').split ()
+''').split()
 
-import datetime, json, os.path, re
+import datetime
+import json
+import os.path
+import re
 from flask import flash, redirect, render_template, url_for
 
 from . import app, db, logger
@@ -41,27 +44,27 @@ class File (db.Model):
     """
     __tablename__ = 'file'
 
-    name = db.Column (db.String (256), primary_key=True)
-    type = NotNull (db.String (32))
-    create_time = NotNull (db.DateTime) # rounded to integer seconds
-    obsid = db.Column (db.BigInteger, db.ForeignKey (Observation.obsid), nullable=False)
-    size = NotNull (db.BigInteger)
-    md5 = NotNull (db.String (32))
+    name = db.Column(db.String(256), primary_key=True)
+    type = NotNull(db.String(32))
+    create_time = NotNull(db.DateTime)  # rounded to integer seconds
+    obsid = db.Column(db.BigInteger, db.ForeignKey(Observation.obsid), nullable=False)
+    size = NotNull(db.BigInteger)
+    md5 = NotNull(db.String(32))
 
-    source = NotNull (db.String (64))
-    observation = db.relationship ('Observation', back_populates='files')
-    instances = db.relationship ('FileInstance', back_populates='file')
-    events = db.relationship ('FileEvent', back_populates='file')
+    source = NotNull(db.String(64))
+    observation = db.relationship('Observation', back_populates='files')
+    instances = db.relationship('FileInstance', back_populates='file')
+    events = db.relationship('FileEvent', back_populates='file')
 
-    def __init__ (self, name, type, obsid, source, size, md5, create_time=None):
+    def __init__(self, name, type, obsid, source, size, md5, create_time=None):
         if create_time is None:
             # We round our times to whole seconds so that they can be
             # accurately represented as integer Unix times, just in case
             # floating-point rounding could sneak in as an issue.
-            create_time = datetime.datetime.utcnow ().replace (microsecond=0)
+            create_time = datetime.datetime.utcnow().replace(microsecond=0)
 
         from hera_librarian import utils
-        md5 = utils.normalize_and_validate_md5 (md5)
+        md5 = utils.normalize_and_validate_md5(md5)
 
         self.name = name
         self.type = type
@@ -70,26 +73,24 @@ class File (db.Model):
         self.source = source
         self.size = size
         self.md5 = md5
-        self._validate ()
+        self._validate()
 
-
-    def _validate (self):
+    def _validate(self):
         """Check that this object's fields follow our invariants.
 
         """
         from hera_librarian import utils
 
         if '/' in self.name:
-            raise ValueError ('illegal file name "%s": names may not contain "/"' % self.name)
+            raise ValueError('illegal file name "%s": names may not contain "/"' % self.name)
 
-        utils.normalize_and_validate_md5 (self.md5)
+        utils.normalize_and_validate_md5(self.md5)
 
-        if not (self.size >= 0): # catches NaNs, just in case ...
-            raise ValueError ('illegal size %d of file "%s": negative' % (self.size, self.name))
-
+        if not (self.size >= 0):  # catches NaNs, just in case ...
+            raise ValueError('illegal size %d of file "%s": negative' % (self.size, self.name))
 
     @classmethod
-    def get_inferring_info (cls, store, store_path, source_name, info=None):
+    def get_inferring_info(cls, store, store_path, source_name, info=None):
         """Get a File instance based on a file currently located in a store. We infer
         the file's properties and those of any dependent database records
         (Observation, ObservingSession), which means that we can only do this
@@ -100,10 +101,10 @@ class File (db.Model):
         store to gather the info ourselves.
 
         """
-        parent_dirs = os.path.dirname (store_path)
-        name = os.path.basename (store_path)
+        parent_dirs = os.path.dirname(store_path)
+        name = os.path.basename(store_path)
 
-        prev = cls.query.get (name)
+        prev = cls.query.get(name)
         if prev is not None:
             # If there's already a record for this File name, then its corresponding
             # Observation etc must already be available. Let's leave well enough alone:
@@ -114,30 +115,29 @@ class File (db.Model):
 
         if info is None:
             try:
-                info = store.get_info_for_path (store_path)
+                info = store.get_info_for_path(store_path)
             except Exception as e:
-                raise ServerError ('cannot register %s:%s: %s', store.name, store_path, e)
+                raise ServerError('cannot register %s:%s: %s', store.name, store_path, e)
 
-        size = required_arg (info, int, 'size')
-        md5 = required_arg (info, unicode, 'md5')
-        type = required_arg (info, unicode, 'type')
+        size = required_arg(info, int, 'size')
+        md5 = required_arg(info, unicode, 'md5')
+        type = required_arg(info, unicode, 'type')
 
         from .observation import Observation
-        obsid = required_arg (info, int, 'obsid')
-        obs = Observation.query.get (obsid)
+        obsid = required_arg(info, int, 'obsid')
+        obs = Observation.query.get(obsid)
 
         if obs is None:
-            start_jd = required_arg (info, float, 'start_jd')
-            lst = required_arg (info, float, 'lst')
-            db.session.add (Observation (obsid, start_jd, None, lst))
+            start_jd = required_arg(info, float, 'start_jd')
+            lst = required_arg(info, float, 'lst')
+            db.session.add(Observation(obsid, start_jd, None, lst))
 
-        inst = File (name, type, obsid, source_name, size, md5)
-        db.session.add (inst)
-        db.session.commit ()
+        inst = File(name, type, obsid, source_name, size, md5)
+        db.session.add(inst)
+        db.session.commit()
         return inst
 
-
-    def delete_instances (self, mode='standard', restrict_to_store=None):
+    def delete_instances(self, mode='standard', restrict_to_store=None):
         """DANGER ZONE! Delete instances of this file on all stores!
 
         We have a safety interlock: each FileInstance has a "deletion_policy"
@@ -161,7 +161,7 @@ class File (db.Model):
         elif mode == 'noop':
             noop = True
         else:
-            raise ServerError ('unexpected deletion operations mode %r' % (mode,))
+            raise ServerError('unexpected deletion operations mode %r' % (mode,))
 
         n_deleted = 0
         n_kept = 0
@@ -202,7 +202,7 @@ class File (db.Model):
                     logger.info('NOOP-delete call matched instance "%s"', inst.descriptive_name())
                 else:
                     logger.info('attempting to delete instance "%s"', inst.descriptive_name())
-                    store._delete (inst.store_path, chmod_before=need_chmod)
+                    store._delete(inst.store_path, chmod_before=need_chmod)
             except Exception as e:
                 # This could happen if we can't SSH to the store or something.
                 # Safest course of action seems to be to not modify the database
@@ -214,12 +214,12 @@ class File (db.Model):
             # Looks like we succeeded in blowing it away.
 
             if not noop:
-                db.session.add (self.make_instance_deletion_event (inst, store))
-                db.session.delete (inst)
+                db.session.add(self.make_instance_deletion_event(inst, store))
+                db.session.delete(inst)
             n_deleted += 1
 
         if not noop:
-            db.session.commit ()
+            db.session.commit()
 
         return {
             'n_deleted': n_deleted,
@@ -227,78 +227,70 @@ class File (db.Model):
             'n_error': n_error,
         }
 
-
     @property
-    def create_time_unix (self):
+    def create_time_unix(self):
         import calendar
-        return calendar.timegm (self.create_time.timetuple ())
+        return calendar.timegm(self.create_time.timetuple())
 
-
-    def to_dict (self):
+    def to_dict(self):
         """Note that 'source' is not a propagated quantity."""
-        return dict (
-            name = self.name,
-            type = self.type,
-            create_time = self.create_time_unix,
-            obsid = self.obsid,
-            size = self.size,
-            md5 = self.md5
+        return dict(
+            name=self.name,
+            type=self.type,
+            create_time=self.create_time_unix,
+            obsid=self.obsid,
+            size=self.size,
+            md5=self.md5
         )
 
-
     @classmethod
-    def from_dict (cls, source, info):
-        name = required_arg (info, unicode, 'name')
-        type = required_arg (info, unicode, 'type')
-        ctime_unix = required_arg (info, int, 'create_time')
-        obsid = required_arg (info, int, 'obsid')
-        size = required_arg (info, int, 'size')
-        md5 = required_arg (info, unicode, 'md5')
-        return cls (name, type, obsid, source, size, md5, datetime.datetime.fromtimestamp (ctime_unix))
+    def from_dict(cls, source, info):
+        name = required_arg(info, unicode, 'name')
+        type = required_arg(info, unicode, 'type')
+        ctime_unix = required_arg(info, int, 'create_time')
+        obsid = required_arg(info, int, 'obsid')
+        size = required_arg(info, int, 'size')
+        md5 = required_arg(info, unicode, 'md5')
+        return cls(name, type, obsid, source, size, md5, datetime.datetime.fromtimestamp(ctime_unix))
 
-
-    def make_generic_event (self, type, **kwargs):
+    def make_generic_event(self, type, **kwargs):
         """Create a new FileEvent record relating to this file. The new event is not
         added or committed to the database.
 
         """
-        return FileEvent (self.name, type, kwargs)
+        return FileEvent(self.name, type, kwargs)
 
+    def make_instance_creation_event(self, instance, store):
+        return self.make_generic_event('create_instance',
+                                       store_name=store.name,
+                                       parent_dirs=instance.parent_dirs)
 
-    def make_instance_creation_event (self, instance, store):
-        return self.make_generic_event ('create_instance',
-                                        store_name=store.name,
-                                        parent_dirs=instance.parent_dirs)
+    def make_instance_deletion_event(self, instance, store):
+        return self.make_generic_event('delete_instance',
+                                       store_name=store.name,
+                                       parent_dirs=instance.parent_dirs)
 
+    def make_copy_launched_event(self, connection_name, remote_store_path):
+        return self.make_generic_event('launch_copy',
+                                       connection_name=connection_name,
+                                       remote_store_path=remote_store_path)
 
-    def make_instance_deletion_event (self, instance, store):
-        return self.make_generic_event ('delete_instance',
-                                        store_name=store.name,
-                                        parent_dirs=instance.parent_dirs)
-
-
-    def make_copy_launched_event (self, connection_name, remote_store_path):
-        return self.make_generic_event ('launch_copy',
-                                        connection_name=connection_name,
-                                        remote_store_path=remote_store_path)
-
-
-    def make_copy_finished_event (self, connection_name, remote_store_path,
-                                  error_code, error_message, duration=None,
-                                  average_rate=None):
+    def make_copy_finished_event(self, connection_name, remote_store_path,
+                                 error_code, error_message, duration=None,
+                                 average_rate=None):
         extras = {}
 
         if duration is not None:
-            extras['duration'] = duration # seconds
+            extras['duration'] = duration  # seconds
         if average_rate is not None:
-            extras['average_rate'] = average_rate # kilobytes/sec
+            extras['average_rate'] = average_rate  # kilobytes/sec
 
-        return self.make_generic_event ('copy_finished',
-                                        connection_name=connection_name,
-                                        remote_store_path=remote_store_path,
-                                        error_code=error_code,
-                                        error_message=error_message,
-                                        **extras)
+        return self.make_generic_event('copy_finished',
+                                       connection_name=connection_name,
+                                       remote_store_path=remote_store_path,
+                                       error_code=error_code,
+                                       error_message=error_message,
+                                       **extras)
 
 
 class DeletionPolicy (object):
@@ -309,20 +301,20 @@ class DeletionPolicy (object):
     DISALLOWED = 0
     ALLOWED = 1
 
-    def __init__ (self): assert False, 'instantiation of enum not allowed'
+    def __init__(self): assert False, 'instantiation of enum not allowed'
 
     @classmethod
-    def parse_safe (cls, text):
+    def parse_safe(cls, text):
         if text == 'disallowed':
             return cls.DISALLOWED
         if text == 'allowed':
             return cls.ALLOWED
 
-        logger.warn ('unrecognized deletion policy %r; using DISALLOWED', text)
+        logger.warn('unrecognized deletion policy %r; using DISALLOWED', text)
         return cls.DISALLOWED
 
     @classmethod
-    def textualize (cls, value):
+    def textualize(cls, value):
         if value == cls.DISALLOWED:
             return 'disallowed'
         if value == cls.ALLOWED:
@@ -348,19 +340,19 @@ class FileInstance (db.Model):
     """
     __tablename__ = 'file_instance'
 
-    store = db.Column (db.BigInteger, db.ForeignKey (Store.id), primary_key=True)
-    parent_dirs = db.Column (db.String (128), primary_key=True)
-    name = db.Column (db.String (256), db.ForeignKey (File.name), primary_key=True)
-    deletion_policy = NotNull (db.Integer, default=DeletionPolicy.DISALLOWED)
+    store = db.Column(db.BigInteger, db.ForeignKey(Store.id), primary_key=True)
+    parent_dirs = db.Column(db.String(128), primary_key=True)
+    name = db.Column(db.String(256), db.ForeignKey(File.name), primary_key=True)
+    deletion_policy = NotNull(db.Integer, default=DeletionPolicy.DISALLOWED)
 
-    file = db.relationship ('File', back_populates='instances')
-    store_object = db.relationship ('Store', back_populates='instances')
+    file = db.relationship('File', back_populates='instances')
+    store_object = db.relationship('Store', back_populates='instances')
 
-    name_index = db.Index ('file_instance_name', name)
+    name_index = db.Index('file_instance_name', name)
 
-    def __init__ (self, store_obj, parent_dirs, name, deletion_policy=DeletionPolicy.DISALLOWED):
+    def __init__(self, store_obj, parent_dirs, name, deletion_policy=DeletionPolicy.DISALLOWED):
         if '/' in name:
-            raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
+            raise ValueError('illegal file name "%s": names may not contain "/"' % name)
 
         self.store = store_obj.id
         self.parent_dirs = parent_dirs
@@ -368,24 +360,24 @@ class FileInstance (db.Model):
         self.deletion_policy = deletion_policy
 
     @property
-    def store_name (self):
+    def store_name(self):
         return self.store_object.name
 
     @property
-    def store_path (self):
+    def store_path(self):
         import os.path
-        return os.path.join (self.parent_dirs, self.name)
+        return os.path.join(self.parent_dirs, self.name)
 
-    def full_path_on_store (self):
+    def full_path_on_store(self):
         import os.path
-        return os.path.join (self.store_object.path_prefix, self.parent_dirs, self.name)
+        return os.path.join(self.store_object.path_prefix, self.parent_dirs, self.name)
 
-    def descriptive_name (self):
+    def descriptive_name(self):
         return self.store_name + ':' + self.store_path
 
     @property
-    def deletion_policy_text (self):
-        return DeletionPolicy.textualize (self.deletion_policy)
+    def deletion_policy_text(self):
+        return DeletionPolicy.textualize(self.deletion_policy)
 
 
 class FileEvent (db.Model):
@@ -405,80 +397,79 @@ class FileEvent (db.Model):
     """
     __tablename__ = 'file_event'
 
-    id = db.Column (db.BigInteger, primary_key=True)
-    name = db.Column (db.String (256), db.ForeignKey (File.name))
-    time = NotNull (db.DateTime)
-    type = db.Column (db.String (64))
-    payload = db.Column (db.Text)
-    file = db.relationship ('File', back_populates='events')
+    id = db.Column(db.BigInteger, primary_key=True)
+    name = db.Column(db.String(256), db.ForeignKey(File.name))
+    time = NotNull(db.DateTime)
+    type = db.Column(db.String(64))
+    payload = db.Column(db.Text)
+    file = db.relationship('File', back_populates='events')
 
-    name_index = db.Index ('file_event_name', name)
+    name_index = db.Index('file_event_name', name)
 
-    def __init__ (self, name, type, payload_struct):
+    def __init__(self, name, type, payload_struct):
         if '/' in name:
-            raise ValueError ('illegal file name "%s": names may not contain "/"' % name)
+            raise ValueError('illegal file name "%s": names may not contain "/"' % name)
 
         self.name = name
-        self.time = datetime.datetime.utcnow ().replace (microsecond=0)
+        self.time = datetime.datetime.utcnow().replace(microsecond=0)
         self.type = type
-        self.payload = json.dumps (payload_struct)
-
+        self.payload = json.dumps(payload_struct)
 
     @property
-    def payload_json (self):
-        return json.loads (self.payload)
+    def payload_json(self):
+        return json.loads(self.payload)
 
 
 # RPC endpoints
 
-@app.route ('/api/create_file_event', methods=['GET', 'POST'])
+@app.route('/api/create_file_event', methods=['GET', 'POST'])
 @json_api
-def create_file_event (args, sourcename=None):
+def create_file_event(args, sourcename=None):
     """Create a FileEvent record for a File.
 
     We enforce basically no structure on the event data.
 
     """
-    file_name = required_arg (args, unicode, 'file_name')
-    type = required_arg (args, unicode, 'type')
-    payload = required_arg (args, dict, 'payload')
+    file_name = required_arg(args, unicode, 'file_name')
+    type = required_arg(args, unicode, 'type')
+    payload = required_arg(args, dict, 'payload')
 
-    file = File.query.get (file_name)
+    file = File.query.get(file_name)
     if file is None:
-        raise ServerError ('no known file "%s"', file_name)
+        raise ServerError('no known file "%s"', file_name)
 
-    event = file.make_generic_event (type, **payload)
-    db.session.add (event)
-    db.session.commit ()
+    event = file.make_generic_event(type, **payload)
+    db.session.add(event)
+    db.session.commit()
     return {}
 
 
-@app.route ('/api/locate_file_instance', methods=['GET', 'POST'])
+@app.route('/api/locate_file_instance', methods=['GET', 'POST'])
 @json_api
-def locate_file_instance (args, sourcename=None):
+def locate_file_instance(args, sourcename=None):
     """Tell the caller where to find an instance of the named file.
 
     """
-    file_name = required_arg (args, unicode, 'file_name')
+    file_name = required_arg(args, unicode, 'file_name')
 
-    file = File.query.get (file_name)
+    file = File.query.get(file_name)
     if file is None:
-        raise ServerError ('no known file "%s"', file_name)
+        raise ServerError('no known file "%s"', file_name)
 
     for inst in file.instances:
         return {
-            'full_path_on_store': inst.full_path_on_store (),
+            'full_path_on_store': inst.full_path_on_store(),
             'store_name': inst.store_name,
             'store_path': inst.store_path,
             'store_ssh_host': inst.store_object.ssh_host,
         }
 
-    raise ServerError ('no instances of file "%s" on this librarian', file_name)
+    raise ServerError('no instances of file "%s" on this librarian', file_name)
 
 
-@app.route ('/api/set_one_file_deletion_policy', methods=['GET', 'POST'])
+@app.route('/api/set_one_file_deletion_policy', methods=['GET', 'POST'])
 @json_api
-def set_one_file_deletion_policy (args, sourcename=None):
+def set_one_file_deletion_policy(args, sourcename=None):
     """Set the deletion policy of one instance of a file.
 
     The "one instance" restriction is just a bit of a sanity-check to throw up
@@ -491,18 +482,18 @@ def set_one_file_deletion_policy (args, sourcename=None):
     the "one instance" limit still applies.
 
     """
-    file_name = required_arg (args, unicode, 'file_name')
-    deletion_policy = required_arg (args, unicode, 'deletion_policy')
-    restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
+    file_name = required_arg(args, unicode, 'file_name')
+    deletion_policy = required_arg(args, unicode, 'deletion_policy')
+    restrict_to_store = optional_arg(args, unicode, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
-        restrict_to_store = Store.get_by_name (restrict_to_store) # ServerError if lookup fails
+        restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
 
-    file = File.query.get (file_name)
+    file = File.query.get(file_name)
     if file is None:
-        raise ServerError ('no known file "%s"', file_name)
+        raise ServerError('no known file "%s"', file_name)
 
-    deletion_policy = DeletionPolicy.parse_safe (deletion_policy)
+    deletion_policy = DeletionPolicy.parse_safe(deletion_policy)
 
     for inst in file.instances:
         # We could do this filter in SQL but it's easier to just do it this way;
@@ -511,61 +502,61 @@ def set_one_file_deletion_policy (args, sourcename=None):
             continue
 
         inst.deletion_policy = deletion_policy
-        break # just one!
+        break  # just one!
     else:
-        raise ServerError ('no instances of file "%s" on this librarian', file_name)
+        raise ServerError('no instances of file "%s" on this librarian', file_name)
 
-    db.session.add (file.make_generic_event ('instance_deletion_policy_changed',
-                                             store_name = inst.store_object.name,
-                                             parent_dirs = inst.parent_dirs,
-                                             new_policy = deletion_policy))
-    db.session.commit ()
+    db.session.add(file.make_generic_event('instance_deletion_policy_changed',
+                                           store_name=inst.store_object.name,
+                                           parent_dirs=inst.parent_dirs,
+                                           new_policy=deletion_policy))
+    db.session.commit()
     return {}
 
 
-@app.route ('/api/delete_file_instances', methods=['GET', 'POST'])
+@app.route('/api/delete_file_instances', methods=['GET', 'POST'])
 @json_api
-def delete_file_instances (args, sourcename=None):
+def delete_file_instances(args, sourcename=None):
     """DANGER ZONE! Delete instances of the named file on all stores!
 
     See File.delete_instances for a description of the safety interlocks.
 
     """
-    file_name = required_arg (args, unicode, 'file_name')
-    mode = optional_arg (args, unicode, 'mode', 'standard')
-    restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
+    file_name = required_arg(args, unicode, 'file_name')
+    mode = optional_arg(args, unicode, 'mode', 'standard')
+    restrict_to_store = optional_arg(args, unicode, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
-        restrict_to_store = Store.get_by_name (restrict_to_store) # ServerError if lookup fails
+        restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
 
-    file = File.query.get (file_name)
+    file = File.query.get(file_name)
     if file is None:
-        raise ServerError ('no known file "%s"', file_name)
+        raise ServerError('no known file "%s"', file_name)
 
-    return file.delete_instances (mode=mode, restrict_to_store=restrict_to_store)
+    return file.delete_instances(mode=mode, restrict_to_store=restrict_to_store)
 
 
-@app.route ('/api/delete_file_instances_matching_query', methods=['GET', 'POST'])
+@app.route('/api/delete_file_instances_matching_query', methods=['GET', 'POST'])
 @json_api
-def delete_file_instances_matching_query (args, sourcename=None):
+def delete_file_instances_matching_query(args, sourcename=None):
     """DANGER ZONE! Delete instances of lots of files on the store!
 
     See File.delete_instances for a description of the safety interlocks.
 
     """
-    query = required_arg (args, unicode, 'query')
-    mode = optional_arg (args, unicode, 'mode', 'standard')
-    restrict_to_store = optional_arg (args, unicode, 'restrict_to_store')
+    query = required_arg(args, unicode, 'query')
+    mode = optional_arg(args, unicode, 'mode', 'standard')
+    restrict_to_store = optional_arg(args, unicode, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
-        restrict_to_store = Store.get_by_name (restrict_to_store) # ServerError if lookup fails
+        restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
 
     from .search import compile_search
-    query = compile_search (query, query_type='files')
+    query = compile_search(query, query_type='files')
     stats = {}
 
     for file in query:
-        stats[file.name] = file.delete_instances (mode=mode, restrict_to_store=restrict_to_store)
+        stats[file.name] = file.delete_instances(mode=mode, restrict_to_store=restrict_to_store)
 
     return {
         'stats': stats,
@@ -574,18 +565,18 @@ def delete_file_instances_matching_query (args, sourcename=None):
 
 # Web user interface
 
-@app.route ('/files/<string:name>')
+@app.route('/files/<string:name>')
 @login_required
-def specific_file (name):
-    file = File.query.get (name)
+def specific_file(name):
+    file = File.query.get(name)
     if file is None:
-        flash ('No such file "%s" known' % name)
-        return redirect (url_for ('index'))
+        flash('No such file "%s" known' % name)
+        return redirect(url_for('index'))
 
-    instances = list (FileInstance.query.filter (FileInstance.name == name))
-    events = sorted (file.events, key=lambda e: e.time, reverse=True)
+    instances = list(FileInstance.query.filter(FileInstance.name == name))
+    events = sorted(file.events, key=lambda e: e.time, reverse=True)
 
-    return render_template (
+    return render_template(
         'file-individual.html',
         title='%s File %s' % (file.type, file.name),
         file=file,

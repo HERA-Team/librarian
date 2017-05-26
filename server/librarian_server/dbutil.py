@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 __all__ = str('''
 NotNull
-''').split ()
+''').split()
 
 from . import db
 
@@ -17,5 +17,5 @@ from . import db
 # Right now this module does almost nothing. Maybe that will change in the
 # future?
 
-def NotNull (kind, **kwargs):
-    return db.Column (kind, nullable=False, **kwargs)
+def NotNull(kind, **kwargs):
+    return db.Column(kind, nullable=False, **kwargs)

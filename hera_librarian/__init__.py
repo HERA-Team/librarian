@@ -4,18 +4,20 @@
 
 from __future__ import absolute_import, division, print_function
 
-import json, os.path, urllib
+import json
+import os.path
+import urllib
 
-__all__ = str ('''
+__all__ = str('''
 NoSuchConnectionError
 RPCError
 LibrarianClient
-''').split ()
+''').split()
 
 
 class NoSuchConnectionError (Exception):
-    def __init__ (self, conn_name):
-        super (NoSuchConnectionError, self).__init__ ("no such connection " + repr (conn_name))
+    def __init__(self, conn_name):
+        super(NoSuchConnectionError, self).__init__("no such connection " + repr(conn_name))
         self.conn_name = conn_name
 
 
@@ -28,16 +30,16 @@ def get_client_config():
 
 
 class RPCError (Exception):
-    def __init__ (self, req, message):
-        super (RPCError, self).__init__ ("RPC call %r failed: %s" % (req, message))
+    def __init__(self, req, message):
+        super(RPCError, self).__init__("RPC call %r failed: %s" % (req, message))
         self.req = req
         self.message = message
 
 
-def _normalize_deletion_policy (deletion_policy):
+def _normalize_deletion_policy(deletion_policy):
     # Keep this test in sync with librarian_server/file.py:DeletionPolicy.parse_safe()
     if deletion_policy not in ('allowed', 'disallowed'):
-        raise Exception ('unrecognized deletion policy %r' % (deletion_policy,))
+        raise Exception('unrecognized deletion policy %r' % (deletion_policy,))
     return deletion_policy
 
 
@@ -48,7 +50,7 @@ class LibrarianClient (object):
     config = None
     "The JSON config fragment corresponding to the desired connection."
 
-    def __init__ (self, conn_name, conn_config=None):
+    def __init__(self, conn_name, conn_config=None):
         """If `conn_config` is not None, it should be a dict containing at least the
         entries "authenticator" and "url" that define how to talk to the
         target Librarian. Otherwise, the file `~/.hl_client.cfg` will be used
@@ -63,11 +65,10 @@ class LibrarianClient (object):
         if conn_config is not None:
             self.config = conn_config
         else:
-            config = get_client_config ()
-            self.config = config['connections'].get (conn_name)
+            config = get_client_config()
+            self.config = config['connections'].get(conn_name)
             if self.config is None:
-                raise NoSuchConnectionError (conn_name)
-
+                raise NoSuchConnectionError(conn_name)
 
     def _do_http_post(self, operation, **kwargs):
         """do a POST operation, passing a JSON version of the request and expecting a
@@ -82,38 +83,35 @@ class LibrarianClient (object):
 
         params = urllib.urlencode({'request': req_json})
         url = self.config['url'] + 'api/' + operation
-        f = urllib.urlopen(url, params);
+        f = urllib.urlopen(url, params)
         reply = f.read()
         try:
             reply_json = json.loads(reply)
         except ValueError:
-            raise RPCError (kwargs, 'failed to parse reply as JSON: ' + repr(reply))
+            raise RPCError(kwargs, 'failed to parse reply as JSON: ' + repr(reply))
 
-        if not reply_json.get ('success', False):
-            raise RPCError (kwargs,
-                            reply_json.get ('message', '<no error message provided>'))
+        if not reply_json.get('success', False):
+            raise RPCError(kwargs,
+                           reply_json.get('message', '<no error message provided>'))
 
         return reply_json
-
 
     def create_file_event(self, file_name, type, **kwargs):
         """Note that keyword arguments to this function will automagically be stuffed
         inside the "payload" parameter.
 
         """
-        return self._do_http_post ('create_file_event',
-            file_name=file_name,
-            type=type,
-            payload=kwargs,
-        )
-
+        return self._do_http_post('create_file_event',
+                                  file_name=file_name,
+                                  type=type,
+                                  payload=kwargs,
+                                  )
 
     def assign_observing_sessions(self, minimum_start_jd=None, maximum_start_jd=None):
-        return self._do_http_post ('assign_observing_sessions',
-            minimum_start_jd=minimum_start_jd,
-            maximum_start_jd=maximum_start_jd,
-        )
-
+        return self._do_http_post('assign_observing_sessions',
+                                  minimum_start_jd=minimum_start_jd,
+                                  maximum_start_jd=maximum_start_jd,
+                                  )
 
     def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={}, deletion_policy='disallowed'):
         """Upload the file located at `local_path` to the Librarian. We suggest a
@@ -146,29 +144,29 @@ class LibrarianClient (object):
         and will not infrequently raise an exception.
 
         """
-        if os.path.isabs (dest_store_path):
-            raise Exception ('destination path may not be absolute; got %r' % (dest_store_path,))
+        if os.path.isabs(dest_store_path):
+            raise Exception('destination path may not be absolute; got %r' % (dest_store_path,))
 
-        deletion_policy = _normalize_deletion_policy (deletion_policy)
+        deletion_policy = _normalize_deletion_policy(deletion_policy)
 
         # In the first stage, we tell the Librarian how much data we're going to upload,
         # send it the database records, and get told the staging directory.
 
         from . import utils
-        kwargs = {'upload_size': utils.get_size_from_path (local_path)}
-        kwargs.update (rec_info)
-        info = self._do_http_post ('initiate_upload', **kwargs)
+        kwargs = {'upload_size': utils.get_size_from_path(local_path)}
+        kwargs.update(rec_info)
+        info = self._do_http_post('initiate_upload', **kwargs)
 
         from .store import Store
-        store = Store (info['name'], info['path_prefix'], info['ssh_host'])
+        store = Store(info['name'], info['path_prefix'], info['ssh_host'])
         staging_dir = info['staging_dir']
 
         # Now, (try to) actually copy the data. This runs an SCP, potentially
         # across the globe, that in the real world will occasionally stall or
         # die or whatever.
 
-        staged_path = os.path.join (staging_dir, os.path.basename (dest_store_path))
-        store.copy_to_store (local_path, staged_path)
+        staged_path = os.path.join(staging_dir, os.path.basename(dest_store_path))
+        store.copy_to_store(local_path, staged_path)
 
         # If we made it here, though, the upload succeeded and we can tell
         # that Librarian that the data are ready to go. It will verify the
@@ -176,71 +174,63 @@ class LibrarianClient (object):
         # record is created, so it's where the deletion_policy option comes
         # into play.
 
-        return self._do_http_post ('complete_upload',
-            store_name=store.name,
-            staging_dir=staging_dir,
-            dest_store_path=dest_store_path,
-            meta_mode=meta_mode,
-            deletion_policy=deletion_policy,
-        )
-
+        return self._do_http_post('complete_upload',
+                                  store_name=store.name,
+                                  staging_dir=staging_dir,
+                                  dest_store_path=dest_store_path,
+                                  meta_mode=meta_mode,
+                                  deletion_policy=deletion_policy,
+                                  )
 
     def register_instances(self, store_name, file_info):
-        return self._do_http_post ('register_instances',
-            store_name=store_name,
-            file_info=file_info,
-        )
-
+        return self._do_http_post('register_instances',
+                                  store_name=store_name,
+                                  file_info=file_info,
+                                  )
 
     def locate_file_instance(self, file_name):
-        return self._do_http_post ('locate_file_instance',
-            file_name=file_name,
-        )
-
+        return self._do_http_post('locate_file_instance',
+                                  file_name=file_name,
+                                  )
 
     def set_one_file_deletion_policy(self, file_name, deletion_policy, restrict_to_store=None):
-        deletion_policy = _normalize_deletion_policy (deletion_policy)
+        deletion_policy = _normalize_deletion_policy(deletion_policy)
 
-        return self._do_http_post ('set_one_file_deletion_policy',
-            file_name=file_name,
-            deletion_policy=deletion_policy,
-            restrict_to_store=restrict_to_store,
-        )
-
+        return self._do_http_post('set_one_file_deletion_policy',
+                                  file_name=file_name,
+                                  deletion_policy=deletion_policy,
+                                  restrict_to_store=restrict_to_store,
+                                  )
 
     def delete_file_instances(self, file_name, mode='standard', restrict_to_store=None):
-        return self._do_http_post ('delete_file_instances',
-            file_name=file_name,
-            mode=mode,
-            restrict_to_store=restrict_to_store,
-        )
-
+        return self._do_http_post('delete_file_instances',
+                                  file_name=file_name,
+                                  mode=mode,
+                                  restrict_to_store=restrict_to_store,
+                                  )
 
     def delete_file_instances_matching_query(self, query, mode='standard', restrict_to_store=None):
-        return self._do_http_post ('delete_file_instances_matching_query',
-            query=query,
-            mode=mode,
-            restrict_to_store=restrict_to_store,
-        )
-
+        return self._do_http_post('delete_file_instances_matching_query',
+                                  query=query,
+                                  mode=mode,
+                                  restrict_to_store=restrict_to_store,
+                                  )
 
     def launch_file_copy(self, file_name, connection_name, remote_store_path=None):
-        return self._do_http_post ('launch_file_copy',
-            file_name=file_name,
-            connection_name=connection_name,
-            remote_store_path=remote_store_path,
-        )
-
+        return self._do_http_post('launch_file_copy',
+                                  file_name=file_name,
+                                  connection_name=connection_name,
+                                  remote_store_path=remote_store_path,
+                                  )
 
     def initiate_offload(self, source_store_name, dest_store_name):
-        return self._do_http_post ('initiate_offload',
-            source_store_name=source_store_name,
-            dest_store_name=dest_store_name,
-        )
+        return self._do_http_post('initiate_offload',
+                                  source_store_name=source_store_name,
+                                  dest_store_name=dest_store_name,
+                                  )
 
-
-    def describe_session_without_event (self, source, event_type):
-        return self._do_http_post ('describe_session_without_event',
-            source=source,
-            event_type=event_type,
-        )
+    def describe_session_without_event(self, source, event_type):
+        return self._do_http_post('describe_session_without_event',
+                                  source=source,
+                                  event_type=event_type,
+                                  )

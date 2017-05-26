@@ -14,9 +14,10 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 __all__ = str('''
 Store
-''').split ()
+''').split()
 
-import subprocess, os.path
+import subprocess
+import os.path
 
 from . import RPCError
 
@@ -32,24 +33,22 @@ class Store (object):
     path_prefix = None
     ssh_host = None
 
-    def __init__ (self, name, path_prefix, ssh_host):
+    def __init__(self, name, path_prefix, ssh_host):
         self.name = name
         self.path_prefix = path_prefix
         self.ssh_host = ssh_host
-
 
     # Direct store access. All paths sent to SSH commands should be filtered
     # through self._path() to prepend the path_prefix and make sure that we're
     # not accidentally passing absolute paths around.
 
-    def _path (self, *pieces):
+    def _path(self, *pieces):
         for p in pieces:
-            if os.path.isabs (p):
-                raise ValueError ('store paths must not be absolute; got %r' % (pieces,))
-        return os.path.join (self.path_prefix, *pieces)
+            if os.path.isabs(p):
+                raise ValueError('store paths must not be absolute; got %r' % (pieces,))
+        return os.path.join(self.path_prefix, *pieces)
 
-
-    def _ssh_slurp (self, command, input=None):
+    def _ssh_slurp(self, command, input=None):
         """SSH to the store host, run a command, and return its standard output. Raise
         an RPCError with standard error output if anything goes wrong.
 
@@ -68,24 +67,23 @@ class Store (object):
 
         if input is None:
             import os
-            stdin = open (os.devnull, 'rb')
+            stdin = open(os.devnull, 'rb')
         else:
             stdin = subprocess.PIPE
 
-        proc = subprocess.Popen (argv, shell=False, stdin=stdin,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(argv, shell=False, stdin=stdin,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if input is None:
-            stdin.close ()
-        stdout, stderr = proc.communicate (input=input)
+            stdin.close()
+        stdout, stderr = proc.communicate(input=input)
 
         if proc.returncode != 0:
-            raise RPCError (argv, 'exit code %d; stdout:\n\n%r\n\nstderr:\n\n%r'
-                            % (proc.returncode, stdout, stderr))
+            raise RPCError(argv, 'exit code %d; stdout:\n\n%r\n\nstderr:\n\n%r'
+                           % (proc.returncode, stdout, stderr))
 
         return stdout
 
-
-    def _stream_path (self, store_path):
+    def _stream_path(self, store_path):
         """Return a subprocess.Popen instance that streams file contents on its
         standard output. If the file is a flat file, this is well-defined; if
         the file is a directory, the "contents" are its tar-ification, inside
@@ -96,20 +94,19 @@ class Store (object):
         """
         import os
         argv = ['ssh', self.ssh_host, "librarian_stream_file_or_directory.sh '%s'" %
-                self._path (store_path)]
-        stdin = open (os.devnull, 'rb')
-        proc = subprocess.Popen (argv, shell=False, stdin=stdin,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdin.close ()
+                self._path(store_path)]
+        stdin = open(os.devnull, 'rb')
+        proc = subprocess.Popen(argv, shell=False, stdin=stdin,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdin.close()
         return proc
-
 
     # Modifications of the store host. These should always be paired with
     # appropriate modifications of the Librarian server database, either
     # through an RPC call (if you're a client) or a direct change (if you're
     # the server).
 
-    def copy_to_store (self, local_path, store_path):
+    def copy_to_store(self, local_path, store_path):
         """Rsync a file to a particular path in the store.
 
         You should not copy files directly to their intended destinations. You
@@ -122,7 +119,7 @@ class Store (object):
         # end their names with "/", but it will error if we end a file name
         # with "/". So we have to check:
 
-        if os.path.isdir (local_path) and not local_path.endswith ('/'):
+        if os.path.isdir(local_path) and not local_path.endswith('/'):
             local_suffix = '/'
         else:
             local_suffix = ''
@@ -142,19 +139,19 @@ class Store (object):
         ]
         success = False
 
-        for i in xrange (NUM_RSYNC_TRIES):
-            proc = subprocess.Popen (argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            output = proc.communicate ()[0]
+        for i in xrange(NUM_RSYNC_TRIES):
+            proc = subprocess.Popen(argv, shell=False, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
+            output = proc.communicate()[0]
 
             if proc.returncode == 0:
                 success = True
                 break
 
         if not success:
-            raise RPCError (argv, 'exit code %d; output:\n\n%r' % (proc.returncode, output))
+            raise RPCError(argv, 'exit code %d; output:\n\n%r' % (proc.returncode, output))
 
-
-    def _chmod (self, store_path, modespec):
+    def _chmod(self, store_path, modespec):
         """Change Unix permissions on a path in the store.
 
         `modespec` is a textual specification that is passed to the `chmod`
@@ -168,10 +165,9 @@ class Store (object):
         failure code.
 
         """
-        return self._ssh_slurp ("chmod -R '%s' '%s'" % (modespec, self._path(store_path)))
+        return self._ssh_slurp("chmod -R '%s' '%s'" % (modespec, self._path(store_path)))
 
-
-    def _move (self, source_store_path, dest_store_path, chmod_spec=None):
+    def _move(self, source_store_path, dest_store_path, chmod_spec=None):
         """Move a path in the store.
 
         We make sure that parent directories exist if needed. We refuse to
@@ -203,7 +199,7 @@ class Store (object):
         are really directories, I believe that is simply not possible.
 
         """
-        dest_parent = os.path.dirname (dest_store_path)
+        dest_parent = os.path.dirname(dest_store_path)
         ssp = self._path(source_store_path)
         dsp = self._path(dest_store_path)
 
@@ -212,11 +208,10 @@ class Store (object):
         else:
             piece = ''
 
-        return self._ssh_slurp ("mkdir -p '%s' && chmod u+w '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
-                                (self._path(dest_parent), ssp, ssp, dsp, ssp, piece))
+        return self._ssh_slurp("mkdir -p '%s' && chmod u+w '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
+                               (self._path(dest_parent), ssp, ssp, dsp, ssp, piece))
 
-
-    def _delete (self, store_path, chmod_before=False):
+    def _delete(self, store_path, chmod_before=False):
         """Delete a path from the store.
 
         We use the `-r` flag of `rm` to delete recursively, but not the `-f`
@@ -233,42 +228,39 @@ class Store (object):
             part1 = "chmod -R u+w '%s' && " % self._path(store_path)
         else:
             part1 = ''
-        return self._ssh_slurp (part1 + "rm -r '%s'" % self._path(store_path))
+        return self._ssh_slurp(part1 + "rm -r '%s'" % self._path(store_path))
 
-
-    def _create_tempdir (self, key='libtmp'):
+    def _create_tempdir(self, key='libtmp'):
         """Create a temporary directory in the store's root and return its "store
         path".
 
         """
-        output = self._ssh_slurp ('mktemp -d -p %s %s.XXXXXX' % (self.path_prefix, key))
-        fullpath = output.splitlines ()[-1].strip ()
+        output = self._ssh_slurp('mktemp -d -p %s %s.XXXXXX' % (self.path_prefix, key))
+        fullpath = output.splitlines()[-1].strip()
 
-        if not fullpath.startswith (self.path_prefix):
-            raise RPCError ('unexpected output from mktemp on %s: %s'
-                            % (self.name, fullpath))
+        if not fullpath.startswith(self.path_prefix):
+            raise RPCError('unexpected output from mktemp on %s: %s'
+                           % (self.name, fullpath))
 
-        return fullpath[len (self.path_prefix)+1:]
-
+        return fullpath[len(self.path_prefix) + 1:]
 
     # Interrogations of the store -- these don't change anything so they don't
     # necessarily need to be paired with Librarian database modifications.
 
-    def get_info_for_path (self, storepath):
+    def get_info_for_path(self, storepath):
         """`storepath` is a path relative to our `path_prefix`. We assume that we are
         not running on the store host, but can transparently SSH to it.
 
         """
         import json
-        text = self._ssh_slurp ("python -c \'import hera_librarian.utils as u; u.print_info_for_path(\"%s\")\'"
-                                % (self._path(storepath)))
+        text = self._ssh_slurp("python -c \'import hera_librarian.utils as u; u.print_info_for_path(\"%s\")\'"
+                               % (self._path(storepath)))
         return json.loads(text)
-
 
     _cached_space_info = None
     _space_info_timestamp = None
 
-    def get_space_info (self):
+    def get_space_info(self):
         """Get information about how much space is available in the store. We have a
         simpleminded cache since it's nice just to be able to call the
         function, but SSHing into the store every time is going to be a bit
@@ -276,17 +268,17 @@ class Store (object):
 
         """
         import time
-        now = time.time ()
+        now = time.time()
 
         # 30 second lifetime:
         if self._cached_space_info is not None and now - self._space_info_timestamp < 30:
             return self._cached_space_info
 
-        output = self._ssh_slurp ('df -B1 %s' % self._path())
-        bits = output.splitlines ()[-1].split ()
+        output = self._ssh_slurp('df -B1 %s' % self._path())
+        bits = output.splitlines()[-1].split()
         info = {}
-        info['used'] = int(bits[2]) # measured in bytes
-        info['available'] = int(bits[3]) # measured in bytes
+        info['used'] = int(bits[2])  # measured in bytes
+        info['available'] = int(bits[3])  # measured in bytes
         info['total'] = info['used'] + info['available']
 
         self._cached_space_info = info
@@ -294,19 +286,17 @@ class Store (object):
 
         return info
 
-
     @property
-    def capacity (self):
+    def capacity(self):
         """Returns the total capacity of the store, in bytes.
 
         Accessing this property may trigger an SSH into the store host!
 
         """
-        return self.get_space_info ()['total']
-
+        return self.get_space_info()['total']
 
     @property
-    def space_left (self):
+    def space_left(self):
         """Returns the amount of space left in the store, in bytes.
 
         Accessing this property may trigger an SSH into the store host!
@@ -315,23 +305,21 @@ class Store (object):
         boolean availability flag in the server.
 
         """
-        return self.get_space_info ()['available']
-
+        return self.get_space_info()['available']
 
     @property
-    def usage_percentage (self):
+    def usage_percentage(self):
         """Returns the amount of the storage capacity that is currently used as a
         percentage.
 
         Accessing this property may trigger an SSH into the store host!
 
         """
-        info = self.get_space_info ()
+        info = self.get_space_info()
         return 100. * info['used'] / (info['total'])
 
-
-    def upload_file_to_other_librarian (self, conn_name, rec_info, local_store_path,
-                                        remote_store_path=None):
+    def upload_file_to_other_librarian(self, conn_name, rec_info, local_store_path,
+                                       remote_store_path=None):
         """Fire off an rsync process on the store that will upload a given file to a
         different Librarian. This function will SSH into the store host, from
         which it will launch an rsync, and it will not return until everything
@@ -347,14 +335,13 @@ class Store (object):
             remote_store_path = local_store_path
 
         import json
-        rec_text = json.dumps (rec_info)
+        rec_text = json.dumps(rec_info)
 
         command = 'upload_to_librarian.py --meta=json-stdin %s %s %s' % (
             conn_name, self._path(local_store_path), remote_store_path)
-        return self._ssh_slurp (command, input=rec_text)
+        return self._ssh_slurp(command, input=rec_text)
 
-
-    def upload_file_to_local_store (self, local_store_path, dest_store, dest_rel):
+    def upload_file_to_local_store(self, local_store_path, dest_store, dest_rel):
         """Fire off an rsync process on the store that will upload a given file to
         another store *on the same Librarian*. Like
         `upload_file_to_other_librarian`, this function will SSH into the
@@ -370,4 +357,4 @@ class Store (object):
         c = ("librarian_offload_helper.py --name '%s' --pp '%s' --host '%s' "
              "--destrel '%s' '%s'" % (dest_store.name, dest_store.path_prefix,
                                       dest_store.ssh_host, dest_rel, self._path(local_store_path)))
-        return self._ssh_slurp (c)
+        return self._ssh_slurp(c)

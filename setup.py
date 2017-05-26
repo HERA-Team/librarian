@@ -23,5 +23,5 @@ setup_args = {
     'version': __version__
 }
 
-if __name__== '__main__':
+if __name__ == '__main__':
     apply(setup, (), setup_args)

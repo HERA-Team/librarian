@@ -23,7 +23,7 @@ __all__ = str('''
 Store
 UploaderTask
 OffloaderTask
-''').split ()
+''').split()
 
 import os.path
 
@@ -45,33 +45,31 @@ class Store (db.Model, BaseStore):
     """
     __tablename__ = 'store'
 
-    id = db.Column (db.BigInteger, primary_key=True)
-    name = NotNull (db.String (256), unique=True)
-    ssh_host = NotNull (db.String (256))
-    path_prefix = NotNull (db.String (256))
-    http_prefix = db.Column (db.String (256))
-    available = NotNull (db.Boolean)
-    instances = db.relationship ('FileInstance', back_populates='store_object')
+    id = db.Column(db.BigInteger, primary_key=True)
+    name = NotNull(db.String(256), unique=True)
+    ssh_host = NotNull(db.String(256))
+    path_prefix = NotNull(db.String(256))
+    http_prefix = db.Column(db.String(256))
+    available = NotNull(db.Boolean)
+    instances = db.relationship('FileInstance', back_populates='store_object')
 
-    def __init__ (self, name, path_prefix, ssh_host):
-        db.Model.__init__ (self)
-        BaseStore.__init__ (self, name, path_prefix, ssh_host)
+    def __init__(self, name, path_prefix, ssh_host):
+        db.Model.__init__(self)
+        BaseStore.__init__(self, name, path_prefix, ssh_host)
         self.available = True
 
-
     @classmethod
-    def get_by_name (cls, name):
+    def get_by_name(cls, name):
         """Look up a store by name, or raise an ServerError on failure."""
 
-        stores = list (cls.query.filter (cls.name == name))
-        if not len (stores):
-            raise ServerError ('No such store %r', name)
-        if len (stores) > 1:
-            raise ServerError ('Internal error: multiple stores with name %r', name)
+        stores = list(cls.query.filter(cls.name == name))
+        if not len(stores):
+            raise ServerError('No such store %r', name)
+        if len(stores) > 1:
+            raise ServerError('Internal error: multiple stores with name %r', name)
         return stores[0]
 
-
-    def convert_to_base_object (self):
+    def convert_to_base_object(self):
         """Asynchronous store operations are run on worker threads, which means that
         they're not allowed to access the database. But we'd like to be able
         to pass Store references around and reuse the functionality
@@ -80,18 +78,17 @@ class Store (db.Model, BaseStore):
         a simpler one that can be passed to other threads and so on.
 
         """
-        return BaseStore (self.name, self.path_prefix, self.ssh_host)
+        return BaseStore(self.name, self.path_prefix, self.ssh_host)
 
-
-    def process_staged_file (self, staged_path, dest_store_path, meta_mode,
-                             deletion_policy, source_name=None):
+    def process_staged_file(self, staged_path, dest_store_path, meta_mode,
+                            deletion_policy, source_name=None):
         """Called after a file has been placed in a staging directory on a store. We
         validate the upload and, if it's OK, put the file into its final
         destination and create the relevant database entries.
 
         """
-        parent_dirs = os.path.dirname (dest_store_path)
-        file_name = os.path.basename (dest_store_path)
+        parent_dirs = os.path.dirname(dest_store_path)
+        file_name = os.path.basename(dest_store_path)
 
         from .file import File, FileInstance
 
@@ -99,9 +96,9 @@ class Store (db.Model, BaseStore):
         # staged instance and return success, because the intended effect has
         # already been achieved.
 
-        instance = FileInstance.query.get ((self.id, parent_dirs, file_name))
+        instance = FileInstance.query.get((self.id, parent_dirs, file_name))
         if instance is not None:
-            self._delete (staged_path)
+            self._delete(staged_path)
             return
 
         # Every file has associated metadata. Either we've already been given the
@@ -115,35 +112,36 @@ class Store (db.Model, BaseStore):
             # sense of this file. In particular, we should have a File record
             # ready to go.
 
-            file = File.query.get (file_name)
+            file = File.query.get(file_name)
 
             if file is None:
                 # If this happens, it doesn't seem particularly helpful for debugging
                 # to leave the staged file lying around.
-                self._delete (staged_path)
-                raise ServerError ('cannot complete upload to %s:%s: proper metadata were '
-                                   'not uploaded in initiate_upload call',
-                                   self.name, dest_store_path)
+                self._delete(staged_path)
+                raise ServerError('cannot complete upload to %s:%s: proper metadata were '
+                                  'not uploaded in initiate_upload call',
+                                  self.name, dest_store_path)
 
             # Validate the staged file, abusing our argument-parsing helpers to make
             # sure we got everything from the info call. Note that we leave the file
             # around if we fail, in case that's helpful for debugging.
 
             try:
-                info = self.get_info_for_path (staged_path)
+                info = self.get_info_for_path(staged_path)
             except Exception as e:
-                raise ServerError ('cannot complete upload to %s:%s: %s', self.name, dest_store_path, e)
+                raise ServerError('cannot complete upload to %s:%s: %s',
+                                  self.name, dest_store_path, e)
 
-            observed_size = required_arg (info, int, 'size')
-            observed_md5 = required_arg (info, unicode, 'md5')
+            observed_size = required_arg(info, int, 'size')
+            observed_md5 = required_arg(info, unicode, 'md5')
 
             if observed_size != file.size:
-                raise ServerError ('cannot complete upload to %s:%s: expected size %d; observed %d',
-                                   self.name, dest_store_path, file.size, observed_size)
+                raise ServerError('cannot complete upload to %s:%s: expected size %d; observed %d',
+                                  self.name, dest_store_path, file.size, observed_size)
 
             if observed_md5 != file.md5:
-                raise ServerError ('cannot complete upload to %s:%s: expected MD5 %s; observed %s',
-                                   self.name, dest_store_path, file.md5, observed_md5)
+                raise ServerError('cannot complete upload to %s:%s: expected MD5 %s; observed %s',
+                                  self.name, dest_store_path, file.md5, observed_md5)
         elif meta_mode == 'infer':
             # In this case, we must infer the metadata from the file instance
             # itself. This mode should be avoided, since we're unable to
@@ -151,12 +149,12 @@ class Store (db.Model, BaseStore):
             # necessary.
 
             if source_name is None:
-                raise ServerError ('internal bug on upload of %s:%s: must specify source_name '
-                                   'if inferring file properties', self.name, dest_store_path)
+                raise ServerError('internal bug on upload of %s:%s: must specify source_name '
+                                  'if inferring file properties', self.name, dest_store_path)
 
-            file = File.get_inferring_info (self, staged_path, source_name)
+            file = File.get_inferring_info(self, staged_path, source_name)
         else:
-            raise ServerError ('unrecognized "meta_mode" value %r', meta_mode)
+            raise ServerError('unrecognized "meta_mode" value %r', meta_mode)
 
         # Staged file is OK and we're not redundant. Move it to its new home. We
         # refuse to clobber an existing file; if one exists, there must be
@@ -171,7 +169,7 @@ class Store (db.Model, BaseStore):
         # things as un-racy as possible, though, we include the chmod in the same
         # SSH invocation as the 'mv'.
 
-        pmode = app.config.get ('permissions_mode', 'readonly')
+        pmode = app.config.get('permissions_mode', 'readonly')
         modespec = None
 
         if pmode == 'readonly':
@@ -182,34 +180,34 @@ class Store (db.Model, BaseStore):
             logger.warn('unrecognized value %r for configuration option "permissions_mode"', pmode)
 
         try:
-            self._move (staged_path, dest_store_path, chmod_spec=modespec)
+            self._move(staged_path, dest_store_path, chmod_spec=modespec)
         except Exception as e:
-            raise ServerError ('cannot move upload to its destination (is there already '
-                               'a file there, unknown to this Librarian?): %s' % e)
+            raise ServerError('cannot move upload to its destination (is there already '
+                              'a file there, unknown to this Librarian?): %s' % e)
 
         # Update the database. NOTE: there is an inevitable race between the move
         # and the database modification. Would it be safer to switch the ordering?
 
-        inst = FileInstance (self, parent_dirs, file_name, deletion_policy=deletion_policy)
-        db.session.add (inst)
-        db.session.add (file.make_instance_creation_event (inst, self))
-        db.session.commit ()
+        inst = FileInstance(self, parent_dirs, file_name, deletion_policy=deletion_policy)
+        db.session.add(inst)
+        db.session.add(file.make_instance_creation_event(inst, self))
+        db.session.commit()
         return inst
 
 
 # RPC API
 
-@app.route ('/api/initiate_upload', methods=['GET', 'POST'])
+@app.route('/api/initiate_upload', methods=['GET', 'POST'])
 @json_api
-def initiate_upload (args, sourcename=None):
+def initiate_upload(args, sourcename=None):
     """Called when Librarian client wants to upload a file instance to one of our
     Stores. We verify that there's room, make a staging directory, and ingest
     the database records that we'll need to make sense of the file.
 
     """
-    upload_size = required_arg (args, int, 'upload_size')
+    upload_size = required_arg(args, int, 'upload_size')
     if upload_size < 0:
-        raise ServerError ('"upload_size" must be nonnegative')
+        raise ServerError('"upload_size" must be nonnegative')
 
     # First, figure out where the upload will go. We are simpleminded and just
     # choose the store that is marked as available that has the most available
@@ -218,55 +216,55 @@ def initiate_upload (args, sourcename=None):
     most_avail = -1
     most_avail_store = None
 
-    for store in Store.query.filter (Store.available):
-        avail = store.get_space_info ()['available']
+    for store in Store.query.filter(Store.available):
+        avail = store.get_space_info()['available']
         if avail > most_avail:
             most_avail = avail
             most_avail_store = store
 
-    del store # paranoia; had a bug where we used this below!
+    del store  # paranoia; had a bug where we used this below!
 
     if most_avail < upload_size or most_avail_store is None:
-        raise ServerError ('unable to find a store able to hold %d bytes', upload_size)
+        raise ServerError('unable to find a store able to hold %d bytes', upload_size)
 
     info = {}
     info['name'] = most_avail_store.name
     info['ssh_host'] = most_avail_store.ssh_host
     info['path_prefix'] = most_avail_store.path_prefix
-    info['available'] = most_avail # might be helpful?
+    info['available'] = most_avail  # might be helpful?
 
     # Now, create a staging directory where the uploader can put their files.
     # This avoids multiple uploads stepping on each others' toes.
 
-    info['staging_dir'] = most_avail_store._create_tempdir ('staging')
+    info['staging_dir'] = most_avail_store._create_tempdir('staging')
 
     # Finally, the caller will also want to inform us about new database
     # records pertaining to the files that are about to be uploaded. Ingest
     # that information.
 
     from .misc import create_records
-    create_records (args, sourcename)
+    create_records(args, sourcename)
 
     return info
 
 
-@app.route ('/api/complete_upload', methods=['GET', 'POST'])
+@app.route('/api/complete_upload', methods=['GET', 'POST'])
 @json_api
-def complete_upload (args, sourcename=None):
+def complete_upload(args, sourcename=None):
     """Called after a Librarian client has finished uploading a file instance to
     one of our Stores. We verify that the upload was successful and move the
     file into its final destination.
 
     """
-    store_name = required_arg (args, unicode, 'store_name')
-    staging_dir = required_arg (args, unicode, 'staging_dir')
-    dest_store_path = required_arg (args, unicode, 'dest_store_path')
-    meta_mode = required_arg (args, unicode, 'meta_mode')
-    deletion_policy = optional_arg (args, unicode, 'deletion_policy', 'disallowed')
+    store_name = required_arg(args, unicode, 'store_name')
+    staging_dir = required_arg(args, unicode, 'staging_dir')
+    dest_store_path = required_arg(args, unicode, 'dest_store_path')
+    meta_mode = required_arg(args, unicode, 'meta_mode')
+    deletion_policy = optional_arg(args, unicode, 'deletion_policy', 'disallowed')
 
-    store = Store.get_by_name (store_name) # ServerError if failure
-    file_name = os.path.basename (dest_store_path)
-    staged_path = os.path.join (staging_dir, file_name)
+    store = Store.get_by_name(store_name)  # ServerError if failure
+    file_name = os.path.basename(dest_store_path)
+    staged_path = os.path.join(staging_dir, file_name)
 
     from .file import DeletionPolicy, File, FileInstance
 
@@ -277,26 +275,26 @@ def complete_upload (args, sourcename=None):
     # want that to go to waste. And DISALLOWED is pretty clearly the
     # "safe" option.
 
-    deletion_policy = DeletionPolicy.parse_safe (deletion_policy)
+    deletion_policy = DeletionPolicy.parse_safe(deletion_policy)
 
-    store.process_staged_file (staged_path, dest_store_path, meta_mode,
-                               deletion_policy, source_name=sourcename)
+    store.process_staged_file(staged_path, dest_store_path, meta_mode,
+                              deletion_policy, source_name=sourcename)
 
     # If we're still here, we're good and can kill the staging directory.
 
-    store._delete (staging_dir)
+    store._delete(staging_dir)
 
     # Finally, trigger a look at our standing orders.
 
     from .search import queue_standing_order_copies
-    queue_standing_order_copies ()
+    queue_standing_order_copies()
 
     return {}
 
 
-@app.route ('/api/register_instances', methods=['GET', 'POST'])
+@app.route('/api/register_instances', methods=['GET', 'POST'])
 @json_api
-def register_instances (args, sourcename=None):
+def register_instances(args, sourcename=None):
     """In principle, this RPC call is similar to what `initiate_upload` and
     `complete_upload` do. However, this function should be called when files
     have magically appeared on a store rather than being "uploaded" from some
@@ -314,45 +312,45 @@ def register_instances (args, sourcename=None):
     `scripts/add_obs_librarian.py` for the implementation.
 
     """
-    store_name = required_arg (args, unicode, 'store_name')
-    file_info = required_arg (args, dict, 'file_info')
+    store_name = required_arg(args, unicode, 'store_name')
+    file_info = required_arg(args, dict, 'file_info')
 
     from .file import File, FileInstance
 
-    store = Store.get_by_name (store_name) # ServerError if failure
+    store = Store.get_by_name(store_name)  # ServerError if failure
     slashed_prefix = store.path_prefix + '/'
 
     # Sort the files to get the creation times to line up.
 
-    for full_path in sorted (file_info.iterkeys ()):
-        if not full_path.startswith (slashed_prefix):
-            raise ServerError ('file path %r should start with "%s"',
-                               full_path, slashed_prefix)
+    for full_path in sorted(file_info.iterkeys()):
+        if not full_path.startswith(slashed_prefix):
+            raise ServerError('file path %r should start with "%s"',
+                              full_path, slashed_prefix)
 
         # Do we already know about this instance? If so, just ignore it.
 
-        store_path = full_path[len (slashed_prefix):]
-        parent_dirs = os.path.dirname (store_path)
-        name = os.path.basename (store_path)
+        store_path = full_path[len(slashed_prefix):]
+        parent_dirs = os.path.dirname(store_path)
+        name = os.path.basename(store_path)
 
-        instance = FileInstance.query.get ((store.id, parent_dirs, name))
+        instance = FileInstance.query.get((store.id, parent_dirs, name))
         if instance is not None:
             continue
 
         # OK, we have to create some stuff.
 
-        file = File.get_inferring_info (store, store_path, sourcename,
-                                        info=file_info[full_path])
-        inst = FileInstance (store, parent_dirs, name)
-        db.session.add (inst)
-        db.session.add (file.make_instance_creation_event (inst, store))
+        file = File.get_inferring_info(store, store_path, sourcename,
+                                       info=file_info[full_path])
+        inst = FileInstance(store, parent_dirs, name)
+        db.session.add(inst)
+        db.session.add(file.make_instance_creation_event(inst, store))
 
-    db.session.commit ()
+    db.session.commit()
 
     # Finally, trigger a look at our standing orders.
 
     from .search import queue_standing_order_copies
-    queue_standing_order_copies ()
+    queue_standing_order_copies()
 
     return {}
 
@@ -360,6 +358,7 @@ def register_instances (args, sourcename=None):
 # File uploads and copies -- maybe this should be separated into its own file?
 
 from . import bgtasks
+
 
 class UploaderTask (bgtasks.BackgroundTask):
     """Object that manages the task of copying a file to another Librarian.
@@ -372,7 +371,7 @@ class UploaderTask (bgtasks.BackgroundTask):
     t_start = None
     t_finish = None
 
-    def __init__ (self, store, conn_name, rec_info, store_path, remote_store_path, standing_order_name=None):
+    def __init__(self, store, conn_name, rec_info, store_path, remote_store_path, standing_order_name=None):
         self.store = store
         self.conn_name = conn_name
         self.rec_info = rec_info
@@ -386,61 +385,59 @@ class UploaderTask (bgtasks.BackgroundTask):
         if standing_order_name is not None:
             self.desc += ' (standing order "%s")' % standing_order_name
 
-
-    def thread_function (self):
+    def thread_function(self):
         import time
-        self.t_start = time.time ()
-        self.store.upload_file_to_other_librarian (
+        self.t_start = time.time()
+        self.store.upload_file_to_other_librarian(
             self.conn_name, self.rec_info,
             self.store_path, self.remote_store_path)
-        self.t_finish = time.time ()
+        self.t_finish = time.time()
 
-
-    def wrapup_function (self, retval, exc):
+    def wrapup_function(self, retval, exc):
         # In principle, we might want different integer error codes if there are
         # specific failure modes that we want to be able to analyze without
         # parsing the error messages. At the time being, we just use "1" to mean
         # that some exception happened. An "error" code of 0 always means success.
 
         if exc is None:
-            logger.info ('upload of %s:%s => %s:%s succeeded',
-                         self.store.name, self.store_path, self.conn_name, self.remote_store_path)
+            logger.info('upload of %s:%s => %s:%s succeeded',
+                        self.store.name, self.store_path, self.conn_name, self.remote_store_path)
             error_code = 0
             error_message = 'success'
         else:
-            logger.warn ('upload of %s:%s => %s:%s FAILED: %s',
-                         self.store.name, self.store_path, self.conn_name, self.remote_store_path, exc)
+            logger.warn('upload of %s:%s => %s:%s FAILED: %s',
+                        self.store.name, self.store_path, self.conn_name, self.remote_store_path, exc)
             error_code = 1
-            error_message = str (exc)
+            error_message = str(exc)
 
         from .file import File
-        file = File.query.get (os.path.basename (self.store_path))
+        file = File.query.get(os.path.basename(self.store_path))
 
         if error_code != 0:
             dt = rate = None
         else:
-            dt = self.t_finish - self.t_start # seconds
-            dt_eff = max (dt, 0.5) # avoid div-by-zero just in case
-            rate = file.size / (dt_eff * 1024.) # kilobytes/sec (AKA kB/s)
+            dt = self.t_finish - self.t_start  # seconds
+            dt_eff = max(dt, 0.5)  # avoid div-by-zero just in case
+            rate = file.size / (dt_eff * 1024.)  # kilobytes/sec (AKA kB/s)
 
-        db.session.add (file.make_copy_finished_event (self.conn_name, self.remote_store_path,
-                                                       error_code, error_message, duration=dt,
-                                                       average_rate=rate))
+        db.session.add(file.make_copy_finished_event(self.conn_name, self.remote_store_path,
+                                                     error_code, error_message, duration=dt,
+                                                     average_rate=rate))
 
         if self.standing_order_name is not None and error_code == 0:
             # XXX keep this name synched with that in search.py:StandingOrder
             type = 'standing_order_succeeded:' + self.standing_order_name
-            db.session.add (file.make_generic_event (type))
+            db.session.add(file.make_generic_event(type))
 
         if error_code == 0:
-            logger.info ('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
-                         self.store.name, self.store_path, dt, rate)
+            logger.info('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
+                        self.store.name, self.store_path, dt, rate)
 
-        db.session.commit ()
+        db.session.commit()
 
 
-def launch_copy_by_file_name (file_name, connection_name, remote_store_path=None,
-                              standing_order_name=None, no_instance='raise'):
+def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
+                             standing_order_name=None, no_instance='raise'):
     """Launch a copy of a file to a remote Librarian.
 
     A ServerError will be raised if no instance of the file is available.
@@ -460,14 +457,14 @@ def launch_copy_by_file_name (file_name, connection_name, remote_store_path=None
     # Find a local instance of the file
 
     from .file import FileInstance
-    inst = FileInstance.query.filter (FileInstance.name == file_name).first ()
+    inst = FileInstance.query.filter(FileInstance.name == file_name).first()
     if inst is None:
         if no_instance == 'raise':
-            raise ServerError ('cannot upload %s: no local file instances with that name', file_name)
+            raise ServerError('cannot upload %s: no local file instances with that name', file_name)
         elif no_instance == 'return':
             return True
         else:
-            raise ValueError ('unknown value for no_instance: %r' % (no_instance, ))
+            raise ValueError('unknown value for no_instance: %r' % (no_instance, ))
 
     file = inst.file
 
@@ -475,32 +472,32 @@ def launch_copy_by_file_name (file_name, connection_name, remote_store_path=None
     # Librarian will need.
 
     from .misc import gather_records
-    rec_info = gather_records (file)
+    rec_info = gather_records(file)
 
     # Launch the background task. We need to conver the Store to a base object since
     # the background task can't access the database.
 
-    basestore = inst.store_object.convert_to_base_object ()
-    bgtasks.submit_background_task (UploaderTask (
+    basestore = inst.store_object.convert_to_base_object()
+    bgtasks.submit_background_task(UploaderTask(
         basestore, connection_name, rec_info, inst.store_path,
         remote_store_path, standing_order_name))
 
     # Remember that we launched this copy.
 
-    db.session.add (file.make_copy_launched_event (connection_name, remote_store_path))
-    db.session.commit ()
+    db.session.add(file.make_copy_launched_event(connection_name, remote_store_path))
+    db.session.commit()
 
 
-@app.route ('/api/launch_file_copy', methods=['GET', 'POST'])
+@app.route('/api/launch_file_copy', methods=['GET', 'POST'])
 @json_api
-def launch_file_copy (args, sourcename=None):
+def launch_file_copy(args, sourcename=None):
     """Launch a copy of a file to a remote store.
 
     """
-    file_name = required_arg (args, unicode, 'file_name')
-    connection_name = required_arg (args, unicode, 'connection_name')
-    remote_store_path = optional_arg (args, unicode, 'remote_store_path')
-    launch_copy_by_file_name (file_name, connection_name, remote_store_path)
+    file_name = required_arg(args, unicode, 'file_name')
+    connection_name = required_arg(args, unicode, 'connection_name')
+    remote_store_path = optional_arg(args, unicode, 'remote_store_path')
+    launch_copy_by_file_name(file_name, connection_name, remote_store_path)
     return {}
 
 
@@ -510,7 +507,7 @@ def launch_file_copy (args, sourcename=None):
 # storage "pot" machine and deactivate the temporary stores.
 
 class InstanceOffloadInfo (object):
-    def __init__ (self, file_instance):
+    def __init__(self, file_instance):
         self.parent_dirs = file_instance.parent_dirs
         self.name = file_instance.name
         self.success = False
@@ -521,7 +518,8 @@ class OffloaderTask (bgtasks.BackgroundTask):
     another, staying on this Librarian.
 
     """
-    def __init__ (self, source_store, dest_store, staging_dir, instance_info):
+
+    def __init__(self, source_store, dest_store, staging_dir, instance_info):
         self.source_store = source_store
         self.dest_store = dest_store
         self.staging_dir = staging_dir
@@ -529,46 +527,44 @@ class OffloaderTask (bgtasks.BackgroundTask):
         self.desc = 'offload ~%d instances from %s to %s' \
                     % (len(instance_info), source_store.name, dest_store.name)
 
-
-    def thread_function (self):
+    def thread_function(self):
         # I think it's better to just let the thread crash if anything goes
         # wrong, rather than catching exceptions for each file. The offload
         # operation is one that should be reliable; if something surprising
         # happens, the cautious course of action is to stop trying to futz
         # with things.
 
-        for i, info in enumerate (self.instance_info):
+        for i, info in enumerate(self.instance_info):
             # It's conceivable that we could be attempting to move two
             # instances of the same file. In that case, their basenames would
             # clash in our staging directory. Therefore we mix in the index of
             # the instance_info item to uniquify things.
 
-            sourcepath = os.path.join (info.parent_dirs, info.name)
-            stagepath = os.path.join (self.staging_dir, str(i) + '_' + info.name)
-            self.source_store.upload_file_to_local_store (sourcepath, self.dest_store, stagepath)
+            sourcepath = os.path.join(info.parent_dirs, info.name)
+            stagepath = os.path.join(self.staging_dir, str(i) + '_' + info.name)
+            self.source_store.upload_file_to_local_store(sourcepath, self.dest_store, stagepath)
             info.success = True
 
-
-    def wrapup_function (self, retval, exc):
+    def wrapup_function(self, retval, exc):
         from .file import DeletionPolicy, FileInstance
 
         # Yay, we can access the database again! We need it to delete all of
         # the instances that we *successfully* copied. We also need to turn
         # the stores back into a DB-ified objects to do what we need to do.
 
-        source_store = Store.get_by_name (self.source_store.name)
-        dest_store = Store.get_by_name (self.dest_store.name)
+        source_store = Store.get_by_name(self.source_store.name)
+        dest_store = Store.get_by_name(self.dest_store.name)
 
         if exc is None:
-            logger.info ('instance offload %s => %s succeeded',
-                         source_store.name, dest_store.name)
+            logger.info('instance offload %s => %s succeeded',
+                        source_store.name, dest_store.name)
         else:
             # If the thread crashed, our state information should still be
             # reasonable, and we might as well complete any offloads that may
             # have actually copied successfully. So we pretty much ignore the
             # fact that an exception occurred.
-            logger.warn ('instance offload %s => %s FAILED: %s',
-                         source_store.name, dest_store.name, exc)
+            logger.warn('instance offload %s => %s FAILED: %s',
+                        source_store.name, dest_store.name, exc)
 
         # For all successful copies, we need to un-stage the file in the usual
         # way. If that worked, we mark the original instance as being
@@ -581,26 +577,27 @@ class OffloaderTask (bgtasks.BackgroundTask):
         pmode = app.config.get('permissions_mode', 'readonly')
         need_chmod = (pmode == 'readonly')
 
-        for i, info in enumerate (self.instance_info):
+        for i, info in enumerate(self.instance_info):
             desc_name = '%s:%s/%s' % (source_store.name, info.parent_dirs, info.name)
 
             if not info.success:
-                logger.warn ('offload thread did not succeed on instance %s', desc_name)
+                logger.warn('offload thread did not succeed on instance %s', desc_name)
                 continue
 
             try:
-                source_inst = FileInstance.query.get ((source_store.id, info.parent_dirs, info.name))
+                source_inst = FileInstance.query.get((source_store.id, info.parent_dirs, info.name))
             except Exception as e:
-                logger.warn ('offloader wrapup: no instance %s; already deleted?', desc_name)
+                logger.warn('offloader wrapup: no instance %s; already deleted?', desc_name)
                 continue
 
-            stagepath = os.path.join (self.staging_dir, str(i) + '_' + source_inst.name)
+            stagepath = os.path.join(self.staging_dir, str(i) + '_' + source_inst.name)
 
             try:
-                dest_store.process_staged_file (stagepath, source_inst.store_path,
-                                                'direct', source_inst.deletion_policy)
+                dest_store.process_staged_file(stagepath, source_inst.store_path,
+                                               'direct', source_inst.deletion_policy)
             except Exception as e:
-                logger.warn ('offloader failed to complete upload of %s', source_inst.descriptive_name())
+                logger.warn('offloader failed to complete upload of %s',
+                            source_inst.descriptive_name())
                 continue
 
             # If we're still here, the copy succeeded and the destination
@@ -609,25 +606,26 @@ class OffloaderTask (bgtasks.BackgroundTask):
 
             logger.info('offloader: marking "%s" for deletion', source_inst.descriptive_name())
             source_inst.deletion_policy = DeletionPolicy.ALLOWED
-            db.session.add (source_inst.file.make_generic_event ('instance_deletion_policy_changed',
-                                                                 store_name = source_inst.store_object.name,
-                                                                 parent_dirs = source_inst.parent_dirs,
-                                                                 new_policy = DeletionPolicy.ALLOWED,
-                                                                 context = 'offload'))
+            db.session.add(source_inst.file.make_generic_event('instance_deletion_policy_changed',
+                                                               store_name=source_inst.store_object.name,
+                                                               parent_dirs=source_inst.parent_dirs,
+                                                               new_policy=DeletionPolicy.ALLOWED,
+                                                               context='offload'))
 
-        db.session.commit ()
+        db.session.commit()
 
         # Finally, we can blow away the staging directory.
 
         logger.info('offloader: processing complete; clearing staging directory "%s"', self.staging_dir)
-        dest_store._delete (self.staging_dir)
+        dest_store._delete(self.staging_dir)
 
 
 OFFLOAD_BATCH_SIZE = 200
 
-@app.route ('/api/initiate_offload', methods=['GET', 'POST'])
+
+@app.route('/api/initiate_offload', methods=['GET', 'POST'])
 @json_api
-def initiate_offload (args, sourcename=None):
+def initiate_offload(args, sourcename=None):
     """Launch a task to offload file instances from one store to another.
 
     This launches a background task that copies file instances from a source
@@ -656,15 +654,15 @@ def initiate_offload (args, sourcename=None):
     choose *which* file instances to offload in each call.
 
     """
-    source_store_name = required_arg (args, unicode, 'source_store_name')
-    dest_store_name = required_arg (args, unicode, 'dest_store_name')
+    source_store_name = required_arg(args, unicode, 'source_store_name')
+    dest_store_name = required_arg(args, unicode, 'dest_store_name')
 
     from sqlalchemy import func
     from sqlalchemy.orm import aliased
     from .file import FileInstance
 
-    source_store = Store.get_by_name (source_store_name) # ServerError if failure
-    dest_store = Store.get_by_name (dest_store_name)
+    source_store = Store.get_by_name(source_store_name)  # ServerError if failure
+    dest_store = Store.get_by_name(dest_store_name)
 
     # Gather information about instances in the source store that we'll try to
     # transfer. Background tasks can't access the database, so we need to
@@ -672,36 +670,36 @@ def initiate_offload (args, sourcename=None):
     # correspond to files that have instances on other stores, which results in
     # some moderately messy SQL.
 
-    inst_alias = aliased (FileInstance)
+    inst_alias = aliased(FileInstance)
 
-    n_other_stores = (db.session.query (func.count())
-            .filter (inst_alias.name == FileInstance.name)
-            .filter (inst_alias.store != source_store.id)
-            .as_scalar ())
+    n_other_stores = (db.session.query(func.count())
+                      .filter(inst_alias.name == FileInstance.name)
+                      .filter(inst_alias.store != source_store.id)
+                      .as_scalar())
 
     q = (FileInstance.query
-         .filter (FileInstance.store == source_store.id)
-         .filter (n_other_stores == 0)
+         .filter(FileInstance.store == source_store.id)
+         .filter(n_other_stores == 0)
          .limit(OFFLOAD_BATCH_SIZE))
 
-    info = [InstanceOffloadInfo (i) for i in q]
+    info = [InstanceOffloadInfo(i) for i in q]
 
     # If no such instances exist, mark the store as unavailable, essentially
     # clearing it for deletion, and return.
 
-    if not len (info):
+    if not len(info):
         source_store.available = False
-        db.session.commit ()
+        db.session.commit()
         return {'outcome': 'store-shut-down'}
 
     # Otherwise, we're going to launch an offloader task. Create a staging
     # directory and fire off the task.
 
-    staging_dir = dest_store._create_tempdir ('offloader')
-    base_source = source_store.convert_to_base_object () # again: can't access DB
-    base_dest = dest_store.convert_to_base_object ()
+    staging_dir = dest_store._create_tempdir('offloader')
+    base_source = source_store.convert_to_base_object()  # again: can't access DB
+    base_dest = dest_store.convert_to_base_object()
 
-    bgtasks.submit_background_task (OffloaderTask (
+    bgtasks.submit_background_task(OffloaderTask(
         base_source, base_dest, staging_dir, info))
 
     return {'outcome': 'task-launched', 'instance-count': len(info)}
@@ -709,33 +707,33 @@ def initiate_offload (args, sourcename=None):
 
 # Web user interface
 
-@app.route ('/stores')
+@app.route('/stores')
 @login_required
-def stores ():
-    q = Store.query.order_by (Store.name.asc ())
-    return render_template (
+def stores():
+    q = Store.query.order_by(Store.name.asc())
+    return render_template(
         'store-listing.html',
         title='Stores',
         stores=q
     )
 
 
-@app.route ('/stores/<string:name>')
+@app.route('/stores/<string:name>')
 @login_required
-def specific_store (name):
+def specific_store(name):
     try:
-        store = Store.get_by_name (name)
+        store = Store.get_by_name(name)
     except ServerError as e:
-        flash (str (e))
-        return redirect (url_for ('stores'))
+        flash(str(e))
+        return redirect(url_for('stores'))
 
     from .file import FileInstance
-    instances = list (FileInstance.query
-                      .filter (FileInstance.store == store.id)
-                      .order_by (FileInstance.parent_dirs.asc (),
-                                 FileInstance.name.asc ()))
+    instances = list(FileInstance.query
+                     .filter(FileInstance.store == store.id)
+                     .order_by(FileInstance.parent_dirs.asc(),
+                               FileInstance.name.asc()))
 
-    return render_template (
+    return render_template(
         'store-individual.html',
         title='Store %s' % (store.name),
         store=store,

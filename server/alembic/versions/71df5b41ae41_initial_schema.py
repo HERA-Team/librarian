@@ -25,7 +25,7 @@ def upgrade():
                     sa.Column('start_time_jd', sa.Float(precision=u'53'), nullable=False),
                     sa.Column('stop_time_jd', sa.Float(precision=u'53'), nullable=False),
                     sa.PrimaryKeyConstraint('id')
-    )
+                    )
 
     op.create_table('standing_order',
                     sa.Column('id', sa.Integer(), nullable=False),
@@ -34,7 +34,7 @@ def upgrade():
                     sa.Column('conn_name', sa.String(length=64), nullable=False),
                     sa.PrimaryKeyConstraint('id'),
                     sa.UniqueConstraint('name')
-    )
+                    )
 
     op.create_table('store',
                     sa.Column('id', sa.BigInteger(), nullable=False),
@@ -45,7 +45,7 @@ def upgrade():
                     sa.Column('available', sa.Boolean(), nullable=False),
                     sa.PrimaryKeyConstraint('id'),
                     sa.UniqueConstraint('name')
-    )
+                    )
 
     op.create_table('observation',
                     sa.Column('obsid', sa.BigInteger(), nullable=False),
@@ -55,7 +55,7 @@ def upgrade():
                     sa.Column('session_id', sa.BigInteger(), nullable=True),
                     sa.ForeignKeyConstraint(['session_id'], [u'observing_session.id'], ),
                     sa.PrimaryKeyConstraint('obsid')
-    )
+                    )
 
     op.create_table('file',
                     sa.Column('name', sa.String(length=256), nullable=False),
@@ -67,7 +67,7 @@ def upgrade():
                     sa.Column('source', sa.String(length=64), nullable=False),
                     sa.ForeignKeyConstraint(['obsid'], [u'observation.obsid'], ),
                     sa.PrimaryKeyConstraint('name')
-    )
+                    )
 
     op.create_table('file_event',
                     sa.Column('id', sa.BigInteger(), nullable=False),
@@ -77,7 +77,7 @@ def upgrade():
                     sa.Column('payload', sa.Text(), nullable=True),
                     sa.ForeignKeyConstraint(['name'], [u'file.name'], ),
                     sa.PrimaryKeyConstraint('id')
-    )
+                    )
 
     op.create_table('file_instance',
                     sa.Column('store', sa.BigInteger(), nullable=False),
@@ -86,15 +86,15 @@ def upgrade():
                     sa.ForeignKeyConstraint(['name'], [u'file.name'], ),
                     sa.ForeignKeyConstraint(['store'], [u'store.id'], ),
                     sa.PrimaryKeyConstraint('store', 'parent_dirs', 'name')
-    )
+                    )
 
 
 def downgrade():
     raise Exception('I refuse to drop all of the Librarian tables!')
-    #op.drop_table('file_instance')
-    #op.drop_table('file_event')
-    #op.drop_table('file')
-    #op.drop_table('observation')
-    #op.drop_table('store')
-    #op.drop_table('standing_order')
-    #op.drop_table('observing_session')
+    # op.drop_table('file_instance')
+    # op.drop_table('file_event')
+    # op.drop_table('file')
+    # op.drop_table('observation')
+    # op.drop_table('store')
+    # op.drop_table('standing_order')
+    # op.drop_table('observing_session')

@@ -22,7 +22,10 @@ normalize_and_validate_md5
 print_info_for_path
 ''').split()
 
-import hashlib, locale, os.path, re
+import hashlib
+import locale
+import os.path
+import re
 
 import numpy as np
 
@@ -42,7 +45,7 @@ def get_type_from_path(path):
     This is super fragile!!!! There should be a better way.
 
     """
-    return path.split ('.')[-1]
+    return path.split('.')[-1]
 
 
 def get_pol_from_path(path):
@@ -53,7 +56,8 @@ def get_pol_from_path(path):
     the XY basis.
 
     """
-    return re.findall (r'\.([xy][xy])\.', path)[0]
+    return re.findall(r'\.([xy][xy])\.', path)[0]
+
 
 def get_lst_from_file(filename):
     """
@@ -64,13 +68,14 @@ def get_lst_from_file(filename):
             import aipy
             uv = aipy.miriad.UV(filename)
             try:
-                return uv['lst'] * 12/np.pi
+                return uv['lst'] * 12 / np.pi
             except KeyError:
                 return None
         except RuntimeError:
             return None
     else:
         return None
+
 
 def get_obsid_from_path(path):
     """Get the obsid from a path.
@@ -87,7 +92,7 @@ def get_obsid_from_path(path):
             except KeyError:
                 pass
         except RuntimeError:
-            pass # this happens if this file is not actually a UV dataset
+            pass  # this happens if this file is not actually a UV dataset
 
     # If we're still here, the file is not a UV data set, or is an older one
     # that doesn't have its obsid embedded. In that case, we reconstruct it
@@ -99,9 +104,10 @@ def get_obsid_from_path(path):
     return int(np.floor(Time(jd, scale='utc', format='jd').gps))
 
 
-_lc_md5_pattern = re.compile ('^[0-9a-f]{32}$')
+_lc_md5_pattern = re.compile('^[0-9a-f]{32}$')
 
-def normalize_and_validate_md5 (text):
+
+def normalize_and_validate_md5(text):
     """Convert *text* into a normalized hexadecimal representation of an MD5 sum,
     raising ValueError if it does not look like one.
 
@@ -109,9 +115,9 @@ def normalize_and_validate_md5 (text):
     hex letters.
 
     """
-    norm_text = text.strip ().lower ()
-    if not len (_lc_md5_pattern.findall (norm_text)):
-        raise ValueError ('%r does not look like an MD5 sum' % (text,))
+    norm_text = text.strip().lower()
+    if not len(_lc_md5_pattern.findall(norm_text)):
+        raise ValueError('%r does not look like an MD5 sum' % (text,))
     return norm_text
 
 
@@ -181,8 +187,8 @@ def get_md5_from_path(path):
 
         for f in sorted(all_files()):
             subhash = _md5_of_file(f)
-            md5.update(subhash) # this is the hex digest, like we want
-            md5.update('  .') # compat with command-line approach
+            md5.update(subhash)  # this is the hex digest, like we want
+            md5.update('  .')  # compat with command-line approach
             md5.update(f[plen:])
             md5.update('\n')
     finally:
@@ -220,12 +226,12 @@ def gather_info_for_path(path):
     try:
         info['start_jd'] = get_start_jd_from_path(path)
     except IndexError:
-        pass # this happens if the path does not have a JD-looking element in it
+        pass  # this happens if the path does not have a JD-looking element in it
 
     try:
         info['obsid'] = get_obsid_from_path(path)
     except IndexError:
-        pass # this happens if the path does not have a JD-looking element in it
+        pass  # this happens if the path does not have a JD-looking element in it
 
     return info
 
@@ -236,5 +242,6 @@ def print_info_for_path(path):
     printed output.
 
     """
-    import json, sys
-    json.dump (gather_info_for_path (path), sys.stdout)
+    import json
+    import sys
+    json.dump(gather_info_for_path(path), sys.stdout)

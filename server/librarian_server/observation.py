@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 __all__ = str('''
 ObservingSession
 Observation
-''').split ()
+''').split()
 
 from flask import flash, redirect, render_template, url_for
 
@@ -39,93 +39,85 @@ class ObservingSession (db.Model):
     """
     __tablename__ = 'observing_session'
 
-    id = db.Column (db.BigInteger, primary_key=True)
-    start_time_jd = NotNull (db.Float (precision='53'))
-    stop_time_jd = NotNull (db.Float (precision='53'))
-    observations = db.relationship ('Observation', back_populates='session')
+    id = db.Column(db.BigInteger, primary_key=True)
+    start_time_jd = NotNull(db.Float(precision='53'))
+    stop_time_jd = NotNull(db.Float(precision='53'))
+    observations = db.relationship('Observation', back_populates='session')
 
-    def __init__ (self, id, start_time_jd, stop_time_jd):
+    def __init__(self, id, start_time_jd, stop_time_jd):
         self.id = id
         self.start_time_jd = start_time_jd
         self.stop_time_jd = stop_time_jd
-        self._validate ()
+        self._validate()
 
-
-    def _validate (self):
+    def _validate(self):
         """Check that this object's fields follow our invariants.
 
         """
-        if not (self.start_time_jd < self.stop_time_jd): # catches NaNs, just in case ...
-            raise ValueError ('session start time must precede stop time; got %f, %f'
-                              % (self.start_time_jd, self.stop_time_jd))
-
+        if not (self.start_time_jd < self.stop_time_jd):  # catches NaNs, just in case ...
+            raise ValueError('session start time must precede stop time; got %f, %f'
+                             % (self.start_time_jd, self.stop_time_jd))
 
     @property
-    def duration (self):
+    def duration(self):
         "The duration of the session in days."
         return self.stop_time_jd - self.start_time_jd
 
-
     @property
-    def num_obs (self):
+    def num_obs(self):
         "The number of Observations associated with this session."
         from sqlalchemy import func
-        return (db.session.query (func.count (Observation.obsid))
-                .filter (Observation.session_id == self.id)
-                .scalar ())
-
+        return (db.session.query(func.count(Observation.obsid))
+                .filter(Observation.session_id == self.id)
+                .scalar())
 
     @property
-    def num_files (self):
+    def num_files(self):
         "The number of Files associated with this session."
         from sqlalchemy import func
         from .file import File
-        my_obsids = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
-        return (db.session.query (func.count (File.name))
-                .filter (File.obsid.in_ (my_obsids))
-                .scalar ())
-
+        my_obsids = db.session.query(Observation.obsid).filter(Observation.session_id == self.id)
+        return (db.session.query(func.count(File.name))
+                .filter(File.obsid.in_(my_obsids))
+                .scalar())
 
     @property
-    def num_files_with_instances (self):
+    def num_files_with_instances(self):
         """The number of Files associated with this session for which we have at least
         one FileInstance.
 
         """
         from sqlalchemy import distinct, func
         from .file import File, FileInstance
-        my_obsids = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
-        my_filenames = db.session.query (File.name).filter (File.obsid.in_ (my_obsids))
-        return (db.session.query (func.count (distinct (FileInstance.name)))
-                .filter (FileInstance.name.in_ (my_filenames))
-                .scalar ())
-
+        my_obsids = db.session.query(Observation.obsid).filter(Observation.session_id == self.id)
+        my_filenames = db.session.query(File.name).filter(File.obsid.in_(my_obsids))
+        return (db.session.query(func.count(distinct(FileInstance.name)))
+                .filter(FileInstance.name.in_(my_filenames))
+                .scalar())
 
     @property
-    def total_size (self):
+    def total_size(self):
         "The total size (in bytes) of all Files associated with this session."
         from sqlalchemy import func
         from .file import File
-        my_obsids = db.session.query (Observation.obsid).filter (Observation.session_id == self.id)
-        return (db.session.query (func.sum (File.size))
-                .filter (File.obsid.in_ (my_obsids))
-                .scalar ())
+        my_obsids = db.session.query(Observation.obsid).filter(Observation.session_id == self.id)
+        return (db.session.query(func.sum(File.size))
+                .filter(File.obsid.in_(my_obsids))
+                .scalar())
 
-
-    def to_dict (self):
-        return dict (
-            id = self.id,
-            start_time_jd = self.start_time_jd,
-            stop_time_jd = self.stop_time_jd,
+    def to_dict(self):
+        return dict(
+            id=self.id,
+            start_time_jd=self.start_time_jd,
+            stop_time_jd=self.stop_time_jd,
         )
 
-
     @classmethod
-    def from_dict (cls, info):
-        id = required_arg (info, int, 'id')
-        start = required_arg (info, float, 'start_time_jd')
-        stop = required_arg (info, float, 'stop_time_jd')
-        return cls (id, start, stop)
+    def from_dict(cls, info):
+        id = required_arg(info, int, 'id')
+        start = required_arg(info, float, 'start_time_jd')
+        stop = required_arg(info, float, 'stop_time_jd')
+        return cls(id, start, stop)
 
 
 class Observation (db.Model):
@@ -135,94 +127,89 @@ class Observation (db.Model):
     """
     __tablename__ = 'observation'
 
-    obsid = db.Column (db.BigInteger, primary_key=True)
-    start_time_jd = NotNull (db.Float (precision='53'))
+    obsid = db.Column(db.BigInteger, primary_key=True)
+    start_time_jd = NotNull(db.Float(precision='53'))
     # XXX HACK: these should probably be NotNull. But in testing, we are creating
     # observations with add_obs_librarian, and it doesn't know these pieces of
     # information. Yet.
-    stop_time_jd = db.Column (db.Float (precision='53'))
-    start_lst_hr = db.Column (db.Float (precision='53'))
-    session_id = db.Column (db.BigInteger, db.ForeignKey (ObservingSession.id), nullable=True)
-    session = db.relationship ('ObservingSession', back_populates='observations')
-    files = db.relationship ('File', back_populates='observation')
+    stop_time_jd = db.Column(db.Float(precision='53'))
+    start_lst_hr = db.Column(db.Float(precision='53'))
+    session_id = db.Column(db.BigInteger, db.ForeignKey(ObservingSession.id), nullable=True)
+    session = db.relationship('ObservingSession', back_populates='observations')
+    files = db.relationship('File', back_populates='observation')
 
-    def __init__ (self, obsid, start_time_jd, stop_time_jd, start_lst_hr):
+    def __init__(self, obsid, start_time_jd, stop_time_jd, start_lst_hr):
         self.obsid = obsid
         self.start_time_jd = start_time_jd
         self.stop_time_jd = stop_time_jd
         self.start_lst_hr = start_lst_hr
-        self._validate ()
+        self._validate()
 
-
-    def _validate (self):
+    def _validate(self):
         """Check that this object's fields follow our invariants.
 
         """
         if self.stop_time_jd is not None and not (self.start_time_jd < self.stop_time_jd):
-            raise ValueError ('observation start time must precede stop time; got %f, %f'
-                              % (self.start_time_jd, self.stop_time_jd))
-
+            raise ValueError('observation start time must precede stop time; got %f, %f'
+                             % (self.start_time_jd, self.stop_time_jd))
 
     @property
-    def duration (self):
+    def duration(self):
         """Measured in days."""
         if self.stop_time_jd is None or self.start_time_jd is None:
-            return float ('NaN')
+            return float('NaN')
         return self.stop_time_jd - self.start_time_jd
 
-
     @property
-    def total_size (self):
+    def total_size(self):
         "The total size (in bytes) of all Files associated with this observation."
         from sqlalchemy import func
         from .file import File
-        return (db.session.query (func.sum (File.size))
-                .filter (File.obsid == self.obsid)
-                .scalar ())
+        return (db.session.query(func.sum(File.size))
+                .filter(File.obsid == self.obsid)
+                .scalar())
 
-
-    def to_dict (self):
-        return dict (
-            obsid = self.obsid,
-            start_time_jd = self.start_time_jd,
-            stop_time_jd = self.stop_time_jd,
-            start_lst_hr = self.start_lst_hr,
-            session_id = self.session_id,
+    def to_dict(self):
+        return dict(
+            obsid=self.obsid,
+            start_time_jd=self.start_time_jd,
+            stop_time_jd=self.stop_time_jd,
+            start_lst_hr=self.start_lst_hr,
+            session_id=self.session_id,
         )
 
-
     @classmethod
-    def from_dict (cls, info):
-        obsid = required_arg (info, int, 'obsid')
-        start_jd = required_arg (info, float, 'start_time_jd')
-        stop_jd = optional_arg (info, float, 'stop_time_jd')
-        start_hr = optional_arg (info, float, 'start_lst_hr')
-        sessid = optional_arg (info, int, 'session_id')
+    def from_dict(cls, info):
+        obsid = required_arg(info, int, 'obsid')
+        start_jd = required_arg(info, float, 'start_time_jd')
+        stop_jd = optional_arg(info, float, 'stop_time_jd')
+        start_hr = optional_arg(info, float, 'start_lst_hr')
+        sessid = optional_arg(info, int, 'session_id')
 
-        obj = cls (obsid, start_jd, stop_jd, start_hr)
+        obj = cls(obsid, start_jd, stop_jd, start_hr)
         obj.session_id = sessid
         return obj
 
 
 # RPC endpoints
 
-@app.route ('/api/create_or_update_observation', methods=['GET', 'POST'])
+@app.route('/api/create_or_update_observation', methods=['GET', 'POST'])
 @json_api
-def create_or_update_observation (args, sourcename=None):
-    obsid = required_arg (args, int, 'obsid')
-    start_time_jd = required_arg (args, float, 'start_time_jd')
-    stop_time_jd = optional_arg (args, float, 'stop_time_jd')
-    start_lst_hr = optional_arg (args, float, 'start_lst_hr')
+def create_or_update_observation(args, sourcename=None):
+    obsid = required_arg(args, int, 'obsid')
+    start_time_jd = required_arg(args, float, 'start_time_jd')
+    stop_time_jd = optional_arg(args, float, 'stop_time_jd')
+    start_lst_hr = optional_arg(args, float, 'start_lst_hr')
 
-    obs = Observation (obsid, start_time_jd, stop_time_jd, start_lst_hr)
-    db.session.merge (obs)
-    db.session.commit ()
+    obs = Observation(obsid, start_time_jd, stop_time_jd, start_lst_hr)
+    db.session.merge(obs)
+    db.session.commit()
     return {}
 
 
-@app.route ('/api/assign_observing_sessions', methods=['GET', 'POST'])
+@app.route('/api/assign_observing_sessions', methods=['GET', 'POST'])
 @json_api
-def assign_observing_sessions (args, sourcename=None):
+def assign_observing_sessions(args, sourcename=None):
     """This call instructs the Librarian to find all Observations that
     are not currently assigned to an ObservingSession, look at their timing
     information to infer when the sessions in fact occurred, and create
@@ -241,8 +228,8 @@ def assign_observing_sessions (args, sourcename=None):
     previous session, which sounds tricky.)
 
     """
-    minimum_start_jd = optional_arg (args, float, 'minimum_start_jd')
-    maximum_start_jd = optional_arg (args, float, 'maximum_start_jd')
+    minimum_start_jd = optional_arg(args, float, 'minimum_start_jd')
+    maximum_start_jd = optional_arg(args, float, 'maximum_start_jd')
 
     new_sess_info = []
     retval = {'new_sessions': new_sess_info}
@@ -250,34 +237,34 @@ def assign_observing_sessions (args, sourcename=None):
     # Build a list of all prior sessions so we can see if any Observations
     # must be assigned to preexisting sessions.
 
-    existing_sessions = list (ObservingSession.query.all ())
+    existing_sessions = list(ObservingSession.query.all())
 
     # For all Observations without a session, either assign them to a
     # preexisting one (if they fall inside), or save them for followup.
 
     examine_obs = []
-    query = Observation.query.filter (Observation.session_id == None)
+    query = Observation.query.filter(Observation.session_id == None)
     if minimum_start_jd is not None:
-        query = query.filter (Observation.start_time_jd >= minimum_start_jd)
+        query = query.filter(Observation.start_time_jd >= minimum_start_jd)
     if maximum_start_jd is not None:
-        query = query.filter (Observation.start_time_jd <= maximum_start_jd)
+        query = query.filter(Observation.start_time_jd <= maximum_start_jd)
 
-    for obs in query.order_by (Observation.start_time_jd.asc ()):
+    for obs in query.order_by(Observation.start_time_jd.asc()):
         # TODO: we've got some N^2 scaling here; we could do a better job.
         for sess in existing_sessions:
             if (obs.start_time_jd >= sess.start_time_jd and
                 obs.start_time_jd <= sess.stop_time_jd and
-                (obs.stop_time_jd is None or (obs.stop_time_jd <= sess.stop_time_jd))):
+                    (obs.stop_time_jd is None or (obs.stop_time_jd <= sess.stop_time_jd))):
                 obs.session_id = sess.id
                 break
         else:
             # This branch is triggered if the 'break' clause is not called,
             # i.e., this obs does not overlap an existing session.
-            examine_obs.append (obs)
+            examine_obs.append(obs)
 
-    db.session.commit () # if there are any obs matching existing sessions
+    db.session.commit()  # if there are any obs matching existing sessions
 
-    if not len (examine_obs):
+    if not len(examine_obs):
         return retval
 
     # Now, create new sessions for the unassigned observations. From our SQL
@@ -289,12 +276,12 @@ def assign_observing_sessions (args, sourcename=None):
     import numpy as np
 
     gap_tol = 20
-    start_jds = np.array ([o.start_time_jd for o in examine_obs])
-    djds = np.diff (start_jds)
+    start_jds = np.array([o.start_time_jd for o in examine_obs])
+    djds = np.diff(start_jds)
     i0 = 0
-    n = len (examine_obs)
+    n = len(examine_obs)
 
-    while len (examine_obs[i0:]):
+    while len(examine_obs[i0:]):
         if i0 == n - 1:
             # This is worrisome, but all we can do is trust that this is
             # legitimately a session that lasted only a single observation.
@@ -302,13 +289,13 @@ def assign_observing_sessions (args, sourcename=None):
         else:
             # Set the allowed time gap, clamping to be between 1 minute and 0.5 day.
             gap = djds[i0] * gap_tol
-            gap = np.clip (gap, 1./1440, 0.5)
+            gap = np.clip(gap, 1. / 1440, 0.5)
 
             # i1 is used in Python slicing to mark the end of this session. We
             # know that we have at least two Observations, so we can set it past
             # i0.
             i1 = i0 + 1
-            while i1 < n and start_jds[i1] - start_jds[i1-1] < gap:
+            while i1 < n and start_jds[i1] - start_jds[i1 - 1] < gap:
                 i1 += 1
 
         # OK, we now have a bunch of observations that we've decided are in
@@ -319,29 +306,30 @@ def assign_observing_sessions (args, sourcename=None):
 
         sess_obs = examine_obs[i0:i1]
 
-        if len (sess_obs) == 1:
+        if len(sess_obs) == 1:
             # We're inferring stop times from start time gaps so we can't work
             # with a one-Obs session. Shouldn't happen anyway, but ...
-            raise ServerError ('not implemented: making session out of single '
-                               'observation (ID %s)', sess_obs[0].obsid)
+            raise ServerError('not implemented: making session out of single '
+                              'observation (ID %s)', sess_obs[0].obsid)
 
         start = sess_obs[0].start_time_jd
-        typ_djd = np.median (djds[i0:i1-1]) # note: fewer DJDs than start times since they're differential
+        # note: fewer DJDs than start times since they're differential
+        typ_djd = np.median(djds[i0:i1 - 1])
 
         if sess_obs[-1].stop_time_jd is not None:
             stop = sess_obs[-1].stop_time_jd
         else:
             stop = sess_obs[-1].start_time_jd + typ_djd
 
-        sess = ObservingSession (sess_obs[0].obsid, start, stop)
-        db.session.add (sess)
-        db.session.commit ()
+        sess = ObservingSession(sess_obs[0].obsid, start, stop)
+        db.session.add(sess)
+        db.session.commit()
 
-        new_sess_info.append (dict (
-            id = sess.id,
-            start_time_jd = start,
-            stop_time_jd = stop,
-            n_obs = len (sess_obs),
+        new_sess_info.append(dict(
+            id=sess.id,
+            start_time_jd=start,
+            stop_time_jd=stop,
+            n_obs=len(sess_obs),
         ))
 
         for obs in sess_obs:
@@ -349,13 +337,13 @@ def assign_observing_sessions (args, sourcename=None):
 
         i0 = i1
 
-    db.session.commit ()
+    db.session.commit()
     return retval
 
 
-@app.route ('/api/describe_session_without_event', methods=['GET', 'POST'])
+@app.route('/api/describe_session_without_event', methods=['GET', 'POST'])
 @json_api
-def describe_session_without_event (args, sourcename=None):
+def describe_session_without_event(args, sourcename=None):
     """Return information about the files in a session that does not contain a
     particular FileEvent.
 
@@ -385,24 +373,24 @@ def describe_session_without_event (args, sourcename=None):
     "source" raw correlator data have.
 
     """
-    source = required_arg (args, unicode, 'source')
-    event_type = required_arg (args, unicode, 'event_type')
+    source = required_arg(args, unicode, 'source')
+    event_type = required_arg(args, unicode, 'event_type')
 
     # Search for files that (1) are assigned to a session, (2) come from the
     # desired source, and (3) do not (yet) have the notification event.
 
     from .file import File, FileEvent, FileInstance
 
-    already_done_file_names = (db.session.query (File.name)
-                               .join (FileEvent)
-                               .filter (FileEvent.type == event_type,
-                                        File.name == FileEvent.name))
-    files_of_interest = (File.query.join (Observation)
-         .filter (Observation.session_id != None,
-                  File.source == source,
-                  File.name.notin_ (already_done_file_names)))
+    already_done_file_names = (db.session.query(File.name)
+                               .join(FileEvent)
+                               .filter(FileEvent.type == event_type,
+                                       File.name == FileEvent.name))
+    files_of_interest = (File.query.join(Observation)
+                         .filter(Observation.session_id != None,
+                                 File.source == source,
+                                 File.name.notin_(already_done_file_names)))
 
-    file = files_of_interest.first ()
+    file = files_of_interest.first()
     if file is None:
         # All currently known sessions have been reported.
         return {'any_matching': False}
@@ -414,17 +402,17 @@ def describe_session_without_event (args, sourcename=None):
     # observations in the session.
 
     import numpy as np
-    obs = list (Observation.query.filter (Observation.session_id == sessid))
-    start_jds = np.array (sorted (o.start_time_jd for o in obs))
-    djds = np.diff (start_jds)
-    typ_djd = np.median (djds)
+    obs = list(Observation.query.filter(Observation.session_id == sessid))
+    start_jds = np.array(sorted(o.start_time_jd for o in obs))
+    djds = np.diff(start_jds)
+    typ_djd = np.median(djds)
 
-    def get_len (o):
+    def get_len(o):
         if o.stop_time_jd is not None:
             return o.duration
         return typ_djd
 
-    djds = dict ((o.obsid, get_len (o)) for o in obs)
+    djds = dict((o.obsid, get_len(o)) for o in obs)
 
     # Now collect information from relevant FileInstances. To get everything
     # we need to need to do a *big* join: FileInstance (store_path), File
@@ -435,26 +423,26 @@ def describe_session_without_event (args, sourcename=None):
     from hera_librarian import utils
 
     records = []
-    seen_names = set ()
+    seen_names = set()
 
-    for inst, f, obs, store in (db.session.query (FileInstance, File, Observation, Store)
-                                .filter (Observation.session_id == sessid,
-                                         File.name == FileInstance.name,
-                                         File.source == source,
-                                         Observation.obsid == File.obsid,
-                                         Store.id == FileInstance.store)).order_by (Observation.start_time_jd.asc ()):
+    for inst, f, obs, store in (db.session.query(FileInstance, File, Observation, Store)
+                                .filter(Observation.session_id == sessid,
+                                        File.name == FileInstance.name,
+                                        File.source == source,
+                                        Observation.obsid == File.obsid,
+                                        Store.id == FileInstance.store)).order_by(Observation.start_time_jd.asc()):
         if f.name in seen_names:
             continue
 
-        records.append ({
+        records.append({
             'date': obs.start_time_jd,
-            'pol': utils.get_pol_from_path (f.name),
+            'pol': utils.get_pol_from_path(f.name),
             'store_path': inst.store_path,
             'path_prefix': store.path_prefix,
             'host': store.ssh_host,
             'length': djds[f.obsid],
         })
-        seen_names.add (f.name)
+        seen_names.add(f.name)
 
     return {
         'any_matching': True,
@@ -464,30 +452,30 @@ def describe_session_without_event (args, sourcename=None):
 
 # Web user interface
 
-@app.route ('/observations')
+@app.route('/observations')
 @login_required
-def observations ():
-    q = Observation.query.order_by (Observation.start_time_jd.desc ()).limit (50)
-    return render_template (
+def observations():
+    q = Observation.query.order_by(Observation.start_time_jd.desc()).limit(50)
+    return render_template(
         'obs-listing.html',
         title='Observations',
         obs=q
     )
 
 
-@app.route ('/observations/<int:obsid>')
+@app.route('/observations/<int:obsid>')
 @login_required
-def specific_observation (obsid):
-    obs = Observation.query.get (obsid)
+def specific_observation(obsid):
+    obs = Observation.query.get(obsid)
     if obs is None:
-        flash ('No such observation %r known' % obsid)
-        return redirect (url_for ('observations'))
+        flash('No such observation %r known' % obsid)
+        return redirect(url_for('observations'))
 
     from .file import File
 
-    files = list (File.query.filter (File.obsid == obsid).order_by (File.name.asc ()))
+    files = list(File.query.filter(File.obsid == obsid).order_by(File.name.asc()))
 
-    return render_template (
+    return render_template(
         'obs-individual.html',
         title='Observation %d' % obsid,
         obs=obs,
@@ -495,28 +483,29 @@ def specific_observation (obsid):
     )
 
 
-@app.route ('/sessions')
+@app.route('/sessions')
 @login_required
-def sessions ():
-    q = ObservingSession.query.order_by (ObservingSession.start_time_jd.desc ()).limit (50)
-    return render_template (
+def sessions():
+    q = ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()).limit(50)
+    return render_template(
         'session-listing.html',
         title='Observing Sessions',
         sess=q
     )
 
 
-@app.route ('/sessions/<int:id>')
+@app.route('/sessions/<int:id>')
 @login_required
-def specific_session (id):
-    sess = ObservingSession.query.get (id)
+def specific_session(id):
+    sess = ObservingSession.query.get(id)
     if sess is None:
-        flash ('No such observing session %r known' % id)
-        return redirect (url_for ('sessions'))
+        flash('No such observing session %r known' % id)
+        return redirect(url_for('sessions'))
 
-    obs = list (Observation.query.filter (Observation.session_id == id).order_by (Observation.start_time_jd.asc ()))
+    obs = list(Observation.query.filter(Observation.session_id ==
+                                        id).order_by(Observation.start_time_jd.asc()))
 
-    return render_template (
+    return render_template(
         'session-individual.html',
         title='Observing Session %d' % id,
         sess=sess,

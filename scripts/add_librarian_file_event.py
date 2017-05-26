@@ -14,19 +14,22 @@ JSON string by writing it like 'foo=\\"bar\\"' (without the single quotes).
 """
 from __future__ import absolute_import, division, print_function
 
-import json, optparse, os.path, sys
+import json
+import optparse
+import os.path
+import sys
 
 import hera_librarian
 from hera_librarian import utils
 
 
-def die (fmt, *args):
-    if not len (args):
-        text = str (fmt)
+def die(fmt, *args):
+    if not len(args):
+        text = str(fmt)
     else:
         text = fmt % args
-    print ('error:', text, file=sys.stderr)
-    sys.exit (1)
+    print('error:', text, file=sys.stderr)
+    sys.exit(1)
 
 
 # Deal with arguments.
@@ -36,37 +39,37 @@ o.set_usage('add_librarian_file_event.py <connection-name> <path/to/file> <event
 o.set_description(__doc__)
 opts, args = o.parse_args(sys.argv[1:])
 
-if len (args) < 4:
-    die ('expect exactly at least four non-option arguments')
+if len(args) < 4:
+    die('expect exactly at least four non-option arguments')
 
 conn_name, path, event_type = args[:3]
 
 payload = {}
 
 for arg in args[3:]:
-    bits = arg.split ('=', 1)
-    if len (bits) != 2:
-        die ('argument %r must take the form "key=value"', arg)
+    bits = arg.split('=', 1)
+    if len(bits) != 2:
+        die('argument %r must take the form "key=value"', arg)
 
     # We parse each "value" as JSON ... and then re-encode it as JSON when
     # talking to the server. So this is mostly about sanity checking.
 
     key, text_val = bits
     try:
-        value = json.loads (text_val)
+        value = json.loads(text_val)
     except ValueError:
-        die ('value %r for keyword %r does not parse as JSON', text_val, key)
+        die('value %r for keyword %r does not parse as JSON', text_val, key)
 
     payload[key] = value
 
-path = os.path.basename (path) # in case user provided a real filesystem path
+path = os.path.basename(path)  # in case user provided a real filesystem path
 
 
 # Let's do it.
 
-client = hera_librarian.LibrarianClient (conn_name)
+client = hera_librarian.LibrarianClient(conn_name)
 
 try:
-    client.create_file_event (path, event_type, **payload)
+    client.create_file_event(path, event_type, **payload)
 except hera_librarian.RPCError as e:
-    die ('event creation failed: %s', e)
+    die('event creation failed: %s', e)
