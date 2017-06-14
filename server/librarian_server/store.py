@@ -209,34 +209,49 @@ def initiate_upload(args, sourcename=None):
     if upload_size < 0:
         raise ServerError('"upload_size" must be nonnegative')
 
-    # First, figure out where the upload will go. We are simpleminded and just
-    # choose the store that is marked as available that has the most available
-    # space.
+    known_staging_store = optional_arg(args, str, 'known_staging_store')
+    known_staging_subdir = optional_arg(args, str, 'known_staging_subdir')
 
-    most_avail = -1
-    most_avail_store = None
+    if (known_staging_store is None) ^ (known_staging_subdir is None):
+        raise ServerError('if "known_staging_store" is specified, so must '
+                          '"known_staging_subdir", and vice versa')
 
-    for store in Store.query.filter(Store.available):
-        avail = store.get_space_info()['available']
-        if avail > most_avail:
-            most_avail = avail
-            most_avail_store = store
+    # First, figure out where the upload will go. If the destination isn't
+    # pre-specified, we are simpleminded and just choose the store that is
+    # marked as available that has the most available space.
 
-    del store  # paranoia; had a bug where we used this below!
+    if known_staging_store is not None:
+        dest_store = Store.get_by_name(known_staging_store)
+        space_avail = dest_store.get_space_info()['available']
+    else:
+        space_avail = -1
+        dest_store = None
 
-    if most_avail < upload_size or most_avail_store is None:
+        for store in Store.query.filter(Store.available):
+            avail = store.get_space_info()['available']
+            if avail > space_avail:
+                space_avail = avail
+                dest_store = store
+
+        del store  # paranoia; had a bug where we used this below!
+
+    if space_avail < upload_size or dest_store is None:
         raise ServerError('unable to find a store able to hold %d bytes', upload_size)
 
     info = {}
-    info['name'] = most_avail_store.name
-    info['ssh_host'] = most_avail_store.ssh_host
-    info['path_prefix'] = most_avail_store.path_prefix
-    info['available'] = most_avail  # might be helpful?
+    info['name'] = dest_store.name
+    info['ssh_host'] = dest_store.ssh_host
+    info['path_prefix'] = dest_store.path_prefix
+    info['available'] = space_avail  # might be helpful?
 
-    # Now, create a staging directory where the uploader can put their files.
-    # This avoids multiple uploads stepping on each others' toes.
+    # Now, create a staging directory where the uploader can put their files,
+    # if necessary. This avoids multiple uploads stepping on each others'
+    # toes.
 
-    info['staging_dir'] = most_avail_store._create_tempdir('staging')
+    if known_staging_store is not None:
+        info['staging_dir'] = dest_store._path(known_staging_subdir)
+    else:
+        info['staging_dir'] = dest_store._create_tempdir('staging')
 
     # Finally, the caller will also want to inform us about new database
     # records pertaining to the files that are about to be uploaded. Ingest
@@ -261,7 +276,7 @@ def complete_upload(args, sourcename=None):
     dest_store_path = required_arg(args, unicode, 'dest_store_path')
     meta_mode = required_arg(args, unicode, 'meta_mode')
     deletion_policy = optional_arg(args, unicode, 'deletion_policy', 'disallowed')
-
+    staging_was_known = optional_arg(args, bool, 'staging_was_known')
     store = Store.get_by_name(store_name)  # ServerError if failure
     file_name = os.path.basename(dest_store_path)
     staged_path = os.path.join(staging_dir, file_name)
@@ -280,9 +295,12 @@ def complete_upload(args, sourcename=None):
     store.process_staged_file(staged_path, dest_store_path, meta_mode,
                               deletion_policy, source_name=sourcename)
 
-    # If we're still here, we're good and can kill the staging directory.
+    # If we're still here, we're good and can kill the staging directory,
+    # unless it was one that was handed to us externally, in which case we
+    # assume that we should not touch it.
 
-    store._delete(staging_dir)
+    if not staging_was_known:
+        store._delete(staging_dir)
 
     # Finally, trigger a look at our standing orders.
 

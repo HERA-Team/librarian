@@ -113,7 +113,9 @@ class LibrarianClient (object):
                                   maximum_start_jd=maximum_start_jd,
                                   )
 
-    def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={}, deletion_policy='disallowed'):
+    def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={},
+                    deletion_policy='disallowed', known_staging_store=None,
+                    known_staging_subdir=None):
         """Upload the file located at `local_path` to the Librarian. We suggest a
         destination "store path" (something like "2345678/mydata.uv"), but the
         Librarian has to tell us which store to actually put the file on.
@@ -139,9 +141,17 @@ class LibrarianClient (object):
 
         (In the future we might add more options.)
 
-        This function invokes an SCP that is potentially trying to copy
+        This function invokes an rsync that is potentially trying to copy
         gigabytes of data across oceans. It may take a looong time to return
         and will not infrequently raise an exception.
+
+        The rsync lands in a "staging directory" on one of the destination
+        hosts, before it is moved to its final destination. If
+        `known_staging_store` and `known_staging_subdir` are specified, the
+        destination Librarian will use these values instead of creating a
+        temporary directory on whichever of its stores has the most free
+        space. This can be used to "ingest" data that were previously copied
+        over using some scheme unknown to the Librarian.
 
         """
         if os.path.isabs(dest_store_path):
@@ -153,7 +163,11 @@ class LibrarianClient (object):
         # send it the database records, and get told the staging directory.
 
         from . import utils
-        kwargs = {'upload_size': utils.get_size_from_path(local_path)}
+        kwargs = {
+            'upload_size': utils.get_size_from_path(local_path),
+            'known_staging_store': known_staging_store,
+            'known_staging_subdir': known_staging_subdir,
+        }
         kwargs.update(rec_info)
         info = self._do_http_post('initiate_upload', **kwargs)
 
@@ -180,6 +194,7 @@ class LibrarianClient (object):
                                   dest_store_path=dest_store_path,
                                   meta_mode=meta_mode,
                                   deletion_policy=deletion_policy,
+                                  staging_was_known=(known_staging_store is not None),
                                   )
 
     def register_instances(self, store_name, file_info):
