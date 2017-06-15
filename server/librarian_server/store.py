@@ -397,8 +397,8 @@ class UploaderTask (bgtasks.BackgroundTask):
         self.store_path = store_path
         self.remote_store_path = remote_store_path
         self.standing_order_name = standing_order_name
-        self.known_staging_store = None
-        self.known_staging_subdir = None
+        self.known_staging_store = known_staging_store
+        self.known_staging_subdir = known_staging_subdir
 
         self.desc = 'upload %s:%s to %s:%s' % (store.name, store_path,
                                                conn_name, remote_store_path or '<any>')
