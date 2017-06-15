@@ -319,7 +319,8 @@ class Store (object):
         return 100. * info['used'] / (info['total'])
 
     def upload_file_to_other_librarian(self, conn_name, rec_info, local_store_path,
-                                       remote_store_path=None):
+                                       remote_store_path=None, known_staging_store=None,
+                                       known_staging_subdir=None):
         """Fire off an rsync process on the store that will upload a given file to a
         different Librarian. This function will SSH into the store host, from
         which it will launch an rsync, and it will not return until everything
@@ -334,11 +335,19 @@ class Store (object):
         if remote_store_path is None:
             remote_store_path = local_store_path
 
+        if (known_staging_store is None) ^ (known_staging_subdir is None):
+            raise ValueError('both known_staging_store and known_staging_subdir must be specified')
+
+        if known_staging_store is None:
+            pre_staged_arg = ''
+        else:
+            pre_staged_arg = ' --pre-staged=%s:%s' % (known_staging_store, known_staging_subdir)
+
         import json
         rec_text = json.dumps(rec_info)
 
-        command = 'upload_to_librarian.py --meta=json-stdin %s %s %s' % (
-            conn_name, self._path(local_store_path), remote_store_path)
+        command = 'upload_to_librarian.py --meta=json-stdin%s %s %s %s' % (
+            pre_staged_arg, conn_name, self._path(local_store_path), remote_store_path)
         return self._ssh_slurp(command, input=rec_text)
 
     def upload_file_to_local_store(self, local_store_path, dest_store, dest_rel):

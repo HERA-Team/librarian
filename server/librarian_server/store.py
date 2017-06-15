@@ -209,8 +209,8 @@ def initiate_upload(args, sourcename=None):
     if upload_size < 0:
         raise ServerError('"upload_size" must be nonnegative')
 
-    known_staging_store = optional_arg(args, str, 'known_staging_store')
-    known_staging_subdir = optional_arg(args, str, 'known_staging_subdir')
+    known_staging_store = optional_arg(args, unicode, 'known_staging_store')
+    known_staging_subdir = optional_arg(args, unicode, 'known_staging_subdir')
 
     if (known_staging_store is None) ^ (known_staging_subdir is None):
         raise ServerError('if "known_staging_store" is specified, so must '
@@ -389,13 +389,16 @@ class UploaderTask (bgtasks.BackgroundTask):
     t_start = None
     t_finish = None
 
-    def __init__(self, store, conn_name, rec_info, store_path, remote_store_path, standing_order_name=None):
+    def __init__(self, store, conn_name, rec_info, store_path, remote_store_path, standing_order_name=None,
+                 known_staging_store=None, known_staging_subdir=None):
         self.store = store
         self.conn_name = conn_name
         self.rec_info = rec_info
         self.store_path = store_path
         self.remote_store_path = remote_store_path
         self.standing_order_name = standing_order_name
+        self.known_staging_store = None
+        self.known_staging_subdir = None
 
         self.desc = 'upload %s:%s to %s:%s' % (store.name, store_path,
                                                conn_name, remote_store_path or '<any>')
@@ -408,7 +411,9 @@ class UploaderTask (bgtasks.BackgroundTask):
         self.t_start = time.time()
         self.store.upload_file_to_other_librarian(
             self.conn_name, self.rec_info,
-            self.store_path, self.remote_store_path)
+            self.store_path, self.remote_store_path,
+            known_staging_store=self.known_staging_store,
+            known_staging_subdir=self.known_staging_subdir)
         self.t_finish = time.time()
 
     def wrapup_function(self, retval, exc):
@@ -455,7 +460,8 @@ class UploaderTask (bgtasks.BackgroundTask):
 
 
 def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
-                             standing_order_name=None, no_instance='raise'):
+                             standing_order_name=None, no_instance='raise',
+                             known_staging_store=None, known_staging_subdir=None):
     """Launch a copy of a file to a remote Librarian.
 
     A ServerError will be raised if no instance of the file is available.
@@ -470,6 +476,12 @@ def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
     If `no_instance` is "raise", an exception is raised if no instance of the
     file is available on this location. If it is "return", we return True.
     Other values are not allowed.
+
+    If `known_staging_store` and `known_staging_subdir` are not None, the copy
+    will be launched assuming that files have already been staged at a known
+    location at the final destination. This is useful if files have been
+    copied from one Librarian site to another outside of the Librarian
+    framework.
 
     """
     # Find a local instance of the file
@@ -498,7 +510,9 @@ def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
     basestore = inst.store_object.convert_to_base_object()
     bgtasks.submit_background_task(UploaderTask(
         basestore, connection_name, rec_info, inst.store_path,
-        remote_store_path, standing_order_name))
+        remote_store_path, standing_order_name,
+        known_staging_store=known_staging_store,
+        known_staging_subdir=known_staging_subdir))
 
     # Remember that we launched this copy.
 
@@ -515,7 +529,16 @@ def launch_file_copy(args, sourcename=None):
     file_name = required_arg(args, unicode, 'file_name')
     connection_name = required_arg(args, unicode, 'connection_name')
     remote_store_path = optional_arg(args, unicode, 'remote_store_path')
-    launch_copy_by_file_name(file_name, connection_name, remote_store_path)
+    known_staging_store = optional_arg(args, unicode, 'known_staging_store')
+    known_staging_subdir = optional_arg(args, unicode, 'known_staging_subdir')
+
+    if (known_staging_store is None) ^ (known_staging_subdir is None):
+        raise ServerError('if known_staging_store is provided, known_staging_subdir must be '
+                          'too, and vice versa')
+
+    launch_copy_by_file_name(file_name, connection_name, remote_store_path,
+                             known_staging_store=known_staging_store,
+                             known_staging_subdir=known_staging_subdir)
     return {}
 
 

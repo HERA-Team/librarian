@@ -231,11 +231,14 @@ class LibrarianClient (object):
                                   restrict_to_store=restrict_to_store,
                                   )
 
-    def launch_file_copy(self, file_name, connection_name, remote_store_path=None):
+    def launch_file_copy(self, file_name, connection_name, remote_store_path=None,
+                         known_staging_store=None, known_staging_subdir=None):
         return self._do_http_post('launch_file_copy',
                                   file_name=file_name,
                                   connection_name=connection_name,
                                   remote_store_path=remote_store_path,
+                                  known_staging_store=known_staging_store,
+                                  known_staging_subdir=known_staging_subdir,
                                   )
 
     def initiate_offload(self, source_store_name, dest_store_name):

@@ -78,7 +78,6 @@ elif args.meta == 'infer':
 else:
     die('unexpected metadata-gathering method %r', args.meta)
 
-
 known_staging_store = None
 known_staging_subdir = None
 
