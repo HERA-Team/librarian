@@ -12,7 +12,7 @@ available store) and copy it over.
 """
 from __future__ import absolute_import, division, print_function
 
-import optparse
+import argparse
 import os.path
 import sys
 
@@ -20,15 +20,21 @@ import hera_librarian
 from hera_librarian import utils
 
 
-o = optparse.OptionParser()
-o.set_usage('launch_librarian_copy.py <source-connection> <dest-connection> <file-name>')
-o.set_description(__doc__)
-o.add_option('--dest', type=str,
-             help='The path in which the file should be stored at the destination. Default is the same as used locally.')
+p = argparse.ArgumentParser(
+    description=__doc__,
+)
+p.add_argument('--dest', type=str,
+               help='The path in which the file should be stored at the destination. Default is the same as used locally.')
 p.add_argument('--pre-staged', dest='pre_staged', metavar='STORENAME:SUBDIR',
                help='Specify that the data have already been staged at the destination.')
+p.add_argument('source_conn_name', metavar='SOURCE-CONNECTION-NAME',
+               help='Which Librarian originates the copy; as in ~/.hl_client.cfg.')
+p.add_argument('dest_conn_name', metavar='DEST-CONNECTION-NAME',
+               help='Which Librarian receives the copy; as in ~/.hl_client.cfg.')
+p.add_argument('file_name', metavar='FILE-NAME',
+               help='The name of the file to copy; need not be a local path.')
 
-opts, args = o.parse_args(sys.argv[1:])
+args = p.parse_args()
 
 
 def die(fmt, *args):
@@ -42,25 +48,20 @@ def die(fmt, *args):
 
 # Argument validation is pretty simple
 
-if len(args) != 3:
-    die('expect exactly three non-option arguments')
-
 known_staging_store = None
 known_staging_subdir = None
 
 if args.pre_staged is not None:
     known_staging_store, known_staging_subdir = args.pre_staged.split(':', 1)
 
-source_connection, dest_connection, file_name = args
-
 
 # Let's do it.
 
-file_name = os.path.basename(file_name)  # in case the user has spelled out a path
-client = hera_librarian.LibrarianClient(source_connection)
+file_name = os.path.basename(args.file_name)  # in case the user has spelled out a path
+client = hera_librarian.LibrarianClient(args.source_conn_name)
 
 try:
-    client.launch_file_copy(file_name, dest_connection, remote_store_path=opts.dest,
+    client.launch_file_copy(file_name, args.dest_conn_name, remote_store_path=args.dest,
                             known_staging_store=known_staging_store,
                             known_staging_subdir=known_staging_subdir)
 except hera_librarian.RPCError as e:
