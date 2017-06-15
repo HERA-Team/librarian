@@ -249,7 +249,7 @@ def initiate_upload(args, sourcename=None):
     # toes.
 
     if known_staging_store is not None:
-        info['staging_dir'] = dest_store._path(known_staging_subdir)
+        info['staging_dir'] = known_staging_subdir
     else:
         info['staging_dir'] = dest_store._create_tempdir('staging')
 
