@@ -182,6 +182,11 @@ def _coerce(argtype, name, val):
     can change that.
 
     """
+    if argtype is bool:
+        if not isinstance(val, bool):
+            raise ServerError('parameter "%s" should be a boolean, but got %r', name, val)
+        return val
+
     if argtype is int:
         if not isinstance(val, (int, long)):
             raise ServerError('parameter "%s" should be an integer, but got %r', name, val)
