@@ -30,7 +30,14 @@
 	</div>
 	<div>
 	  <ul class="nav navbar-nav">
-	    <li><a href="/sessions">Observing Sessions</a></li>
+	    <li class="dropdown">
+	      <a href="#" class="dropdown-toggle" data-toggle="dropdown">Observing Sessions
+		<b class="caret"></b></a>
+	      <ul class="dropdown-menu">
+		<li><a href="/sessions/all">All, basic information</a></li>
+		<li><a href="/sessions/recent">Recent, detailed information</a></li>
+	      </ul>
+	    </li>
 	    <li><a href="/observations">Observations</a></li>
 	    <li><a href="/search-form">Search</a></li>
 	    <li><a href="/stores">Stores</a></li>

@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<p>Displaying all {{sess|length}} registered observing sessions.</p>
+
+{{ macros.session_listing_basic(sess) }}
+
+{% endblock %}

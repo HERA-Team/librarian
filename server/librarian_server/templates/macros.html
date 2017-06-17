@@ -75,7 +75,36 @@ parsed. #}
 </div>
 {% endmacro %}
 
-{% macro session_listing(sessions) -%}
+{% macro session_listing_basic(sessions) -%}
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+	<th>Session ID</th>
+        <th>Date (UTC)</th>
+	<th>Start JD</th>
+	<th>Stop JD</th>
+	<th>Duration (days)</th>
+	<th>Num. Obs.</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr>
+	<td><a href="/sessions/{{s.id}}">{{s.id}}</a></td>
+        <td>{{s.start_time_calendar_date}}</td>
+	<td>{{s.start_time_jd}}</td>
+	<td>{{s.stop_time_jd}}</td>
+	<td>{{s.duration}}</td>
+	<td>{{s.num_obs}}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+{% macro session_listing_detailed(sessions) -%}
 <div class="table-responsive">
   <table class="table table-striped">
     <thead>

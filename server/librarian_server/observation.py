@@ -499,13 +499,24 @@ def specific_observation(obsid):
     )
 
 
-@app.route('/sessions')
+@app.route('/sessions/all')
 @login_required
-def sessions():
-    q = ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()).limit(50)
+def sessions_all():
+    q = list(ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()))
     return render_template(
-        'session-listing.html',
-        title='Observing Sessions',
+        'session-listing-all.html',
+        title='All Observing Sessions',
+        sess=q
+    )
+
+
+@app.route('/sessions/recent')
+@login_required
+def sessions_recent():
+    q = list(ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()).limit(30))
+    return render_template(
+        'session-listing-recent.html',
+        title='Recent Observing Sessions',
         sess=q
     )
 

@@ -3,6 +3,8 @@
 {% block content %}
 <h1>{{title}}</h1>
 
-{{ macros.session_listing(sess) }}
+<p>Displaying only the {{sess|length}} most recent sessions.</p>
+
+{{ macros.session_listing_detailed(sess) }}
 
 {% endblock %}
