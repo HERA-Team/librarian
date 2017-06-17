@@ -81,10 +81,11 @@ parsed. #}
     <thead>
       <tr>
 	<th>Session ID</th>
+        <th>Date (UTC)</th>
 	<th>Start JD</th>
 	<th>Stop JD</th>
 	<th>Duration (days)</th>
-	<th>Num. Observations</th>
+	<th>Num. Obs.</th>
 	<th>Num. Files (with instances)</th>
 	<th>Total size</th>
       </tr>
@@ -93,6 +94,7 @@ parsed. #}
       {% for s in sessions %}
       <tr>
 	<td><a href="/sessions/{{s.id}}">{{s.id}}</a></td>
+        <td>{{s.start_time_calendar_date}}</td>
 	<td>{{s.start_time_jd}}</td>
 	<td>{{s.stop_time_jd}}</td>
 	<td>{{s.duration}}</td>

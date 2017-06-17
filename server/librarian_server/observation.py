@@ -13,6 +13,7 @@ Observation
 
 from flask import flash, redirect, render_template, url_for
 
+from hera_librarian.utils import format_jd_as_calendar_date, format_jd_as_iso_date_time
 from . import app, db
 from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
@@ -57,6 +58,21 @@ class ObservingSession (db.Model):
         if not (self.start_time_jd < self.stop_time_jd):  # catches NaNs, just in case ...
             raise ValueError('session start time must precede stop time; got %f, %f'
                              % (self.start_time_jd, self.stop_time_jd))
+
+    @property
+    def start_time_calendar_date(self):
+        "The session start time in YYYY-MM-DD format."
+        return format_jd_as_calendar_date(self.start_time_jd)
+
+    @property
+    def start_time_iso_date_time(self):
+        "The session start time in \"YYYY-MM-DD HH:MM:SS\" format."
+        return format_jd_as_iso_date_time(self.start_time_jd)
+
+    @property
+    def stop_time_iso_date_time(self):
+        "The session stop time in \"YYYY-MM-DD HH:MM:SS\" format."
+        return format_jd_as_iso_date_time(self.stop_time_jd)
 
     @property
     def duration(self):
