@@ -1,5 +1,5 @@
 # -*- mode: python; coding: utf-8 -*-
-# Copyright 2016 the HERA Team.
+# Copyright 2016-2017 the HERA Team.
 # Licensed under the BSD License.
 
 """Utilities for interacting with the librarian.
@@ -20,6 +20,9 @@ get_md5_from_path
 get_size_from_path
 normalize_and_validate_md5
 print_info_for_path
+format_jd_as_calendar_date
+format_jd_as_iso_date_time
+format_obsid_as_calendar_date
 ''').split()
 
 import hashlib
@@ -245,3 +248,54 @@ def print_info_for_path(path):
     import json
     import sys
     json.dump(gather_info_for_path(path), sys.stdout)
+
+
+def format_jd_as_calendar_date(jd, scale='utc', **kwargs):
+    """Format a Julian Date value as a calendar date, returning the date as a
+    string.
+
+    The return value will look like `2016-07-24`. This, of course, truncates
+    all time-of-day information contained in the JD.
+
+    The `scale` keyword argument and remaining keyword arguments are passed to
+    the constructor for the AstroPy `Time` class. The defaults should be fine
+    in most cases, though, but be careful about the timescale.
+
+    """
+    from astropy.time import Time
+    t = Time(jd, format='jd', scale=scale, **kwargs)
+    return t.iso[:10]
+
+
+def format_jd_as_iso_date_time(jd, scale='utc', precision=0, **kwargs):
+    """Format a Julian Date value as an ISO 8601 date and time, returning a
+    string.
+
+    The return value will look like `2016-07-24 11:04:36`. Sub-second
+    precision is truncated by default, but can be preserved by using the
+    `precision` keword, which specifies the number of sub-second decimal
+    places to include in the return value.
+
+    The `scale` keyword argument and remaining keyword arguments are passed to
+    the constructor for the AstroPy `Time` class. The defaults should be fine
+    in most cases, though, but be careful about the timescale.
+
+    """
+    from astropy.time import Time
+    t = Time(jd, format='jd', scale=scale, precision=precision, **kwargs)
+    return t.iso
+
+
+def format_obsid_as_calendar_date(obsid):
+    """Format an obsid as a UTC calendar date, returning the date as a string.
+
+    This makes only sense because our obsids are actually times, expressed as
+    integer GPS seconds. The return value will look like `2016-07-24`. This,
+    of course, truncates all time-of-day information contained in the JD. Note
+    that we convert from the GPS to the UTC timescale, requiring an accurate
+    leap-second table.
+
+    """
+    from astropy.time import Time
+    t = Time(obsid, format='gps')
+    return t.utc.iso[:10]
