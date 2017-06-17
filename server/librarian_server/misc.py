@@ -82,6 +82,24 @@ def _jinja2_filter_duration(seconds, fmt=None):
     return '%.1f days' % (seconds / 86400)
 
 
+@app.context_processor
+def inject_current_time_info():
+    import datetime, dateutil.tz, pytz
+
+    utc = datetime.datetime.now(tz=pytz.utc)
+    sa_tz = pytz.timezone('Africa/Johannesburg')
+    sa = utc.astimezone(sa_tz)
+    local_tz = dateutil.tz.tzlocal()
+    local = utc.astimezone(local_tz)
+
+    cti = utc.strftime('%Y-%m-%d %H:%M') + ' (UTC) • ' + sa.strftime('%H:%M (%Z)')
+
+    if local.tzname() not in ('UTC', sa.tzname()):
+        cti += ' • ' + local.strftime('%H:%M (%Z)')
+
+    return {'current_time_info': cti}
+
+
 # JSON API
 
 @app.route('/api/ping', methods=['GET', 'POST'])
