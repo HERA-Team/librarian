@@ -84,7 +84,9 @@ def _jinja2_filter_duration(seconds, fmt=None):
 
 @app.context_processor
 def inject_current_time_info():
-    import datetime, dateutil.tz, pytz
+    import datetime
+    import dateutil.tz
+    import pytz
 
     utc = datetime.datetime.now(tz=pytz.utc)
     sa_tz = pytz.timezone('Africa/Johannesburg')

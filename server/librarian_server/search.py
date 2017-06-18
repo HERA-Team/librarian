@@ -94,7 +94,8 @@ class SearchCompiler (object):
             if not isinstance(value, int):
                 raise ServerError('can\'t parse "session-id" clause: contents must be '
                                   'integer, but got %s', value.__class__.__name__)
-            matching_obs = db.session.query(Observation.obsid).filter(Observation.session_id == value)
+            matching_obs = db.session.query(Observation.obsid).filter(
+                Observation.session_id == value)
             return File.obsid.in_(matching_obs)
         else:
             raise ServerError('can\'t parse search clause: unrecognized name "%s"', name)
