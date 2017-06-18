@@ -1,5 +1,5 @@
 # -*- mode: python; coding: utf-8 -*-
-# Copyright 2016 the HERA Collaboration
+# Copyright 2016-2017 the HERA Collaboration
 # Licensed under the BSD License.
 
 """Searches of the database
@@ -55,6 +55,12 @@ class SearchCompiler (object):
                                   'but got %s', value.__class__.__name__)
             from sqlalchemy import or_
             return or_(*[self._compile_clause(*t) for t in value.iteritems()])
+        elif name == 'none-of':
+            if not isinstance(value, dict):
+                raise ServerError('can\'t parse "none-of" clause: contents must be a dict, '
+                                  'but got %s', value.__class__.__name__)
+            from sqlalchemy import not_, or_
+            return not_(or_(*[self._compile_clause(*t) for t in value.iteritems()]))
         elif name == 'name-like':
             if not isinstance(value, unicode):
                 raise ServerError('can\'t parse "name-like" clause: contents must be text, '

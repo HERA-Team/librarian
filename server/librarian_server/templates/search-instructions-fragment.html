@@ -12,6 +12,10 @@
   <dt>or</dt>
   <dd>Boolean “or”. The <i>data</i> is a dictionary of sub-clauses to be or-ed together.</dd>
 
+  <dt>none-of</dt>
+  <dd>Boolean negation of “or”. The <i>data</i> is a dictionary of sub-clauses that are or-ed together,
+    and the boolean “not” of the result is returned.</dd>
+
   <dt>name-like</dt>
   <dd>Matches files with names “like” the <i>data</i> specification, according to the
 	<a href="https://www.postgresql.org/docs/9.5/static/functions-matching.html">SQL
