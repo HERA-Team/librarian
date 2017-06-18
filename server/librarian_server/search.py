@@ -476,7 +476,8 @@ def search_form():
 
 
 # These formats are defined in templates/search-form.html:
-full_path_format = 'File of full instance paths'
+file_name_format = 'Raw text with file names'
+full_path_format = 'Raw text with full instance paths'
 human_format = 'List of files'
 
 
@@ -496,6 +497,8 @@ def execute_search():
     if output_format == full_path_format:
         for_humans = False
         query_type = 'names'
+    elif output_format == file_name_format:
+        for_humans = False
     elif output_format == human_format:
         for_humans = True
     else:
@@ -515,6 +518,8 @@ def execute_search():
             from .file import FileInstance
             instances = FileInstance.query.filter(FileInstance.name.in_(search))
             text = '\n'.join(i.full_path_on_store() for i in instances)
+        elif output_format == file_name_format:
+            text = '\n'.join(f.name for f in search)
         elif output_format == human_format:
             files = list(search)
             text = render_template(
