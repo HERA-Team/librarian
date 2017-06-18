@@ -41,6 +41,7 @@ class SearchCompiler (object):
 
     def _compile_clause(self, name, value):
         from .file import File, FileInstance
+        from .observation import Observation
         from sqlalchemy import func
 
         if name == 'and':
@@ -89,6 +90,12 @@ class SearchCompiler (object):
                                   'integer, but got %s', value.__class__.__name__)
             q = db.session.query(func.count()).filter(FileInstance.name == File.name).as_scalar()
             return (q >= value)
+        elif name == 'session-id':
+            if not isinstance(value, int):
+                raise ServerError('can\'t parse "session-id" clause: contents must be '
+                                  'integer, but got %s', value.__class__.__name__)
+            matching_obs = db.session.query(Observation.obsid).filter(Observation.session_id == value)
+            return File.obsid.in_(matching_obs)
         else:
             raise ServerError('can\'t parse search clause: unrecognized name "%s"', name)
 
