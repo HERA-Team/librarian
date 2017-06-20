@@ -20,9 +20,38 @@
   </div>
 
   <div class="form-group">
-    <label for="search">Search specification</label>
-    {% include 'search-instructions-fragment.html' %}
-    <textarea class="form-control" rows="10" name="search" id="search" placeholder="{{sample_search}}"></textarea>
+    <label>Standard searches</label>
+
+    <p><i>TODO:</i> Implement some of these!
+      See <a href="https://github.com/HERA-Team/librarian/issues/25">GitHub
+      #25</a> and related issues.</p>
+  </div>
+
+  <div class="form-group">
+    <label for="search">Custom search</label>
+
+    <div class="row">
+      <div class="col-md-6">
+        <textarea class="form-control" rows="10" name="search" id="search" placeholder="{{sample_search}}"></textarea>
+      </div>
+      <div class="col-md-6">
+        <p>Custom searches are written
+          in <a href="http://guide.couchdb.org/draft/json.html">JSON
+            format</a>. Here are some examples:</p>
+
+        <pre>{ "name-like": "zen.2457644.%.xx.HH.uvc" }</pre>
+
+        <pre>{
+  "name-like": "%.xx.HH.uvc",
+  "session-id": 1165287640
+}</pre>
+
+        <!-- TODO: have this link point to the specific version of the running Librarian -->
+        <p>For more information,
+          see <a href="https://github.com/HERA-Team/librarian/blob/master/docs/Searching.md">the
+            online documentation</a>.</p>
+      </div>
+    </div>
   </div>
 
   <input name="type" type="hidden" value="files">
