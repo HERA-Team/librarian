@@ -473,17 +473,17 @@ def delete_standing_order(name):
 sample_search = '{ "name-like": "%12345%.uv" }'
 
 
-@app.route('/search-form', methods=['GET', 'POST'])
+@app.route('/search-files', methods=['GET', 'POST'])
 @login_required
-def search_form():
+def search_files():
     return render_template(
-        'search-form.html',
+        'search-files.html',
         title='Search Files',
         sample_search=sample_search,
     )
 
 
-# These formats are defined in templates/search-form.html:
+# These formats are defined in templates/search-files.html:
 file_name_format = 'Raw text with file names'
 full_path_format = 'Raw text with full instance paths'
 human_format = 'List of files'
@@ -497,10 +497,10 @@ def execute_search():
     else:
         reqdata = request.args
 
+    query_type = required_arg(reqdata, unicode, 'type')
     search_text = required_arg(reqdata, unicode, 'search')
     output_format = optional_arg(reqdata, unicode, 'output_format', 'ui')
     for_humans = True
-    query_type = 'files'
 
     if output_format == full_path_format:
         for_humans = False
@@ -531,7 +531,7 @@ def execute_search():
         elif output_format == human_format:
             files = list(search)
             text = render_template(
-                'search-results.html',
+                'search-results-file.html',
                 title='Search Results: %d Files' % len(files),
                 search_text=search_text,
                 files=files,
@@ -544,7 +544,7 @@ def execute_search():
 
         if for_humans:
             text = render_template(
-                'search-results.html',
+                'search-results-file.html',
                 title='Search Results: Error',
                 search_text=search_text,
                 files=[],
