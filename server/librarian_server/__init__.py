@@ -82,7 +82,60 @@ from . import misc
 
 # Finally ...
 
+def get_version_info():
+    """First thing we do is gather version information. The Librarian server is
+    always run out of a Git tree so there is a straightforward way to figure
+    out what version we've got. Of course the Git version doesn't reflect the
+    current status of all of our dependencies and so on --- stuff like this
+    really makes me miss having a linker.
+
+    If the Git calls fail, we complain but don't abort.
+
+    """
+    from os.path import dirname
+    from subprocess import CalledProcessError, check_call, check_output
+
+    cwd = dirname(__file__)
+
+    def rungit(get_output, *args):
+        if get_output:
+            runit = check_output
+        else:
+            runit = check_call
+
+        argv = ['git'] + list(args)
+
+        try:
+            return runit(argv, cwd=cwd, shell=False)
+        except CalledProcessError as e:
+            logger.warn('"%s" failed: %s' % (' '.join(argv), e))
+            return None
+
+    rungit(False, 'update-index', '-q', '--refresh')
+
+    tag = rungit(True, 'describe', '--tags', '--match', 'v[0-9]*', '--dirty')
+    if tag is None:
+        logger.warn('couldn\'t identify current version from Git tag!')
+        tag = '???'
+    else:
+        tag = tag.strip()
+
+    if 'dirty' in tag:
+        logger.warn('running from a codebase with uncommitted changes')
+
+    head_info = rungit(True, 'show-ref', '-h', '--hash')
+    if head_info is None:
+        logger.warn('couldn\'t identify current Git hash!')
+        git_hash = '0' * 40
+    else:
+        git_hash = head_info.splitlines()[0].strip()
+
+    return tag, git_hash
+
+
 def commandline(argv):
+    version_string, git_hash = get_version_info()
+
     server = app.config.get('server', 'flask')
     host = app.config.get('host', None)
     port = app.config.get('port', 21106)
