@@ -443,6 +443,9 @@ class UploaderTask (bgtasks.BackgroundTask):
             dt_eff = max(dt, 0.5)  # avoid div-by-zero just in case
             rate = file.size / (dt_eff * 1024.)  # kilobytes/sec (AKA kB/s)
 
+            from . import mc_integration
+            mc_integration.note_file_upload_succeeded(self.conn_name, file.size)
+
         db.session.add(file.make_copy_finished_event(self.conn_name, self.remote_store_path,
                                                      error_code, error_message, duration=dt,
                                                      average_rate=rate))
@@ -455,9 +458,6 @@ class UploaderTask (bgtasks.BackgroundTask):
         if error_code == 0:
             logger.info('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
                         self.store.name, self.store_path, dt, rate)
-
-        from . import mc_integration
-        mc_integration.note_file_upload_finished()
 
         db.session.commit()
 
