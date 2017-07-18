@@ -14,14 +14,16 @@ import the `hera_mc` package.
 from __future__ import absolute_import, division, print_function
 
 __all__ = '''
+note_file_created
 note_file_upload_succeeded
 register_callbacks
 '''.split()
 
 import time
 
-import six
 from astropy.time import Time
+import six
+from sqlalchemy.exc import InvalidRequestError
 
 from . import app, db, logger
 
@@ -146,6 +148,17 @@ class MCManager(object):
         self.mc_session.commit()
         self._last_report_time = time.time()
 
+    def note_file_created(self, file_obj):
+        try:
+            self.mc_session.add_lib_file(file_obj.name, file_obj.obsid,
+                                         file_obj.create_time_astropy,
+                                         file_obj.size / 1024**3)
+            self.mc_session.commit()
+        except InvalidRequestError as e:
+            # This can happen if the file's obsid is not registered in the M&C
+            # database. TO BE VERIFIED: we have no control over this, right?
+            raise
+
     def note_file_upload_succeeded(self, conn_name, file_size):
         self._last_file_upload_time = time.time()
         self._remote_upload_stats.setdefault(conn_name, []).append(file_size)
@@ -166,6 +179,11 @@ def register_callbacks(version_string, git_hash):
 
 # Hooks for other subsystems to send info to M&C without having to worry about
 # whether M&C integration is actually activated.
+
+def note_file_created(file_obj):
+    if the_mc_manager is None:
+        return
+    the_mc_manager.note_file_created(file_obj)
 
 def note_file_upload_succeeded(conn_name, file_size):
     if the_mc_manager is None:

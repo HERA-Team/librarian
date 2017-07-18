@@ -132,10 +132,14 @@ class File (db.Model):
             lst = required_arg(info, float, 'lst')
             db.session.add(Observation(obsid, start_jd, None, lst))
 
-        inst = File(name, type, obsid, source_name, size, md5)
-        db.session.add(inst)
+        fobj = File(name, type, obsid, source_name, size, md5)
+        db.session.add(fobj)
         db.session.commit()
-        return inst
+
+        from .mc_integration import note_file_created
+        note_file_created(fobj)
+
+        return fobj
 
     def delete_instances(self, mode='standard', restrict_to_store=None):
         """DANGER ZONE! Delete instances of this file on all stores!
@@ -231,6 +235,11 @@ class File (db.Model):
     def create_time_unix(self):
         import calendar
         return calendar.timegm(self.create_time.timetuple())
+
+    @property
+    def create_time_astropy(self):
+        from astropy.time import Time
+        return Time(self.create_time)
 
     def to_dict(self):
         """Note that 'source' is not a propagated quantity."""
