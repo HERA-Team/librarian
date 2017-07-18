@@ -5,7 +5,21 @@ responsible for running a Librarian server at a site.
 
 ### Contents
 
+- [Monitoring with M&C](#monitoring-with-m_c)
 - [Backing up the database](#backing-up-the-database)
+
+
+## Monitoring with M&C
+
+The version of the Librarian that lives on-site should report status
+information to the HERA monitor-and-control (M&C) infrastructure. This can be
+activated with the `report_to_mandc` setting in the server configuration file.
+This reporting requires that the `hera_mc` Python module be available and that
+the M&C configuration file `~/.hera_mc/mc_config.json` exists and is
+configured properly.
+
+Do *not* activate this feature unless you’re running the Karoo Librarian instance,
+or you really know what you’re doing.
 
 
 ## Backing up the database

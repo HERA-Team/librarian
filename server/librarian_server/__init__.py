@@ -147,6 +147,11 @@ def commandline(argv):
 
     maybe_add_stores()
 
+    do_mandc = app.config.get('report_to_mandc', False)
+    if do_mandc:
+        from . import mc_integration
+        mc_integration.register_callbacks(version_string, git_hash)
+
     if server == 'flask':
         print('note: using "flask" server, so background operations will not work',
               file=sys.stderr)
