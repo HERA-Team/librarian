@@ -456,6 +456,9 @@ class UploaderTask (bgtasks.BackgroundTask):
             logger.info('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
                         self.store.name, self.store_path, dt, rate)
 
+        from . import mc_integration
+        mc_integration.note_file_upload_finished()
+
         db.session.commit()
 
 
