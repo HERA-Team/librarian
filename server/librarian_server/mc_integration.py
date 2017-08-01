@@ -172,7 +172,8 @@ def register_callbacks(version_string, git_hash):
     the_mc_manager = MCManager(version_string, git_hash)
 
     from tornado import ioloop
-    cb = ioloop.PeriodicCallback(the_mc_manager.check_in, 10 * 1000)  # measured in milliseconds
+    cb = ioloop.PeriodicCallback(the_mc_manager.check_in, 15 * 60 *
+                                 1000)  # measured in milliseconds
     cb.start()
     return cb
 
