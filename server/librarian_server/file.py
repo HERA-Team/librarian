@@ -132,11 +132,16 @@ class File (db.Model):
             lst = required_arg(info, float, 'lst')
             db.session.add(Observation(obsid, start_jd, None, lst))
 
+        from .mc_integration import is_file_record_invalid, note_file_created
         fobj = File(name, type, obsid, source_name, size, md5)
+
+        if is_file_record_invalid(fobj):
+            raise ServerError('new file %s (obsid %d) rejected by M&C; see M&C error logs for the reason',
+                              name, obsid)
+
         db.session.add(fobj)
         db.session.commit()
 
-        from .mc_integration import note_file_created
         note_file_created(fobj)
 
         return fobj

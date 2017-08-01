@@ -14,6 +14,7 @@ package.
 from __future__ import absolute_import, division, print_function
 
 __all__ = '''
+is_file_record_invalid
 note_file_created
 note_file_upload_succeeded
 register_callbacks
@@ -26,6 +27,10 @@ import six
 from sqlalchemy.exc import InvalidRequestError
 
 from . import app, db, logger
+
+
+# M&C severity classes
+FATAL, SEVERE, WARNING, INFO = range(1, 5)
 
 
 class MCManager(object):
@@ -56,6 +61,20 @@ class MCManager(object):
 
         self._remote_upload_stats = {}
         self._last_report_time = time.time()
+
+    def error(self, severity, fmt, *args):
+        if len(args):
+            text = fmt % args
+        else:
+            text = str(fmt)
+
+        logger.error('M&C-related error (severity %d): %s', severity, text)
+
+        try:
+            self.mc_session.add_subsystem_error(Time.now(), 'lib', severity, text)
+            self.mc_session.commit()
+        except Exception as e:
+            logger.error('could not log error to M&C: %s', e)
 
     def check_in(self):
         from sqlalchemy import func, outerjoin, select
@@ -89,8 +108,9 @@ class MCManager(object):
                                            self.git_hash)
             self.mc_session.commit()
         except Exception as e:
-            logger.error('could not report status to the M&C system: %s', e)
-            raise
+            # If that failed it seems unlikely that we'll be able to continue,
+            # but let's try.
+            self.error(SEVERE, 'could not report status to the M&C system: %s', e)
 
         # Now report information on our remotes. The Librarian *server*
         # doesn't actually directly know about the other connections defined
@@ -148,16 +168,28 @@ class MCManager(object):
         self.mc_session.commit()
         self._last_report_time = time.time()
 
+    def is_file_record_invalid(self, file_obj):
+        for mc_obs in self.mc_session.get_obs(obsid=file_obj.obsid):
+            return False  # if this executes, we got one and the file's OK
+
+        # If we got here, there was no session and something bad is up!
+        self.error(SEVERE,
+                   'rejecting file %s (obsid %d): its obsid is not in M&C\'s hera_obs table',
+                   file_obj.name, file_obj.obsid)
+        return True
+
     def note_file_created(self, file_obj):
         try:
             self.mc_session.add_lib_file(file_obj.name, file_obj.obsid,
                                          file_obj.create_time_astropy,
                                          file_obj.size / 1024**3)
-            self.mc_session.commit()
         except InvalidRequestError as e:
-            # This can happen if the file's obsid is not registered in the M&C
-            # database. TO BE VERIFIED: we have no control over this, right?
-            raise
+            # This could happen if the file's obsid were not registered in the
+            # M&C database. Which shouldn't happen, but ...
+            self.error(SEVERE, 'couldn\'t register file %s (obsid %d) with M&C: %s',
+                       file_obj.name, file_obj.obsid, e)
+
+        self.mc_session.commit()
 
     def note_file_upload_succeeded(self, conn_name, file_size):
         self._last_file_upload_time = time.time()
@@ -180,6 +212,17 @@ def register_callbacks(version_string, git_hash):
 
 # Hooks for other subsystems to send info to M&C without having to worry about
 # whether M&C integration is actually activated.
+
+def is_file_record_invalid(file_obj):
+    """If we're M&C-enabled, we refuse to create files whose inferred obsids are
+    not contained in the hera_obs table.
+
+    """
+    if the_mc_manager is None:
+        return False
+
+    return the_mc_manager.is_file_record_invalid(file_obj)
+
 
 def note_file_created(file_obj):
     if the_mc_manager is None:

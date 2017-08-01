@@ -58,21 +58,28 @@ def create_records(info, sourcename):
         obj = Observation.from_dict(subinfo)
         db.session.merge(obj)
 
+    from .mc_integration import is_file_record_invalid, note_file_created
+
     for subinfo in info.get('files', {}).itervalues():
         obj = File.from_dict(sourcename, subinfo)
 
         # Things get slightly more complicated here because if we're linked in
-        # to HERA M&C, we need to report when new File records are created. I
-        # don't think `merge()` gives us any reasonable path to do that, so we
-        # need a hand-rolled UPSERT to figure out what happened. Fortunately
-        # the primary key of the File table is simple, and file records are
-        # immutable, so we don't need to get too tricky. Cf.
+        # to HERA M&C, we need to check if files are valid, and report when
+        # new File records are created. I don't think `merge()` gives us any
+        # reasonable path to do that, so we need a hand-rolled UPSERT to
+        # figure out what happened. Fortunately the primary key of the File
+        # table is simple, and file records are immutable, so we don't need to
+        # get too tricky. Cf.
         # https://stackoverflow.com/questions/2546207/does-sqlalchemy-have-an-equivalent-of-djangos-get-or-create
         #
         # Note, however, that only the Karoo Librarian has M&C integration,
         # and that's the one Librarian that it is unlikely that anyone is ever
         # going to upload a file *to*, which is how this code path gets
         # activated. But let's be thorough.
+
+        if is_file_record_invalid(obj):
+            raise ServerError('new file %s (obsid %d) rejected by M&C; see M&C error logs for the reason',
+                              obj.name, obj.obsid)
 
         try:
             db.session.query(File).filter_by(name=obj.name).one()
@@ -83,7 +90,6 @@ def create_records(info, sourcename):
             except IntegrityError:
                 db.session.rollback()
             else:
-                from .mc_integration import note_file_created
                 note_file_created(obj)
 
     db.session.commit()
