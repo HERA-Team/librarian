@@ -4,11 +4,11 @@
 
 """Integration with the HERA on-site monitor-and-control (M&C) system.
 
-This function is imported even if M&C reporting is disabled. If that's the
-case, the various calls are all no-ops, as tested by seeing if
-`the_mc_manager` is None. To keep things working, though, for installations
-that don't have M&C available, the top level of this module isn't allowed to
-import the `hera_mc` package.
+This module is imported even if M&C reporting is disabled. If that's the case,
+the various calls are all no-ops, as tested by seeing if `the_mc_manager` is
+None. To keep things working, though, for installations that don't have M&C
+available, the top level of this module isn't allowed to import the `hera_mc`
+package.
 
 """
 from __future__ import absolute_import, division, print_function
@@ -109,9 +109,9 @@ class MCManager(object):
         # finally finishes, based on the elapsed time and the file size. This
         # value may in principle be averaged over a span of time that is much
         # longer or shorter than the 15-minute cadence we're charged with
-        # report. To keep things tractable, the numbers that we report are the
-        # number of uploads that completed in the past reporting interval, no
-        # matter when they started, and a kinda-fake bandwidth that is just
+        # reporting. To keep things tractable, the numbers that we report are
+        # the number of uploads that completed in the past reporting interval,
+        # no matter when they started, and a kinda-fake bandwidth that is just
         # the sum of those files' sizes, divided by the reporting interval. In
         # corner cases the bandwidth will get wonky, but we also have the
         # direct measurements from the pots to look at.
@@ -184,6 +184,7 @@ def note_file_created(file_obj):
     if the_mc_manager is None:
         return
     the_mc_manager.note_file_created(file_obj)
+
 
 def note_file_upload_succeeded(conn_name, file_size):
     if the_mc_manager is None:
