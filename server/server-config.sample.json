@@ -1,4 +1,4 @@
-# Delete all lines beginning with "#" before deploying! JSON does not allow comments.
+# DELETE ALL LINES beginning with "#" before deploying! JSON does not allow comments.
 
 {
     # "server" is the code used to run the web server: "flask", the simple
@@ -39,6 +39,11 @@
     # print tracebacks and auto-reload itself if you edit files in the running server.
     # This should always be disabled for production use. Default is false.
     #"flask_debug": true,
+
+    # If set to "true", the Librarian will attempt to connect to the HERA M&C database
+    # and report status information to it. This REQUIRES the use of the Tornado
+    # server rather than Flask. Default is false
+    #"report_to_mandc": true,
 
     # Use this many worker threads for background activities.
     #"n_worker_threads": 8,

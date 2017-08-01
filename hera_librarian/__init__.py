@@ -96,6 +96,9 @@ class LibrarianClient (object):
 
         return reply_json
 
+    def ping(self, **kwargs):
+        return self._do_http_post('ping', **kwargs)
+
     def create_file_event(self, file_name, type, **kwargs):
         """Note that keyword arguments to this function will automagically be stuffed
         inside the "payload" parameter.

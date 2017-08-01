@@ -10,6 +10,8 @@ gather_records
 ''').split()
 
 from flask import flash, redirect, render_template, url_for
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
 
 from . import app, db
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
@@ -56,9 +58,39 @@ def create_records(info, sourcename):
         obj = Observation.from_dict(subinfo)
         db.session.merge(obj)
 
+    from .mc_integration import is_file_record_invalid, note_file_created
+
     for subinfo in info.get('files', {}).itervalues():
         obj = File.from_dict(sourcename, subinfo)
-        db.session.merge(obj)
+
+        # Things get slightly more complicated here because if we're linked in
+        # to HERA M&C, we need to check if files are valid, and report when
+        # new File records are created. I don't think `merge()` gives us any
+        # reasonable path to do that, so we need a hand-rolled UPSERT to
+        # figure out what happened. Fortunately the primary key of the File
+        # table is simple, and file records are immutable, so we don't need to
+        # get too tricky. Cf.
+        # https://stackoverflow.com/questions/2546207/does-sqlalchemy-have-an-equivalent-of-djangos-get-or-create
+        #
+        # Note, however, that only the Karoo Librarian has M&C integration,
+        # and that's the one Librarian that it is unlikely that anyone is ever
+        # going to upload a file *to*, which is how this code path gets
+        # activated. But let's be thorough.
+
+        if is_file_record_invalid(obj):
+            raise ServerError('new file %s (obsid %d) rejected by M&C; see M&C error logs for the reason',
+                              obj.name, obj.obsid)
+
+        try:
+            db.session.query(File).filter_by(name=obj.name).one()
+        except NoResultFound:
+            try:
+                db.session.add(obj)
+                db.session.flush()
+            except IntegrityError:
+                db.session.rollback()
+            else:
+                note_file_created(obj)
 
     db.session.commit()
 

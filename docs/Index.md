@@ -9,6 +9,7 @@ These files document the Librarian, the data-management system used by the
 ### Contents
 
 - [User’s overview](Overview.md)
+- [Searching for Files, Observations, and Sessions](Searching.md)
 - [Server administrator’s notes](Administration.md)
 
 

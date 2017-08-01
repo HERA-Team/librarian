@@ -17,6 +17,7 @@ __all__ = str('''
 BackgroundTask
 submit_background_task
 register_background_task_reporter
+get_unfinished_task_count
 ''').split()
 
 import time
@@ -238,6 +239,20 @@ def register_background_task_reporter():
     cb = ioloop.PeriodicCallback(log_background_task_status, 60 * 3 * 1000)
     cb.start()
     return cb
+
+
+def get_unfinished_task_count():
+    """Get the number of active or pending background tasks. This function
+    is used by the M&C subsystem.
+
+    """
+    n = 0
+
+    for t in the_task_manager.tasks:
+        if t.finish_time is None:
+            n += 1
+
+    return n
 
 
 # Web user interface
