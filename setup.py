@@ -1,6 +1,6 @@
 from distutils.core import setup
 
-__version__ = '0.1.0.99'
+__version__ = '0.1.1'
 
 setup_args = {
     'name': 'hera_librarian',
