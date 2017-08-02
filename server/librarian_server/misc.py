@@ -115,7 +115,7 @@ def _jinja2_filter_duration(seconds, fmt=None):
 
 
 @app.context_processor
-def inject_current_time_info():
+def inject_globals():
     import datetime
     import dateutil.tz
     import pytz
@@ -131,7 +131,12 @@ def inject_current_time_info():
     if local.tzname() not in ('UTC', sa.tzname()):
         cti += ' • ' + local.strftime('%H:%M (%Z)')
 
-    return {'current_time_info': cti}
+    vi = 'Librarian %s (%s)' % (app.config['_version_string'], app.config['_git_hash'])
+
+    return {
+        'current_time_info': cti,
+        'version_info': vi,
+    }
 
 
 # JSON API

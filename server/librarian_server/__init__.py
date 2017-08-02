@@ -136,6 +136,8 @@ def get_version_info():
 def commandline(argv):
     version_string, git_hash = get_version_info()
     logger.info('starting up Librarian %s (%s)', version_string, git_hash)
+    app.config['_version_string'] = version_string
+    app.config['_git_hash'] = git_hash
 
     server = app.config.get('server', 'flask')
     host = app.config.get('host', None)
