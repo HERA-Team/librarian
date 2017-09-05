@@ -127,22 +127,29 @@ class File (db.Model):
         obsid = required_arg(info, int, 'obsid')
         obs = Observation.query.get(obsid)
 
+        from . import mc_integration import as MC
+
         if obs is None:
             start_jd = required_arg(info, float, 'start_jd')
             lst = required_arg(info, float, 'lst')
-            db.session.add(Observation(obsid, start_jd, None, lst))
 
-        from .mc_integration import is_file_record_invalid, note_file_created
+            stop_time = optional_arg(info, float, 'stop_gps_time')
+            if stop_time is not None:
+                from astropy.time import Time
+                stop_time = Time(stop_time, format='gps').jd
+
+            MC.create_observation_record(obsid, start_jd, stop_time, lst)
+
         fobj = File(name, type, obsid, source_name, size, md5)
 
-        if is_file_record_invalid(fobj):
+        if MC.is_file_record_invalid(fobj):
             raise ServerError('new file %s (obsid %d) rejected by M&C; see M&C error logs for the reason',
                               name, obsid)
 
         db.session.add(fobj)
         db.session.commit()
 
-        note_file_created(fobj)
+        MC.note_file_created(fobj)
 
         return fobj
 

@@ -15,6 +15,7 @@ from __future__ import absolute_import, division, print_function
 
 __all__ = '''
 is_file_record_invalid
+create_observation_record
 note_file_created
 note_file_upload_succeeded
 register_callbacks
@@ -169,6 +170,11 @@ class MCManager(object):
         self._last_report_time = time.time()
 
     def is_file_record_invalid(self, file_obj):
+        """This function is kind-sorta superseded by create_observation_record(), but
+        can still have a role to play if file records are uploaded to an
+        M&C-enabled librarian -- see the `misc` module.
+
+        """
         for mc_obs in self.mc_session.get_obs(obsid=file_obj.obsid):
             return False  # if this executes, we got one and the file's OK
 
@@ -177,6 +183,23 @@ class MCManager(object):
                    'rejecting file %s (obsid %d): its obsid is not in M&C\'s hera_obs table',
                    file_obj.name, file_obj.obsid)
         return True
+
+    def create_observation_record(self, obsid):
+        mc_obses = list(self.mc_session.get_obs(obsid=obsid))
+
+        if len(mc_obses) != 1:
+            self.error(SEVERE,
+                       'expected one M&C record for obsid %d; got %d of them'
+                       obsid, len(mc_obses))
+            return None
+
+        mc_obs = mc_obses[0]
+        from .observation import Observation
+        from astropy.time import Time
+        start_jd = mc_obs.jd_start
+        stop_jd = Time(mc_obs.stoptime, format='gps').jd
+        start_lst = mc_obs.lst_start
+        return Observation(obsid, start_jd, stop_jd, start_lst)
 
     def note_file_created(self, file_obj):
         try:
@@ -222,6 +245,26 @@ def is_file_record_invalid(file_obj):
         return False
 
     return the_mc_manager.is_file_record_invalid(file_obj)
+
+
+def create_observation_record(obsid, start_jd, stop_jd, start_lst):
+    """If we're M&C-enabled, we copy observation records out of the M&C database.
+    Otherwise, we fill in the record using the argument to this function,
+    which have been inferred from the file that is being added to the
+    Librarian (which has to be UV file for this to work at all).
+
+    """
+    rec = None
+
+    if the_mc_manager is not None:
+        rec = the_mc_manager.create_observation_record(obsid)
+
+    if rec is None:
+        from .observation import Observation
+        rec = Observation(obsid, start_jd, stop_jd, start_lst)
+
+    db.session.add(rec)
+    return rec
 
 
 def note_file_created(file_obj):
