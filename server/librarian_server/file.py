@@ -127,7 +127,7 @@ class File (db.Model):
         obsid = required_arg(info, int, 'obsid')
         obs = Observation.query.get(obsid)
 
-        from . import mc_integration import as MC
+        from . import mc_integration as MC
 
         if obs is None:
             start_jd = required_arg(info, float, 'start_jd')
