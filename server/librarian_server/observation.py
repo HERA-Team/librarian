@@ -209,20 +209,6 @@ class Observation (db.Model):
 
 # RPC endpoints
 
-@app.route('/api/create_or_update_observation', methods=['GET', 'POST'])
-@json_api
-def create_or_update_observation(args, sourcename=None):
-    obsid = required_arg(args, int, 'obsid')
-    start_time_jd = required_arg(args, float, 'start_time_jd')
-    stop_time_jd = optional_arg(args, float, 'stop_time_jd')
-    start_lst_hr = optional_arg(args, float, 'start_lst_hr')
-
-    obs = Observation(obsid, start_time_jd, stop_time_jd, start_lst_hr)
-    db.session.merge(obs)
-    db.session.commit()
-    return {}
-
-
 @app.route('/api/assign_observing_sessions', methods=['GET', 'POST'])
 @json_api
 def assign_observing_sessions(args, sourcename=None):
