@@ -189,7 +189,7 @@ class MCManager(object):
 
         if len(mc_obses) != 1:
             self.error(SEVERE,
-                       'expected one M&C record for obsid %d; got %d of them'
+                       'expected one M&C record for obsid %d; got %d of them',
                        obsid, len(mc_obses))
             return None
 
