@@ -18,6 +18,8 @@ get_pol_from_path
 get_obsid_from_path
 get_md5_from_path
 get_size_from_path
+get_stop_gps_time_from_path
+get_obs_duration_from_path
 normalize_and_validate_md5
 print_info_for_path
 format_jd_as_calendar_date
@@ -39,6 +41,14 @@ def get_start_jd_from_path(path):
     This is super fragile!!!! There should be a better way.
 
     """
+    if os.path.isdir(path):
+        try:
+            import aipy
+            uv = aipy.miriad.UV(path)
+            return uv['time']
+        except RuntimeError:
+            pass
+
     return float(re.findall(r'\d+\.\d+', path)[0])
 
 
@@ -105,6 +115,46 @@ def get_obsid_from_path(path):
     from astropy.time import Time
     jd = get_start_jd_from_path(path)
     return int(np.floor(Time(jd, scale='utc', format='jd').gps))
+
+
+def get_stop_gps_time_from_path(path):
+    """Get the GPS time at which the file's observation stopped.
+
+    This only works for MIRIAD UV datasets create on or after September 2017,
+    when we added the `stopt` keyword to the HERA correlator output.
+
+    """
+    if os.path.isdir(path):
+        try:
+            import aipy
+            uv = aipy.miriad.UV(path)
+            return uv['stopt']
+        except RuntimeError:
+            pass
+        except KeyError:
+            pass
+
+    return None
+
+
+def get_obs_duration_from_path(path):
+    """Get the duration of the file's observation, measured in seconds.
+
+    This only works for MIRIAD UV datasets create on or after September 2017,
+    when we added the `stopt` keyword to the HERA correlator output.
+
+    """
+    if os.path.isdir(path):
+        try:
+            import aipy
+            uv = aipy.miriad.UV(path)
+            return uv['duration']
+        except RuntimeError:
+            pass
+        except KeyError:
+            pass
+
+    return None
 
 
 _lc_md5_pattern = re.compile('^[0-9a-f]{32}$')
@@ -235,6 +285,14 @@ def gather_info_for_path(path):
         info['obsid'] = get_obsid_from_path(path)
     except IndexError:
         pass  # this happens if the path does not have a JD-looking element in it
+
+    stop_gps = get_stop_gps_time_from_path(path)
+    if stop_gps is not None:
+        info['stop_gps_time'] = stop_gps
+
+    dur_seconds = get_obs_duration_from_path(path)
+    if dur_seconds is not None:
+        info['duration_seconds'] = dur_seconds
 
     return info
 
