@@ -369,6 +369,30 @@ Librarian. It is not necessarily the time that an observation was made, if the
 file is a UV data set, or the creation time of the file according to the Unix
 filesystem.
 
+### obs-matches
+
+Matches files associated with an *observation* that matches the specified
+sub-query. That is, the payload should be a query that matches observations,
+not files. For instance,
+
+```
+{
+  "name-like": "%.xx.uv",
+  "obs-matches": {
+    "obsid-in-range": [1164855000, 1164856000],
+    "num-files-is-not": 2592
+  }
+}
+```
+
+matches files with names ending in `.xx.uv` in observations whose obsids are
+in the specified range that do not contain 2592 files.
+
+Note that you can query files for observation-based quantities like
+`start-lst-hr` directly, so this clause is only needed if you have more
+sophisticated constraints that you want to apply.
+
+
 
 ## Searching for observations
 

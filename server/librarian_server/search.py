@@ -274,6 +274,7 @@ class FileSearchCompiler(GenericSearchCompiler):
         from .file import File
         super(FileSearchCompiler, self).__init__()
         self._add_attributes(File, simple_file_attrs)
+        self.clauses['obs-matches'] = self._do_obs_matches
 
         self.clauses['name-like'] = self.clauses['name-matches']  # compat alias
         self.clauses['source-is'] = self.clauses['source-is-exactly']  # compat alias
@@ -309,6 +310,14 @@ class FileSearchCompiler(GenericSearchCompiler):
         from .file import File
         cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=payload)
         return (File.create_time < cutoff)
+
+    def _do_obs_matches(self, clause_name, payload):
+        from .observation import Observation
+        from .file import File
+
+        matched_obsids = (db.session.query(Observation.obsid)
+                          .filter(the_obs_search_compiler.compile(payload)))
+        return File.obsid.in_(matched_obsids)
 
     def _do_obs_sub_query(self, clause_name, payload):
         from .observation import Observation
