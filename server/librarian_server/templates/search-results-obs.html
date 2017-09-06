@@ -5,13 +5,21 @@
 
 <p>The search string was:</p>
 
-<textarea readonly>{{search_text}}</textarea>
+<div class="row">
+  <div class="col-md-6">
+    <textarea class="form-control" rows="4" readonly>{{search_text}}</textarea>
+  </div>
+</div>
 
 {% if error_message %}
 
 <p>It produced the error:</p>
 
-<textarea readonly>{{error_message}}</textarea>
+<div class="row">
+  <div class="col-md-6">
+    <textarea class="form-control" rows="10" readonly>{{error_message}}</textarea>
+  </div>
+</div>
 
 <p>You might want to check your syntax
   using <a href="https://jsonlint.com/">jsonlint.com</a>. If your syntax is
