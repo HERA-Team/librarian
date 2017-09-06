@@ -64,7 +64,7 @@ be presented in different ways, too, depending on what you’re looking for.
 ## Generic search clauses
 
 Here we describe some clauses that are generic and don’t have anything to do
-with any particular kind of data file.
+with any particular kind of thing that you’re searching for.
 
 #### and
 
@@ -169,8 +169,8 @@ will never match any files.
 ## Searching on attributes
 
 As mentioned above, most clauses give a constraint on some kind of named
-*attribute* that files have: “file size is larger than XX gigabytes”, or
-“start LST is between YY and ZZ”.
+*attribute* of the kind of thing you’re searching for: “file’s size is larger
+than XX gigabytes”, or “observation’s start LST is between YY and ZZ”.
 
 Each attribute has a *type*, corresponding to that of its underlying Python
 variable. The currently recognized types are *strings*, *integers*, and
