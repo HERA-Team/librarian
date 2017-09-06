@@ -21,6 +21,7 @@ import datetime
 import json
 import logging
 import os.path
+import six
 import time
 
 from flask import Response, flash, redirect, render_template, request, url_for
@@ -31,87 +32,285 @@ from .webutil import ServerError, json_api, login_required, optional_arg, requir
 
 
 # The search parser. We save searches in a (hopefully) simple JSON format. The
-# format is documented in the template file
-# `server/librarian_server/templates/search-instructions-fragment.html`. IF YOU
-# ADD FEATURES HERE, UPDATE THE DOCUMENTATION!!!
+# format is documented in `docs/Searching.md`. KEEP THE DOCS UPDATED!
 
-class SearchCompiler (object):
+class _AttributeTypes(object):
+    string = 's'
+    int = 'i'
+    float = 'f'
+
+
+AttributeTypes = _AttributeTypes()
+
+
+class GenericSearchCompiler(object):
+    """A simple singleton class that helps with compiling searches. The only state
+    that we manage is the list of search clauses, which can be extended
+    dynamically to support different types of attributes that searchable
+    things possess.
+
+    """
+
     def __init__(self):
-        self.n_subquery = 0
+        self.clauses = {
+            'and': self._do_and,
+            'or': self._do_or,
+            'none-of': self._do_none_of,
+            'always-true': self._do_always_true,
+            'always-false': self._do_always_false,
+        }
 
-    def _compile_clause(self, name, value):
-        from .file import File, FileInstance
-        from .observation import Observation
-        from sqlalchemy import func
+    def compile(self, search):
+        """Compile a search that is specified as a JSON-like data structure.
 
-        if name == 'and':
-            if not isinstance(value, dict):
-                raise ServerError('can\'t parse "and" clause: contents must be a dict, '
-                                  'but got %s', value.__class__.__name__)
-            from sqlalchemy import and_
-            return and_(*[self._compile_clause(*t) for t in value.iteritems()])
-        elif name == 'or':
-            if not isinstance(value, dict):
-                raise ServerError('can\'t parse "or" clause: contents must be a dict, '
-                                  'but got %s', value.__class__.__name__)
-            from sqlalchemy import or_
-            return or_(*[self._compile_clause(*t) for t in value.iteritems()])
-        elif name == 'none-of':
-            if not isinstance(value, dict):
-                raise ServerError('can\'t parse "none-of" clause: contents must be a dict, '
-                                  'but got %s', value.__class__.__name__)
-            from sqlalchemy import not_, or_
-            return not_(or_(*[self._compile_clause(*t) for t in value.iteritems()]))
-        elif name == 'name-like':
-            if not isinstance(value, unicode):
-                raise ServerError('can\'t parse "name-like" clause: contents must be text, '
-                                  'but got %s', value.__class__.__name__)
-            return File.name.like(value)
-        elif name == 'not-older-than':
-            if not isinstance(value, (int, float)):
-                raise ServerError('can\'t parse "not-older-than" clause: contents must be '
-                                  'numeric, but got %s', value.__class__.__name__)
-            cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=value)
-            return (File.create_time > cutoff)
-        elif name == 'not-newer-than':
-            if not isinstance(value, (int, float)):
-                raise ServerError('can\'t parse "not-newer-than" clause: contents must be '
-                                  'numeric, but got %s', value.__class__.__name__)
-            cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=value)
-            return (File.create_time < cutoff)
-        elif name == 'source-is':
-            if not isinstance(value, unicode):
-                raise ServerError('can\'t parse "source-is" clause: contents must be '
-                                  'text, but got %s', value.__class__.__name__)
-            return (File.source == value)
-        elif name == 'at-least-instances':
-            if not isinstance(value, int):
-                raise ServerError('can\'t parse "at-least-instances" clause: contents must be '
-                                  'integer, but got %s', value.__class__.__name__)
-            q = db.session.query(func.count()).filter(FileInstance.name == File.name).as_scalar()
-            return (q >= value)
-        elif name == 'session-id':
-            if not isinstance(value, int):
-                raise ServerError('can\'t parse "session-id" clause: contents must be '
-                                  'integer, but got %s', value.__class__.__name__)
-            matching_obs = db.session.query(Observation.obsid).filter(
-                Observation.session_id == value)
-            return File.obsid.in_(matching_obs)
-        else:
-            raise ServerError('can\'t parse search clause: unrecognized name "%s"', name)
+        The `search` must be a dict, which is interpreted as a set of clauses
+        that are ANDed logically.
 
-    def compile_json(self, search):
-        # The outermost item must be a dict (of clauses that are ANDed) or a magic
-        # string.
-
-        if search == 'empty-search':
-            return (File.size != File.size)
-
+        """
         if isinstance(search, dict):
             return self._compile_clause('and', search)
 
-        raise ServerError('can\'t parse search: outermost JSON level must '
-                          'be a dict; got %s', search.__class__.__name__)
+        raise ServerError('can\'t parse search: data must '
+                          'be in dict format; got %s', search.__class__.__name__)
+
+    def _compile_clause(self, name, payload):
+        impl = self.clauses.get(name)
+        if impl is None:
+            raise ServerError('can\'t parse search: unrecognized clause %r' % name)
+        return impl(name, payload)
+
+    # Framework for doing searches on general attributes of database items.
+
+    def _add_attributes(self, cls, attr_info):
+        from functools import partial
+
+        for attr_name, attr_type, attr_getter in attr_info:
+            clause_name = attr_name.replace('_', '-')
+
+            if attr_getter is None:
+                attr_getter = partial(getattr, cls, attr_name)
+
+            if attr_type == AttributeTypes.string:
+                self.clauses[clause_name +
+                             '-is-exactly'] = partial(self._do_str_is_exactly, attr_getter)
+                self.clauses[clause_name + '-is-not'] = partial(self._do_str_is_not, attr_getter)
+                self.clauses[clause_name + '-matches'] = partial(self._do_str_matches, attr_getter)
+            elif attr_type == AttributeTypes.int:
+                self.clauses[clause_name +
+                             '-is-exactly'] = partial(self._do_int_is_exactly, attr_getter)
+                self.clauses[clause_name + '-is-not'] = partial(self._do_int_is_not, attr_getter)
+                self.clauses[clause_name +
+                             '-greater-than'] = partial(self._do_num_greater_than, attr_getter)
+                self.clauses[clause_name +
+                             '-less-than'] = partial(self._do_num_less_than, attr_getter)
+                self.clauses[clause_name +
+                             '-in-range'] = partial(self._do_num_in_range, attr_getter)
+                self.clauses[clause_name +
+                             '-not-in-range'] = partial(self._do_num_not_in_range, attr_getter)
+            elif attr_type == AttributeTypes.float:
+                self.clauses[clause_name +
+                             '-greater-than'] = partial(self._do_num_greater_than, attr_getter)
+                self.clauses[clause_name +
+                             '-less-than'] = partial(self._do_num_less_than, attr_getter)
+                self.clauses[clause_name +
+                             '-in-range'] = partial(self._do_num_in_range, attr_getter)
+                self.clauses[clause_name +
+                             '-not-in-range'] = partial(self._do_num_not_in_range, attr_getter)
+
+    def _do_str_matches(self, attr_getter, clause_name, payload):
+        if not isinstance(payload, unicode):
+            raise ServerError('can\'t parse "%s" clause: contents must be text, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        return attr_getter().like(payload)
+
+    def _do_str_is_exactly(self, attr_getter, clause_name, payload):
+        if not isinstance(payload, unicode):
+            raise ServerError('can\'t parse "%s" clause: contents must be text, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        return (attr_getter() == payload)
+
+    def _do_str_is_not(self, attr_getter, clause_name, payload):
+        if not isinstance(payload, unicode):
+            raise ServerError('can\'t parse "%s" clause: contents must be text, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        return (attr_getter() != payload)
+
+    def _do_int_is_exactly(self, attr_getter, clause_name, payload):
+        if not isinstance(payload, int):
+            raise ServerError('can\'t parse "%s" clause: contents must be an integer, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        return (attr_getter() == payload)
+
+    def _do_int_is_not(self, attr_getter, clause_name, payload):
+        if not isinstance(payload, int):
+            raise ServerError('can\'t parse "%s" clause: contents must be an integer, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        return (attr_getter() != payload)
+
+    def _do_num_greater_than(self, attr_getter, clause_name, payload):
+        if not isinstance(payload, (int, float)):
+            raise ServerError('can\'t parse "%s" clause: contents must be numeric, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        return (attr_getter() > payload)
+
+    def _do_num_less_than(self, attr_getter, clause_name, payload):
+        if not isinstance(payload, (int, float)):
+            raise ServerError('can\'t parse "%s" clause: contents must be numeric, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        return (attr_getter() < payload)
+
+    def _do_num_in_range(self, attr_getter, clause_name, payload):
+        if (not isinstance(payload, list) or
+            len(payload) != 2 or
+            not isinstance(payload[0], (int, float)) or
+                not isinstance(payload[1], (int, float))):
+            raise ServerError('can\'t parse "%s" clause: contents must be a list of two numbers, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+
+        v1, v2 = payload
+        if v1 > v2:
+            v1, v2 = v2, v1
+
+        from sqlalchemy import and_
+        value = attr_getter()
+        return and_(value >= v1, value <= v2)
+
+    def _do_num_not_in_range(self, attr_getter, clause_name, payload):
+        if (not isinstance(payload, list) or
+            len(payload) != 2 or
+            not isinstance(payload[0], (int, float)) or
+                not isinstance(payload[1], (int, float))):
+            raise ServerError('can\'t parse "%s" clause: contents must be a list of two numbers, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+
+        v1, v2 = payload
+        if v1 > v2:
+            v1, v2 = v2, v1
+
+        from sqlalchemy import or_
+        value = attr_getter()
+        return or_(value < v1, value > v2)
+
+    # Custom, generic clauses.
+
+    def _do_and(self, clause_name, payload):
+        if not isinstance(payload, dict) or not len(payload):
+            raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        from sqlalchemy import and_
+        return and_(*[self._compile_clause(*t) for t in payload.iteritems()])
+
+    def _do_or(self, clause_name, payload):
+        if not isinstance(payload, dict) or not len(payload):
+            raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        from sqlalchemy import or_
+        return or_(*[self._compile_clause(*t) for t in payload.iteritems()])
+
+    def _do_none_of(self, clause_name, payload):
+        if not isinstance(payload, dict) or not len(payload):
+            raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+        from sqlalchemy import not_, or_
+        return not_(or_(*[self._compile_clause(*t) for t in payload.iteritems()]))
+
+    def _do_always_true(self, clause_name, payload):
+        """We just ignore the payload."""
+        from sqlalchemy import literal
+        return literal(True)
+
+    def _do_always_false(self, clause_name, payload):
+        """We just ignore the payload."""
+        from sqlalchemy import literal
+        return literal(False)
+
+
+simple_obs_attrs = [
+    ('obsid', AttributeTypes.int, None),
+    ('start_time_jd', AttributeTypes.float, None),
+    ('stop_time_jd', AttributeTypes.float, None),
+    ('start_lst_hr', AttributeTypes.float, None),
+    ('session_id', AttributeTypes.int, None),
+]
+
+
+class ObservationSearchCompiler(GenericSearchCompiler):
+    def __init__(self):
+        from .observation import Observation
+        super(ObservationSearchCompiler, self).__init__()
+        self._add_attributes(Observation, simple_obs_attrs)
+
+
+the_obs_search_compiler = ObservationSearchCompiler()
+
+
+def _file_get_num_instances():
+    from sqlalchemy import func
+    from .file import File, FileInstance
+    return db.session.query(func.count()).filter(FileInstance.name == File.name).as_scalar().alias('num_instances')
+
+
+simple_file_attrs = [
+    ('name', AttributeTypes.string, None),
+    ('type', AttributeTypes.string, None),
+    ('source', AttributeTypes.string, None),
+    ('size', AttributeTypes.int, None),
+    ('obsid', AttributeTypes.int, None),
+    ('num-instances', AttributeTypes.int, _file_get_num_instances),
+]
+
+
+class FileSearchCompiler(GenericSearchCompiler):
+    def __init__(self):
+        from .file import File
+        super(FileSearchCompiler, self).__init__()
+        self._add_attributes(File, simple_file_attrs)
+
+        self.clauses['name-like'] = self.clauses['name-matches']  # compat alias
+        self.clauses['source-is'] = self.clauses['source-is-exactly']  # compat alias
+
+        # These are technically properties of Observations, not Files, but
+        # users aren't going to want to jump through extra hoops to query for
+        # them, so we proxy the query clauses.
+
+        from functools import partial
+        for pfx in ('start-time-jd', 'stop-time-jd', 'start-lst-hr', 'session-id'):
+            for cname in six.iterkeys(the_obs_search_compiler.clauses):
+                if cname.startswith(pfx):
+                    self.clauses[cname] = self._do_obs_sub_query
+
+        # I named these in a very ... weird way.
+        self.clauses['not-older-than'] = self._do_not_older_than
+        self.clauses['not-newer-than'] = self._do_not_newer_than
+
+    def _do_not_older_than(self, clause_name, payload):
+        if not isinstance(payload, (int, float)):
+            raise ServerError('can\'t parse "%s" clause: contents must be '
+                              'numeric, but got %s', clause_name, payload.__class__.__name__)
+
+        from .file import File
+        cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=payload)
+        return (File.create_time > cutoff)
+
+    def _do_not_newer_than(self, clause_name, payload):
+        if not isinstance(payload, (int, float)):
+            raise ServerError('can\'t parse "%s" clause: contents must be '
+                              'numeric, but got %s', clause_name, payload.__class__.__name__)
+
+        from .file import File
+        cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=payload)
+        return (File.create_time < cutoff)
+
+    def _do_obs_sub_query(self, clause_name, payload):
+        from .observation import Observation
+        from .file import File
+
+        matched_obsids = (db.session.query(Observation.obsid)
+                          .filter(the_obs_search_compiler._compile_clause(clause_name, payload)))
+        return File.obsid.in_(matched_obsids)
+
+
+the_file_search_compiler = FileSearchCompiler()
 
 
 def compile_search(search_string, query_type='files'):
@@ -137,14 +336,12 @@ def compile_search(search_string, query_type='files'):
     except Exception as e:
         raise ServerError('can\'t parse search as JSON: %s', e)
 
-    # Offload to state-maintaining helper class.
-
-    filter = SearchCompiler().compile_json(search)
+    # Offload to the helper classes.
 
     if query_type == 'files':
-        return File.query.filter(filter)
+        return File.query.filter(the_file_search_compiler.compile(search))
     elif query_type == 'names':
-        return db.session.query(File.name).filter(filter)
+        return db.session.query(File.name).filter(the_file_search_compiler.compile(search))
     else:
         raise ServerError('unhandled query_type %r', query_type)
 
@@ -154,7 +351,7 @@ def compile_search(search_string, query_type='files'):
 stord_logger = logging.getLogger('librarian.standingorders')
 
 
-class StandingOrder (db.Model):
+class StandingOrder(db.Model):
     """A StandingOrder describes a rule for copying data from this Librarian to
     another. We save a search and a destination. When new files match that
     search, we automatically start copying them to the destination. We create
@@ -263,7 +460,7 @@ def _launch_copy_timeout():
         IOLoop.instance().call_later(DEFAULT_STANDING_ORDER_DELAY, _launch_copy_timeout)
 
 
-class StandingOrderManager (object):
+class StandingOrderManager(object):
     """A simple, singleton class for managing our standing orders.
 
     Other folks should primarily access the manager via the
@@ -394,7 +591,7 @@ def specific_standing_order(name):
 
 
 default_search = """{
-  "name-like": "any-file-named-like-%-this",
+  "name-matches": "any-file-named-like-%-this",
   "not-older-than": 14 # days
 }"""
 
@@ -470,7 +667,7 @@ def delete_standing_order(name):
 
 # Web interface to searches outside of the standing order system
 
-sample_search = '{ "name-like": "%12345%.uv" }'
+sample_search = '{ "name-matches": "%12345%.uv" }'
 
 
 @app.route('/search-files', methods=['GET', 'POST'])
@@ -540,6 +737,8 @@ def execute_search():
         else:
             raise ServerError('internal logic failure mishandled output format')
     except Exception as e:
+        import sys
+        app.log_exception(sys.exc_info())
         status = 400
 
         if for_humans:

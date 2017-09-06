@@ -35,21 +35,21 @@
         <textarea class="form-control" rows="10" name="search" id="search" placeholder="{{sample_search}}"></textarea>
       </div>
       <div class="col-md-6">
+        <!-- TODO: have this link point to the specific version of the running Librarian -->
         <p>Custom searches are written
-          in <a href="http://guide.couchdb.org/draft/json.html">JSON
-            format</a>. Here are some examples:</p>
+          in <a href="http://guide.couchdb.org/draft/json.html">JSON</a>
+          format. <b><a href="https://github.com/HERA-Team/librarian/blob/master/docs/Searching.md">Here
+          are the docs</a></b> and here are some quick examples:</p>
 
-        <pre>{ "name-like": "zen.2457644.%.xx.HH.uvc" }</pre>
+        <pre>{ "name-matches": "zen.2457644.%.xx.HH.uvc" }</pre>
 
         <pre>{
-  "name-like": "%.xx.HH.uvc",
-  "session-id": 1165287640
+  "name-matches": "%.xx.HH.uvc",
+  "session-id-is-exactly": 1165287640
 }</pre>
 
-        <!-- TODO: have this link point to the specific version of the running Librarian -->
-        <p>For more information,
-          see <a href="https://github.com/HERA-Team/librarian/blob/master/docs/Searching.md">the
-            online documentation</a>.</p>
+        <p>If you’re having trouble with the synax, try pasting your search
+          into <a href="https://jsonlint.com/">jsonlint.com</a>.</p>
       </div>
     </div>
   </div>
