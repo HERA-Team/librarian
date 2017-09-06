@@ -198,7 +198,7 @@ class MCManager(object):
         from astropy.time import Time
         start_jd = mc_obs.jd_start
         stop_jd = Time(mc_obs.stoptime, format='gps').jd
-        start_lst = mc_obs.lst_start
+        start_lst = mc_obs.lst_start_hr
         return Observation(obsid, start_jd, stop_jd, start_lst)
 
     def note_file_created(self, file_obj):
