@@ -1,22 +1,24 @@
 # HERA Librarian: Searching
 
-The Librarian lets you search for files. This page documents the search
-syntax.
+The Librarian lets you search for files and observations. This page documents
+how to compose search queries.
 
 **Contents**
 
 - [Overview](#overview)
 - [Generic search clauses](#generic-search-clauses)
 - [Searching on attributes](#searching-on-attributes)
-- [Searching for individual files](#searching-for-individual-files)
+- [Searching for files](#searching-for-files)
+- [Searching for observations](#searching-for-observations)
 
 
 ## Overview
 
-The Librarian lets you perform highly *structured* searches for files. You
-design searches with very specific match terms, such as “this file has at
-least 3 known instances on this server,” and then the Librarian executes your
-query and tells you what files matched your requirements.
+The Librarian lets you perform highly *structured* searches for files or
+observations. You design searches with very specific match terms, such as
+“this file has at least 3 known instances on this server,” and then the
+Librarian executes your query and tells you what items matched your
+requirements.
 
 Librarian searches are typed as [JSON](http://www.json.org/) data structures.
 This format is fairly straightforward, but a bit rigid. An example search
@@ -53,9 +55,10 @@ that file, measured in bytes. There are clauses named `size-is-exactly`,
 `size-greater-than`, and `size-in-range` — among others — that match files
 whose `size` attributes have the specified characteristics.
 
-The Librarian’s user-facing search web pages let you specify how you want your
-search results to be presented. Hopefully these descriptions are
-self-explanatory.
+The Librarian provides different user interfaces depending on whether you’re
+searching for file or observations, and different kinds of clauses are
+available depending on what kind of thing your searching for. The results can
+be presented in different ways, too, depending on what you’re looking for.
 
 
 ## Generic search clauses
@@ -292,10 +295,11 @@ This matches files with sizes of 99 bytes or fewer, or 5000000001 bytes or
 more.
 
 
-## Searching for individual files
+## Searching for files
 
-To search for files, you can query the following attributes, using the generic
-clause types described in [the previous section](#searching-on-attributes).
+When searching for files, you can query the following attributes, using the
+generic clause types described in
+[the previous section](#searching-on-attributes).
 
 | Name | Type | Description |
 | :--- | :--- | :---------- |
@@ -364,3 +368,32 @@ Note that the “creation time” is a time that a file was registered with the
 Librarian. It is not necessarily the time that an observation was made, if the
 file is a UV data set, or the creation time of the file according to the Unix
 filesystem.
+
+
+## Searching for observations
+
+When searching for observations, you can query the following attributes, using
+[the generic clause types described in above](#searching-on-attributes).
+
+| Name | Type | Description |
+| :--- | :--- | :---------- |
+| obsid | int | The observation’s obsid |
+| start-time-jd | float | The JD at which this file’s observation started |
+| stop-time-jd | float | The JD at which this file’s observation ended |
+| start-lst-hr | float | The LST at which this file’s observation started, in hours |
+| session-id | int | The session-ID with which this file is associated |
+| duration | float | The duration of this observation, in days |
+| total-size | int | The total size of all files associated with this obs, in bytes |
+
+Not all of these attributes are known for every observation. For instance,
+observations from the 2016-17 season do not have a stop time or a duration.
+Observations lacking a particular attribute will never match a query that
+conditions on that attribute.
+
+To find all observations with a very particular start LST, you might write:
+
+```
+{
+  "start-lst-hr-in-range": [12.00, 12.01],
+}
+```

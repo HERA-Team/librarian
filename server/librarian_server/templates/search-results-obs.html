@@ -21,15 +21,15 @@
 
 {% else %}
 
-{% if files %}
+{% if obs %}
 
-<p>The matched files are:</p>
+<p>The matched observations are:</p>
 
-{{macros.file_listing(files)}}
+{{macros.obs_listing(obs)}}
 
 {% else %}
 
-<p>No files matched this search.</p>
+<p>No observations matched this search.</p>
 
 {% endif %}
 

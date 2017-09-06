@@ -13,9 +13,7 @@
   <div class="form-group">
     <label for="format">Output format</label>
     <select class="form-control" name="output_format" style="width: 20em">
-      <option>List of files</option>
-      <option>Raw text with file names</option>
-      <option>Raw text with full instance paths</option>
+      <option>List of observations</option>
     </select>
   </div>
 
@@ -41,11 +39,11 @@
           format. <b><a href="https://github.com/HERA-Team/librarian/blob/master/docs/Searching.md">Here
           are the docs</a></b> and here are some quick examples:</p>
 
-        <pre>{ "name-matches": "zen.2457644.%.xx.HH.uvc" }</pre>
+        <pre>{ "duration-less-than": 0.003 }</pre>
 
         <pre>{
-  "name-matches": "%.xx.HH.uvc",
-  "session-id-is-exactly": 1165287640
+  "obsid-in-range": [1164855000, 1164856000],
+  "num-files-is-not": 2592
 }</pre>
 
         <p>If you’re having trouble with the syntax, try pasting your search
@@ -54,7 +52,7 @@
     </div>
   </div>
 
-  <input name="type" type="hidden" value="files">
+  <input name="type" type="hidden" value="obs">
 
   <button type="submit" class="btn btn-primary" name="update"
 	  formaction="/search">Search</button>

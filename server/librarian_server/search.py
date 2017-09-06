@@ -225,12 +225,21 @@ class GenericSearchCompiler(object):
         return literal(False)
 
 
+def _obs_get_num_files():
+    from sqlalchemy import func
+    from .file import File
+    from .observation import Observation
+    return db.session.query(func.count(File.name)).filter(File.obsid == Observation.obsid).as_scalar().alias('num_files')
+
+
 simple_obs_attrs = [
     ('obsid', AttributeTypes.int, None),
     ('start_time_jd', AttributeTypes.float, None),
     ('stop_time_jd', AttributeTypes.float, None),
     ('start_lst_hr', AttributeTypes.float, None),
     ('session_id', AttributeTypes.int, None),
+    ('duration', AttributeTypes.float, None),
+    ('num_files', AttributeTypes.int, _obs_get_num_files),
 ]
 
 
@@ -319,6 +328,7 @@ def compile_search(search_string, query_type='files'):
 
     """
     from .file import File
+    from .observation import Observation
 
     # As a convenience, we strip out #-delimited comments from the input text.
     # The default JSON parser doesn't accept them, but they're nice for users.
@@ -342,6 +352,8 @@ def compile_search(search_string, query_type='files'):
         return File.query.filter(the_file_search_compiler.compile(search))
     elif query_type == 'names':
         return db.session.query(File.name).filter(the_file_search_compiler.compile(search))
+    elif query_type == 'obs':
+        return Observation.query.filter(the_obs_search_compiler.compile(search))
     else:
         raise ServerError('unhandled query_type %r', query_type)
 
@@ -667,7 +679,7 @@ def delete_standing_order(name):
 
 # Web interface to searches outside of the standing order system
 
-sample_search = '{ "name-matches": "%12345%.uv" }'
+sample_file_search = '{ "name-matches": "%12345%.uv" }'
 
 
 @app.route('/search-files', methods=['GET', 'POST'])
@@ -676,14 +688,28 @@ def search_files():
     return render_template(
         'search-files.html',
         title='Search Files',
-        sample_search=sample_search,
+        sample_search=sample_file_search,
     )
 
 
-# These formats are defined in templates/search-files.html:
+sample_obs_search = '{ "duration-less-than": 0.003 }'
+
+
+@app.route('/search-obs', methods=['GET', 'POST'])
+@login_required
+def search_obs():
+    return render_template(
+        'search-obs.html',
+        title='Search Observations',
+        sample_search=sample_obs_search,
+    )
+
+
+# These formats are defined in templates/search-*.html:
 file_name_format = 'Raw text with file names'
 full_path_format = 'Raw text with full instance paths'
-human_format = 'List of files'
+human_file_format = 'List of files'
+human_obs_format = 'List of observations'
 
 
 @app.route('/search', methods=['GET', 'POST'])
@@ -704,7 +730,9 @@ def execute_search():
         query_type = 'names'
     elif output_format == file_name_format:
         for_humans = False
-    elif output_format == human_format:
+    elif output_format == human_file_format:
+        for_humans = True
+    elif output_format == human_obs_format:
         for_humans = True
     else:
         return Response('Illegal search output type %r' % (output_format, ), status=400)
@@ -725,13 +753,22 @@ def execute_search():
             text = '\n'.join(i.full_path_on_store() for i in instances)
         elif output_format == file_name_format:
             text = '\n'.join(f.name for f in search)
-        elif output_format == human_format:
+        elif output_format == human_file_format:
             files = list(search)
             text = render_template(
                 'search-results-file.html',
                 title='Search Results: %d Files' % len(files),
                 search_text=search_text,
                 files=files,
+                error_message=None,
+            )
+        elif output_format == human_obs_format:
+            obs = list(search)
+            text = render_template(
+                'search-results-obs.html',
+                title='Search Results: %d Observations' % len(obs),
+                search_text=search_text,
+                obs=obs,
                 error_message=None,
             )
         else:
