@@ -243,6 +243,13 @@ def _obs_get_num_files():
     return db.session.query(func.count(File.name)).filter(File.obsid == Observation.obsid).as_scalar()
 
 
+def _obs_get_total_size():
+    from sqlalchemy import func
+    from .file import File
+    from .observation import Observation
+    return db.session.query(func.sum(File.size)).filter(File.obsid == Observation.obsid).as_scalar()
+
+
 simple_obs_attrs = [
     ('obsid', AttributeTypes.int, None),
     ('start_time_jd', AttributeTypes.float, None),
@@ -251,6 +258,7 @@ simple_obs_attrs = [
     ('session_id', AttributeTypes.int, None),
     ('duration', AttributeTypes.float, _obs_get_duration),
     ('num_files', AttributeTypes.int, _obs_get_num_files),
+    ('total_size', AttributeTypes.int, _obs_get_total_size),
 ]
 
 
