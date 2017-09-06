@@ -225,11 +225,22 @@ class GenericSearchCompiler(object):
         return literal(False)
 
 
+def _obs_get_duration():
+    """There is a "duration" property on the Observation class, but it computes
+    its result in Python code using math, which means that it doesn't work
+    within an SQL query. Empirically, we get a silent failure to match any
+    files if we try to search that way.
+
+    """
+    from .observation import Observation
+    return (Observation.stop_time_jd - Observation.start_time_jd)
+
+
 def _obs_get_num_files():
     from sqlalchemy import func
     from .file import File
     from .observation import Observation
-    return db.session.query(func.count(File.name)).filter(File.obsid == Observation.obsid).as_scalar().alias('num_files')
+    return db.session.query(func.count(File.name)).filter(File.obsid == Observation.obsid).as_scalar()
 
 
 simple_obs_attrs = [
@@ -238,7 +249,7 @@ simple_obs_attrs = [
     ('stop_time_jd', AttributeTypes.float, None),
     ('start_lst_hr', AttributeTypes.float, None),
     ('session_id', AttributeTypes.int, None),
-    ('duration', AttributeTypes.float, None),
+    ('duration', AttributeTypes.float, _obs_get_duration),
     ('num_files', AttributeTypes.int, _obs_get_num_files),
 ]
 
@@ -256,7 +267,7 @@ the_obs_search_compiler = ObservationSearchCompiler()
 def _file_get_num_instances():
     from sqlalchemy import func
     from .file import File, FileInstance
-    return db.session.query(func.count()).filter(FileInstance.name == File.name).as_scalar().alias('num_instances')
+    return db.session.query(func.count()).filter(FileInstance.name == File.name).as_scalar()
 
 
 simple_file_attrs = [
