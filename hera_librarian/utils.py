@@ -12,14 +12,10 @@ Librarian "files" are MIRIAD data sets that are actually directories.
 
 __all__ = str('''
 gather_info_for_path
-get_start_jd_from_path
 get_type_from_path
-get_pol_from_path
 get_obsid_from_path
 get_md5_from_path
 get_size_from_path
-get_stop_gps_time_from_path
-get_obs_duration_from_path
 normalize_and_validate_md5
 print_info_for_path
 format_jd_as_calendar_date
@@ -35,123 +31,29 @@ import re
 import numpy as np
 
 
-def get_start_jd_from_path(path):
-    """Get the JD from a path, assuming it follows HERA naming conventions.
-
-    This is super fragile!!!! There should be a better way.
-
-    """
-    if os.path.isdir(path):
-        try:
-            import aipy
-            uv = aipy.miriad.UV(path)
-            return uv['time']
-        except RuntimeError:
-            pass
-
-    return float(re.findall(r'\d+\.\d+', path)[0])
-
-
 def get_type_from_path(path):
-    """Get the file type from a path, assuming it follows HERA naming conventions.
+    """Get the "file type" from a path.
 
-    This is super fragile!!!! There should be a better way.
+    This is just the last bit of text following the last ".", by definition.
 
     """
     return path.split('.')[-1]
 
 
-def get_pol_from_path(path):
-    """Get the data polarization from a path, assuming it follows HERA naming
-    conventions.
-
-    This is super fragile!!!! There should be a better way. Also we hardcode
-    the XY basis.
-
-    """
-    return re.findall(r'\.([xy][xy])\.', path)[0]
-
-
-def get_lst_from_file(filename):
-    """
-    Get the lst from the data set (assuming its a miriad file)
-    """
-    if os.path.isdir(filename):
-        try:
-            import aipy
-            uv = aipy.miriad.UV(filename)
-            try:
-                return uv['lst'] * 12 / np.pi
-            except KeyError:
-                return None
-        except RuntimeError:
-            return None
-    else:
-        return None
-
-
 def get_obsid_from_path(path):
-    """Get the obsid from a path.
+    """Get the obsid from a path, if it is a MIRIAD UV dataset.
 
-    We assume that it is a MIRIAD UV dataset.
-
-    """
-    if os.path.isdir(path):
-        try:
-            import aipy
-            uv = aipy.miriad.UV(path)
-            try:
-                return uv['obsid']
-            except KeyError:
-                pass
-        except RuntimeError:
-            pass  # this happens if this file is not actually a UV dataset
-
-    # If we're still here, the file is not a UV data set, or is an older one
-    # that doesn't have its obsid embedded. In that case, we reconstruct it
-    # from the JD in the path. TODO: I don't think we're embedding obsids yet,
-    # so this is the code path that's always taken! (PKGW, 2016/04/21).
-
-    from astropy.time import Time
-    jd = get_start_jd_from_path(path)
-    return int(np.floor(Time(jd, scale='utc', format='jd').gps))
-
-
-def get_stop_gps_time_from_path(path):
-    """Get the GPS time at which the file's observation stopped.
-
-    This only works for MIRIAD UV datasets create on or after September 2017,
-    when we added the `stopt` keyword to the HERA correlator output.
+    We used to try to guess the obsid from non-UV data sets if something like
+    a JD was in the name, but that's too fragile, and as of September 2017 our
+    data sets have obsids embedded in them.
 
     """
     if os.path.isdir(path):
         try:
             import aipy
             uv = aipy.miriad.UV(path)
-            return uv['stopt']
-        except RuntimeError:
-            pass
-        except KeyError:
-            pass
-
-    return None
-
-
-def get_obs_duration_from_path(path):
-    """Get the duration of the file's observation, measured in seconds.
-
-    This only works for MIRIAD UV datasets create on or after September 2017,
-    when we added the `stopt` keyword to the HERA correlator output.
-
-    """
-    if os.path.isdir(path):
-        try:
-            import aipy
-            uv = aipy.miriad.UV(path)
-            return uv['duration']
-        except RuntimeError:
-            pass
-        except KeyError:
+            return uv['obsid']
+        except (RuntimeError, IndexError, KeyError):
             pass
 
     return None
@@ -274,25 +176,10 @@ def gather_info_for_path(path):
     info['type'] = get_type_from_path(path)
     info['md5'] = get_md5_from_path(path)
     info['size'] = get_size_from_path(path)
-    info['lst'] = get_lst_from_file(path)
 
-    try:
-        info['start_jd'] = get_start_jd_from_path(path)
-    except IndexError:
-        pass  # this happens if the path does not have a JD-looking element in it
-
-    try:
-        info['obsid'] = get_obsid_from_path(path)
-    except IndexError:
-        pass  # this happens if the path does not have a JD-looking element in it
-
-    stop_gps = get_stop_gps_time_from_path(path)
-    if stop_gps is not None:
-        info['stop_gps_time'] = stop_gps
-
-    dur_seconds = get_obs_duration_from_path(path)
-    if dur_seconds is not None:
-        info['duration_seconds'] = dur_seconds
+    obsid = get_obsid_from_path(path)
+    if obsid is not None:
+        info['obsid'] = obsid
 
     return info
 

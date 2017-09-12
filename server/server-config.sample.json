@@ -60,6 +60,14 @@
     # with. If "readonly", the default, remove write permissions.
     #"permissions_mode": "unchanged",
 
+    # Optional support for inferring the obsid associated with a file. This
+    # should not be needed on Librarian servers that only accept uploads from
+    # other Librarians; it *is* needed on ones on which users create and
+    # ingest new files. The "hera" choice looks at the first three pieces of
+    # the filename as separated by periods, e.g. the "zen.2458002.1234" part.
+    # The "none" choice, the default, refuses to guess in this way.
+    #"obsid_inference_mode": "hera",
+
     # Here is a set of "sources" of data. Programs or people logging into the
     # Librarian provide an authenticator, which indirectly associates them
     # with one of the following usernames. As the name suggests, the

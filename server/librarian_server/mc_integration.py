@@ -28,6 +28,7 @@ import six
 from sqlalchemy.exc import InvalidRequestError
 
 from . import app, db, logger
+from .webutil import ServerError
 
 
 # M&C severity classes
@@ -247,21 +248,19 @@ def is_file_record_invalid(file_obj):
     return the_mc_manager.is_file_record_invalid(file_obj)
 
 
-def create_observation_record(obsid, start_jd, stop_jd, start_lst):
+def create_observation_record(obsid):
     """If we're M&C-enabled, we copy observation records out of the M&C database.
-    Otherwise, we fill in the record using the argument to this function,
-    which have been inferred from the file that is being added to the
-    Librarian (which has to be UV file for this to work at all).
+    Otherwise, signal an error. The only ways to create Observations are to
+    get them from M&C or for another Librarian to tell us about them, as done
+    in the `initiate_upload` API call.
 
     """
-    rec = None
+    if the_mc_manager is None:
+        raise ServerError('cannot create fresh observations without M&C')
 
-    if the_mc_manager is not None:
-        rec = the_mc_manager.create_observation_record(obsid)
-
+    rec = the_mc_manager.create_observation_record(obsid)
     if rec is None:
-        from .observation import Observation
-        rec = Observation(obsid, start_jd, stop_jd, start_lst)
+        raise ServerError('expected M&C to know about obsid %s but it didn\'t', obsid)
 
     db.session.add(rec)
     return rec
