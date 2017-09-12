@@ -49,7 +49,7 @@ def infer_file_obsid(parent_dirs, name, info):
 
         prefix = '.'.join(bits[:3])
         obsids = list(db.session.query(File.obsid)
-                      .filter_by(File.name.like(prefix + '.%'))
+                      .filter(File.name.like(prefix + '.%'))
                       .group_by(File.obsid))
 
         if len(obsids) != 1:
