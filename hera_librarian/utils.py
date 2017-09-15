@@ -14,6 +14,7 @@ __all__ = str('''
 gather_info_for_path
 get_type_from_path
 get_obsid_from_path
+get_pol_from_path
 get_md5_from_path
 get_size_from_path
 normalize_and_validate_md5
@@ -38,6 +39,20 @@ def get_type_from_path(path):
 
     """
     return path.split('.')[-1]
+
+
+def get_pol_from_path(path):
+    """Get the data polarization from a path, assuming it follows HERA naming
+    conventions.
+
+    This is super fragile!!!! There should be a better way. Also we hardcode
+    the XY basis.
+
+    This function was written because at the time, RTP needed to be handed this
+    information for it to ingest files from us. Is that still the case?
+
+    """
+    return re.findall(r'\.([xy][xy])\.', path)[0]
 
 
 def get_obsid_from_path(path):
