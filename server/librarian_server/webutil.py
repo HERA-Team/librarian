@@ -63,6 +63,9 @@ class ServerErrorBase (Exception):
         else:
             self.message = str(fmt)
 
+    def __str__(self):
+        return self.message
+
 
 class ServerError (ServerErrorBase):
     """Raise this when an error is encountered in an API call. An error message
