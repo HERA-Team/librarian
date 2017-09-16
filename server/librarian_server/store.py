@@ -424,12 +424,14 @@ class UploaderTask (bgtasks.BackgroundTask):
 
         if exc is None:
             logger.info('upload of %s:%s => %s:%s succeeded',
-                        self.store.name, self.store_path, self.conn_name, self.remote_store_path)
+                        self.store.name, self.store_path, self.conn_name,
+                        self.remote_store_path or self.store_path)
             error_code = 0
             error_message = 'success'
         else:
             logger.warn('upload of %s:%s => %s:%s FAILED: %s',
-                        self.store.name, self.store_path, self.conn_name, self.remote_store_path, exc)
+                        self.store.name, self.store_path, self.conn_name,
+                        self.remote_store_path or self.store_path, exc)
             error_code = 1
             error_message = str(exc)
 
