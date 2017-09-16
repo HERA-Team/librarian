@@ -536,8 +536,11 @@ class StandingOrderManager(object):
             stord_logger.debug('not checking standing orders: explicitly disabled')
             return True
         elif mode == 'nighttime':
+            # Hack: qmaster is now on UTC = SAST - 2, so our definition of
+            # "night" is a bit different than you might expect. Our intent is
+            # 8pm-8am (actual) local time.
             hour = time.localtime(now).tm_hour
-            if hour >= 8 and hour < 20:
+            if hour >= 6 and hour < 18:
                 stord_logger.debug('not checking standing orders: "nighttime" '
                                    'mode and hour = %d', hour)
                 return True
