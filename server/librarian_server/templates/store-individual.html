@@ -36,41 +36,21 @@
 	<td>Available?</td>
 	<td>{{macros.true_good_boolean(store.available)}}</td>
       </tr>
+      <tr>
+        <td>Number of instances</td>
+        <td>{{num_instances}}</td>
+      </tr>
     </tbody>
   </table>
 </div>
 
-{% if instances %}
-<h2>File Instances</h2>
+<h2>Control</h2>
 
-<p>{{store.name}} contains {{instances|length}} files.</p>
+<form role="form" action="/" method="post">
+  <input type="hidden" name="id" value="{{store.id}}">
 
-<div class="table-responsive">
-  <table class="table table-striped">
-    <thead>
-      <tr>
-	<th>Subdirectory</th>
-	<th>Name</th>
-	<th>Obsid</th>
-	<th>Type</th>
-	<th>Size</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for i in instances %}
-      <tr>
-	<td>{{i.parent_dirs}}</td>
-	<td><a href="/files/{{i.file.name}}">{{i.file.name}}</a></td>
-	<td><a href="/observations/{{i.file.obsid}}">{{i.file.obsid}}</a></td>
-	<td>{{i.file.type}}</td>
-	<td>{{i.file.size}}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>This store currently has no files.</p>
-  {% endif %}
-</div>
+  <button type="submit" class="btn btn-danger" name="toggle"
+          formaction="/stores/{{store.name}}/{{toggle_action}}">{{toggle_description}}</button>
+</form>
 
 {% endblock %}

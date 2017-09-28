@@ -27,7 +27,7 @@ OffloaderTask
 
 import os.path
 
-from flask import render_template
+from flask import flash, redirect, render_template, url_for
 
 from hera_librarian.store import Store as BaseStore
 
@@ -751,6 +751,36 @@ def initiate_offload(args, sourcename=None):
     return {'outcome': 'task-launched', 'instance-count': len(info)}
 
 
+@app.route('/stores/<string:name>/make-available', methods=['POST'])
+@login_required
+def make_store_available(name):
+    try:
+        store = Store.get_by_name(name)
+    except ServerError as e:
+        flash(str(e))
+        return redirect(url_for('stores'))
+
+    store.available = True
+    db.session.commit()
+    flash('Marked store "%s" as available' % store.name)
+    return redirect(url_for('stores') + '/' + store.name)
+
+
+@app.route('/stores/<string:name>/make-unavailable', methods=['POST'])
+@login_required
+def make_store_unavailable(name):
+    try:
+        store = Store.get_by_name(name)
+    except ServerError as e:
+        flash(str(e))
+        return redirect(url_for('stores'))
+
+    store.available = False
+    db.session.commit()
+    flash('Marked store "%s" as unavailable' % store.name)
+    return redirect(url_for('stores') + '/' + store.name)
+
+
 # Web user interface
 
 @app.route('/stores')
@@ -767,6 +797,8 @@ def stores():
 @app.route('/stores/<string:name>')
 @login_required
 def specific_store(name):
+    from sqlalchemy import func
+
     try:
         store = Store.get_by_name(name)
     except ServerError as e:
@@ -774,14 +806,22 @@ def specific_store(name):
         return redirect(url_for('stores'))
 
     from .file import FileInstance
-    instances = list(FileInstance.query
+    num_instances = (db.session.query(func.count())
                      .filter(FileInstance.store == store.id)
-                     .order_by(FileInstance.parent_dirs.asc(),
-                               FileInstance.name.asc()))
+                     .scalar())
+
+    if store.available:
+        toggle_action = 'make-unavailable'
+        toggle_description = 'Make unavailable'
+    else:
+        toggle_action = 'make-available'
+        toggle_description = 'Make available'
 
     return render_template(
         'store-individual.html',
         title='Store %s' % (store.name),
         store=store,
-        instances=instances,
+        num_instances=num_instances,
+        toggle_action=toggle_action,
+        toggle_description=toggle_description,
     )
