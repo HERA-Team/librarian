@@ -257,7 +257,12 @@ def login_required(f):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    next = request.form.get('next')
+    if len(request.form):
+        reqdata = request.form  # POST
+    else:
+        reqdata = request.args  # GET
+
+    next = reqdata.get('next')
     if next is None:
         next = url_for('index')
 

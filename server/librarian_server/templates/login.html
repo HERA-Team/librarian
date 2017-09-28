@@ -3,8 +3,9 @@
 {% block content %}
 <h1>Please Log In</h1>
 
-<form role="form" action="/login?next={{next}}" method="post">
+<form role="form" action="/login" method="post">
   <input type="hidden" name="action" value="login">
+  <input type="hidden" name="next" value="{{next}}">
   <div class="form-group">
     <label for="auth">Authenticator:</label>
     <input type="text" class="form-control" name="auth" id="auth" value="">
