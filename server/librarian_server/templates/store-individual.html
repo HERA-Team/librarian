@@ -22,15 +22,33 @@
       </tr>
       <tr>
 	<td>Capacity</td>
-	<td>{{store.capacity|filesizeformat}}</td>
+	<td>
+	  {% if store.available %}
+	    {{store.capacity|filesizeformat}}
+	  {% else %}
+	    ?
+	  {% endif %}
+	</td>
       </tr>
       <tr>
 	<td>Space Left</td>
-	<td>{{store.space_left|filesizeformat}}</td>
+	<td>
+	  {% if store.available %}
+	    {{store.space_left|filesizeformat}}
+	  {% else %}
+	    ?
+	  {% endif %}
+	</td>
       </tr>
       <tr>
 	<td>Usage</td>
-	<td>{{macros.progress_bar(store.usage_percentage)}}</td>
+	<td>
+	  {% if store.available %}
+	    {{macros.progress_bar(store.usage_percentage)}}
+	  {% else %}
+	    ?
+	  {% endif %}
+	</td>
       </tr>
       <tr>
 	<td>Available?</td>

@@ -164,8 +164,20 @@ parsed. #}
 	    —
 	  {% endif %}
 	</td>
-	<td>{{s.capacity|filesizeformat}}</td>
-	<td>{{progress_bar(s.usage_percentage)}}</td>
+	<td>
+	  {% if s.available %}
+	    {{s.capacity|filesizeformat}}
+	  {% else %}
+	    ?
+	  {% endif %}
+	</td>
+	<td>
+	  {% if s.available %}
+	    {{progress_bar(s.usage_percentage)}}
+	  {% else %}
+	    ?
+	  {% endif %}
+	</td>
 	<td>{{true_good_boolean(s.available)}}</td>
       </tr>
       {% endfor %}
