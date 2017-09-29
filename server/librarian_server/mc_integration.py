@@ -95,7 +95,7 @@ class MCManager(object):
                            .outerjoin(File)).scalar() or 0) / 1024**3
 
         free_space_gb = 0
-        for store in db.session.query(Store):
+        for store in Store.query.filter(Store.available):
             free_space_gb += store.get_space_info()['available']  # measured in bytes
         free_space_gb /= 1024**3  # bytes => GiB
 
