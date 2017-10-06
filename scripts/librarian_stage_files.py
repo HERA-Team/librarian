@@ -49,8 +49,14 @@ def die(fmt, *args):
 
 client = hera_librarian.LibrarianClient(args.conn_name)
 
+# Resolve the destination in case the user provides, say, `.`, where the
+# server is not going to know what that means. This will need elaboration if
+# we add options for the server to come up with a destination automatically or
+# other things like that.
+our_dest = os.path.realpath(args.dest_dir)
+
 try:
-    result = client.launch_local_disk_stage_operation(args.search, args.dest_dir)
+    result = client.launch_local_disk_stage_operation(args.search, our_dest)
 except hera_librarian.RPCError as e:
     die('couldn\'t start the stage operation: %s', e)
 
