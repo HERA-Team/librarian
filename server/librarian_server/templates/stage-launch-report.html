@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<p>The search string was:</p>
+
+<div class="row">
+  <div class="col-md-6">
+    <textarea class="form-control" rows="4" readonly>{{search_text}}</textarea>
+  </div>
+</div>
+
+<p>and the final destination directory was: <tt>{{final_dest}}</tt>.</p>
+
+{% if error_message %}
+
+<p><b>An error occurred:</b></p>
+
+<div class="row">
+  <div class="col-md-6">
+    <textarea class="form-control" rows="10" readonly>{{error_message}}</textarea>
+  </div>
+</div>
+
+{% else %}
+
+<p>A task was initiated to copy <b>{{n_instances}}</b> file instances
+  totaling <b>{{n_bytes|filesizeformat}}</b> of data. You can tell that the
+  copy is finished when the file <tt>STAGING-IN-PROGRESS</tt> in that
+  directory is replaced with one named either <tt>STAGING-SUCCESS</tt>
+  or <tt>STAGING-ERRORS</tt> depending on if anything went wrong.</p>
+
+{% endif %}
+
+{% endblock %}

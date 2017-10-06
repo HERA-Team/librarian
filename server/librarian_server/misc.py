@@ -95,6 +95,34 @@ def create_records(info, sourcename):
     db.session.commit()
 
 
+# Verrry miscellaneous.
+
+def copyfiletree(src, dst):
+    """Something like shutil.copytree that just copies data, not mode bits, and
+    that will accept either a file or a directory as input.
+
+    *dst* may not be the name of containing directory. It must be the name
+    where the data in *src* are intended to land.
+
+    """
+    import os.path
+    from shutil import copyfile
+
+    try:
+        items = os.listdir(src)
+    except OSError as e:
+        if e.errno == 20:  # not a directory?
+            copyfile(src, dst)
+            return
+        raise
+
+    for item in items:
+        copyfiletree(
+            os.path.join(src, item),
+            os.path.join(dst, item)
+        )
+
+
 # Misc ...
 
 @app.template_filter('strftime')

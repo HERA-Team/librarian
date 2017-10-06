@@ -41,6 +41,29 @@
 
 {% endif %}
 
+{% if staging_available %}
+
+<h2>Staging to {{staging_dest_displayed}}</h2>
+
+<p>You can launch a task that re-runs this search and copies the matched files
+  to {{staging_dest_displayed}}. Only files that have instances that are directly
+  accessible to the Librarian can be copied.</p>
+
+<form role="form" action="/" method="post"> <!-- note: POST method since non-idempotent op -->
+  <input name="type" type="hidden" value="instances-stores">
+  <input name="output_format" type="hidden" value="stage-the-files-human">
+  <input name="search" type="hidden" value="{{search_text}}">
+
+  <div class="form-group">
+    <label for="stage_dest">Destination:</label>
+    <input type="text" class="form-control" name="stage_dest" id="stage_dest" value="{{staging_dest_path}}">
+  </div>
+
+  <button type="submit" class="btn btn-primary" name="launch" formaction="/search">Launch</button>
+</form>
+
+{% endif %}
+
 {% endif %}
 
 {% endblock %}

@@ -306,7 +306,8 @@ def assign_observing_sessions(args, sourcename=None):
         sess_obs = examine_obs[i0:i1]
         start = sess_obs[0].start_time_jd
         if sess_obs[-1].stop_time_jd is None:
-            raise ServerError('new observations must have recorded stop times (ID %s)', sess_obs[0].obsid)
+            raise ServerError(
+                'new observations must have recorded stop times (ID %s)', sess_obs[0].obsid)
         stop = sess_obs[-1].stop_time_jd
         sess = ObservingSession(sess_obs[0].obsid, start, stop)
         db.session.add(sess)

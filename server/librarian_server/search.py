@@ -22,11 +22,12 @@ import json
 import logging
 import os.path
 import six
+import sys
 import time
 
 from flask import Response, flash, redirect, render_template, request, url_for
 
-from . import app, db
+from . import app, db, logger
 from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
@@ -355,8 +356,9 @@ def compile_search(search_string, query_type='files'):
     items matching the search.
 
     """
-    from .file import File
+    from .file import File, FileInstance
     from .observation import Observation
+    from .store import Store
 
     # As a convenience, we strip out #-delimited comments from the input text.
     # The default JSON parser doesn't accept them, but they're nice for users.
@@ -372,6 +374,7 @@ def compile_search(search_string, query_type='files'):
     try:
         search = json.loads(search_string)
     except Exception as e:
+        app.log_exception(sys.exc_info())
         raise ServerError('can\'t parse search as JSON: %s', e)
 
     # Offload to the helper classes.
@@ -382,6 +385,13 @@ def compile_search(search_string, query_type='files'):
         return db.session.query(File.name).filter(the_file_search_compiler.compile(search))
     elif query_type == 'obs':
         return Observation.query.filter(the_obs_search_compiler.compile(search))
+    elif query_type == 'instances-stores':
+        # The following syntax gives us a LEFT OUTER JOIN which is what we want to
+        # get (at most) one instance for each File of interest.
+        return (db.session.query(FileInstance, File, Store)
+                .join(Store)
+                .join(File, isouter=True)
+                .filter(the_file_search_compiler.compile(search)))
     else:
         raise ServerError('unhandled query_type %r', query_type)
 
@@ -597,6 +607,145 @@ def register_standing_order_checkin():
     return cb
 
 
+# The local-disk staging system for the NRAO Librarian. In a sense this code
+# isn't super relevant to searches, but the search system is how it gets
+# launched, and it's not obvious to me that there's a better place to put it.
+
+from . import bgtasks
+
+
+class StagerTask(bgtasks.BackgroundTask):
+    """Object that manages the task of staging files from one disk to
+    another on the machine that the Librarian server is running on.
+
+    This functionality is extremely specialized to the NRAO Librarian, which
+    runs on a machine called `herastore01` that is equipped with both large
+    local RAID arrays, where the HERA data are stored, and a mount of a Lustre
+    network filesystem, where users do their data processing. This "staging"
+    functionality allows users to have the server copy data over to Lustre
+    as quick as possible.
+
+    """
+
+    def __init__(self, dest, stage_info, bytes):
+        self.dest = dest
+        self.stage_info = stage_info
+        self.desc = 'stage %d bytes to %s' % (bytes, dest)
+
+        import os.path
+        import time
+        self.t_start = time.time()
+
+        with open(os.path.join(dest, 'STAGING-IN-PROGRESS'), 'wt') as f:
+            print(self.t_start, file=f)
+
+        self.failures = []
+
+    def thread_function(self):
+        import os
+        from .misc import copyfiletree
+
+        for store_prefix, parent_dirs, name in self.stage_info:
+            source = os.path.join(store_prefix, parent_dirs, name)
+            dest_pfx = os.path.join(self.dest, parent_dirs)
+            dest = os.path.join(self.dest, parent_dirs, name)
+
+            try:
+                os.makedirs(dest_pfx)
+            except OSError as e:
+                if e.errno == 17:
+                    pass  # already exists; fine
+                else:
+                    self.failures.append((dest_pfx, str(e)))
+                    continue
+
+            try:
+                copyfiletree(source, dest)
+            except Exception as e:
+                self.failures.append((dest, str(e)))
+
+    def wrapup_function(self, retval, exc):
+        import time
+        self.t_stop = time.time()
+
+        try:
+            os.unlink(os.path.join(self.dest, 'STAGING-IN-PROGRESS'))
+        except Exception as e:
+            logger.warn('couldn\'t remove staging-in-progress indicator for %r', self.dest)
+            app.log_exception(sys.exc_info())
+
+        if exc is not None or len(self.failures):
+            with open(os.path.join(self.dest, 'STAGING-ERRORS'), 'wt') as f:
+                if exc is not None:
+                    print('Unhandled exception:', exc, file=f)
+
+                for destpath, e in self.failures:
+                    print('For %s: %s' % (destpath, e))
+
+            outcome_desc = 'FAILED'
+            log_func = logger.warn
+        else:
+            with open(os.path.join(self.dest, 'STAGING-SUCCEEDED'), 'wt') as f:
+                print(self.t_stop, file=f)
+
+            outcome_desc = 'finished'
+            log_func = logger.info
+
+        log_func('local-disk staging into %s %s: duration %.1fs',
+                 self.dest, outcome_desc, self.t_stop - self.t_start)
+
+
+def launch_stage_operation(search, stage_dest):
+    """Shared code to prep and launch a local-disk staging operation.
+
+    search
+      A SQLAlchemy search for File objects that the user wants to stage.
+    stage_dest
+      The user-specified destination for the staging operation.
+    Returns
+      A tuple `(final_dest_dir, n_instances, n_bytes)`.
+
+    When this is called, basic vetting of `stage_dest` should have been
+    performed such that it's known to be a non-empty string.
+
+    NOTE! We do not validate `stage_dest`, so the user can try to write files
+    anywhere that the Librarian has permissions!!!
+
+    """
+    import os.path
+    from .file import File, FileInstance
+    from .store import Store
+
+    lds_info = app.config['local_disk_staging']
+
+    # Make the destination directory; let exception handling deal with it if
+    # there's a problem.
+    dest = os.path.realpath(stage_dest)
+    if not dest.startswith(lds_info['dest_prefix']):
+        raise Exception('staging destination must resolve to a subdirectory of %r; '
+                        'input %r resolved to %r instead' % (lds_info['dest_prefix'],
+                                                             stage_dest, dest))
+    try:
+        os.makedirs(dest)
+    except OSError as e:
+        if e.errno == 17:
+            pass  # already exists; no problem
+        else:
+            raise
+
+    info = list(search.filter(Store.ssh_host == lds_info['ssh_host']))
+
+    n_bytes = 0
+
+    for inst, file, store in info:
+        n_bytes += file.size
+
+    stage_info = [(store.path_prefix, inst.parent_dirs, inst.name) for (inst, file, store) in info]
+    bgtasks.submit_background_task(StagerTask(dest, stage_info, n_bytes))
+
+    return dest, len(info), n_bytes
+
+
 # Web user interface
 
 @app.route('/standing-orders')
@@ -622,6 +771,7 @@ def specific_standing_order(name):
     try:
         cur_files = list(storder.get_files_to_copy())
     except Exception as e:
+        app.log_exception(sys.exc_info())
         flash('Cannot run this order’s search: %s' % e)
         cur_files = []
 
@@ -741,6 +891,7 @@ file_name_format = 'Raw text with file names'
 full_path_format = 'Raw text with full instance paths'
 human_file_format = 'List of files'
 human_obs_format = 'List of observations'
+stage_the_files_human_format = 'stage-the-files-human'
 
 
 @app.route('/search', methods=['GET', 'POST'])
@@ -753,7 +904,8 @@ def execute_search():
 
     query_type = required_arg(reqdata, unicode, 'type')
     search_text = required_arg(reqdata, unicode, 'search')
-    output_format = optional_arg(reqdata, unicode, 'output_format', 'ui')
+    output_format = optional_arg(reqdata, unicode, 'output_format', human_file_format)
+    stage_dest = optional_arg(reqdata, unicode, 'stage_dest', '')
     for_humans = True
 
     if output_format == full_path_format:
@@ -765,6 +917,13 @@ def execute_search():
         for_humans = True
     elif output_format == human_obs_format:
         for_humans = True
+    elif output_format == stage_the_files_human_format:
+        for_humans = True
+        query_type = 'instances-stores'
+        if request.method == 'GET':
+            return Response('Staging requires a POST operation', status=400)
+        if not len(stage_dest):
+            return Response('Stage-files command did not specify destination directory', status=400)
     else:
         return Response('Illegal search output type %r' % (output_format, ), status=400)
 
@@ -786,12 +945,25 @@ def execute_search():
             text = '\n'.join(f.name for f in search)
         elif output_format == human_file_format:
             files = list(search)
+            lds_info = app.config.get('local_disk_staging')
+            if lds_info is None:
+                staging_available = False
+                staging_dest_displayed = None
+                staging_dest_path = None
+            else:
+                staging_available = True
+                staging_dest_displayed = lds_info['displayed_dest']
+                staging_dest_path = lds_info['dest_prefix']
+
             text = render_template(
                 'search-results-file.html',
                 title='Search Results: %d Files' % len(files),
                 search_text=search_text,
                 files=files,
                 error_message=None,
+                staging_available=staging_available,
+                staging_dest_displayed=staging_dest_displayed,
+                staging_dest_path=staging_dest_path,
             )
         elif output_format == human_obs_format:
             obs = list(search)
@@ -802,10 +974,28 @@ def execute_search():
                 obs=obs,
                 error_message=None,
             )
+        elif output_format == stage_the_files_human_format:
+            try:
+                final_dest, n_instances, n_bytes = launch_stage_operation(search, stage_dest)
+                error_message = None
+            except Exception as e:
+                app.log_exception(sys.exc_info())
+                final_dest = '(ignored)'
+                n_instances = n_bytes = 0
+                error_message = str(e)
+
+            text = render_template(
+                'stage-launch-report.html',
+                title='Staging Results',
+                search_text=search_text,
+                final_dest=final_dest,
+                n_instances=n_instances,
+                n_bytes=n_bytes,
+                error_message=error_message,
+            )
         else:
             raise ServerError('internal logic failure mishandled output format')
     except Exception as e:
-        import sys
         app.log_exception(sys.exc_info())
         status = 400
 

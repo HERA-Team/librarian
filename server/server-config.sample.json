@@ -68,6 +68,17 @@
     # The "none" choice, the default, refuses to guess in this way.
     #"obsid_inference_mode": "hera",
 
+    # Optional support for "staging" files from the Librarian server to a
+    # filesystem local to the server machine. This functionality is *highly*
+    # specialized to the NRAO Librarian, where the Librarian server machine
+    # is connected to both local RAID arrays (where the data are stored) and
+    # a Lustre network filesystem (where users do their data processing).
+    #"local_disk_staging": {
+    #   "ssh_host": "xxx", # The store "SSH host" field indicating a local machine
+    #   "dest_prefix": "yyy", # Hardwired directory prefix inside which copies land
+    #   "displayed_dest": "Lustre" # Displayed name for staging destination
+    #},
+
     # Here is a set of "sources" of data. Programs or people logging into the
     # Librarian provide an authenticator, which indirectly associates them
     # with one of the following usernames. As the name suggests, the
