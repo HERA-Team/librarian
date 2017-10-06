@@ -43,7 +43,7 @@ def get_type_from_path(path):
 
 def get_pol_from_path(path):
     """Get the data polarization from a path, assuming it follows HERA naming
-    conventions.
+    conventions. Returns None if nothing pol-like is seen.
 
     This is super fragile!!!! There should be a better way. Also we hardcode
     the XY basis.
@@ -52,7 +52,10 @@ def get_pol_from_path(path):
     information for it to ingest files from us. Is that still the case?
 
     """
-    return re.findall(r'\.([xy][xy])\.', path)[0]
+    matches = re.findall(r'\.([xy][xy])\.', path)
+    if not len(matches):
+        return None
+    return matches[-1]
 
 
 def get_obsid_from_path(path):
