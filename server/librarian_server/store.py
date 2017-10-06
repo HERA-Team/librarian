@@ -509,7 +509,7 @@ def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
     from .misc import gather_records
     rec_info = gather_records(file)
 
-    # Launch the background task. We need to conver the Store to a base object since
+    # Launch the background task. We need to convert the Store to a base object since
     # the background task can't access the database.
 
     basestore = inst.store_object.convert_to_base_object()
