@@ -407,6 +407,7 @@ When searching for observations, you can query the following attributes, using
 | start-lst-hr | float | The LST at which this file’s observation started, in hours |
 | session-id | int | The session-ID with which this file is associated |
 | duration | float | The duration of this observation, in days |
+| num-files | int | The number of individual files associated with this observation |
 | total-size | int | The total size of all files associated with this obs, in bytes |
 
 Not all of these attributes are known for every observation. For instance,
