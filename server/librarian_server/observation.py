@@ -435,6 +435,7 @@ def describe_session_without_event(args, sourcename=None):
     return {
         'any_matching': True,
         'info': records,
+        'session_id': sessid,
     }
 
 
