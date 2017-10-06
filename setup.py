@@ -17,6 +17,7 @@ setup_args = {
         'scripts/librarian_locate_file.py',
         'scripts/librarian_offload_helper.py',
         'scripts/librarian_set_file_deletion_policy.py',
+        'scripts/librarian_stage_files.py',
         'scripts/librarian_stream_file_or_directory.sh',
         'scripts/upload_to_librarian.py',
     ],

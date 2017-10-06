@@ -667,12 +667,6 @@ class StagerTask(bgtasks.BackgroundTask):
         import time
         self.t_stop = time.time()
 
-        try:
-            os.unlink(os.path.join(self.dest, 'STAGING-IN-PROGRESS'))
-        except Exception as e:
-            logger.warn('couldn\'t remove staging-in-progress indicator for %r', self.dest)
-            app.log_exception(sys.exc_info())
-
         if exc is not None or len(self.failures):
             with open(os.path.join(self.dest, 'STAGING-ERRORS'), 'wt') as f:
                 if exc is not None:
@@ -689,6 +683,12 @@ class StagerTask(bgtasks.BackgroundTask):
 
             outcome_desc = 'finished'
             log_func = logger.info
+
+        try:
+            os.unlink(os.path.join(self.dest, 'STAGING-IN-PROGRESS'))
+        except Exception as e:
+            logger.warn('couldn\'t remove staging-in-progress indicator for %r', self.dest)
+            app.log_exception(sys.exc_info())
 
         log_func('local-disk staging into %s %s: duration %.1fs',
                  self.dest, outcome_desc, self.t_stop - self.t_start)
