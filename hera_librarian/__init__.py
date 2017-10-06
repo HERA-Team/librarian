@@ -255,3 +255,11 @@ class LibrarianClient (object):
                                   source=source,
                                   event_type=event_type,
                                   )
+
+    def launch_local_disk_stage_operation(self, search, dest_dir):
+        return self._do_http_post('search',
+                                  search=search,
+                                  stage_dest=dest_dir,
+                                  type='instances-stores',
+                                  output_format='stage-the-files-json',
+                                  )

@@ -889,11 +889,12 @@ full_path_format = 'Raw text with full instance paths'
 human_file_format = 'List of files'
 human_obs_format = 'List of observations'
 stage_the_files_human_format = 'stage-the-files-human'
+stage_the_files_json_format = 'stage-the-files-json'
 
 
 @app.route('/search', methods=['GET', 'POST'])
 @login_required
-def execute_search():
+def execute_search_ui():
     if len(request.form):
         reqdata = request.form
     else:
@@ -1008,3 +1009,34 @@ def execute_search():
             text = 'Search resulted in error: %s' % e
 
     return Response(text, status=status, mimetype=mimetype)
+
+
+@app.route('/api/search', methods=['GET', 'POST'])
+@json_api
+def execute_search_api(args, sourcename=None):
+    """JSON API version of the search facility."""
+
+    search_text = required_arg(args, unicode, 'search')
+    output_format = required_arg(args, unicode, 'output_format')
+    stage_dest = optional_arg(args, unicode, 'stage_dest', '')
+
+    if output_format == stage_the_files_json_format:
+        query_type = 'instances-stores'
+        if request.method == 'GET':
+            raise ServerError('staging requires a POST operation')
+        if not len(stage_dest):
+            raise ServerError('stage-files search did not specify destination directory')
+    else:
+        raise ServerError('illegal search output type %r', output_format)
+
+    search = compile_search(search_text, query_type=query_type)
+
+    if output_format == stage_the_files_json_format:
+        final_dest, n_instances, n_bytes = launch_stage_operation(search, stage_dest)
+        return dict(
+            destination=final_dest,
+            n_instances=n_instances,
+            n_bytes=n_bytes,
+        )
+    else:
+        raise ServerError('internal logic failure mishandled output format')
