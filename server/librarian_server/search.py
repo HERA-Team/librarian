@@ -728,8 +728,8 @@ def launch_stage_operation(search, stage_dest):
     ensure_dirs_gw(dest)
 
     info = list(search.filter(
-            Store.ssh_host == lds_info['ssh_host'],
-            Store.available,
+        Store.ssh_host == lds_info['ssh_host'],
+        Store.available,
     ))
 
     n_bytes = 0

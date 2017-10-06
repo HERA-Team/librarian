@@ -31,7 +31,11 @@
 
 {% if files %}
 
-<p>The matched files are:</p>
+<p>The matched files are listed below.
+{% if staging_available %}
+<a href="#staging">Skip down to the {{staging_dest_displayed}} staging section</a>.
+{% endif %}
+</p>
 
 {{macros.file_listing(files)}}
 
@@ -43,7 +47,7 @@
 
 {% if staging_available %}
 
-<h2>Staging to {{staging_dest_displayed}}</h2>
+<h2 id="staging">Staging to {{staging_dest_displayed}}</h2>
 
 <p>You can launch a task that re-runs this search and copies the matched files
   to {{staging_dest_displayed}}. Only files that have instances that are directly
