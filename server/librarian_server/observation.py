@@ -302,27 +302,12 @@ def assign_observing_sessions(args, sourcename=None):
 
         # OK, we now have a bunch of observations that we've decided are in
         # the same session. We can create an ObservingSession and assign them.
-        # TEMPORARY?: We don't fill in stop times, so we need to guess them
-        # from the gaps between the observations. Life would be way easier if
-        # we just filled them in to the Observation rows from the start.
 
         sess_obs = examine_obs[i0:i1]
-
-        if len(sess_obs) == 1:
-            # We're inferring stop times from start time gaps so we can't work
-            # with a one-Obs session. Shouldn't happen anyway, but ...
-            raise ServerError('not implemented: making session out of single '
-                              'observation (ID %s)', sess_obs[0].obsid)
-
         start = sess_obs[0].start_time_jd
-        # note: fewer DJDs than start times since they're differential
-        typ_djd = np.median(djds[i0:i1 - 1])
-
-        if sess_obs[-1].stop_time_jd is not None:
-            stop = sess_obs[-1].stop_time_jd
-        else:
-            stop = sess_obs[-1].start_time_jd + typ_djd
-
+        if sess_obs[-1].stop_time_jd is None:
+            raise ServerError('new observations must have recorded stop times (ID %s)', sess_obs[0].obsid)
+        stop = sess_obs[-1].stop_time_jd
         sess = ObservingSession(sess_obs[0].obsid, start, stop)
         db.session.add(sess)
         db.session.commit()
