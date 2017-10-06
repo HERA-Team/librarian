@@ -663,7 +663,6 @@ class StagerTask(bgtasks.BackgroundTask):
         if len(self.failures):
             raise Exception('failures while attempting to create and copy files')
 
-
     def wrapup_function(self, retval, exc):
         import time
         self.t_stop = time.time()
@@ -728,7 +727,10 @@ def launch_stage_operation(search, stage_dest):
                                                              stage_dest, dest))
     ensure_dirs_gw(dest)
 
-    info = list(search.filter(Store.ssh_host == lds_info['ssh_host']))
+    info = list(search.filter(
+            Store.ssh_host == lds_info['ssh_host'],
+            Store.available,
+    ))
 
     n_bytes = 0
 

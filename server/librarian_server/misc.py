@@ -111,8 +111,8 @@ def ensure_dirs_gw(path):
     import os.path
     import stat
 
-    head, tail = os.path.split(path) # /a/b/c => /a/b, c
-    if not len(tail): # if we got something like "a/b/"
+    head, tail = os.path.split(path)  # /a/b/c => /a/b, c
+    if not len(tail):  # if we got something like "a/b/"
         head, tail = os.path.split(head)
     if len(head) and head != '/':
         ensure_dirs_gw(head)
@@ -121,7 +121,7 @@ def ensure_dirs_gw(path):
         os.mkdir(path)
     except OSError as e:
         if e.errno == 17:
-            pass # already exists; no problem
+            pass  # already exists; no problem
         else:
             raise
     else:
@@ -154,7 +154,7 @@ def copyfiletree(src, dst):
     except OSError as e:
         if e.errno == 20:  # not a directory?
             copyfile(src, dst)
-            st = os.stat(dst) # NOTE! not src; we explicitly do not preserve perms
+            st = os.stat(dst)  # NOTE! not src; we explicitly do not preserve perms
             mode = stat.S_IMODE(st.st_mode)
             mode |= (stat.S_IWUSR | stat.S_IWGRP)
             os.chmod(dst, mode)
@@ -162,7 +162,7 @@ def copyfiletree(src, dst):
         raise
 
     os.mkdir(dst)
-    st = os.stat(dst) # NOTE! not src; we explicitly do not preserve perms
+    st = os.stat(dst)  # NOTE! not src; we explicitly do not preserve perms
     mode = stat.S_IMODE(st.st_mode)
     mode |= (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
     os.chmod(dst, mode)
