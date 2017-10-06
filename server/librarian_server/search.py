@@ -1022,10 +1022,13 @@ def execute_search_api(args, sourcename=None):
 
     if output_format == stage_the_files_json_format:
         query_type = 'instances-stores'
+
         if request.method == 'GET':
             raise ServerError('staging requires a POST operation')
         if not len(stage_dest):
             raise ServerError('stage-files search did not specify destination directory')
+        if 'local_disk_staging' not in app.config:
+            raise ServerError('this Librarian does not support local-disk staging')
     else:
         raise ServerError('illegal search output type %r', output_format)
 
