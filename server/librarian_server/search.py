@@ -643,7 +643,7 @@ class StagerTask(bgtasks.BackgroundTask):
 
     def thread_function(self):
         import os
-        from .misc import copyfiletree
+        from .misc import copyfiletree, ensure_dirs_gw
 
         for store_prefix, parent_dirs, name in self.stage_info:
             source = os.path.join(store_prefix, parent_dirs, name)
@@ -651,18 +651,18 @@ class StagerTask(bgtasks.BackgroundTask):
             dest = os.path.join(self.dest, parent_dirs, name)
 
             try:
-                os.makedirs(dest_pfx)
-            except OSError as e:
-                if e.errno == 17:
-                    pass  # already exists; fine
-                else:
-                    self.failures.append((dest_pfx, str(e)))
-                    continue
+                ensure_dirs_gw(dest_pfx)
+            except Exception as e:
+                self.failures.append((dest_pfx, str(e)))
 
             try:
                 copyfiletree(source, dest)
             except Exception as e:
                 self.failures.append((dest, str(e)))
+
+        if len(self.failures):
+            raise Exception('failures while attempting to create and copy files')
+
 
     def wrapup_function(self, retval, exc):
         import time
@@ -680,7 +680,7 @@ class StagerTask(bgtasks.BackgroundTask):
                     print('Unhandled exception:', exc, file=f)
 
                 for destpath, e in self.failures:
-                    print('For %s: %s' % (destpath, e))
+                    print('For %s: %s' % (destpath, e), file=f)
 
             outcome_desc = 'FAILED'
             log_func = logger.warn
@@ -714,6 +714,7 @@ def launch_stage_operation(search, stage_dest):
     """
     import os.path
     from .file import File, FileInstance
+    from .misc import ensure_dirs_gw
     from .store import Store
 
     lds_info = app.config['local_disk_staging']
@@ -725,13 +726,7 @@ def launch_stage_operation(search, stage_dest):
         raise Exception('staging destination must resolve to a subdirectory of %r; '
                         'input %r resolved to %r instead' % (lds_info['dest_prefix'],
                                                              stage_dest, dest))
-    try:
-        os.makedirs(dest)
-    except OSError as e:
-        if e.errno == 17:
-            pass  # already exists; no problem
-        else:
-            raise
+    ensure_dirs_gw(dest)
 
     info = list(search.filter(Store.ssh_host == lds_info['ssh_host']))
 

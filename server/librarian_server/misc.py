@@ -97,24 +97,75 @@ def create_records(info, sourcename):
 
 # Verrry miscellaneous.
 
-def copyfiletree(src, dst):
-    """Something like shutil.copytree that just copies data, not mode bits, and
-    that will accept either a file or a directory as input.
+def ensure_dirs_gw(path):
+    """Ensure that path is a directory by creating it and parents if
+    necessary.  All created directories are made group writeable and
+    executable.
 
-    *dst* may not be the name of containing directory. It must be the name
-    where the data in *src* are intended to land.
+    This is a fairly specialized function used in support of the NRAO
+    Lustre staging feature.
+
+    Implementation copied from os.makedirs() with some tweaks.
+
+    """
+    import os.path
+    import stat
+
+    head, tail = os.path.split(path) # /a/b/c => /a/b, c
+    if not len(tail): # if we got something like "a/b/"
+        head, tail = os.path.split(head)
+    if len(head) and head != '/':
+        ensure_dirs_gw(head)
+
+    try:
+        os.mkdir(path)
+    except OSError as e:
+        if e.errno == 17:
+            pass # already exists; no problem
+        else:
+            raise
+    else:
+        # We created it, so chmod it.
+        st = os.stat(path)
+        mode = stat.S_IMODE(st.st_mode)
+        mode |= (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
+        os.chmod(path, mode)
+
+
+def copyfiletree(src, dst):
+    """Something like shutil.copytree that just copies data, not mode
+    bits, and that will accept either a file or a directory as input.
+
+    *dst* may not be the name of containing directory. It must be the
+    name where the data in *src* are intended to land.
+
+    As a special hack, we make the new files and directories
+    group-writeable, since this function is used at NRAO when staging
+    data to Lustre and otherwise users can't actually modify the
+    files/dirs created for them, which is super annoying.
 
     """
     import os.path
     from shutil import copyfile
+    import stat
 
     try:
         items = os.listdir(src)
     except OSError as e:
         if e.errno == 20:  # not a directory?
             copyfile(src, dst)
+            st = os.stat(dst) # NOTE! not src; we explicitly do not preserve perms
+            mode = stat.S_IMODE(st.st_mode)
+            mode |= (stat.S_IWUSR | stat.S_IWGRP)
+            os.chmod(dst, mode)
             return
         raise
+
+    os.mkdir(dst)
+    st = os.stat(dst) # NOTE! not src; we explicitly do not preserve perms
+    mode = stat.S_IMODE(st.st_mode)
+    mode |= (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
+    os.chmod(dst, mode)
 
     for item in items:
         copyfiletree(
