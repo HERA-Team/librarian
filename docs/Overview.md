@@ -9,12 +9,10 @@ It is implemented as a database-backed web server that interacts with online
 subsystems via an API and humans via a web interface.
 
 
-## Table of Contents
+### Table of Contents
 
 * [Foundational concepts](#foundational-concepts)
 * [Data storage and distribution: the big picture](#data-storage-and-distribution-the-big-picture)
-* [Logging into the Librarian](#logging-into-the-librarian)
-* [Programmatic access to the Librarian](#programmatic-access-to-the-librarian)
 
 
 ## Foundational concepts
@@ -68,60 +66,3 @@ this may not be as silly as it sounds of one of its storage hosts is flaky, or
 different storage hosts are connected to different portions of the local
 network. When processing data, the first step is often to ask the Librarian
 for the specific paths where instances of your files of interest may be found.
-
-
-## Logging into the Librarian
-
-To access the Librarian web interface, you need to know the URL and an
-“authenticator”, which is basically a password without a username. Some of
-HERA’s Librarians are not visible on the open Internet, so you need to set up
-an SSH tunnel in order to be able to connect to them.
-
-The login info for HERA’s Librarians is not public. It may be found
-[here on the HERA Wiki](http://hera.pbworks.com/w/page/118774905/Librarian%3A%20Help%20for%20Users).
-
-
-## Programmatic Access to the Librarian
-
-Our goal is that most times you need to interact with the Librarian, you’ll be
-able to do everything you want through the web user interface. But to automate
-certain tasks, or do certain fancy things, you’ll need to install the
-Librarian “client” Python module that can talk to Librarian servers using
-their API. This section describes how to install the client and the important
-concept of “connections” that the client uses.
-
-To install the client, the first step is to ask yourself if you’re working on
-the Karoo computers. If so, the shared `obs` account already has the client
-set up, so you don’t need to do anything. Yay!
-
-If you’re not using a pre-configured HERA software stack, the next step is
-install the [hera_librarian](../hera_librarian) Python module contained in
-this repository. All you have to do is run the [setup.py](../setup.py) script
-as usual. The client code depends on Astropy and may need Aipy in certain rare
-cases.
-
-Finally, you need to set up the client configuration file that tells the code
-how to contact a Librarian server. Because there are multiple servers, the
-client has the idea of different Librarian “connections” that you can choose
-from. Each connection has a name and specifies a server to contact and a
-password to use.
-
-The configuration file is named `~/.hl_client.cfg`. It is in
-[JSON](http://www.json.org/) format. Its contents will depend on where your
-account is located and which Librarians you need your programs to talk to. At
-the AOC, your file should look like:
-
-```
-{
-    "connections": {
-        "local": {
-            "url": "http://146.88.1.90:21106/",
-            "authenticator": "HIDDEN-SECRET"
-        }
-    }
-}
-```
-
-The “authenticator” field is a password so we can’t reproduce it here. As
-mentioned above, you may find HERA’s connection information
-[here on the HERA Wiki](http://hera.pbworks.com/w/page/118774905/Librarian%3A%20Help%20for%20Users).
