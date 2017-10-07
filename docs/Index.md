@@ -9,7 +9,9 @@ These files document the Librarian, the data-management system used by the
 ### Contents
 
 - [User’s overview](Overview.md)
+- [Ingesting new Files](Ingesting.md)
 - [Searching for Files, Observations, and Sessions](Searching.md)
+- [Staging files to Lustre](Staging.md)
 - [Server administrator’s notes](Administration.md)
 
 
