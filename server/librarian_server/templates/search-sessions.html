@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<form role="form" action="/" method="get">
+
+  <div class="alert alert-warning" role="alert"><b>Note:</b> the Librarian search
+    interface is in beta! Report problems or confusing things on its
+    <a href="https://github.com/HERA-Team/librarian/issues">GitHub issues
+    page</a>.</div>
+
+  <div class="form-group">
+    <label for="format">Output format</label>
+    <select class="form-control" name="output_format" style="width: 20em">
+      <option>List of sessions</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Standard searches</label>
+
+    <p><i>TODO:</i> Implement some of these!
+      See <a href="https://github.com/HERA-Team/librarian/issues/25">GitHub
+      #25</a> and related issues.</p>
+  </div>
+
+  <div class="form-group">
+    <label for="search">Custom search</label>
+
+    <div class="row">
+      <div class="col-md-6">
+        <textarea class="form-control" rows="10" name="search" id="search" placeholder="{{sample_search}}"></textarea>
+      </div>
+      <div class="col-md-6">
+        <!-- TODO: have this link point to the specific version of the running Librarian -->
+        <p>Custom searches are written
+          in <a href="http://guide.couchdb.org/draft/json.html">JSON</a>
+          format. <b><a href="https://github.com/HERA-Team/librarian/blob/master/docs/Searching.md">Here
+          are the docs</a></b> and here are some quick examples:</p>
+
+        <pre>{ "session-id-is-exactly": 1171209640 }</pre>
+
+        <pre>{
+  "num-obs-greater-than": 70,
+  "session-id-less-than": 1153450840
+}</pre>
+
+        <p>If you’re having trouble with the syntax, try pasting your search
+          into <a href="https://jsonlint.com/">jsonlint.com</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <input name="type" type="hidden" value="sessions">
+
+  <button type="submit" class="btn btn-primary" name="update"
+	  formaction="/search">Search</button>
+  <a href="/" class="btn btn-default">Back to home</a>
+</form>
+
+{% endblock %}

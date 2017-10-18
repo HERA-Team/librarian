@@ -226,6 +226,62 @@ class GenericSearchCompiler(object):
         return literal(False)
 
 
+# Searches for observing sessions
+
+def _session_get_id():
+    from .observation import ObservingSession
+    return ObservingSession.id
+
+
+def _session_get_duration():
+    """There is a "duration" property on the ObservingSession class, but it
+    computes its result in Python code using math, which means that it doesn't
+    work within an SQL query. Empirically, we get a silent failure to match
+    any files if we try to search that way.
+
+    """
+    from .observation import ObservingSession
+    return (ObservingSession.stop_time_jd - ObservingSession.start_time_jd)
+
+
+def _session_get_num_obs():
+    from sqlalchemy import func
+    from .observation import Observation, ObservingSession
+    return (db.session.query(func.count(Observation.obsid))
+            .filter(Observation.session_id == ObservingSession.id).as_scalar())
+
+
+def _session_get_num_files():
+    from sqlalchemy import func
+    from .file import File
+    from .observation import Observation, ObservingSession
+    return (db.session.query(func.count(File.name))
+            .filter(File.obsid == Observation.obsid)
+            .filter(Observation.session_id == ObservingSession.id).as_scalar())
+
+
+simple_session_attrs = [
+    ('session_id', AttributeTypes.int, _session_get_id),
+    ('start_time_jd', AttributeTypes.float, None),
+    ('stop_time_jd', AttributeTypes.float, None),
+    ('duration', AttributeTypes.float, _session_get_duration),
+    ('num_obs', AttributeTypes.int, _session_get_num_obs),
+    ('num_files', AttributeTypes.int, _session_get_num_files),
+]
+
+
+class ObservingSessionSearchCompiler(GenericSearchCompiler):
+    def __init__(self):
+        from .observation import ObservingSession
+        super(ObservingSessionSearchCompiler, self).__init__()
+        self._add_attributes(ObservingSession, simple_session_attrs)
+
+
+the_session_search_compiler = ObservingSessionSearchCompiler()
+
+
+# Searches for observations
+
 def _obs_get_duration():
     """There is a "duration" property on the Observation class, but it computes
     its result in Python code using math, which means that it doesn't work
@@ -272,6 +328,8 @@ class ObservationSearchCompiler(GenericSearchCompiler):
 
 the_obs_search_compiler = ObservationSearchCompiler()
 
+
+# Searches for files
 
 def _file_get_num_instances():
     from sqlalchemy import func
@@ -357,7 +415,7 @@ def compile_search(search_string, query_type='files'):
 
     """
     from .file import File, FileInstance
-    from .observation import Observation
+    from .observation import Observation, ObservingSession
     from .store import Store
 
     # As a convenience, we strip out #-delimited comments from the input text.
@@ -385,6 +443,8 @@ def compile_search(search_string, query_type='files'):
         return db.session.query(File.name).filter(the_file_search_compiler.compile(search))
     elif query_type == 'obs':
         return Observation.query.filter(the_obs_search_compiler.compile(search))
+    elif query_type == 'sessions':
+        return ObservingSession.query.filter(the_session_search_compiler.compile(search))
     elif query_type == 'instances-stores':
         # The following syntax gives us a LEFT OUTER JOIN which is what we want to
         # get (at most) one instance for each File of interest.
@@ -883,11 +943,25 @@ def search_obs():
     )
 
 
+sample_session_search = '{ "session-id-is-exactly": 1171209640 }'
+
+
+@app.route('/search-sessions', methods=['GET', 'POST'])
+@login_required
+def search_sessions():
+    return render_template(
+        'search-sessions.html',
+        title='Search Observing Sessions',
+        sample_search=sample_session_search,
+    )
+
+
 # These formats are defined in templates/search-*.html:
 file_name_format = 'Raw text with file names'
 full_path_format = 'Raw text with full instance paths'
 human_file_format = 'List of files'
 human_obs_format = 'List of observations'
+human_session_format = 'List of sessions'
 stage_the_files_human_format = 'stage-the-files-human'
 stage_the_files_json_format = 'stage-the-files-json'
 
@@ -914,6 +988,8 @@ def execute_search_ui():
     elif output_format == human_file_format:
         for_humans = True
     elif output_format == human_obs_format:
+        for_humans = True
+    elif output_format == human_session_format:
         for_humans = True
     elif output_format == stage_the_files_human_format:
         for_humans = True
@@ -970,6 +1046,15 @@ def execute_search_ui():
                 title='Search Results: %d Observations' % len(obs),
                 search_text=search_text,
                 obs=obs,
+                error_message=None,
+            )
+        elif output_format == human_session_format:
+            sess = list(search)
+            text = render_template(
+                'search-results-session.html',
+                title='Search Results: %d Sessions' % len(sess),
+                search_text=search_text,
+                sess=sess,
                 error_message=None,
             )
         elif output_format == stage_the_files_human_format:

@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<p>The search string was:</p>
+
+<div class="row">
+  <div class="col-md-6">
+    <textarea class="form-control" rows="4" readonly>{{search_text}}</textarea>
+  </div>
+</div>
+
+{% if error_message %}
+
+<p>It produced the error:</p>
+
+<div class="row">
+  <div class="col-md-6">
+    <textarea class="form-control" rows="10" readonly>{{error_message}}</textarea>
+  </div>
+</div>
+
+<p>You might want to check your syntax
+  using <a href="https://jsonlint.com/">jsonlint.com</a>. If your syntax is
+  correct, there may be a bug;
+  please <a href="https://github.com/HERA-Team/librarian/issues/new">file an
+  issue</a> with a copy-paste of your query.</p>
+
+{% else %}
+
+{% if sess %}
+
+<p>The matched sessions are:</p>
+
+{{macros.session_listing_detailed(sess)}}
+
+{% else %}
+
+<p>No sessions matched this search.</p>
+
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

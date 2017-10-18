@@ -10,14 +10,15 @@ how to compose search queries.
 - [Searching on attributes](#searching-on-attributes)
 - [Searching for files](#searching-for-files)
 - [Searching for observations](#searching-for-observations)
+- [Searching for sessions](#searching-for-sessions)
 
 
 ## Overview
 
-The Librarian lets you perform highly *structured* searches for files or
-observations. You design searches with very specific match terms, such as
-“this file has at least 3 known instances on this server,” and then the
-Librarian executes your query and tells you what items matched your
+The Librarian lets you perform highly *structured* searches for files,
+observations, or sessions. You design searches with very specific match terms,
+such as “this file has at least 3 known instances on this server,” and then
+the Librarian executes your query and tells you what items matched your
 requirements.
 
 Librarian searches are typed as [JSON](http://www.json.org/) data structures.
@@ -55,10 +56,10 @@ that file, measured in bytes. There are clauses named `size-is-exactly`,
 `size-greater-than`, and `size-in-range` — among others — that match files
 whose `size` attributes have the specified characteristics.
 
-The Librarian provides different user interfaces depending on whether you’re
-searching for file or observations, and different kinds of clauses are
-available depending on what kind of thing your searching for. The results can
-be presented in different ways, too, depending on what you’re looking for.
+The Librarian provides different user interfaces depending on what kind of
+item you’re searhing for, and different kinds of clauses are available
+depending on what kind of thing your searching for. The results can be
+presented in different ways, too, depending on what you’re looking for.
 
 
 ## Generic search clauses
@@ -402,10 +403,10 @@ When searching for observations, you can query the following attributes, using
 | Name | Type | Description |
 | :--- | :--- | :---------- |
 | obsid | int | The observation’s obsid |
-| start-time-jd | float | The JD at which this file’s observation started |
-| stop-time-jd | float | The JD at which this file’s observation ended |
-| start-lst-hr | float | The LST at which this file’s observation started, in hours |
-| session-id | int | The session-ID with which this file is associated |
+| start-time-jd | float | The JD at which this observation started |
+| stop-time-jd | float | The JD at which this observation ended |
+| start-lst-hr | float | The LST at which this observation started, in hours |
+| session-id | int | The session-ID with which this observation is associated |
 | duration | float | The duration of this observation, in days |
 | num-files | int | The number of individual files associated with this observation |
 | total-size | int | The total size of all files associated with this obs, in bytes |
@@ -420,5 +421,28 @@ To find all observations with a very particular start LST, you might write:
 ```
 {
   "start-lst-hr-in-range": [12.00, 12.01],
+}
+```
+
+
+## Searching for sessions
+
+When searching for observing sessions, you can query the following attributes, using
+[the generic clause types described in above](#searching-on-attributes).
+
+| Name | Type | Description |
+| :--- | :--- | :---------- |
+| session-id | int | The sessions’s unique identifier number |
+| start-time-jd | float | The JD at which this session started |
+| stop-time-jd | float | The JD at which this session ended |
+| duration | float | The duration of this session, in days |
+| num-obs | int | The number of individual observations associated with this session |
+| num-files | int | The number of individual files associated with this session |
+
+To find all sessions containing a very particular number of observations, you might write:
+
+```
+{
+  "num-obs-is-exactly": 57,
 }
 ```
