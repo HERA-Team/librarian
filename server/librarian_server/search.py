@@ -276,6 +276,26 @@ class ObservingSessionSearchCompiler(GenericSearchCompiler):
         super(ObservingSessionSearchCompiler, self).__init__()
         self._add_attributes(ObservingSession, simple_session_attrs)
 
+        self.clauses['no-file-has-event'] = self._do_no_file_has_event
+
+    def _do_no_file_has_event(self, clause_name, payload):
+        if not isinstance(payload, unicode):
+            raise ServerError('can\'t parse "%s" clause: contents must be text, '
+                              'but got %s', clause_name, payload.__class__.__name__)
+
+        from sqlalchemy import func
+        from .file import File, FileEvent
+        from .observation import Observation, ObservingSession
+
+        # This feels awfully gross, but it works.
+
+        return (db.session.query(func.count(File.name))
+                .filter(File.obsid == Observation.obsid)
+                .filter(Observation.session_id == ObservingSession.id)
+                .join(FileEvent)
+                .filter(FileEvent.type == payload,
+                        File.name == FileEvent.name).as_scalar() == 0)
+
 
 the_session_search_compiler = ObservingSessionSearchCompiler()
 

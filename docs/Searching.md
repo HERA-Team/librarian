@@ -329,7 +329,7 @@ might write:
 }
 ```
 
-There are also a few clauses that you specify that do not fall into the
+There are also a few clauses that you can specify that do not fall into the
 attribute-matching schema described above. They are:
 
 #### not-older-than
@@ -446,3 +446,24 @@ To find all sessions containing a very particular number of observations, you mi
   "num-obs-is-exactly": 57,
 }
 ```
+
+There are also a few clauses that you can specify that do not fall into the
+attribute-matching schema described above. They are:
+
+#### no-file-has-event
+
+Matches sessions that contain *no* files that have an associated “file event” of
+a certain specified type. For instance:
+
+```
+{
+   "no-file-has-event": "create_instance"
+}
+```
+
+will match only sessons for which every single associated file has never had any
+instances on this Librarian, since creating an instance of a file causes a
+`create_instance` event to be logged.
+
+This is a highly targeted search used to implement our nightly data analysis
+cron job. It is slow.
