@@ -263,3 +263,9 @@ class LibrarianClient (object):
                                   type='instances-stores',
                                   output_format='stage-the-files-json',
                                   )
+
+    def search_sessions(self, search):
+        return self._do_http_post('search',
+                                  search=search,
+                                  output_format='session-listing-json',
+                                  )

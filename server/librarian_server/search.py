@@ -983,7 +983,6 @@ human_file_format = 'List of files'
 human_obs_format = 'List of observations'
 human_session_format = 'List of sessions'
 stage_the_files_human_format = 'stage-the-files-human'
-stage_the_files_json_format = 'stage-the-files-json'
 
 
 @app.route('/search', methods=['GET', 'POST'])
@@ -1116,6 +1115,10 @@ def execute_search_ui():
     return Response(text, status=status, mimetype=mimetype)
 
 
+stage_the_files_json_format = 'stage-the-files-json'
+session_listing_json_format = 'session-listing-json'
+
+
 @app.route('/api/search', methods=['GET', 'POST'])
 @json_api
 def execute_search_api(args, sourcename=None):
@@ -1134,6 +1137,8 @@ def execute_search_api(args, sourcename=None):
             raise ServerError('stage-files search did not specify destination directory')
         if 'local_disk_staging' not in app.config:
             raise ServerError('this Librarian does not support local-disk staging')
+    elif output_format == session_listing_json_format:
+        query_type = 'sessions'
     else:
         raise ServerError('illegal search output type %r', output_format)
 
@@ -1145,6 +1150,10 @@ def execute_search_api(args, sourcename=None):
             destination=final_dest,
             n_instances=n_instances,
             n_bytes=n_bytes,
+        )
+    elif output_format == session_listing_json_format:
+        return dict(
+            results=[sess.to_dict() for sess in search],
         )
     else:
         raise ServerError('internal logic failure mishandled output format')
