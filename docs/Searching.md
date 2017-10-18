@@ -436,6 +436,7 @@ When searching for observing sessions, you can query the following attributes, u
 | start-time-jd | float | The JD at which this session started |
 | stop-time-jd | float | The JD at which this session ended |
 | duration | float | The duration of this session, in days |
+| age | float | How many days have elapsed since the end of the session |
 | num-obs | int | The number of individual observations associated with this session |
 | num-files | int | The number of individual files associated with this session |
 

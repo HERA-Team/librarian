@@ -260,6 +260,12 @@ def _session_get_num_files():
             .filter(Observation.session_id == ObservingSession.id).as_scalar())
 
 
+def _session_get_age():
+    from astropy.time import Time
+    from .observation import ObservingSession
+    return (Time.now().jd - ObservingSession.stop_time_jd)
+
+
 simple_session_attrs = [
     ('session_id', AttributeTypes.int, _session_get_id),
     ('start_time_jd', AttributeTypes.float, None),
@@ -267,6 +273,7 @@ simple_session_attrs = [
     ('duration', AttributeTypes.float, _session_get_duration),
     ('num_obs', AttributeTypes.int, _session_get_num_obs),
     ('num_files', AttributeTypes.int, _session_get_num_files),
+    ('age', AttributeTypes.float, _session_get_age),
 ]
 
 
