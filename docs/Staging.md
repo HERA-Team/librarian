@@ -43,9 +43,15 @@ when you’re done with it.
 
 ## Staging through the web UI
 
-As described above, to stage files through the web UI, you should first run a
-standard search for files, selecting the “List of files” output format. Then,
-all you have to do is:
+There are two main ways to stage files through the web UI. First, if you just
+want to stage all of the files from a particular observation or observing
+session, you can just click through to the detailed information page for the
+observation or session in question. There will be a section that lets you type
+in your Lustre destination directory and launch the operation.
+
+For more complicated staging operations, you should first run a standard
+search for files, selecting the “List of files” output format. Then, all you
+have to do is:
 
 1. Scroll down to the bottom of the results page to the “Staging to Lustre”
    section.
