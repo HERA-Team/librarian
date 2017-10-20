@@ -1045,15 +1045,6 @@ def execute_search_ui():
             text = '\n'.join(f.name for f in search)
         elif output_format == human_file_format:
             files = list(search)
-            lds_info = app.config.get('local_disk_staging')
-            if lds_info is None:
-                staging_available = False
-                staging_dest_displayed = None
-                staging_dest_path = None
-            else:
-                staging_available = True
-                staging_dest_displayed = lds_info['displayed_dest']
-                staging_dest_path = lds_info['dest_prefix']
 
             text = render_template(
                 'search-results-file.html',
@@ -1061,9 +1052,6 @@ def execute_search_ui():
                 search_text=search_text,
                 files=files,
                 error_message=None,
-                staging_available=staging_available,
-                staging_dest_displayed=staging_dest_displayed,
-                staging_dest_path=staging_dest_path,
             )
         elif output_format == human_obs_format:
             obs = list(search)

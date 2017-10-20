@@ -212,9 +212,22 @@ def inject_globals():
 
     vi = 'Librarian %s (%s)' % (app.config['_version_string'], app.config['_git_hash'])
 
+    lds_info = app.config.get('local_disk_staging')
+    if lds_info is not None:
+        staging_available = True
+        staging_dest_displayed = lds_info['displayed_dest']
+        staging_dest_path = lds_info['dest_prefix']
+    else:
+        staging_available = False
+        staging_dest_displayed = None
+        staging_dest_path = None
+
     return {
         'current_time_info': cti,
         'version_info': vi,
+        'staging_available': staging_available,
+        'staging_dest_displayed': staging_dest_displayed,
+        'staging_dest_path': staging_dest_path,
     }
 
 
