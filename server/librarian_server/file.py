@@ -111,6 +111,11 @@ class File (db.Model):
         self.md5 = md5
         self._validate()
 
+    @property
+    def name_as_json(self):
+        import json
+        return json.dumps(self.name)
+
     def _validate(self):
         """Check that this object's fields follow our invariants.
 

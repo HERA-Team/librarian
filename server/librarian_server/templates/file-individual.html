@@ -46,12 +46,12 @@
 
 <h2>Staging to {{staging_dest_displayed}}</h2>
 
-<p>You can stage this file session to {{staging_dest_displayed}}.</p>
+<p>You can stage this file to {{staging_dest_displayed}}.</p>
 
 <form role="form" action="/" method="post"> <!-- note: POST method since non-idempotent op -->
   <input name="type" type="hidden" value="instances-stores">
   <input name="output_format" type="hidden" value="stage-the-files-human">
-  <input name="search" type="hidden" value="{&quot;name-is-exactly&quot;: {{file.name}}}">
+  <input name="search" type="hidden" value="{&quot;name-is-exactly&quot;: {{file.name_as_json}}}">
 
   <div class="form-group">
     <label for="stage_dest">Destination directory:</label>
