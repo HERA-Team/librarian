@@ -40,9 +40,35 @@
       </tr>
     </tbody>
   </table>
+</div>
 
-  <h2>Instances</h2>
-  {% if instances %}
+{% if staging_available %}
+
+<h2>Staging to {{staging_dest_displayed}}</h2>
+
+<p>You can stage this file session to {{staging_dest_displayed}}.</p>
+
+<form role="form" action="/" method="post"> <!-- note: POST method since non-idempotent op -->
+  <input name="type" type="hidden" value="instances-stores">
+  <input name="output_format" type="hidden" value="stage-the-files-human">
+  <input name="search" type="hidden" value="{&quot;name-is-exactly&quot;: {{file.name}}}">
+
+  <div class="form-group">
+    <label for="stage_dest">Destination directory:</label>
+    <input type="text" class="form-control" name="stage_dest" id="stage_dest"
+	   value="{{staging_dest_path}}/USERNAME/JOB">
+  </div>
+
+  <button type="submit" class="btn btn-primary" name="launch" formaction="/search">Launch</button>
+</form>
+
+<br><br><!-- hack for nicer spacing -->
+
+{% endif %}
+
+<h2>Instances</h2>
+{% if instances %}
+<div class="table-responsive">
   <table class="table table-striped">
     <thead>
       <tr>
@@ -61,12 +87,14 @@
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <p>This Librarian currently holds no copies of this file.</p>
-  {% endif %}
+</div>
+{% else %}
+<p>This Librarian currently holds no copies of this file.</p>
+{% endif %}
 
-  <h2>Events</h2>
-  {% if events %}
+<h2>Events</h2>
+{% if events %}
+<div class="table-responsive">
   <table class="table table-striped">
     <thead>
       <tr>
@@ -85,8 +113,9 @@
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <p>This Librarian has recorded no events relating to this file.</p>
-  {% endif %}
 </div>
+{% else %}
+<p>This Librarian has recorded no events relating to this file.</p>
+{% endif %}
+
 {% endblock %}
