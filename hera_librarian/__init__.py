@@ -183,7 +183,6 @@ class LibrarianClient (object):
         # die or whatever.
 
         staged_path = os.path.join(staging_dir, os.path.basename(dest_store_path))
-
         store.copy_to_store(local_path, staged_path)
 
         # If we made it here, though, the upload succeeded and we can tell
