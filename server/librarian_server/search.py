@@ -1152,3 +1152,43 @@ def execute_search_api(args, sourcename=None):
         )
     else:
         raise ServerError('internal logic failure mishandled output format')
+        
+               
+file_name_format = 'Raw text with file names'
+full_path_format = 'Raw text with full instance paths'
+
+@app.route('/api/search-json', methods=['GET', 'POST'])
+@json_api
+def execute_search_json(args, sourcename=None):
+    """Python accessible file search"""
+    search_text = required_arg(args, unicode, 'search')
+    output_format = required_arg(args, unicode, 'output_format')
+
+    if output_format == full_path_format:
+        query_type = 'names'
+    elif output_format == file_name_format:
+        query_type = 'files'
+    else:
+         return Response('Illegal search output type %r' % (output_format, ), status=400)
+
+    status = 200
+
+    try:
+        search = compile_search(search_text, query_type=query_type)
+        text=[]
+        if output_format == full_path_format:
+            from .file import FileInstance
+            instances = FileInstance.query.filter(FileInstance.name.in_(search))
+            for i in instances:
+                text.append(i.full_path_on_store())
+        elif output_format == file_name_format:
+            for f in search:
+                text.append(f.name)
+        else:
+            raise ServerError('internal logic failure mishandled output format')
+    except Exception as e:
+        app.log_exception(sys.exc_info())
+        status = 400
+        text = 'Search resulted in error: %s' % e
+
+    return dict(filelist=text)     
