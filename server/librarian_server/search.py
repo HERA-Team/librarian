@@ -473,10 +473,13 @@ def compile_search(search_string, query_type='files'):
     elif query_type == 'sessions':
         return ObservingSession.query.filter(the_session_search_compiler.compile(search))
     elif query_type == 'instances-stores':
-        #return File.query.filter(the_file_search_compiler.compile(search))
         # The following syntax gives us a LEFT OUTER JOIN which is what we want to
         # get (at most) one instance for each File of interest.
-        #return db.session.query(FileInstance).filter(the_file_search_compiler.compile(search))
+        return (db.session.query(FileInstance, File, Store)
+            .join(Store)
+            .join(File, isouter=True)
+            .filter(the_file_search_compiler.compile(search)))
+    elif query_type == 'instances-paths':        
         return FileInstance.query.filter(the_file_search_compiler.compile(search))
     else:
         raise ServerError('unhandled query_type %r', query_type)
@@ -1138,7 +1141,7 @@ def execute_search_api(args, sourcename=None):
     elif output_format == file_listing_json_format:
         query_type = 'files'
     elif output_format == instance_listing_json_format:
-        query_type = 'instances-stores'
+        query_type = 'instances-paths'
     elif output_format == obs_listing_json_format:
         query_typ = 'obs'
     else:
