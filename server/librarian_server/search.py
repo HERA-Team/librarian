@@ -476,9 +476,9 @@ def compile_search(search_string, query_type='files'):
         # The following syntax gives us a LEFT OUTER JOIN which is what we want to
         # get (at most) one instance for each File of interest.
         return (db.session.query(FileInstance, File, Store)
-            .join(Store)
-            .join(File, isouter=True)
-            .filter(the_file_search_compiler.compile(search)))
+                .join(Store)
+                .join(File, isouter=True)
+                .filter(the_file_search_compiler.compile(search)))
     elif query_type == 'instances-paths':        
         return FileInstance.query.filter(the_file_search_compiler.compile(search))
     else:
