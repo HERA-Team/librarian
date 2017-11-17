@@ -134,7 +134,7 @@ class Store (object):
         argv = [
             'rsync',
             '-aP',
-            '-e', 'ssh -c arcfour256 -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
+            '-e', 'ssh -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
             local_path + local_suffix, '%s:%s' % (self.ssh_host, self._path(store_path))
         ]
         success = False

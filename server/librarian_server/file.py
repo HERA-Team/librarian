@@ -452,6 +452,14 @@ class FileInstance (db.Model):
     def deletion_policy_text(self):
         return DeletionPolicy.textualize(self.deletion_policy)
 
+    def to_dict(self):
+        return dict(
+            store=self.store,
+            parent_dirs=self.parent_dirs,
+            name=self.name,
+            deletion_policy=self.deletion_policy,
+            full_path_on_store= os.path.join(self.store_object.path_prefix, self.parent_dirs, self.name)
+        )
 
 class FileEvent (db.Model):
     """A FileEvent is a something that happens to a File on this Librarian.

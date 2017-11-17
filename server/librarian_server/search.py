@@ -473,12 +473,11 @@ def compile_search(search_string, query_type='files'):
     elif query_type == 'sessions':
         return ObservingSession.query.filter(the_session_search_compiler.compile(search))
     elif query_type == 'instances-stores':
+        #return File.query.filter(the_file_search_compiler.compile(search))
         # The following syntax gives us a LEFT OUTER JOIN which is what we want to
         # get (at most) one instance for each File of interest.
-        return (db.session.query(FileInstance, File, Store)
-                .join(Store)
-                .join(File, isouter=True)
-                .filter(the_file_search_compiler.compile(search)))
+        #return db.session.query(FileInstance).filter(the_file_search_compiler.compile(search))
+        return FileInstance.query.filter(the_file_search_compiler.compile(search))
     else:
         raise ServerError('unhandled query_type %r', query_type)
 
@@ -1112,7 +1111,9 @@ def execute_search_ui():
 
 stage_the_files_json_format = 'stage-the-files-json'
 session_listing_json_format = 'session-listing-json'
-
+file_listing_json_format = 'file-listing-json'
+instance_listing_json_format = 'instance-listing-json'
+obs_listing_json_format = 'obs-listing-json'
 
 @app.route('/api/search', methods=['GET', 'POST'])
 @json_api
@@ -1134,6 +1135,12 @@ def execute_search_api(args, sourcename=None):
             raise ServerError('this Librarian does not support local-disk staging')
     elif output_format == session_listing_json_format:
         query_type = 'sessions'
+    elif output_format == file_listing_json_format:
+        query_type = 'files'
+    elif output_format == instance_listing_json_format:
+        query_type = 'instances-stores'
+    elif output_format == obs_listing_json_format:
+        query_typ = 'obs'
     else:
         raise ServerError('illegal search output type %r', output_format)
 
@@ -1150,45 +1157,19 @@ def execute_search_api(args, sourcename=None):
         return dict(
             results=[sess.to_dict() for sess in search],
         )
+    elif output_format == file_listing_json_format:
+        return dict(
+            results=[files.to_dict() for files in search],
+        )
+    elif output_format == instance_listing_json_format:
+        return dict(
+            results=[instance.to_dict() for instance in search],
+        )
+    elif output_format == obs_listing_json_format:
+        return dict(
+            results=[obs.to_dict() for obs in search],
+        )
     else:
         raise ServerError('internal logic failure mishandled output format')
         
-               
-file_name_format = 'Raw text with file names'
-full_path_format = 'Raw text with full instance paths'
 
-@app.route('/api/search-json', methods=['GET', 'POST'])
-@json_api
-def execute_search_json(args, sourcename=None):
-    """Python accessible file search"""
-    search_text = required_arg(args, unicode, 'search')
-    output_format = required_arg(args, unicode, 'output_format')
-
-    if output_format == full_path_format:
-        query_type = 'names'
-    elif output_format == file_name_format:
-        query_type = 'files'
-    else:
-         return Response('Illegal search output type %r' % (output_format, ), status=400)
-
-    status = 200
-
-    try:
-        search = compile_search(search_text, query_type=query_type)
-        text=[]
-        if output_format == full_path_format:
-            from .file import FileInstance
-            instances = FileInstance.query.filter(FileInstance.name.in_(search))
-            for i in instances:
-                text.append(i.full_path_on_store())
-        elif output_format == file_name_format:
-            for f in search:
-                text.append(f.name)
-        else:
-            raise ServerError('internal logic failure mishandled output format')
-    except Exception as e:
-        app.log_exception(sys.exc_info())
-        status = 400
-        text = 'Search resulted in error: %s' % e
-
-    return dict(filelist=text)     
