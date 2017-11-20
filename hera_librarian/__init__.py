@@ -269,3 +269,22 @@ class LibrarianClient (object):
                                   search=search,
                                   output_format='session-listing-json',
                                   )
+                                  
+    def search_files(self, search):
+        return self._do_http_post('search',
+                                  search=search,
+                                  output_format='file-listing-json',
+                                  )
+                                  
+    def search_instances(self, search):
+        return self._do_http_post('search',
+                                  search=search,
+                                  output_format='instance-listing-json',
+                                  )                                  
+                                  
+    def search_observations(self, search):
+        return self._do_http_post('search',
+                                  search=search,
+                                  output_format='obs-listing-json',
+                                  )
+

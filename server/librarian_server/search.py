@@ -479,6 +479,8 @@ def compile_search(search_string, query_type='files'):
                 .join(Store)
                 .join(File, isouter=True)
                 .filter(the_file_search_compiler.compile(search)))
+    elif query_type == 'instances-paths':        
+        return FileInstance.query.filter(the_file_search_compiler.compile(search))
     else:
         raise ServerError('unhandled query_type %r', query_type)
 
@@ -1112,7 +1114,9 @@ def execute_search_ui():
 
 stage_the_files_json_format = 'stage-the-files-json'
 session_listing_json_format = 'session-listing-json'
-
+file_listing_json_format = 'file-listing-json'
+instance_listing_json_format = 'instance-listing-json'
+obs_listing_json_format = 'obs-listing-json'
 
 @app.route('/api/search', methods=['GET', 'POST'])
 @json_api
@@ -1134,6 +1138,12 @@ def execute_search_api(args, sourcename=None):
             raise ServerError('this Librarian does not support local-disk staging')
     elif output_format == session_listing_json_format:
         query_type = 'sessions'
+    elif output_format == file_listing_json_format:
+        query_type = 'files'
+    elif output_format == instance_listing_json_format:
+        query_type = 'instances-paths'
+    elif output_format == obs_listing_json_format:
+        query_typ = 'obs'
     else:
         raise ServerError('illegal search output type %r', output_format)
 
@@ -1149,6 +1159,18 @@ def execute_search_api(args, sourcename=None):
     elif output_format == session_listing_json_format:
         return dict(
             results=[sess.to_dict() for sess in search],
+        )
+    elif output_format == file_listing_json_format:
+        return dict(
+            results=[files.to_dict() for files in search],
+        )
+    elif output_format == instance_listing_json_format:
+        return dict(
+            results=[instance.to_dict() for instance in search],
+        )
+    elif output_format == obs_listing_json_format:
+        return dict(
+            results=[obs.to_dict() for obs in search],
         )
     else:
         raise ServerError('internal logic failure mishandled output format')
