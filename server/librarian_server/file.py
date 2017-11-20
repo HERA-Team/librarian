@@ -458,7 +458,7 @@ class FileInstance (db.Model):
             parent_dirs=self.parent_dirs,
             name=self.name,
             deletion_policy=self.deletion_policy,
-            full_path_on_store= os.path.join(self.store_object.path_prefix, self.parent_dirs, self.name)
+            full_path_on_store=self.full_path_on_store()
         )
 
 class FileEvent (db.Model):

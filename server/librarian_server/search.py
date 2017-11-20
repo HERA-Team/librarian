@@ -1174,5 +1174,3 @@ def execute_search_api(args, sourcename=None):
         )
     else:
         raise ServerError('internal logic failure mishandled output format')
-        
-
