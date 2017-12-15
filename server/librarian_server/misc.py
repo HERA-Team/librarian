@@ -97,10 +97,10 @@ def create_records(info, sourcename):
 
 # Verrry miscellaneous.
 
-def ensure_dirs_gw(path):
-    """Ensure that path is a directory by creating it and parents if
-    necessary.  All created directories are made group writeable and
-    executable.
+def ensure_dirs_gw(path, _parent_mode=False):
+    """Ensure that path is a directory by creating it and parents if necessary.
+    Also ensure that it is group-writeable and executable. All created parent
+    directories are also made group writeable and executable.
 
     This is a fairly specialized function used in support of the NRAO
     Lustre staging feature.
@@ -112,24 +112,32 @@ def ensure_dirs_gw(path):
     import stat
 
     head, tail = os.path.split(path)  # /a/b/c => /a/b, c
-    if not len(tail):  # if we got something like "a/b/"
+    if not len(tail):  # if we got something like "a/b/" => ("a/b", "")
         head, tail = os.path.split(head)
     if len(head) and head != '/':
-        ensure_dirs_gw(head)
+        ensure_dirs_gw(head, _parent_mode=True)
+
+    try_chown = not _parent_mode  # deepest directory must be g+wx
 
     try:
+        # Note: the `mode` passed to mkdir is altered by the umask, which may
+        # remove the group-write bit we want, so we can't rely on it to set
+        # permissions correctly.
         os.mkdir(path)
+        try_chown = True  # we created it, so definitely chown
     except OSError as e:
         if e.errno == 17:
-            pass  # already exists; no problem
+            pass  # already exists; no problem, and maybe no chown
         else:
             raise
-    else:
-        # We created it, so chmod it.
+
+    if try_chown:
         st = os.stat(path)
         mode = stat.S_IMODE(st.st_mode)
-        mode |= (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
-        os.chmod(path, mode)
+        new_mode = mode | (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
+
+        if new_mode != mode:  # avoid failure if perms are OK but we don't own the dir
+            os.chmod(path, new_mode)
 
 
 def copyfiletree(src, dst):
@@ -217,10 +225,12 @@ def inject_globals():
         staging_available = True
         staging_dest_displayed = lds_info['displayed_dest']
         staging_dest_path = lds_info['dest_prefix']
+        staging_username_placeholder = lds_info['username_placeholder']
     else:
         staging_available = False
         staging_dest_displayed = None
         staging_dest_path = None
+        staging_username_placeholder = None
 
     return {
         'current_time_info': cti,
@@ -228,6 +238,7 @@ def inject_globals():
         'staging_available': staging_available,
         'staging_dest_displayed': staging_dest_displayed,
         'staging_dest_path': staging_dest_path,
+        'staging_username_placeholder': staging_username_placeholder,
     }
 
 

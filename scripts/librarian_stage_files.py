@@ -49,6 +49,13 @@ def die(fmt, *args):
 
 client = hera_librarian.LibrarianClient(args.conn_name)
 
+# Get the username. We could make this a command-line option but I think it's
+# better to keep this a semi-secret. Note that the server does absolutely no
+# verification of the values that are passed in.
+
+import getpass
+user = getpass.getuser()
+
 # Resolve the destination in case the user provides, say, `.`, where the
 # server is not going to know what that means. This will need elaboration if
 # we add options for the server to come up with a destination automatically or
@@ -56,7 +63,7 @@ client = hera_librarian.LibrarianClient(args.conn_name)
 our_dest = os.path.realpath(args.dest_dir)
 
 try:
-    result = client.launch_local_disk_stage_operation(args.search, our_dest)
+    result = client.launch_local_disk_stage_operation(user, args.search, our_dest)
 except hera_librarian.RPCError as e:
     die('couldn\'t start the stage operation: %s', e)
 

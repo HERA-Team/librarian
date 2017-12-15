@@ -76,7 +76,9 @@
     #"local_disk_staging": {
     #   "ssh_host": "xxx", # The store "SSH host" field indicating a local machine
     #   "dest_prefix": "yyy", # Hardwired directory prefix inside which copies land
-    #   "displayed_dest": "Lustre" # Displayed name for staging destination
+    #   "displayed_dest": "Lustre", # Displayed name for staging destination
+    #   "username_placeholder": "your username", # Displayed placeholder for username prompts
+    #   "chown_command": ["arg0", "arg1"] # Command to fix up file ownership
     #},
 
     # Here is a set of "sources" of data. Programs or people logging into the

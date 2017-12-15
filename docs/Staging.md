@@ -22,7 +22,8 @@ files is shown to you in your web browser. But there is also a mode where the
 For convenience, the NRAO Librarian web interface includes a shortcut to run a
 staging search after you’ve run a standard search. If you scroll down to the
 bottom of file search result page, there will be a section that allows you to
-specify a destination directory and launch the staging operation.
+specify your NRAO username and a destination directory, then launch the
+staging operation.
 
 Staging can take some time, and our web interface isn’t fancy enough to be
 able to report progress to you. To monitor progress, you should keep an eye on
@@ -55,7 +56,8 @@ have to do is:
 
 1. Scroll down to the bottom of the results page to the “Staging to Lustre”
    section.
-2. Enter in your Lustre destination directory using the template.
+2. Enter in your NRAO username where prompted.
+2. Optionally enter in the a sub-directory name in which to put these files.
 3. Hit the “Launch” button.
 
 Unless something went wrong the Librarian will tell you how many instances and

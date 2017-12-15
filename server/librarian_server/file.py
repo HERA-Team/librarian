@@ -35,6 +35,8 @@ def infer_file_obsid(parent_dirs, name, info):
 
     The "none" mode refuses to do this.
 
+    There is also a secret "_testing" mode.
+
     """
     mode = app.config.get('obsid_inference_mode', 'none')
 
@@ -57,6 +59,17 @@ def infer_file_obsid(parent_dirs, name, info):
                               'obsids from similarly-named files', name, len(obsids))
 
         return obsids[0]
+
+    if mode == '_testing':
+        bits = name.split('.')
+        if len(bits) < 4:
+            raise ServerError(
+                'need to infer obsid of _testing file \"%s\", but its name looks weird', name)
+
+        jd = float(bits[1] + '.' + bits[2])
+        from astropy.time import Time
+        from math import floor
+        return int(floor(Time(jd, format='jd', scale='utc').gps))
 
     raise ServerError('configuration problem: unknown "obsid_inference_mode" setting %r', mode)
 

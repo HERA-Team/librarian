@@ -64,17 +64,8 @@
 <p>You can stage all of the files from this session to {{staging_dest_displayed}}.</p>
 
 <form role="form" action="/" method="post"> <!-- note: POST method since non-idempotent op -->
-  <input name="type" type="hidden" value="instances-stores">
-  <input name="output_format" type="hidden" value="stage-the-files-human">
   <input name="search" type="hidden" value="{&quot;session-id-is-exactly&quot;: {{sess.id}}}">
-
-  <div class="form-group">
-    <label for="stage_dest">Destination:</label>
-    <input type="text" class="form-control" name="stage_dest" id="stage_dest"
-	   value="{{staging_dest_path}}/USERNAME/JOB">
-  </div>
-
-  <button type="submit" class="btn btn-primary" name="launch" formaction="/search">Launch</button>
+  {{macros.staging_form_ui(staging_dest_path)}}
 </form>
 
 <br><br><!-- hack for nicer spacing -->

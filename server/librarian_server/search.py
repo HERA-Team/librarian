@@ -716,9 +716,26 @@ class StagerTask(bgtasks.BackgroundTask):
 
     """
 
-    def __init__(self, dest, stage_info, bytes):
+    def __init__(self, dest, stage_info, bytes, user, chown_command):
+        """Arguments:
+
+        dest (str)
+          The destination directory, which should exist.
+        stage_info
+          Iterable of `(store_prefix, parent_dirs, name)`.
+        bytes (integer)
+          Number of bytes to be staged.
+        user (str)
+          The name of the user that the files will be chowned to.
+        chown_command (list of str)
+          Beginning of the command line that will be used to change
+          file ownership after staging is complete.
+
+        """
         self.dest = dest
         self.stage_info = stage_info
+        self.user = user
+        self.chown_command = chown_command
         self.desc = 'stage %d bytes to %s' % (bytes, dest)
 
         import os.path
@@ -732,6 +749,7 @@ class StagerTask(bgtasks.BackgroundTask):
 
     def thread_function(self):
         import os
+        import subprocess
         from .misc import copyfiletree, ensure_dirs_gw
 
         for store_prefix, parent_dirs, name in self.stage_info:
@@ -751,6 +769,22 @@ class StagerTask(bgtasks.BackgroundTask):
 
         if len(self.failures):
             raise Exception('failures while attempting to create and copy files')
+
+        # Now change ownership of the files.
+
+        argv = self.chown_command + [
+            '-u', self.user,
+            '-R',  # <= recursive
+            self.dest,
+        ]
+
+        subprocess.check_output(
+            argv,
+            stdin=open(os.devnull, 'rb'),
+            stderr=subprocess.STDOUT,
+            shell=False,
+            close_fds=True,
+        )
 
     def wrapup_function(self, retval, exc):
         import time
@@ -783,9 +817,14 @@ class StagerTask(bgtasks.BackgroundTask):
                  self.dest, outcome_desc, self.t_stop - self.t_start)
 
 
-def launch_stage_operation(search, stage_dest):
+def launch_stage_operation(user, search, stage_dest):
     """Shared code to prep and launch a local-disk staging operation.
 
+    user
+      The user that will own the files in the end. This function validates
+      that specified username is in fact a valid one on the system, but
+      does not (and cannot) verify that the invoker is who they say they
+      are.
     search
       A SQLAlchemy search for File objects that the user wants to stage.
     stage_dest
@@ -793,27 +832,29 @@ def launch_stage_operation(search, stage_dest):
     Returns
       A tuple `(final_dest_dir, n_instances, n_bytes)`.
 
-    When this is called, basic vetting of `stage_dest` should have been
-    performed such that it's known to be a non-empty string.
-
-    NOTE! We do not validate `stage_dest`, so the user can try to write files
-    anywhere that the Librarian has permissions!!!
-
     """
     import os.path
+    import pwd
     from .file import File, FileInstance
     from .misc import ensure_dirs_gw
     from .store import Store
 
     lds_info = app.config['local_disk_staging']
 
-    # Make the destination directory; let exception handling deal with it if
-    # there's a problem.
+    # Valid username?
+
+    try:
+        pwd.getpwnam(user)
+    except KeyError:
+        raise Exception('staging user name \"%s\" was not recognized by the system' % user)
+
+    # Validate and make the destination directory; let exception handling deal
+    # with it if there's a problem.
     dest = os.path.realpath(stage_dest)
     if not dest.startswith(lds_info['dest_prefix']):
-        raise Exception('staging destination must resolve to a subdirectory of %r; '
-                        'input %r resolved to %r instead' % (lds_info['dest_prefix'],
-                                                             stage_dest, dest))
+        raise Exception('staging destination must resolve to a subdirectory of \"%s\"; '
+                        'input \"%s\" resolved to \"%s\" instead' % (lds_info['dest_prefix'],
+                                                                     stage_dest, dest))
     ensure_dirs_gw(dest)
 
     info = list(search.filter(
@@ -827,7 +868,8 @@ def launch_stage_operation(search, stage_dest):
         n_bytes += file.size
 
     stage_info = [(store.path_prefix, inst.parent_dirs, inst.name) for (inst, file, store) in info]
-    bgtasks.submit_background_task(StagerTask(dest, stage_info, n_bytes))
+    bgtasks.submit_background_task(StagerTask(
+        dest, stage_info, n_bytes, user, lds_info['chown_command']))
 
     return dest, len(info), n_bytes
 
@@ -997,6 +1039,19 @@ stage_the_files_human_format = 'stage-the-files-human'
 @app.route('/search', methods=['GET', 'POST'])
 @login_required
 def execute_search_ui():
+    """The user-facing version of the search feature.
+
+    Note that we perform no verification of the `stage_user` parameter!
+    (Besides checking that it corresponds to a real system user.) This is
+    incredibly lame but I'm not keen to build a real login system here. This
+    means that we let users perform "file giveaways". I believe that this can
+    be a security threat, but because the files that are given away are ones
+    that come out of the Librarian, I think the most nefarious thing that can
+    happen is denial-of-service by filling up someone else's quota. The chown
+    script deployed at NRAO has safety checks in place to prevent giveaways to
+    user accounts that are not HERA-using humans.
+
+    """
     if len(request.form):
         reqdata = request.form
     else:
@@ -1005,7 +1060,8 @@ def execute_search_ui():
     query_type = required_arg(reqdata, unicode, 'type')
     search_text = required_arg(reqdata, unicode, 'search')
     output_format = optional_arg(reqdata, unicode, 'output_format', human_file_format)
-    stage_dest = optional_arg(reqdata, unicode, 'stage_dest', '')
+    stage_user = optional_arg(reqdata, unicode, 'stage_user', '')
+    stage_dest_suffix = optional_arg(reqdata, unicode, 'stage_dest_suffix', '')
     for_humans = True
 
     if output_format == full_path_format:
@@ -1024,8 +1080,8 @@ def execute_search_ui():
         query_type = 'instances-stores'
         if request.method == 'GET':
             return Response('Staging requires a POST operation', status=400)
-        if not len(stage_dest):
-            return Response('Stage-files command did not specify destination directory', status=400)
+        if not len(stage_user):
+            return Response('Stage-files command did not specify the username', status=400)
     else:
         return Response('Illegal search output type %r' % (output_format, ), status=400)
 
@@ -1074,8 +1130,13 @@ def execute_search_ui():
                 error_message=None,
             )
         elif output_format == stage_the_files_human_format:
+            # This will DTRT if stage_dest_suffix is empty:
+            dest_prefix = app.config['local_disk_staging']['dest_prefix']
+            stage_dest = os.path.join(dest_prefix, stage_user, stage_dest_suffix)
+
             try:
-                final_dest, n_instances, n_bytes = launch_stage_operation(search, stage_dest)
+                final_dest, n_instances, n_bytes = launch_stage_operation(
+                    stage_user, search, stage_dest)
                 error_message = None
             except Exception as e:
                 app.log_exception(sys.exc_info())
@@ -1121,10 +1182,16 @@ obs_listing_json_format = 'obs-listing-json'
 @app.route('/api/search', methods=['GET', 'POST'])
 @json_api
 def execute_search_api(args, sourcename=None):
-    """JSON API version of the search facility."""
+    """JSON API version of the search facility.
 
+    Note that we perform no verification of the `stage_user` parameter!
+    (Besides checking that it corresponds to a real system user.) This is
+    incredibly lame but I'm not keen to build a real login system here.
+
+    """
     search_text = required_arg(args, unicode, 'search')
     output_format = required_arg(args, unicode, 'output_format')
+    stage_user = optional_arg(args, unicode, 'stage_user', '')
     stage_dest = optional_arg(args, unicode, 'stage_dest', '')
 
     if output_format == stage_the_files_json_format:
@@ -1150,7 +1217,7 @@ def execute_search_api(args, sourcename=None):
     search = compile_search(search_text, query_type=query_type)
 
     if output_format == stage_the_files_json_format:
-        final_dest, n_instances, n_bytes = launch_stage_operation(search, stage_dest)
+        final_dest, n_instances, n_bytes = launch_stage_operation(stage_user, search, stage_dest)
         return dict(
             destination=final_dest,
             n_instances=n_instances,
