@@ -128,6 +128,10 @@ def ensure_dirs_gw(path, _parent_mode=False):
     except OSError as e:
         if e.errno == 17:
             pass  # already exists; no problem, and maybe no chown
+        elif e.errno == 13:  # EACCES
+            raise Exception('unable to create directory \"%s\"; you probably '
+                            'need to make its parent group-writeable with:\n\n'
+                            'chmod g+wx \'%s\'' % (path, os.path.dirname(path)))
         else:
             raise
 
@@ -137,7 +141,14 @@ def ensure_dirs_gw(path, _parent_mode=False):
         new_mode = mode | (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
 
         if new_mode != mode:  # avoid failure if perms are OK but we don't own the dir
-            os.chmod(path, new_mode)
+            try:
+                os.chmod(path, new_mode)
+            except OSError as e:
+                if e.errno == 1:  # EPERM
+                    raise Exception('unable to make \"%s\" group-writeable; '
+                                    'please do so yourself with:\n\nchmod g+wx \'%s\''
+                                    % (path, path))
+                raise
 
 
 def copyfiletree(src, dst):
