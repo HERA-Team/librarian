@@ -98,9 +98,10 @@ def create_records(info, sourcename):
 # Verrry miscellaneous.
 
 def ensure_dirs_gw(path, _parent_mode=False):
-    """Ensure that path is a directory by creating it and parents if necessary.
-    Also ensure that it is group-writeable and executable. All created parent
-    directories are also made group writeable and executable.
+    """Ensure that path is a directory by creating it and parents if
+    necessary.  Also ensure that it is group-writeable and
+    -executable, and setgid. All created parent directories get their
+    mode bits set comparably.
 
     This is a fairly specialized function used in support of the NRAO
     Lustre staging feature.
@@ -117,17 +118,17 @@ def ensure_dirs_gw(path, _parent_mode=False):
     if len(head) and head != '/':
         ensure_dirs_gw(head, _parent_mode=True)
 
-    try_chown = not _parent_mode  # deepest directory must be g+wx
+    try_chmod = not _parent_mode  # deepest directory must be g+wxs
 
     try:
         # Note: the `mode` passed to mkdir is altered by the umask, which may
         # remove the group-write bit we want, so we can't rely on it to set
         # permissions correctly.
         os.mkdir(path)
-        try_chown = True  # we created it, so definitely chown
+        try_chmod = True  # we created it, so definitely chmod
     except OSError as e:
         if e.errno == 17:
-            pass  # already exists; no problem, and maybe no chown
+            pass  # already exists; no problem, and maybe no chmod
         elif e.errno == 13:  # EACCES
             raise Exception('unable to create directory \"%s\"; you probably '
                             'need to make its parent group-writeable with:\n\n'
@@ -135,10 +136,10 @@ def ensure_dirs_gw(path, _parent_mode=False):
         else:
             raise
 
-    if try_chown:
+    if try_chmod:
         st = os.stat(path)
         mode = stat.S_IMODE(st.st_mode)
-        new_mode = mode | (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
+        new_mode = mode | (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP | stat.S_ISGID)
 
         if new_mode != mode:  # avoid failure if perms are OK but we don't own the dir
             try:
@@ -183,7 +184,7 @@ def copyfiletree(src, dst):
     os.mkdir(dst)
     st = os.stat(dst)  # NOTE! not src; we explicitly do not preserve perms
     mode = stat.S_IMODE(st.st_mode)
-    mode |= (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP)
+    mode |= (stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP | stat.S_ISGID)
     os.chmod(dst, mode)
 
     for item in items:
