@@ -77,7 +77,7 @@ files.
 
 If your user account is set up with an installation of the Librarian client
 Python module and you have set up your `~/.hl_client.cfg` file, you can also
-launch a stage direcly from the command line.
+launch a stage directly from the command line.
 
 An example command is:
 
