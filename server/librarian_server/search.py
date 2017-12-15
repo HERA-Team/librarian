@@ -775,7 +775,7 @@ class StagerTask(bgtasks.BackgroundTask):
         argv = self.chown_command + [
             '-u', self.user,
             '-R',  # <= recursive
-            self.dest,
+            '-d', self.dest,
         ]
 
         subprocess.check_output(
