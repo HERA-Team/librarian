@@ -55,7 +55,7 @@
 
 <form role="form" action="/" method="post"> <!-- note: POST method since non-idempotent op -->
   <input name="search" type="hidden" value="{&quot;obsid-is-exactly&quot;: {{obs.obsid}}}">
-  {{macros.staging_form_ui(staging_dest_path)}}
+  {{macros.staging_form_ui(staging_username_placeholder, staging_dest_path)}}
 </form>
 
 <br><br><!-- hack for nicer spacing -->

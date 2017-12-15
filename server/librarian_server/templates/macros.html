@@ -186,7 +186,7 @@ parsed. #}
 </div>
 {% endmacro %}
 
-{% macro staging_form_ui(staging_dest_path) -%}
+{% macro staging_form_ui(username_placeholder, dest_path) -%}
 <input name="type" type="hidden" value="instances-stores">
 <input name="output_format" type="hidden" value="stage-the-files-human">
 
@@ -195,7 +195,7 @@ parsed. #}
   <div class="col-sm-4">
     <input type="text" class="form-control"
            name="stage_user" id="stage_user"
-	   placeholder="{{staging_username_placeholder}}">
+	   placeholder="{{username_placeholder}}">
   </div>
 </div>
 
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
       computed = "(enter your username)";
     } else {
       launch.disabled = false;
-      computed = "{{staging_dest_path}}/" + username;
+      computed = "{{dest_path}}/" + username;
       if (suffix != "") {
         computed += "/" + suffix;
       }
