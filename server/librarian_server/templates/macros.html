@@ -37,7 +37,11 @@ parsed. #}
 	<!-- note: spaces on next line are magic nonbreaking spaces -->
 	<td><a href="/stream/{{f.name}}">{{f.name}}</a>   <a href="/files/{{f.name}}">details</a></td>
 	<td>{{f.create_time}}</td>
+        {% if f.obsid %}
 	<td><a href="/observations/{{f.obsid}}">{{f.obsid}}</a></td>
+        {% else %}
+	<td>null</td>
+        {% endif %}
 	<td>{{f.type}}</td>
 	<td>{{f.source}}</td>
 	<td>{{f.size|filesizeformat}}</td>

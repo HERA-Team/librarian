@@ -81,7 +81,7 @@ class Store (db.Model, BaseStore):
         return BaseStore(self.name, self.path_prefix, self.ssh_host)
 
     def process_staged_file(self, staged_path, dest_store_path, meta_mode,
-                            deletion_policy, source_name=None):
+                            deletion_policy, source_name=None, null_obsid=False):
         """Called after a file has been placed in a staging directory on a store. We
         validate the upload and, if it's OK, put the file into its final
         destination and create the relevant database entries.
@@ -91,6 +91,9 @@ class Store (db.Model, BaseStore):
         file_name = os.path.basename(dest_store_path)
 
         from .file import File, FileInstance
+
+        if null_obsid and meta_mode != 'infer':
+            raise ServerError('internal error: null_obsid only valid when meta_mode is "infer"')
 
         # Do we already have the intended instance? If so ... just delete the
         # staged instance and return success, because the intended effect has
@@ -152,7 +155,7 @@ class Store (db.Model, BaseStore):
                 raise ServerError('internal bug on upload of %s:%s: must specify source_name '
                                   'if inferring file properties', self.name, dest_store_path)
 
-            file = File.get_inferring_info(self, staged_path, source_name)
+            file = File.get_inferring_info(self, staged_path, source_name, null_obsid=null_obsid)
         else:
             raise ServerError('unrecognized "meta_mode" value %r', meta_mode)
 
@@ -276,7 +279,8 @@ def complete_upload(args, sourcename=None):
     dest_store_path = required_arg(args, unicode, 'dest_store_path')
     meta_mode = required_arg(args, unicode, 'meta_mode')
     deletion_policy = optional_arg(args, unicode, 'deletion_policy', 'disallowed')
-    staging_was_known = optional_arg(args, bool, 'staging_was_known')
+    staging_was_known = optional_arg(args, bool, 'staging_was_known', False)
+    null_obsid = optional_arg(args, bool, 'null_obsid', False)
     store = Store.get_by_name(store_name)  # ServerError if failure
     file_name = os.path.basename(dest_store_path)
     staged_path = os.path.join(staging_dir, file_name)
@@ -293,7 +297,8 @@ def complete_upload(args, sourcename=None):
     deletion_policy = DeletionPolicy.parse_safe(deletion_policy)
 
     store.process_staged_file(staged_path, dest_store_path, meta_mode,
-                              deletion_policy, source_name=sourcename)
+                              deletion_policy, source_name=sourcename,
+                              null_obsid=null_obsid)
 
     # If we're still here, we're good and can kill the staging directory,
     # unless it was one that was handed to us externally, in which case we

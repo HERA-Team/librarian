@@ -176,6 +176,9 @@ class MCManager(object):
         M&C-enabled librarian -- see the `misc` module.
 
         """
+        if file_obj.obsid is None:
+            return False  # this is OK, for maintenance files
+
         for mc_obs in self.mc_session.get_obs(obsid=file_obj.obsid):
             return False  # if this executes, we got one and the file's OK
 
@@ -203,6 +206,10 @@ class MCManager(object):
         return Observation(obsid, start_jd, stop_jd, start_lst)
 
     def note_file_created(self, file_obj):
+        """Tell M&C about a new Librarian file. M&C file records can also have null
+        obsids, so we don't need to do anything special for maintenance files.
+
+        """
         try:
             self.mc_session.add_lib_file(file_obj.name, file_obj.obsid,
                                          file_obj.create_time_astropy,
@@ -210,7 +217,7 @@ class MCManager(object):
         except InvalidRequestError as e:
             # This could happen if the file's obsid were not registered in the
             # M&C database. Which shouldn't happen, but ...
-            self.error(SEVERE, 'couldn\'t register file %s (obsid %d) with M&C: %s',
+            self.error(SEVERE, 'couldn\'t register file %s (obsid %s) with M&C: %s',
                        file_obj.name, file_obj.obsid, e)
 
         self.mc_session.commit()
@@ -238,8 +245,8 @@ def register_callbacks(version_string, git_hash):
 # whether M&C integration is actually activated.
 
 def is_file_record_invalid(file_obj):
-    """If we're M&C-enabled, we refuse to create files whose inferred obsids are
-    not contained in the hera_obs table.
+    """If we're M&C-enabled, we refuse to create files with obsids that are not
+    contained in the hera_obs table.
 
     """
     if the_mc_manager is None:
@@ -255,6 +262,9 @@ def create_observation_record(obsid):
     in the `initiate_upload` API call.
 
     """
+    if not isinstance(obsid, (int, long)):
+        raise ValueError('obsid must be integer; got %r' % (obsid, ))  # in case a None slips in
+
     if the_mc_manager is None:
         raise ServerError('cannot create fresh observations without M&C')
 

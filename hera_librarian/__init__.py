@@ -118,7 +118,7 @@ class LibrarianClient (object):
 
     def upload_file(self, local_path, dest_store_path, meta_mode, rec_info={},
                     deletion_policy='disallowed', known_staging_store=None,
-                    known_staging_subdir=None):
+                    known_staging_subdir=None, null_obsid=False):
         """Upload the file located at `local_path` to the Librarian. We suggest a
         destination "store path" (something like "2345678/mydata.uv"), but the
         Librarian has to tell us which store to actually put the file on.
@@ -144,6 +144,13 @@ class LibrarianClient (object):
 
         (In the future we might add more options.)
 
+        If `meta_mode` is "infer' and `null_obsid` is True, the new file is
+        expected and required to have a null `obsid` field, and it will be
+        ingested into the Librarian as such. This mode is used for maintenance
+        files that are not associated with a particular observation or
+        observing session. It is an error to set `null_obsid` to True for
+        other values of `meta_mode`.
+
         This function invokes an rsync that is potentially trying to copy
         gigabytes of data across oceans. It may take a looong time to return
         and will not infrequently raise an exception.
@@ -161,6 +168,9 @@ class LibrarianClient (object):
             raise Exception('destination path may not be absolute; got %r' % (dest_store_path,))
 
         deletion_policy = _normalize_deletion_policy(deletion_policy)
+
+        if null_obsid and meta_mode != 'infer':
+            raise Exception('null_obsid may only be True when meta_mode is "infer"')
 
         # In the first stage, we tell the Librarian how much data we're going to upload,
         # send it the database records, and get told the staging directory.
@@ -198,6 +208,7 @@ class LibrarianClient (object):
                                   meta_mode=meta_mode,
                                   deletion_policy=deletion_policy,
                                   staging_was_known=(known_staging_store is not None),
+                                  null_obsid=null_obsid,
                                   )
 
     def register_instances(self, store_name, file_info):
@@ -270,22 +281,21 @@ class LibrarianClient (object):
                                   search=search,
                                   output_format='session-listing-json',
                                   )
-                                  
+
     def search_files(self, search):
         return self._do_http_post('search',
                                   search=search,
                                   output_format='file-listing-json',
                                   )
-                                  
+
     def search_instances(self, search):
         return self._do_http_post('search',
                                   search=search,
                                   output_format='instance-listing-json',
-                                  )                                  
-                                  
+                                  )
+
     def search_observations(self, search):
         return self._do_http_post('search',
                                   search=search,
                                   output_format='obs-listing-json',
                                   )
-

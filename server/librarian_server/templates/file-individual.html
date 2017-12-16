@@ -16,7 +16,11 @@
       <tr>
 	<td>Observation</td>
 	<td>obsid</td>
+        {% if file.obsid %}
 	<td><a href="/observations/{{file.obsid}}">{{file.obsid}}</a></td>
+        {% else %}
+	<td>null</td>
+        {% endif %}
       </tr>
       <tr>
 	<td>Size</td>

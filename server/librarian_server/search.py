@@ -384,6 +384,8 @@ class FileSearchCompiler(GenericSearchCompiler):
         self.clauses['name-like'] = self.clauses['name-matches']  # compat alias
         self.clauses['source-is'] = self.clauses['source-is-exactly']  # compat alias
 
+        self.clauses['obsid-is-null'] = self._do_obsid_is_null
+
         # These are technically properties of Observations, not Files, but
         # users aren't going to want to jump through extra hoops to query for
         # them, so we proxy the query clauses.
@@ -397,6 +399,11 @@ class FileSearchCompiler(GenericSearchCompiler):
         # I named these in a very ... weird way.
         self.clauses['not-older-than'] = self._do_not_older_than
         self.clauses['not-newer-than'] = self._do_not_newer_than
+
+    def _do_obsid_is_null(self, clause_name, payload):
+        """We just ignore the payload."""
+        from .file import File
+        return (File.obsid == None)
 
     def _do_not_older_than(self, clause_name, payload):
         if not isinstance(payload, (int, float)):
@@ -479,7 +486,7 @@ def compile_search(search_string, query_type='files'):
                 .join(Store)
                 .join(File, isouter=True)
                 .filter(the_file_search_compiler.compile(search)))
-    elif query_type == 'instances-paths':        
+    elif query_type == 'instances-paths':
         return FileInstance.query.filter(the_file_search_compiler.compile(search))
     else:
         raise ServerError('unhandled query_type %r', query_type)
@@ -1178,6 +1185,7 @@ session_listing_json_format = 'session-listing-json'
 file_listing_json_format = 'file-listing-json'
 instance_listing_json_format = 'instance-listing-json'
 obs_listing_json_format = 'obs-listing-json'
+
 
 @app.route('/api/search', methods=['GET', 'POST'])
 @json_api

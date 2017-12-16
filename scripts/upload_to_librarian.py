@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # -*- mode: python; coding: utf-8 -*-
-# Copyright 2016 the HERA Team.
+# Copyright 2016-2017 the HERA Team.
 # Licensed under the BSD License.
 
 """Upload a file to a Librarian. Do NOT use this script if the file that you
@@ -37,6 +37,8 @@ p = argparse.ArgumentParser(
 
 p.add_argument('--meta', dest='meta', default='infer',
                help='How to gather metadata: "json-stdin" or "infer"')
+p.add_argument('--null-obsid', dest='null_obsid', action='store_true',
+               help='Require the new file to have *no* obsid association (for maintenance files)')
 p.add_argument('--deletion', dest='deletion', default='disallowed',
                help='Whether the created file instance will be deletable: "allowed" or "disallowed"')
 p.add_argument('--pre-staged', dest='pre_staged', metavar='STORENAME:SUBDIR',
@@ -65,6 +67,9 @@ def die(fmt, *args):
 if os.path.isabs(args.dest_store_path):
     die('destination path must be relative to store top; got %r', args.dest_store_path)
 
+if args.null_obsid and args.meta != 'infer':
+    die('illegal to specify --null-obsid when --meta is not "infer"')
+
 if args.meta == 'json-stdin':
     import json
     try:
@@ -91,6 +96,6 @@ client = hera_librarian.LibrarianClient(args.conn_name)
 try:
     client.upload_file(args.local_path, args.dest_store_path, meta_mode, rec_info,
                        deletion_policy=args.deletion, known_staging_store=known_staging_store,
-                       known_staging_subdir=known_staging_subdir)
+                       known_staging_subdir=known_staging_subdir, null_obsid=args.null_obsid)
 except hera_librarian.RPCError as e:
     die('upload failed: %s', e)

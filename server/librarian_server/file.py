@@ -96,7 +96,7 @@ class File (db.Model):
     name = db.Column(db.String(256), primary_key=True)
     type = NotNull(db.String(32))
     create_time = NotNull(db.DateTime)  # rounded to integer seconds
-    obsid = db.Column(db.BigInteger, db.ForeignKey(Observation.obsid), nullable=False)
+    obsid = db.Column(db.BigInteger, db.ForeignKey(Observation.obsid), nullable=True)
     size = NotNull(db.BigInteger)
     md5 = NotNull(db.String(32))
 
@@ -144,7 +144,7 @@ class File (db.Model):
             raise ValueError('illegal size %d of file "%s": negative' % (self.size, self.name))
 
     @classmethod
-    def get_inferring_info(cls, store, store_path, source_name, info=None):
+    def get_inferring_info(cls, store, store_path, source_name, info=None, null_obsid=False):
         """Get a File instance based on a file currently located in a store. We infer
         the file's properties and those of any dependent database records
         (Observation, ObservingSession), which means that we can only do this
@@ -153,6 +153,10 @@ class File (db.Model):
         If new File and Observation records need to be created in the DB, that
         is done. If *info* is given, we use it; otherwise we SSH into the
         store to gather the info ourselves.
+
+        If *null_obsid* is True, the entry is expected and required to have a
+        null obsid. If False (the default), the file must have an obsid --
+        either explicitly specified, or inferred from the file contents.
 
         """
         parent_dirs = os.path.dirname(store_path)
@@ -181,34 +185,40 @@ class File (db.Model):
         from . import mc_integration as MC
 
         obsid = optional_arg(info, int, 'obsid')
-        if obsid is None:
-            # Our UV data files embed their obsids in a way that we can
-            # extract robustly, but we want to be able to ingest new files
-            # that don't necessarily have obsid information embedded. We used
-            # to do this by guessing from the JD in the filename, but that
-            # proved to be unreliable (as you might guess). So we now have a
-            # configurable scheme to make this possible; the only implemented
-            # technique still looks at filenames, but does it in a somewhat
-            # better-justified way where it requires preexisting files to have
-            # an assigned obsid that it can copy.
-            obsid = infer_file_obsid(parent_dirs, name, info)
 
-        obs = Observation.query.get(obsid)
+        if null_obsid:
+            if obsid is not None:
+                raise ServerError('new file %s is expected to have a null obsid, but it has %r',
+                                  name, obsid)
+        else:
+            if obsid is None:
+                # Our UV data files embed their obsids in a way that we can
+                # extract robustly, but we want to be able to ingest new files
+                # that don't necessarily have obsid information embedded. We used
+                # to do this by guessing from the JD in the filename, but that
+                # proved to be unreliable (as you might guess). So we now have a
+                # configurable scheme to make this possible; the only implemented
+                # technique still looks at filenames, but does it in a somewhat
+                # better-justified way where it requires preexisting files to have
+                # an assigned obsid that it can copy.
+                obsid = infer_file_obsid(parent_dirs, name, info)
 
-        if obs is None:
-            # The other piece of the puzzle is that we used to sometimes
-            # create new Observation records based on data that we tried to
-            # infer from standalone files. Now that the we have an on-site M&C
-            # system that records the canonical metadata for observations,
-            # that mode is deprecated. On-site, we only create Observations
-            # from M&C. Off-site, we only get them from uploads from other
-            # Librarians.
-            MC.create_observation_record(obsid)
+            obs = Observation.query.get(obsid)
+
+            if obs is None:
+                # The other piece of the puzzle is that we used to sometimes
+                # create new Observation records based on data that we tried to
+                # infer from standalone files. Now that the we have an on-site M&C
+                # system that records the canonical metadata for observations,
+                # that mode is deprecated. On-site, we only create Observations
+                # from M&C. Off-site, we only get them from uploads from other
+                # Librarians.
+                MC.create_observation_record(obsid)
 
         fobj = File(name, type, obsid, source_name, size, md5)
 
         if MC.is_file_record_invalid(fobj):
-            raise ServerError('new file %s (obsid %d) rejected by M&C; see M&C error logs for the reason',
+            raise ServerError('new file %s (obsid %s) rejected by M&C; see M&C error logs for the reason',
                               name, obsid)
 
         db.session.add(fobj)
@@ -319,7 +329,10 @@ class File (db.Model):
         return Time(self.create_time)
 
     def to_dict(self):
-        """Note that 'source' is not a propagated quantity."""
+        """Note that 'source' is not a propagated quantity, and that we explicitly
+        include the null 'obsid' if that is the case.
+
+        """
         return dict(
             name=self.name,
             type=self.type,
@@ -334,9 +347,18 @@ class File (db.Model):
         name = required_arg(info, unicode, 'name')
         type = required_arg(info, unicode, 'type')
         ctime_unix = required_arg(info, int, 'create_time')
-        obsid = required_arg(info, int, 'obsid')
         size = required_arg(info, int, 'size')
         md5 = required_arg(info, unicode, 'md5')
+
+        # obsid needs special handling: it must be present, but it can be None.
+        try:
+            obsid = info['obsid']
+        except KeyError:
+            raise ServerError('required parameter "obsid" not provided')
+
+        if obsid is not None and not isinstance(obsid, (int, long)):
+            raise ServerError('parameter "obsid" should be an integer or None, but got %r', obsid)
+
         return cls(name, type, obsid, source, size, md5, datetime.datetime.fromtimestamp(ctime_unix))
 
     def make_generic_event(self, type, **kwargs):
@@ -473,6 +495,7 @@ class FileInstance (db.Model):
             deletion_policy=self.deletion_policy,
             full_path_on_store=self.full_path_on_store()
         )
+
 
 class FileEvent (db.Model):
     """A FileEvent is a something that happens to a File on this Librarian.

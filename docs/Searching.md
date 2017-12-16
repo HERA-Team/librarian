@@ -393,6 +393,19 @@ Note that you can query files for observation-based quantities like
 `start-lst-hr` directly, so this clause is only needed if you have more
 sophisticated constraints that you want to apply.
 
+### obsid-is-null
+
+Matches “maintenance” files that are not associated with any observation. They
+payload is ignored. For instance,
+
+```
+{
+  "name-like": "%.pgdump",
+  "obsid-is-null": ""
+}
+```
+
+matches all maintenance files whose names end in `.pgdump`.
 
 
 ## Searching for observations

@@ -30,12 +30,13 @@ def gather_records(file):
     info = {}
     info['files'] = {file.name: file.to_dict()}
 
-    obs = file.observation
-    info['observations'] = {obs.obsid: obs.to_dict()}
+    if file.obsid is not None:
+        obs = file.observation
+        info['observations'] = {obs.obsid: obs.to_dict()}
 
-    sess = obs.session
-    if sess is not None:
-        info['sessions'] = {sess.id: sess.to_dict()}
+        sess = obs.session
+        if sess is not None:
+            info['sessions'] = {sess.id: sess.to_dict()}
 
     return info
 
@@ -78,7 +79,7 @@ def create_records(info, sourcename):
         # activated. But let's be thorough.
 
         if is_file_record_invalid(obj):
-            raise ServerError('new file %s (obsid %d) rejected by M&C; see M&C error logs for the reason',
+            raise ServerError('new file %s (obsid %s) rejected by M&C; see M&C error logs for the reason',
                               obj.name, obj.obsid)
 
         try:
