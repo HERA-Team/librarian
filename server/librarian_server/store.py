@@ -32,7 +32,7 @@ from flask import flash, redirect, render_template, url_for
 from hera_librarian.store import Store as BaseStore
 
 from . import app, db, logger
-from .dbutil import NotNull
+from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
@@ -194,7 +194,15 @@ class Store (db.Model, BaseStore):
         inst = FileInstance(self, parent_dirs, file_name, deletion_policy=deletion_policy)
         db.session.add(inst)
         db.session.add(file.make_instance_creation_event(inst, self))
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError(
+                'failed to commit new instance information to database; DB/FS consistency broken!')
+
         return inst
 
 
@@ -368,7 +376,12 @@ def register_instances(args, sourcename=None):
         db.session.add(inst)
         db.session.add(file.make_instance_creation_event(inst, store))
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to commit new records to database; see logs for details')
 
     # Finally, trigger a look at our standing orders.
 
@@ -466,7 +479,12 @@ class UploaderTask (bgtasks.BackgroundTask):
             logger.info('transfer of %s:%s: duration %.1f s, average rate %.1f kB/s',
                         self.store.name, self.store_path, dt, rate)
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError('failed to commit completion events to database')
 
 
 def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
@@ -527,7 +545,13 @@ def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
     # Remember that we launched this copy.
 
     db.session.add(file.make_copy_launched_event(connection_name, remote_store_path))
-    db.session.commit()
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to commit copy-launch event to database')
 
 
 @app.route('/api/launch_file_copy', methods=['GET', 'POST'])
@@ -663,7 +687,12 @@ class OffloaderTask (bgtasks.BackgroundTask):
                                                                new_policy=DeletionPolicy.ALLOWED,
                                                                context='offload'))
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            logger.error('offloader: failed to commit db changes; continuing')
 
         # Finally, we can blow away the staging directory.
 
@@ -740,7 +769,14 @@ def initiate_offload(args, sourcename=None):
 
     if not len(info):
         source_store.available = False
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError('offload: failed to mark store as unavailable')
+
         return {'outcome': 'store-shut-down'}
 
     # Otherwise, we're going to launch an offloader task. Create a staging
@@ -766,7 +802,15 @@ def make_store_available(name):
         return redirect(url_for('stores'))
 
     store.available = True
-    db.session.commit()
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        flash('Failed to update database?! See server logs for details.')
+        return redirect(url_for('stores'))
+
     flash('Marked store "%s" as available' % store.name)
     return redirect(url_for('stores') + '/' + store.name)
 
@@ -781,7 +825,15 @@ def make_store_unavailable(name):
         return redirect(url_for('stores'))
 
     store.available = False
-    db.session.commit()
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        flash('Failed to update database?! See server logs for details.')
+        return redirect(url_for('stores'))
+
     flash('Marked store "%s" as unavailable' % store.name)
     return redirect(url_for('stores') + '/' + store.name)
 

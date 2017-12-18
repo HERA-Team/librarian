@@ -14,8 +14,13 @@ NotNull
 from . import db
 
 
+# Useful name reexport
+
+from sqlalchemy.exc import SQLAlchemyError
+
 # Right now this module does almost nothing. Maybe that will change in the
 # future?
+
 
 def NotNull(kind, **kwargs):
     return db.Column(kind, nullable=False, **kwargs)

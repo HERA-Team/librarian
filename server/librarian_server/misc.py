@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from . import app, db
+from .dbutil import SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
@@ -93,7 +94,12 @@ def create_records(info, sourcename):
             else:
                 note_file_created(obj)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to commit records to database; see logs for details')
 
 
 # Verrry miscellaneous.

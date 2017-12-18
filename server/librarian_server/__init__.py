@@ -198,6 +198,7 @@ def maybe_add_stores():
     know about.
 
     """
+    from .dbutil import SQLAlchemyError
     from .store import Store
 
     for name, cfg in app.config.get('add-stores', {}).iteritems():
@@ -208,4 +209,8 @@ def maybe_add_stores():
             store.available = cfg.get('available', True)
             db.session.add(store)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise  # this only happens on startup, so just refuse to start

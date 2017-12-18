@@ -15,7 +15,7 @@ from flask import flash, redirect, render_template, url_for
 
 from hera_librarian.utils import format_jd_as_calendar_date, format_jd_as_iso_date_time
 from . import app, db
-from .dbutil import NotNull
+from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
@@ -264,7 +264,12 @@ def assign_observing_sessions(args, sourcename=None):
             # i.e., this obs does not overlap an existing session.
             examine_obs.append(obs)
 
-    db.session.commit()  # if there are any obs matching existing sessions
+    try:
+        db.session.commit()  # if there are any obs matching existing sessions
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to commit obs changes to database; see logs for details')
 
     if not len(examine_obs):
         return retval
@@ -311,7 +316,13 @@ def assign_observing_sessions(args, sourcename=None):
         stop = sess_obs[-1].stop_time_jd
         sess = ObservingSession(sess_obs[0].obsid, start, stop)
         db.session.add(sess)
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError('failed to commit obs changes to database (2); see logs for details')
 
         new_sess_info.append(dict(
             id=sess.id,
@@ -325,7 +336,13 @@ def assign_observing_sessions(args, sourcename=None):
 
         i0 = i1
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to commit obs changes to database (3); see logs for details')
+
     return retval
 
 

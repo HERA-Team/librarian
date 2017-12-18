@@ -28,7 +28,7 @@ import time
 from flask import Response, flash, redirect, render_template, request, url_for
 
 from . import app, db, logger
-from .dbutil import NotNull
+from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
@@ -940,7 +940,13 @@ def create_standing_order(ignored_name):
         storder = StandingOrder(name, default_search, 'undefined-connection')
         storder._validate()
         db.session.add(storder)
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise Exception('failed to commit information to database; see logs for details')
     except Exception as e:
         flash('Cannot create "%s": %s' % (name, e))
         return redirect(url_for('standing_orders'))
@@ -966,7 +972,13 @@ def update_standing_order(name):
         storder.search = new_search
         storder._validate()
         db.session.merge(storder)
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise Exception('failed to commit update to database; see logs for details')
     except Exception as e:
         flash('Cannot update "%s": %s' % (name, e))
         return redirect(url_for('standing_orders'))
@@ -987,7 +999,13 @@ def delete_standing_order(name):
         return redirect(url_for('standing_orders'))
 
     db.session.delete(storder)
-    db.session.commit()
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to commit deletion to database; see logs for details')
 
     flash('Deleted standing order "%s"' % name)
     return redirect(url_for('standing_orders'))

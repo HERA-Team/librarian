@@ -28,6 +28,7 @@ import six
 from sqlalchemy.exc import InvalidRequestError
 
 from . import app, db, logger
+from .dbutil import SQLAlchemyError
 from .webutil import ServerError
 
 
@@ -74,9 +75,16 @@ class MCManager(object):
 
         try:
             self.mc_session.add_subsystem_error(Time.now(), 'lib', severity, text)
-            self.mc_session.commit()
         except Exception as e:
             logger.error('could not log error to M&C: %s', e)
+
+        try:
+            self.mc_session.commit()
+        except SQLAlchemyError as e:
+            self.mc_session.rollback()
+            logger.error('could not commit error record to M&C: %s (rolled back)', e)
+        except Exception as e:
+            logger.error('could not commit error record to M&C: %s', e)
 
     def check_in(self):
         from sqlalchemy import func, outerjoin, select
@@ -108,11 +116,18 @@ class MCManager(object):
             self.mc_session.add_lib_status(astro_now, num_files, data_volume_gb, free_space_gb,
                                            upload_min_elapsed, num_processes, self.version_string,
                                            self.git_hash)
-            self.mc_session.commit()
         except Exception as e:
             # If that failed it seems unlikely that we'll be able to continue,
             # but let's try.
             self.error(SEVERE, 'could not report status to the M&C system: %s', e)
+
+        try:
+            self.mc_session.commit()
+        except SQLAlchemyError as e:
+            self.mc_session.rollback()
+            self.error(SEVERE, 'could not commit status to the M&C system: %s (rolled back)', e)
+        except Exception as e:
+            self.error(SEVERE, 'could not commit status to the M&C system: %s', e)
 
         # Now report information on our remotes. The Librarian *server*
         # doesn't actually directly know about the other connections defined
@@ -167,7 +182,12 @@ class MCManager(object):
                                                   num_file_uploads, bandwidth_Mbs)
             del file_sizes[:]
 
-        self.mc_session.commit()
+        try:
+            self.mc_session.commit()
+        except SQLAlchemyError as e:
+            self.mc_session.rollback()
+            self.error(SEVERE, 'could not commit ping report to the M&C system: %s', e)
+
         self._last_report_time = time.time()
 
     def is_file_record_invalid(self, file_obj):
@@ -220,7 +240,11 @@ class MCManager(object):
             self.error(SEVERE, 'couldn\'t register file %s (obsid %s) with M&C: %s',
                        file_obj.name, file_obj.obsid, e)
 
-        self.mc_session.commit()
+        try:
+            self.mc_session.commit()
+        except SQLAlchemyError as e:
+            self.mc_session.rollback()
+            self.error(SEVERE, 'could not commit file creation note to the M&C system: %s', e)
 
     def note_file_upload_succeeded(self, conn_name, file_size):
         self._last_file_upload_time = time.time()

@@ -1,5 +1,5 @@
 # -*- mode: python; coding: utf-8 -*-
-# Copyright 2016 the HERA Collaboration
+# Copyright 2016-2017 the HERA Collaboration
 # Licensed under the BSD License.
 
 "Files."
@@ -19,7 +19,7 @@ import re
 from flask import flash, redirect, render_template, url_for
 
 from . import app, db, logger
-from .dbutil import NotNull
+from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 from .observation import Observation
 from .store import Store
@@ -222,7 +222,13 @@ class File (db.Model):
                               name, obsid)
 
         db.session.add(fobj)
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError('failed to add new file %s to database; see logs for details', name)
 
         MC.note_file_created(fobj)
 
@@ -310,7 +316,13 @@ class File (db.Model):
             n_deleted += 1
 
         if not noop:
-            db.session.commit()
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise ServerError(
+                    'deleted instances but failed to update database! DB/FS consistency broken!')
 
         return {
             'n_deleted': n_deleted,
@@ -557,7 +569,14 @@ def create_file_event(args, sourcename=None):
 
     event = file.make_generic_event(type, **payload)
     db.session.add(event)
-    db.session.commit()
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to add event to database -- see server logs for details')
+
     return {}
 
 
@@ -627,7 +646,14 @@ def set_one_file_deletion_policy(args, sourcename=None):
                                            store_name=inst.store_object.name,
                                            parent_dirs=inst.parent_dirs,
                                            new_policy=deletion_policy))
-    db.session.commit()
+
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError('failed to commit changes to the database')
+
     return {}
 
 
