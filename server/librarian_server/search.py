@@ -749,8 +749,40 @@ class StagerTask(bgtasks.BackgroundTask):
         import time
         self.t_start = time.time()
 
-        with open(os.path.join(dest, 'STAGING-IN-PROGRESS'), 'wt') as f:
-            print(self.t_start, file=f)
+        # In principle, we could execute multiple stage operations to the same
+        # destination directory at the same time, but the files that we use to
+        # report progress don't have unique names, so it wouldn't be possible
+        # to understand whether individual operations succeeded or failed. We
+        # therefore only allow one stage at once, using the STAGING-IN-PROGRESS
+        # file as a lock.
+        #
+        # Relatedly, if a stage has already been executed to this directory,
+        # any lingering STAGING-SUCCEEDED/STAGING-ERRORS files will get
+        # chowned when this operation completes. The chown happens happens
+        # *before* we write the new result files, so the when we try to do so
+        # we get an EPERM. Prevent this by blowing away preexisting result
+        # files.
+
+        from errno import EEXIST, ENOENT
+
+        try:
+            flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+            fd = os.open(os.path.join(dest, 'STAGING-IN-PROGRESS'), flags, 0666)
+        except OSError as e:
+            if e.errno == EEXIST:
+                raise Exception(
+                    'a staging operation into directory "%s" is already in progress' % dest)
+            raise
+        else:
+            with os.fdopen(fd, 'wt') as f:
+                print(self.t_start, file=f)
+
+        for base in ['STAGING-SUCCEEDED', 'STAGING-ERRORS']:
+            try:
+                os.unlink(os.path.join(dest, base))
+            except OSError as e:
+                if e.errno != ENOENT:
+                    raise
 
         self.failures = []
 
@@ -817,8 +849,9 @@ class StagerTask(bgtasks.BackgroundTask):
         try:
             os.unlink(os.path.join(self.dest, 'STAGING-IN-PROGRESS'))
         except Exception as e:
-            logger.warn('couldn\'t remove staging-in-progress indicator for %r', self.dest)
-            app.log_exception(sys.exc_info())
+            # NOTE: app.log_exception() does not work here since we're not in a
+            # request-handling context.
+            logger.exception('couldn\'t remove staging-in-progress indicator for %r', self.dest)
 
         log_func('local-disk staging into %s %s: duration %.1fs',
                  self.dest, outcome_desc, self.t_stop - self.t_start)
