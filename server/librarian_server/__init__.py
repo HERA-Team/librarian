@@ -189,7 +189,7 @@ def commandline(argv):
         http_server.start(n_server_processes)
 
     do_mandc = app.config.get('report_to_mandc', False)
-    if do_mandc and is_primary_server():
+    if do_mandc:
         from . import mc_integration
         mc_integration.register_callbacks(version_string, git_hash)
 
