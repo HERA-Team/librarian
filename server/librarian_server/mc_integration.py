@@ -27,7 +27,7 @@ from astropy.time import Time
 import six
 from sqlalchemy.exc import InvalidRequestError
 
-from . import app, db, logger
+from . import app, db, is_primary_server, logger
 from .dbutil import SQLAlchemyError
 from .webutil import ServerError
 
@@ -257,6 +257,11 @@ the_mc_manager = None
 def register_callbacks(version_string, git_hash):
     global the_mc_manager
     the_mc_manager = MCManager(version_string, git_hash)
+
+    if not is_primary_server():
+        # Only one server process needs to check in. THIS MEANS THAT
+        # BACKGROUND TASK REPORTING WILL BE INACCURATE!!!!
+        return
 
     from tornado import ioloop
     cb = ioloop.PeriodicCallback(the_mc_manager.check_in, 15 * 60 *

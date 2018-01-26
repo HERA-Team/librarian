@@ -45,6 +45,10 @@
     # server rather than Flask. Default is false
     #"report_to_mandc": true,
 
+    # Use this many subprocesses to handle requests. TODO: CLARIFY THIS CONFUSING
+    # setup
+    #"n_server_processes": 1,
+
     # Use this many worker threads for background activities.
     #"n_worker_threads": 8,
 

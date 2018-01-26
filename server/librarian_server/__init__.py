@@ -67,6 +67,17 @@ def _initialize():
 logger, app, db = _initialize()
 
 
+def is_primary_server():
+    """Ugh, need to figure out new model to deal with all of this.
+
+    """
+    if app.config.get('server', 'flask') != 'tornado':
+        return True
+
+    import tornado.process
+    return tornado.process.task_id() == 0
+
+
 # We have to manually import the modules that implement services. It's not
 # crazy to worry about circular dependency issues, but everything will be all
 # right.
@@ -134,6 +145,8 @@ def get_version_info():
 
 
 def commandline(argv):
+    from . import bgtasks
+
     version_string, git_hash = get_version_info()
     logger.info('starting up Librarian %s (%s)', version_string, git_hash)
     app.config['_version_string'] = version_string
@@ -143,6 +156,7 @@ def commandline(argv):
     host = app.config.get('host', None)
     port = app.config.get('port', 21106)
     debug = app.config.get('flask_debug', False)
+    n_server_processes = app.config.get('n_server_processes', 1)
 
     if host is None:
         print('note: no "host" set in configuration; server will not be remotely accessible',
@@ -150,16 +164,14 @@ def commandline(argv):
 
     maybe_add_stores()
 
-    do_mandc = app.config.get('report_to_mandc', False)
-    if do_mandc:
-        from . import mc_integration
-        mc_integration.register_callbacks(version_string, git_hash)
+    if n_server_processes > 1:
+        if server != 'tornado':
+            print('error: can only use multiple processes with Tornado server', file=sys.stderr)
+            sys.exit(1)
 
-    if server == 'flask':
-        print('note: using "flask" server, so background operations will not work',
-              file=sys.stderr)
-        app.run(host=host, port=port, debug=debug)
-    elif server == 'tornado':
+    if server == 'tornado':
+        # Need to set up HTTP server and fork subprocesses before doing
+        # anything with the IOLoop.
         from tornado.wsgi import WSGIContainer
         from tornado.httpserver import HTTPServer
         from tornado.ioloop import IOLoop
@@ -172,19 +184,34 @@ def commandline(argv):
             (r'.*', web.FallbackHandler, {'fallback': flask_app}),
         ])
 
-        # Set up to check out whether there's anything to do with our standing
-        # orders.
-        from . import search
-        IOLoop.instance().add_callback(search.queue_standing_order_copies)
-        search.register_standing_order_checkin()
+        http_server = HTTPServer(tornado_app)
+        http_server.bind(port, address=host)
+        http_server.start(n_server_processes)
 
+    do_mandc = app.config.get('report_to_mandc', False)
+    if do_mandc and is_primary_server():
+        from . import mc_integration
+        mc_integration.register_callbacks(version_string, git_hash)
+
+    if server == 'tornado':
         # Set up periodic report on background task status; also reminds us
         # that the server is alive.
-        from . import bgtasks
         bgtasks.register_background_task_reporter()
 
-        http_server = HTTPServer(tornado_app)
-        http_server.listen(port, address=host)
+        if is_primary_server():
+            # Primary server is also in charge of checking out whether there's
+            # anything to do with our standing orders.
+            from tornado.ioloop import IOLoop
+            from . import search
+            IOLoop.instance().add_callback(search.queue_standing_order_copies)
+            search.register_standing_order_checkin()
+
+    if server == 'flask':
+        print('note: using "flask" server, so background operations will not work',
+              file=sys.stderr)
+        app.run(host=host, port=port, debug=debug)
+    elif server == 'tornado':
+        from tornado.ioloop import IOLoop
         IOLoop.instance().start()
     else:
         print('error: unknown server type %r' % server, file=sys.stderr)
