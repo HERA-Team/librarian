@@ -97,6 +97,7 @@ def create_records(info, sourcename):
     try:
         db.session.commit()
     except SQLAlchemyError:
+        import sys
         db.session.rollback()
         app.log_exception(sys.exc_info())
         raise ServerError('failed to commit records to database; see logs for details')
