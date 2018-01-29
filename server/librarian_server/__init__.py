@@ -206,6 +206,11 @@ def commandline(argv):
             IOLoop.instance().add_callback(search.queue_standing_order_copies)
             search.register_standing_order_checkin()
 
+        # Hack the logger to indicate which server we are.
+        import tornado.process
+        fmtr = logging.getLogger('').handlers[0].formatter
+        fmtr._fmt = fmtr._fmt.replace(': ', ' #%d: ' % tornado.process.task_id())
+
     if server == 'flask':
         print('note: using "flask" server, so background operations will not work',
               file=sys.stderr)
