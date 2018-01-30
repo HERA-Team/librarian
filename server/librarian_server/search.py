@@ -27,7 +27,7 @@ import time
 
 from flask import Response, flash, redirect, render_template, request, url_for
 
-from . import app, db, logger
+from . import app, db, is_primary_server, logger
 from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
@@ -681,6 +681,11 @@ the_standing_order_manager = StandingOrderManager()
 
 
 def queue_standing_order_copies():
+    # Only the primary server processes standing orders.
+    if not is_primary_server():
+        stord_logger.debug('not checking standing orders -- not primary server process')
+        return
+
     stord_logger.debug('queueing check of standing orders')
     the_standing_order_manager.queue_launch_copy()
 
