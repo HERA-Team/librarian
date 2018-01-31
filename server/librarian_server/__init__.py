@@ -187,6 +187,7 @@ def commandline(argv):
         http_server = HTTPServer(tornado_app)
         http_server.bind(port, address=host)
         http_server.start(n_server_processes)
+        db.engine.dispose()  # force new connection after potentially forking
 
     do_mandc = app.config.get('report_to_mandc', False)
     if do_mandc:
