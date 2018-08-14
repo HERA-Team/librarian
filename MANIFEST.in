@@ -1,0 +1,14 @@
+include *.md
+include LICENSE
+include MANIFEST.in
+
+recursive-include docs *.md
+
+recursive-include server *
+exclude server/server-config.json
+exclude server/nondocker*
+exclude server/test*.json
+
+global-exclude *~
+global-exclude *.pyc *.pyo __pycache__
+global-exclude .gitignore
