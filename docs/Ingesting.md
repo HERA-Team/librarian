@@ -27,16 +27,16 @@ upload_to_librarian.py human@folio zen.2557561.66007.phases.hdf 2557561/zen.2557
 the name is permanent and unchangeable, so once you upload a file you’re stuck
 with it.
 
-Second, remember how we said that each file is associated with an obsid? By
-default, the uploader script will infer that obsid by matching it with
-existing file sharing the same prefix — specifically, the same text before the
-*third* period (.) in the the filename. That would be `zen.2557561.66007` in
-this case. If nothing matches, your upload will be rejected. (It is possible,
-to override this default inference behavior using the not-really-documented
-`--meta=json-stdin` option, but this is not something that regular users
-should have to worry about.)
+Second, the vast majority of files should be associated with an obsid
+(observation identifier). By default, the uploader script will infer that
+obsid by matching it with existing file sharing the same prefix —
+specifically, the same text before the *third* period (.) in the the filename.
+That would be `zen.2557561.66007` in this case. If nothing matches, your
+upload will be rejected. (It is possible, to override this default inference
+behavior using the not-really-documented `--meta=json-stdin` option, but this
+is not something that regular users should have to worry about.)
 
-Second, each file has a “type” associated with it, which is a short string
+Third, each file has a “type” associated with it, which is a short string
 describing its format. By default, the uploader script guesses it from the
 final extension of the filename — the type would be “hdf” in the example
 above. We don’t use these types right now, but please make sure the extension
@@ -52,3 +52,17 @@ keeps the files organized sensibly on the storage disks. By convention, files
 are stored in directories named according to the integer part of their JD.
 Also, note that the name of your file on disk does not need to match the name
 that it will be given on the Librarian.
+
+
+## Uploading Files Without an Obsid
+
+As mentioned above, the Librarian defaults to a model in which each file is
+associated with an obsid. However, there are some files for which this doesn’t
+make sense — e.g., database backup files, as mentioned in the
+[Administration](./Administration.md) page.
+
+You can upload such a file by adding the `--null-obsid` option to the
+`upload_to_librarian.py` command. By making you have to explicitly indicate
+that you want your file to be unassociated with an obsid, we prevent
+accidental ingestion of files that *should* have an obsid but for which the
+matching scheme identified above failed.
