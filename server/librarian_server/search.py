@@ -912,7 +912,16 @@ def launch_stage_operation(user, search, stage_dest):
     for inst, file, store in info:
         n_bytes += file.size
 
-    stage_info = [(store.path_prefix, inst.parent_dirs, inst.name) for (inst, file, store) in info]
+    # Quasi-hack: don't try to stage multiple instances of the same
+    # file, since that will break if the "file" is a directory.
+    stage_info = []
+    seen_names = set()
+
+    for inst, file, store in info:
+        if inst.name not in seen_names:
+            seen_names.add(inst.name)
+            stage_info.append((store.path_prefix, inst.parent_dirs, inst.name))
+
     bgtasks.submit_background_task(StagerTask(
         dest, stage_info, n_bytes, user, lds_info['chown_command']))
 

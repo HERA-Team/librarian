@@ -1,6 +1,7 @@
 # Version *next* (not yet released)
 
-- No changes as of yet.
+- Bugfix: stop having staging fail when attempting to stage multiple
+  instances of a directory.
 
 # Version 0.1.5 (2018 Aug 14)
 
