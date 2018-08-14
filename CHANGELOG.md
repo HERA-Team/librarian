@@ -1,3 +1,7 @@
+# Version *next* (not yet released)
+
+- No changes as of yet.
+
 # Version 0.1.5 (2018 Aug 14)
 
 - Merge in the `multiprocess` branch — the Librarian now runs multiple
