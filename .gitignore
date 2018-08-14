@@ -1,8 +1,6 @@
 *.pyc
+*.pyo
+__pycache__
 /*.egg-info
 /build
 /dist
-/hl_server.cfg
-/server/test_db_*.py
-/server/test_*.stamp
-
