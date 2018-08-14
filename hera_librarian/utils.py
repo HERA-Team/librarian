@@ -71,7 +71,7 @@ def get_obsid_from_path(path):
             import aipy
             uv = aipy.miriad.UV(path)
             return uv['obsid']
-        except (RuntimeError, IndexError, KeyError):
+        except (RuntimeError, ImportError, IndexError, KeyError):
             pass
 
     return None
