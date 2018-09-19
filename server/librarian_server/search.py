@@ -486,8 +486,10 @@ def compile_search(search_string, query_type='files'):
                 .join(Store)
                 .join(File, isouter=True)
                 .filter(the_file_search_compiler.compile(search)))
-    elif query_type == 'instances-paths':
-        return FileInstance.query.filter(the_file_search_compiler.compile(search))
+    elif query_type == 'instances':
+        return (db.session.query(FileInstance)
+                .join(File, isouter=True)
+                .filter(the_file_search_compiler.compile(search)))
     else:
         raise ServerError('unhandled query_type %r', query_type)
 
@@ -1281,9 +1283,9 @@ def execute_search_api(args, sourcename=None):
     elif output_format == file_listing_json_format:
         query_type = 'files'
     elif output_format == instance_listing_json_format:
-        query_type = 'instances-paths'
+        query_type = 'instances'
     elif output_format == obs_listing_json_format:
-        query_typ = 'obs'
+        query_type = 'obs'
     else:
         raise ServerError('illegal search output type %r', output_format)
 
