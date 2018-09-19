@@ -501,10 +501,11 @@ class FileInstance (db.Model):
 
     def to_dict(self):
         return dict(
-            store=self.store,
+            store_name=self.store_object.name,
+            store_ssh_host=self.store_object.ssh_host,
             parent_dirs=self.parent_dirs,
             name=self.name,
-            deletion_policy=self.deletion_policy,
+            deletion_policy=self.deletion_policy_text,
             full_path_on_store=self.full_path_on_store()
         )
 
