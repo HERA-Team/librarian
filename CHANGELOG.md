@@ -1,3 +1,7 @@
+# Version *next* (not yet released)
+
+- TBD
+
 # Version 0.1.6 (2018 Sep 19)
 
 - Fix programmatic searches for file instances.
