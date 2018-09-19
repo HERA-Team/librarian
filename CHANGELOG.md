@@ -1,5 +1,6 @@
-# Version *next* (not yet released)
+# Version 0.1.6 (2018 Sep 19)
 
+- Fix programmatic searches for file instances.
 - Don't hard-require `aipy` inside `get_obsid_from_path`.
 - Bugfix: stop having staging fail when attempting to stage multiple
   instances of a directory.
