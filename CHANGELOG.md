@@ -1,6 +1,7 @@
 # Version *next* (not yet released)
 
-- TBD
+- Avoid potential problems with SQLAlchemy when using a multiprocess
+  server.
 
 
 # Version 0.1.6 (2018 Sep 19)
