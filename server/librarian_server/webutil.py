@@ -45,7 +45,7 @@ def _check_authentication(auth):
 
     """
     if auth is not None:
-        for name, info in app.config['sources'].iteritems():
+        for name, info in app.config['sources'].items():
             if info['authenticator'] == auth:
                 return name
 
@@ -195,8 +195,8 @@ def _coerce(argtype, name, val):
             raise ServerError('parameter "%s" should be an integer, but got %r', name, val)
         return val
 
-    if argtype is unicode:
-        if not isinstance(val, unicode):
+    if argtype is str:
+        if not isinstance(val, str):
             raise ServerError('parameter "%s" should be text, but got %r', name, val)
         return val
 

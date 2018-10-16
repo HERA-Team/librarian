@@ -120,7 +120,9 @@ def get_version_info():
     else:
         tag = tag.strip()
 
-    if 'dirty' in tag:
+    print(type(tag))
+
+    if 'dirty' in tag.decode("utf-8"):
         logger.warn('running from a codebase with uncommitted changes')
 
     head_info = rungit(True, 'show-ref', '-h', '--hash')
@@ -201,7 +203,7 @@ def maybe_add_stores():
     from .dbutil import SQLAlchemyError
     from .store import Store
 
-    for name, cfg in app.config.get('add-stores', {}).iteritems():
+    for name, cfg in app.config.get('add-stores', {}).items():
         prev = Store.query.filter(Store.name == name).first()
         if prev is None:
             store = Store(name, cfg['path_prefix'], cfg['ssh_host'])
