@@ -199,21 +199,21 @@ class GenericSearchCompiler(object):
             raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
                               'but got %s', clause_name, payload.__class__.__name__)
         from sqlalchemy import and_
-        return and_(*[self._compile_clause(*t) for t in payload.iteritems()])
+        return and_(*[self._compile_clause(*t) for t in payload.items()])
 
     def _do_or(self, clause_name, payload):
         if not isinstance(payload, dict) or not len(payload):
             raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
                               'but got %s', clause_name, payload.__class__.__name__)
         from sqlalchemy import or_
-        return or_(*[self._compile_clause(*t) for t in payload.iteritems()])
+        return or_(*[self._compile_clause(*t) for t in payload.items()])
 
     def _do_none_of(self, clause_name, payload):
         if not isinstance(payload, dict) or not len(payload):
             raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
                               'but got %s', clause_name, payload.__class__.__name__)
         from sqlalchemy import not_, or_
-        return not_(or_(*[self._compile_clause(*t) for t in payload.iteritems()]))
+        return not_(or_(*[self._compile_clause(*t) for t in payload.items()]))
 
     def _do_always_true(self, clause_name, payload):
         """We just ignore the payload."""
@@ -774,7 +774,7 @@ class StagerTask(bgtasks.BackgroundTask):
 
         try:
             flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
-            fd = os.open(os.path.join(dest, 'STAGING-IN-PROGRESS'), flags, 0666)
+            fd = os.open(os.path.join(dest, 'STAGING-IN-PROGRESS'), flags, 666)
         except OSError as e:
             if e.errno == EEXIST:
                 raise Exception(
@@ -1131,11 +1131,11 @@ def execute_search_ui():
     else:
         reqdata = request.args
 
-    query_type = required_arg(reqdata, unicode, 'type')
-    search_text = required_arg(reqdata, unicode, 'search')
-    output_format = optional_arg(reqdata, unicode, 'output_format', human_file_format)
-    stage_user = optional_arg(reqdata, unicode, 'stage_user', '')
-    stage_dest_suffix = optional_arg(reqdata, unicode, 'stage_dest_suffix', '')
+    query_type = required_arg(reqdata, str, 'type')
+    search_text = required_arg(reqdata, str, 'search')
+    output_format = optional_arg(reqdata, str, 'output_format', human_file_format)
+    stage_user = optional_arg(reqdata, str, 'stage_user', '')
+    stage_dest_suffix = optional_arg(reqdata, str, 'stage_dest_suffix', '')
     for_humans = True
 
     if output_format == full_path_format:

@@ -587,7 +587,7 @@ def locate_file_instance(args, sourcename=None):
     """Tell the caller where to find an instance of the named file.
 
     """
-    file_name = required_arg(args, unicode, 'file_name')
+    file_name = required_arg(args, str, 'file_name')
 
     file = File.query.get(file_name)
     if file is None:
