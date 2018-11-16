@@ -59,7 +59,7 @@ def get_pol_from_path(path):
 
 
 def get_obsid_from_path(path):
-    """Get the obsid from a path, if it is a MIRIAD UV dataset.
+    """Get the obsid from a path, if it is a MIRIAD UV or UVH5 dataset.
 
     We used to try to guess the obsid from non-UV data sets if something like
     a JD was in the name, but that's too fragile, and as of September 2017 our
@@ -72,6 +72,16 @@ def get_obsid_from_path(path):
             uv = aipy.miriad.UV(path)
             return uv['obsid']
         except (RuntimeError, ImportError, IndexError, KeyError):
+            pass
+    else:
+        try:
+            from astropy.time import Time
+            from pyuvdata import UVData
+            uv = UVData()
+            uv.read_uvh5(path, read_data=False)
+            t0 = Time(np.unique(uv.time_array)[0], scale='utc', format='jd')
+            return int(np.floor(t0.gps))
+        except (IOError, ImportError):
             pass
 
     return None
