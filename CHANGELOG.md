@@ -1,5 +1,6 @@
 # Version *next* (not yet released)
 
+- Support automatic ingestion of uvh5 files.
 - Avoid potential problems with SQLAlchemy when using a multiprocess
   server.
 
