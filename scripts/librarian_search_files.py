@@ -8,9 +8,7 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import os.path
 import sys
-import time
 
 import hera_librarian
 
