@@ -54,7 +54,9 @@ payload, but JSON syntax demands that you put something.)
 This is a limitation of the JSON format. For instance, you cannot have
 `"name-matches": "%.xx.uv"` and `"name-matches": "%.yy.uv"` in the example
 above. In that case only the last clause is used. Such a search would require
-two separate queries.
+two separate queries (or a gross combination of and/or clauses). See the open
+[Issue #42](https://github.com/HERA-Team/librarian/issues/42) for a proposed
+solution for the ambitious librarian user.
 
 Most search clauses filter on *attributes* of the items you’re searching for.
 For instance, every file has an attribute called `size` that is the size of
