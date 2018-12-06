@@ -50,6 +50,12 @@ some kind of *payload* (above, `"zen.2457644.%.xx.HH.uvc"`) that gives a piece
 of search information. (There are some clauses that don’t technically *need* a
 payload, but JSON syntax demands that you put something.)
 
+**NOTE**: You *cannot* have two clauses with the same name in the same query.
+This is a limitation of the JSON format. For instance, you cannot have
+`"name-matches": "%.xx.uv"` and `"name-matches": "%.yy.uv"` in the example
+above. In that case only the last clause is used. Such a search would require
+two separate queries.
+
 Most search clauses filter on *attributes* of the items you’re searching for.
 For instance, every file has an attribute called `size` that is the size of
 that file, measured in bytes. There are clauses named `size-is-exactly`,
