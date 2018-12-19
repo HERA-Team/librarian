@@ -39,6 +39,7 @@ The Librarian client and server currently only run on Python 2.
         'scripts/librarian_initiate_offload.py',
         'scripts/librarian_locate_file.py',
         'scripts/librarian_offload_helper.py',
+        'scripts/librarian_search_files.py',
         'scripts/librarian_set_file_deletion_policy.py',
         'scripts/librarian_stage_files.py',
         'scripts/librarian_stream_file_or_directory.sh',
