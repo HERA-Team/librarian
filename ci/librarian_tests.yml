@@ -1,0 +1,17 @@
+name: librarian_tests
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - aipy
+  - alembic
+  - astropy
+  - flask
+  - flask-sqlalchemy
+  - h5py
+  - jinja2
+  - numpy
+  - psycopg2
+  - pyuvdata
+  - sqlalchemy
+  - tornado
