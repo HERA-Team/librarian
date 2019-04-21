@@ -13,36 +13,8 @@ import sys
 from contextlib import contextmanager
 from hera_librarian import utils
 
-DATA_DIR = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    "test_data"
-)
-
-ALL_FILES = pytest.mark.datafiles(
-    os.path.join(DATA_DIR, "zen.2458432.34569.uvh5"),
-    os.path.join(DATA_DIR, "zen.2458043.12552.xx.HH.uvA"),
-    keep_top_dir=True,
-)
-
-filetypes = [
-    "uvh5",
-    "uvA",
-]
-
-obsids = [
-    1225829886,  # uvh5
-    1192201262,  # miriad
-]
-
-md5sums = [
-    "291a451139cf16e73d880437270dd0ed",  # uvh5
-    "ab038eee080348eaa5abd221ec702a67",  # miriad
-]
-
-pathsizes = [
-    224073,  # uvh5
-    983251,  # miriad
-]
+# import test data attributes from __init__.py
+from . import ALL_FILES, obsids, filetypes, md5sums, pathsizes
 
 
 # define a context manager for checking stdout
@@ -147,8 +119,9 @@ def test_get_size_from_path(datafiles):
 def test_gather_info_for_path(datafiles):
     """Test getting all info for a given path"""
     filepaths = map(str, datafiles.listdir())
-    for filetype, md5, size, obsid, path in zip(filetypes, md5sums, pathsizes,
-                                                obsids, filepaths):
+    for filetype, md5, size, obsid, path in zip(
+        filetypes, md5sums, pathsizes, obsids, filepaths
+    ):
         info = utils.gather_info_for_path(path)
         assert info["type"] == filetype
         assert info["md5"] == md5
@@ -162,13 +135,15 @@ def test_gather_info_for_path(datafiles):
 def test_print_info_for_path(datafiles):
     """Test printing file info to stdout"""
     filepaths = map(str, datafiles.listdir())
-    for filetype, md5, size, obsid, path in zip(filetypes, md5sums, pathsizes,
-                                                obsids, filepaths):
+    for filetype, md5, size, obsid, path in zip(
+        filetypes, md5sums, pathsizes, obsids, filepaths
+    ):
         with captured_output() as (out, err):
             utils.print_info_for_path(path)
         output = out.getvalue()
         correct_string = '{{"obsid": {0:d}, "size": {1:d}, "type": "{2:}", "md5": "{3:}"}}'.format(
-            obsid, size, filetype, md5)
+            obsid, size, filetype, md5
+        )
         assert output == correct_string
 
     return

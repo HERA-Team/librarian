@@ -14,7 +14,8 @@ from librarian_server.webutil import ServerError
 
 class TestGenericSearchCompiler(object):
     """Tests for the GenericSearchCompiler object"""
-    def test_compile(self):
+
+    def test_compile(self, db_connection):
         gsc = search.GenericSearchCompiler()
         bogus_search = "foo"
         with pytest.raises(ServerError):
