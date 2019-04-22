@@ -6,6 +6,8 @@ conda config --add channels conda-forge
 conda info -a
 conda create --name=${ENV_NAME} python=$PYTHON --quiet
 conda env update -f ci/${ENV_NAME}.yml
+conda init bash
+source ~/.bashrc
 conda activate ${ENV_NAME}
 conda list -n ${ENV_NAME}
 
