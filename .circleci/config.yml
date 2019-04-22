@@ -10,7 +10,7 @@ jobs:
       - image: continuumio/miniconda:latest
       - image: circleci/postgres:11
         environment:
-          POSTGRES_USER: librarian
+          POSTGRES_USER: root
           POSTGRES_DB: librarian_test
     environment:
       PYTHON: << parameters.python_version >>
