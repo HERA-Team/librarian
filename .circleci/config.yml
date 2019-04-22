@@ -24,8 +24,9 @@ jobs:
           command: ./ci/install-circle.sh
       - run:
           name: export environment variables
+          # python won't expand the tilde (~) character, so we have to do it ourselves
           command: |
-            echo 'export LIBRARIAN_CONFIG_PATH=${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json' >> $BASH_ENV
+            echo 'export LIBRARIAN_CONFIG_PATH=`eval echo ${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json`' >> $BASH_ENV
       - run:
           name: install hera_librarian package in base python environment
           command: |
