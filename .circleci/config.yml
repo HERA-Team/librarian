@@ -56,4 +56,4 @@ workflows:
     jobs:
       - librarian:
           name: librarian_2.7
-          python_version: 2.7
+          python_version: "2.7"
