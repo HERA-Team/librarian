@@ -10,4 +10,4 @@ conda activate ${ENV_NAME}
 conda list -n ${ENV_NAME}
 
 # install other dependencies with pip
-pip install pytest-datafiles
+pip install pytest-datafiles pytest-cov

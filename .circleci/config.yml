@@ -8,10 +8,14 @@ jobs:
         type: string
     docker:
       - image: continuumio/miniconda:latest
+      - image: circleci/postgres:9.6-alpine
+        environment:
+          POSTGRES_USER: librarian
+          POSTGRES_DB: librarian_test
     environment:
       PYTHON: << parameters.python_version >>
       ENV_NAME: librarian_tests
-      LIBRARIAN_CONFIG_PATH: ./server/server-config-ci.json
+      LIBRARIAN_CONFIG_PATH: ${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json
     steps:
       - checkout
       - restore_cache:
@@ -20,17 +24,21 @@ jobs:
           name: configure conda environment
           command: ./ci/install-circle.sh
       - run:
-          name: launch librarian server
+          name: set up librarian database
           command: |
-            conda activate ${ENV_NAME}
             cd server
-            ./runserver.py &
+            alembic upgrade head
+            cd ..
+      - run:
+          name: install hera_librarian package in base python environment
+          command: |
+            pip install numpy pyuvdata aipy
+            python setup.py install
       - run:
           name: run librarian tests
           command: |
             conda activate ${ENV_NAME}
-            mkdir test-reports
-            pytest --with-xunit --xunit-file=test-reports/xunit.xml --cover-xml
+            pytest --cov=hera_librarian --cov=librarian_server --cov-report=xml --cov-report=term
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "ci/librarian_tests.yml" }}
           paths:

@@ -1,0 +1,9 @@
+[run]
+omit =
+    */tests/*
+
+[report]
+omit =
+    */tests/*
+exclude_lines =
+    pragma: no cover
