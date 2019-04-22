@@ -24,21 +24,20 @@ jobs:
           name: configure conda environment
           command: ./ci/install-circle.sh
       - run:
-          name: set up librarian database
-          command: |
-            cd server
-            alembic upgrade head
-            cd ..
-      - run:
           name: install hera_librarian package in base python environment
           command: |
             pip install numpy pyuvdata aipy
             python setup.py install
       - run:
-          name: run librarian tests
+          name: set up librarian database
           command: |
             conda activate ${ENV_NAME}
-            pytest --cov=hera_librarian --cov=librarian_server --cov-report=xml --cov-report=term
+            cd server
+            alembic upgrade head
+            cd ..
+      - run:
+          name: run librarian tests
+          command: pytest --cov=hera_librarian --cov=librarian_server --cov-report=xml --cov-report=term
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "ci/librarian_tests.yml" }}
           paths:
