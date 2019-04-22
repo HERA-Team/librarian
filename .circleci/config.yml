@@ -8,7 +8,7 @@ jobs:
         type: string
     docker:
       - image: continuumio/miniconda:latest
-      - image: circleci/postgres:9.6-alpine
+      - image: circleci/postgres:11
         environment:
           POSTGRES_USER: librarian
           POSTGRES_DB: librarian_test
