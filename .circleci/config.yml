@@ -15,7 +15,6 @@ jobs:
     environment:
       PYTHON: << parameters.python_version >>
       ENV_NAME: librarian_tests
-      LIBRARIAN_CONFIG_PATH: ${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json
     steps:
       - checkout
       - restore_cache:
@@ -23,6 +22,10 @@ jobs:
       - run:
           name: configure conda environment
           command: ./ci/install-circle.sh
+      - run:
+          name: export environment variables
+          command: |
+            echo 'export LIBRARIAN_CONFIG_PATH=${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json' >> $BASH_ENV
       - run:
           name: install hera_librarian package in base python environment
           command: |
