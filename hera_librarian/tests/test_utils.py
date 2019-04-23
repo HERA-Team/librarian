@@ -16,18 +16,8 @@ from hera_librarian import utils
 # import test data attributes from __init__.py
 from . import ALL_FILES, obsids, filetypes, md5sums, pathsizes
 
-
-# define a context manager for checking stdout
-# from https://stackoverflow.com/questions/4219717/how-to-assert-output-with-nosetest-unittest-in-python
-@contextmanager
-def captured_output():
-    new_out, new_err = six.StringIO(), six.StringIO()
-    old_out, old_err = sys.stdout, sys.stderr
-    try:
-        sys.stdout, sys.stderr = new_out, new_err
-        yield sys.stdout, sys.stderr
-    finally:
-        sys.stdout, sys.stderr = old_out, old_err
+# mark these tests as "hera_librarian" ones
+pytestmark = pytest.mark.hera_librarian
 
 
 def test_get_type_from_path():
@@ -147,7 +137,7 @@ def test_gather_info_for_path(datafiles):
 
 
 @ALL_FILES
-def test_print_info_for_path(datafiles):
+def test_print_info_for_path(datafiles, capsys):
     """Test printing file info to stdout"""
     filepaths = list(map(str, datafiles.listdir()))
     # make sure our files are ordered correctly
@@ -156,13 +146,12 @@ def test_print_info_for_path(datafiles):
     for filetype, md5, size, obsid, path in zip(
         filetypes, md5sums, pathsizes, obsids, filepaths
     ):
-        with captured_output() as (out, err):
-            utils.print_info_for_path(path)
-        output = out.getvalue()
+        utils.print_info_for_path(path)
+        out, err = capsys.readouterr()
         correct_string = '{{"obsid": {0:d}, "size": {1:d}, "type": "{2:}", "md5": "{3:}"}}'.format(
             obsid, size, filetype, md5
         )
-        assert output == correct_string
+        assert out == correct_string
 
     return
 

@@ -14,6 +14,9 @@ from hera_librarian import store, RPCError
 
 from . import ALL_FILES, filetypes, obsids, md5sums, pathsizes
 
+# mark these tests as "hera_librarian" ones
+pytestmark = pytest.mark.hera_librarian
+
 
 @pytest.fixture
 def local_store():
