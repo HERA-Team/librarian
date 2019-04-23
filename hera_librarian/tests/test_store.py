@@ -138,13 +138,17 @@ def test_create_tempdir(local_store):
 @ALL_FILES
 def test_get_info_for_path(local_store, datafiles):
     # copy a datafile to store directory, so we can get its info
-    filepaths = map(str, datafiles.listdir())
+    filepaths = list(map(str, datafiles.listdir()))
+    # make sure our files are ordered correctly
+    if filepaths[0].endswith("uvA"):
+        filepaths = filepaths[::-1]
     filename = os.path.basename(filepaths[0])
     local_store.copy_to_store(filepaths[0], filename)
 
     # get the file info and check that it's right
     info = local_store.get_info_for_path(filename)
     # make a dict of the correct answers
+    # the uvh5 properties are first in these lists
     correct_dict = {
         "md5": md5sums[0],
         "obsid": obsids[0],
