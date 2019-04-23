@@ -26,8 +26,7 @@ alembic upgrade head
 # add localhost to known_hosts
 ssh-keyscan -H localhost >> ~/.ssh/known_hosts
 
-# add root's key to authorized_keys
-if [ ! -e ~/.ssh/id_rsa.pub ]; then
-    ssh-keygen -t rsa -f ~/.ssh/id_rsa -N ''
-fi
-cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+# generate and add key to authorized_keys
+# id_rsa already exists, so we make an ecdsa key
+ssh-keygen -t ecdsa -f ~/.ssh/id_ecdsa -N ''
+cat ~/.ssh/id_ecdsa.pub >> ~/.ssh/authorized_keys
