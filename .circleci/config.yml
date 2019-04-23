@@ -29,7 +29,7 @@ jobs:
       - run:
           name: install hera_librarian package in base python environment
           command: |
-            pip install numpy scipy astropy
+            pip install numpy scipy astropy h5py
             pip install pyuvdata aipy
             python setup.py install
       - run:
