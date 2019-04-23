@@ -16,10 +16,6 @@ conda list -n ${ENV_NAME}
 # install other dependencies with pip
 pip install pytest-datafiles pytest-cov
 
-# export environment variables
-# python won't expand the tilde (~) character, so we have to do it ourselves
-echo 'export LIBRARIAN_CONFIG_PATH=`eval echo ${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json`' >> $BASH_ENV
-
 # set up librarian database
 cd server
 alembic upgrade head
