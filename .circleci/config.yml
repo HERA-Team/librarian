@@ -20,27 +20,14 @@ jobs:
       - restore_cache:
           key: deps-{{ .Branch }}-{{ checksum "ci/librarian_tests.yml" }}
       - run:
-          name: configure conda environment
+          name: configure environment
           command: ./ci/install-circle.sh
-      - run:
-          name: export environment variables
-          # python won't expand the tilde (~) character, so we have to do it ourselves
-          command: |
-            echo 'export LIBRARIAN_CONFIG_PATH=`eval echo ${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json`' >> $BASH_ENV
       - run:
           name: install hera_librarian package in base python environment
           command: |
             pip install numpy scipy astropy
             pip install pyuvdata aipy
             python setup.py install
-      - run:
-          name: set up librarian database
-          command: |
-            source ~/.bashrc
-            conda activate ${ENV_NAME}
-            cd server
-            alembic upgrade head
-            cd ..
       - run:
           name: run librarian tests
           command: |
