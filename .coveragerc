@@ -1,4 +1,7 @@
 [run]
+source =
+    hera_librarian
+    server/librarian_server
 omit =
     */tests/*
 
