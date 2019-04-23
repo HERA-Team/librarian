@@ -27,5 +27,5 @@ alembic upgrade head
 ssh-keyscan -H localhost >> ~/.ssh/known_hosts
 
 # make an ssh key and add to authorized_keys
-ssh-keygen -t rsa -f id_rsa -N ''
+ssh-keygen -t rsa -f ~/.ssh/id_rsa -N ''
 cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
