@@ -11,7 +11,7 @@
 
     "displayed_site_name": "Test",
 
-    "port": 5432,
+    "port": 21108,
 
     "n_server_processes": 1,
 
@@ -24,7 +24,10 @@
     "sources": {
         "HumanUser": {
             "authenticator": "I am a human"
-        }
+        },
+	"TestUser": {
+	    "authenticator": "I am a bot"
+	}
     },
 
     "add-stores": {
