@@ -13,7 +13,7 @@ that.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 __all__ = str('''
-Store
+BaseStore
 ''').split()
 
 import subprocess
@@ -24,7 +24,7 @@ from . import RPCError
 NUM_RSYNC_TRIES = 6
 
 
-class Store (object):
+class BaseStore (object):
     """Note that the Librarian server code subclasses this class, so do not change
     its structure without making sure that you're not breaking it.
 

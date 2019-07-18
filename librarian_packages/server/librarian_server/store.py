@@ -29,7 +29,7 @@ import os.path
 
 from flask import flash, redirect, render_template, url_for
 
-from hera_librarian.store import Store as BaseStore
+from hera_librarian.base_store import BaseStore
 
 from . import app, db, logger
 from .dbutil import NotNull, SQLAlchemyError

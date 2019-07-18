@@ -13,10 +13,6 @@ from librarian_server import search
 from librarian_server.webutil import ServerError
 
 
-# mark these tests as "librarian_server" tests
-pytestmark = pytest.mark.librarian_server
-
-
 class TestGenericSearchCompiler(object):
     """Tests for the GenericSearchCompiler object"""
 

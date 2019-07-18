@@ -16,10 +16,6 @@ from librarian_server import webutil
 from librarian_server.webutil import AuthFailedError, ServerError, json_api
 
 
-# mark these tests as "librarian_server" tests
-pytestmark = pytest.mark.librarian_server
-
-
 def test_check_authentication():
     # test authenticating with given settings
     assert webutil._check_authentication("I am a human") == "HumanUser"

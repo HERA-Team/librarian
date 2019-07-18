@@ -3,7 +3,6 @@
 # Licensed under the 2-clause BSD License
 
 """Define test data files and attributes
-
 """
 
 import pytest
@@ -29,3 +28,4 @@ md5sums = [
 ]
 
 pathsizes = [224073, 983251]  # uvh5, miriad
+

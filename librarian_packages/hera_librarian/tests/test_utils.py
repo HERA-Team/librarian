@@ -16,9 +16,6 @@ from hera_librarian import utils
 # import test data attributes from __init__.py
 from . import ALL_FILES, obsids, filetypes, md5sums, pathsizes
 
-# mark these tests as "hera_librarian" ones
-pytestmark = pytest.mark.hera_librarian
-
 
 def test_get_type_from_path():
     """Test type checking from path"""

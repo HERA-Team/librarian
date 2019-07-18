@@ -10,17 +10,14 @@ from __future__ import print_function, division, absolute_import
 import pytest
 import os
 import json
-from hera_librarian import store, RPCError
+from hera_librarian import base_store, RPCError
 
 from . import ALL_FILES, filetypes, obsids, md5sums, pathsizes
-
-# mark these tests as "hera_librarian" ones
-pytestmark = pytest.mark.hera_librarian
 
 
 @pytest.fixture
 def local_store():
-    return store.Store("local_store", "/tmp", "localhost")
+    return base_store.BaseStore("local_store", "/tmp", "localhost")
 
 
 def test_path(local_store):

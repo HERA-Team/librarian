@@ -15,10 +15,6 @@ from librarian_server import webutil
 from librarian_server.webutil import AuthFailedError, ServerError
 
 
-# mark these tests as "librarian_server" tests
-pytestmark = pytest.mark.librarian_server
-
-
 @ALL_FILES
 def test_initiate_upload():
     # test uploading a datafile
