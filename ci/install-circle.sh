@@ -17,7 +17,7 @@ conda list -n ${ENV_NAME}
 pip install pytest-datafiles pytest-cov
 
 # set up librarian database
-cd server
+cd librarian_packages/server
 alembic upgrade head
 
 # set up ssh server
