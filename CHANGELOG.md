@@ -1,5 +1,7 @@
 # Version *next* (not yet released)
 
+- Reorganize repo structure.
+- Add tests and CI support.
 - Support automatic ingestion of uvh5 files.
 - Avoid potential problems with SQLAlchemy when using a multiprocess
   server.
