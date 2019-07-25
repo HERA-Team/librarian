@@ -33,7 +33,7 @@ The Librarian client and server currently only run on Python 2.
     tests_require=[
         'hera-librarian',
         'pytest-datafiles',
-    ]
+    ],
     packages=['librarian_server'],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
