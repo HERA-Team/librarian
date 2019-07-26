@@ -1,7 +1,7 @@
 [run]
 source =
-    hera_librarian
-    server/librarian_server
+    librarian_packages/hera_librarian/hera_librarian
+    librarian_packages/server/librarian_server
 omit =
     */tests/*
 
