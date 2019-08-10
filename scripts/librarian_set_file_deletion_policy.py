@@ -5,50 +5,25 @@
 
 """Set the "deletion policy" of one instance of this file.
 
+This script has been superseded by the `librarian set-file-deletion-policy` command.
+It is kept here for backwards compatibility, and will be removed in a future
+version.
 """
 from __future__ import absolute_import, division, print_function
 
-import argparse
-import os.path
+import os
 import sys
+import warnings
+from hera_librarian.cli import main
 
-import hera_librarian
-
-
-p = argparse.ArgumentParser(
-    description=__doc__,
-)
-
-p.add_argument('--store', metavar='STORE-NAME',
-               help='Only alter instances found on the named store.')
-p.add_argument('conn_name', metavar='CONNECTION-NAME',
-               help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
-p.add_argument('file_name', metavar='FILE-NAME',
-               help='The name of the file to modify.')
-p.add_argument('deletion', metavar='POLICY',
-               help='The new deletion policy: "allowed" or "disallowed"')
-args = p.parse_args()
-
-
-def die(fmt, *args):
-    if not len(args):
-        text = str(fmt)
-    else:
-        text = fmt % args
-    print('error:', text, file=sys.stderr)
-    sys.exit(1)
-
-
-# In case they gave a full path:
-
-file_name = os.path.basename(args.file_name)
-
-# Let's do it.
-
-client = hera_librarian.LibrarianClient(args.conn_name)
-
-try:
-    result = client.set_one_file_deletion_policy(file_name, args.deletion,
-                                                 restrict_to_store=args.store)
-except hera_librarian.RPCError as e:
-    die('couldn\'t alter policy: %s', e)
+if __name__ == "__main__":
+    warnings.warn("This script has been supserseded by the `librarian set-file-deletion-policy` "
+                  "command. This script is preserved for backwards compatibility, but "
+                  "will be removed in a future version.")
+    # fix up command-line args to behave correctly
+    bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    librarian_script = os.path.join(bindir, "librarian")
+    del sys.argv[0]
+    sys.argv.insert(0, librarian_script)
+    sys.argv.insert(1, "set-file-deletion-policy")
+    sys.exit(main(*sys.argv))

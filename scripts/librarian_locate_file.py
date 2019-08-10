@@ -6,45 +6,25 @@
 """Ask the Librarian where to find a file. The file location is returned
 as an SCP-ready string of the form "<host>:<full-path-on-host>".
 
+This script has been superseded by the `librarian locate-file` command.
+It is kept here for backwards compatibility, and will be removed in a future
+version.
 """
 from __future__ import absolute_import, division, print_function
 
-import argparse
-import os.path
+import os
 import sys
+import warnings
+from hera_librarian.cli import main
 
-import hera_librarian
-
-
-p = argparse.ArgumentParser(
-    description=__doc__,
-)
-
-p.add_argument('conn_name', metavar='CONNECTION-NAME',
-               help='Which Librarian to talk to; as in ~/.hl_client.cfg.')
-p.add_argument('file_name', metavar='PATH',
-               help='The name of the file to locate.')
-args = p.parse_args()
-
-
-def die(fmt, *args):
-    if not len(args):
-        text = str(fmt)
-    else:
-        text = fmt % args
-    print('error:', text, file=sys.stderr)
-    sys.exit(1)
-
-
-# Let's do it.
-
-# In case the user has provided directory components:
-file_name = os.path.basename(args.file_name)
-client = hera_librarian.LibrarianClient(args.conn_name)
-
-try:
-    result = client.locate_file_instance(file_name)
-except hera_librarian.RPCError as e:
-    die('couldn\'t locate file: %s', e)
-
-print('%(store_ssh_host)s:%(full_path_on_store)s' % result)
+if __name__ == "__main__":
+    warnings.warn("This script has been supserseded by the `librarian locate-file` "
+                  "command. This script is preserved for backwards compatibility, but "
+                  "will be removed in a future version.")
+    # fix up command-line args to behave correctly
+    bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    librarian_script = os.path.join(bindir, "librarian")
+    del sys.argv[0]
+    sys.argv.insert(0, librarian_script)
+    sys.argv.insert(1, "locate-file")
+    sys.exit(main(*sys.argv))

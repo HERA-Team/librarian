@@ -15,6 +15,9 @@ LibrarianClient
 ''').split()
 
 
+__version__ = "0.1.7a0"
+
+
 class NoSuchConnectionError (Exception):
     def __init__(self, conn_name):
         super(NoSuchConnectionError, self).__init__("no such connection " + repr(conn_name))
