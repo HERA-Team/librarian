@@ -4,7 +4,7 @@
 
 "Observations."
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 __all__ = str('''
 ObservingSession
@@ -378,8 +378,8 @@ def describe_session_without_event(args, sourcename=None):
     "source" raw correlator data have.
 
     """
-    source = required_arg(args, unicode, 'source')
-    event_type = required_arg(args, unicode, 'event_type')
+    source = required_arg(args, str, 'source')
+    event_type = required_arg(args, str, 'event_type')
 
     # Search for files that (1) are assigned to a session, (2) come from the
     # desired source, and (3) do not (yet) have the notification event.

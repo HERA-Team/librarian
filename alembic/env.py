@@ -6,7 +6,7 @@
 migration stuff.
 
 """
-from __future__ import with_statement
+
 
 # A hack so that we can get the librarian_server module.
 import sys

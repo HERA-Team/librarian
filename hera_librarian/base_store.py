@@ -10,7 +10,7 @@ that.
 
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 __all__ = str('''
 BaseStore
@@ -79,9 +79,9 @@ class BaseStore (object):
 
         if proc.returncode != 0:
             raise RPCError(argv, 'exit code %d; stdout:\n\n%r\n\nstderr:\n\n%r'
-                           % (proc.returncode, stdout, stderr))
+                           % (proc.returncode, stdout.decode("utf-8"), stderr.decode("utf-8")))
 
-        return stdout
+        return stdout.decode("utf-8")
 
     def _stream_path(self, store_path):
         """Return a subprocess.Popen instance that streams file contents on its
@@ -139,7 +139,7 @@ class BaseStore (object):
         ]
         success = False
 
-        for i in xrange(NUM_RSYNC_TRIES):
+        for i in range(NUM_RSYNC_TRIES):
             proc = subprocess.Popen(argv, shell=False, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT)
             output = proc.communicate()[0]

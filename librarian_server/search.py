@@ -8,7 +8,7 @@ This code will likely need a lot of expansion, but we'll start simple.
 
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 __all__ = str('''
 compile_search
@@ -119,19 +119,19 @@ class GenericSearchCompiler(object):
                              '-not-in-range'] = partial(self._do_num_not_in_range, attr_getter)
 
     def _do_str_matches(self, attr_getter, clause_name, payload):
-        if not isinstance(payload, unicode):
+        if not isinstance(payload, str):
             raise ServerError('can\'t parse "%s" clause: contents must be text, '
                               'but got %s', clause_name, payload.__class__.__name__)
         return attr_getter().like(payload)
 
     def _do_str_is_exactly(self, attr_getter, clause_name, payload):
-        if not isinstance(payload, unicode):
+        if not isinstance(payload, str):
             raise ServerError('can\'t parse "%s" clause: contents must be text, '
                               'but got %s', clause_name, payload.__class__.__name__)
         return (attr_getter() == payload)
 
     def _do_str_is_not(self, attr_getter, clause_name, payload):
-        if not isinstance(payload, unicode):
+        if not isinstance(payload, str):
             raise ServerError('can\'t parse "%s" clause: contents must be text, '
                               'but got %s', clause_name, payload.__class__.__name__)
         return (attr_getter() != payload)
@@ -199,21 +199,21 @@ class GenericSearchCompiler(object):
             raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
                               'but got %s', clause_name, payload.__class__.__name__)
         from sqlalchemy import and_
-        return and_(*[self._compile_clause(*t) for t in payload.iteritems()])
+        return and_(*[self._compile_clause(*t) for t in payload.items()])
 
     def _do_or(self, clause_name, payload):
         if not isinstance(payload, dict) or not len(payload):
             raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
                               'but got %s', clause_name, payload.__class__.__name__)
         from sqlalchemy import or_
-        return or_(*[self._compile_clause(*t) for t in payload.iteritems()])
+        return or_(*[self._compile_clause(*t) for t in payload.items()])
 
     def _do_none_of(self, clause_name, payload):
         if not isinstance(payload, dict) or not len(payload):
             raise ServerError('can\'t parse "%s" clause: contents must be a dict, '
                               'but got %s', clause_name, payload.__class__.__name__)
         from sqlalchemy import not_, or_
-        return not_(or_(*[self._compile_clause(*t) for t in payload.iteritems()]))
+        return not_(or_(*[self._compile_clause(*t) for t in payload.items()]))
 
     def _do_always_true(self, clause_name, payload):
         """We just ignore the payload."""
@@ -286,7 +286,7 @@ class ObservingSessionSearchCompiler(GenericSearchCompiler):
         self.clauses['no-file-has-event'] = self._do_no_file_has_event
 
     def _do_no_file_has_event(self, clause_name, payload):
-        if not isinstance(payload, unicode):
+        if not isinstance(payload, str):
             raise ServerError('can\'t parse "%s" clause: contents must be text, '
                               'but got %s', clause_name, payload.__class__.__name__)
 
@@ -980,7 +980,7 @@ def create_standing_order(ignored_name):
     POST data; this is basically an implementation/consistency thing.
 
     """
-    name = required_arg(request.form, unicode, 'name')
+    name = required_arg(request.form, str, 'name')
 
     try:
         if not len(name):
@@ -1011,9 +1011,9 @@ def update_standing_order(name):
         flash('No such standing order "%s"' % name)
         return redirect(url_for('standing_orders'))
 
-    new_name = required_arg(request.form, unicode, 'name')
-    new_conn = required_arg(request.form, unicode, 'conn')
-    new_search = required_arg(request.form, unicode, 'search')
+    new_name = required_arg(request.form, str, 'name')
+    new_conn = required_arg(request.form, str, 'conn')
+    new_search = required_arg(request.form, str, 'search')
 
     try:
         storder.name = new_name
@@ -1131,11 +1131,11 @@ def execute_search_ui():
     else:
         reqdata = request.args
 
-    query_type = required_arg(reqdata, unicode, 'type')
-    search_text = required_arg(reqdata, unicode, 'search')
-    output_format = optional_arg(reqdata, unicode, 'output_format', human_file_format)
-    stage_user = optional_arg(reqdata, unicode, 'stage_user', '')
-    stage_dest_suffix = optional_arg(reqdata, unicode, 'stage_dest_suffix', '')
+    query_type = required_arg(reqdata, str, 'type')
+    search_text = required_arg(reqdata, str, 'search')
+    output_format = optional_arg(reqdata, str, 'output_format', human_file_format)
+    stage_user = optional_arg(reqdata, str, 'stage_user', '')
+    stage_dest_suffix = optional_arg(reqdata, str, 'stage_dest_suffix', '')
     for_humans = True
 
     if output_format == full_path_format:
@@ -1264,10 +1264,10 @@ def execute_search_api(args, sourcename=None):
     incredibly lame but I'm not keen to build a real login system here.
 
     """
-    search_text = required_arg(args, unicode, 'search')
-    output_format = required_arg(args, unicode, 'output_format')
-    stage_user = optional_arg(args, unicode, 'stage_user', '')
-    stage_dest = optional_arg(args, unicode, 'stage_dest', '')
+    search_text = required_arg(args, str, 'search')
+    output_format = required_arg(args, str, 'output_format')
+    stage_user = optional_arg(args, str, 'stage_user', '')
+    stage_dest = optional_arg(args, str, 'stage_dest', '')
 
     if output_format == stage_the_files_json_format:
         query_type = 'instances-stores'

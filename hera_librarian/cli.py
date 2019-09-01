@@ -6,7 +6,7 @@
 
 """
 
-from __future__ import absolute_import, division, print_function
+
 
 
 import argparse
@@ -91,7 +91,7 @@ def print_table(dict_list, col_list=None, col_names=None):
     for item in dict_list:
         myList.append([str(item[col] or '') for col in col_list])
     # figure out the maximum size for each column
-    colSize = [max(map(len, col)) for col in zip(*myList)]
+    colSize = [max(list(map(len, col))) for col in zip(*myList)]
     formatStr = ' | '.join(["{{:<{}}}".format(i) for i in colSize])
     myList.insert(1, ['-' * i for i in colSize])  # Seperating line
     for item in myList:
@@ -618,7 +618,7 @@ def delete_files(args):
     n_deleted = 0
     n_error = 0
 
-    for fname, stats in sorted(allstats.iteritems(), key=lambda t: t[0]):
+    for fname, stats in sorted(iter(allstats.items()), key=lambda t: t[0]):
         nd = stats.get("n_deleted", 0)
         nk = stats.get("n_kept", 0)
         ne = stats.get("n_error", 0)

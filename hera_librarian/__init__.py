@@ -2,11 +2,11 @@
 # Copyright 2016 the HERA Team.
 # Licensed under the BSD License.
 
-from __future__ import absolute_import, division, print_function
+
 
 import json
 import os.path
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 __all__ = str('''
 NoSuchConnectionError
@@ -15,7 +15,7 @@ LibrarianClient
 ''').split()
 
 
-__version__ = "0.1.7a0"
+__version__ = "1.0.0"
 
 
 class NoSuchConnectionError (Exception):
@@ -79,14 +79,14 @@ class LibrarianClient (object):
 
         """
         kwargs['authenticator'] = self.config['authenticator']
-        for k in kwargs.keys():
+        for k in list(kwargs.keys()):
             if kwargs[k] is None:
                 kwargs.pop(k)
         req_json = json.dumps(kwargs)
 
-        params = urllib.urlencode({'request': req_json})
+        params = urllib.parse.urlencode({'request': req_json})
         url = self.config['url'] + 'api/' + operation
-        f = urllib.urlopen(url, params)
+        f = urllib.request.urlopen(url, params)
         reply = f.read()
         try:
             reply_json = json.loads(reply)

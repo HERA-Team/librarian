@@ -17,7 +17,7 @@ instance.
 
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 __all__ = str('''
 Store
@@ -136,7 +136,7 @@ class Store (db.Model, BaseStore):
                                   self.name, dest_store_path, e)
 
             observed_size = required_arg(info, int, 'size')
-            observed_md5 = required_arg(info, unicode, 'md5')
+            observed_md5 = required_arg(info, str, 'md5')
 
             if observed_size != file.size:
                 raise ServerError('cannot complete upload to %s:%s: expected size %d; observed %d',
@@ -220,8 +220,8 @@ def initiate_upload(args, sourcename=None):
     if upload_size < 0:
         raise ServerError('"upload_size" must be nonnegative')
 
-    known_staging_store = optional_arg(args, unicode, 'known_staging_store')
-    known_staging_subdir = optional_arg(args, unicode, 'known_staging_subdir')
+    known_staging_store = optional_arg(args, str, 'known_staging_store')
+    known_staging_subdir = optional_arg(args, str, 'known_staging_subdir')
 
     if (known_staging_store is None) ^ (known_staging_subdir is None):
         raise ServerError('if "known_staging_store" is specified, so must '
@@ -282,11 +282,11 @@ def complete_upload(args, sourcename=None):
     file into its final destination.
 
     """
-    store_name = required_arg(args, unicode, 'store_name')
-    staging_dir = required_arg(args, unicode, 'staging_dir')
-    dest_store_path = required_arg(args, unicode, 'dest_store_path')
-    meta_mode = required_arg(args, unicode, 'meta_mode')
-    deletion_policy = optional_arg(args, unicode, 'deletion_policy', 'disallowed')
+    store_name = required_arg(args, str, 'store_name')
+    staging_dir = required_arg(args, str, 'staging_dir')
+    dest_store_path = required_arg(args, str, 'dest_store_path')
+    meta_mode = required_arg(args, str, 'meta_mode')
+    deletion_policy = optional_arg(args, str, 'deletion_policy', 'disallowed')
     staging_was_known = optional_arg(args, bool, 'staging_was_known', False)
     null_obsid = optional_arg(args, bool, 'null_obsid', False)
     store = Store.get_by_name(store_name)  # ServerError if failure
@@ -343,7 +343,7 @@ def register_instances(args, sourcename=None):
     `scripts/add_obs_librarian.py` for the implementation.
 
     """
-    store_name = required_arg(args, unicode, 'store_name')
+    store_name = required_arg(args, str, 'store_name')
     file_info = required_arg(args, dict, 'file_info')
 
     from .file import File, FileInstance
@@ -353,7 +353,7 @@ def register_instances(args, sourcename=None):
 
     # Sort the files to get the creation times to line up.
 
-    for full_path in sorted(file_info.iterkeys()):
+    for full_path in sorted(file_info.keys()):
         if not full_path.startswith(slashed_prefix):
             raise ServerError('file path %r should start with "%s"',
                               full_path, slashed_prefix)
@@ -560,11 +560,11 @@ def launch_file_copy(args, sourcename=None):
     """Launch a copy of a file to a remote store.
 
     """
-    file_name = required_arg(args, unicode, 'file_name')
-    connection_name = required_arg(args, unicode, 'connection_name')
-    remote_store_path = optional_arg(args, unicode, 'remote_store_path')
-    known_staging_store = optional_arg(args, unicode, 'known_staging_store')
-    known_staging_subdir = optional_arg(args, unicode, 'known_staging_subdir')
+    file_name = required_arg(args, str, 'file_name')
+    connection_name = required_arg(args, str, 'connection_name')
+    remote_store_path = optional_arg(args, str, 'remote_store_path')
+    known_staging_store = optional_arg(args, str, 'known_staging_store')
+    known_staging_subdir = optional_arg(args, str, 'known_staging_subdir')
 
     if (known_staging_store is None) ^ (known_staging_subdir is None):
         raise ServerError('if known_staging_store is provided, known_staging_subdir must be '
@@ -734,8 +734,8 @@ def initiate_offload(args, sourcename=None):
     choose *which* file instances to offload in each call.
 
     """
-    source_store_name = required_arg(args, unicode, 'source_store_name')
-    dest_store_name = required_arg(args, unicode, 'dest_store_name')
+    source_store_name = required_arg(args, str, 'source_store_name')
+    dest_store_name = required_arg(args, str, 'dest_store_name')
 
     from sqlalchemy import func
     from sqlalchemy.orm import aliased

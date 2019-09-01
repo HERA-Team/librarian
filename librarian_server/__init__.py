@@ -7,7 +7,7 @@ initialize many things on module import, which is a bit lame. There are
 probably ways to work around that but things work well enough as is.
 
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 import logging
 import sys
@@ -236,7 +236,7 @@ def maybe_add_stores():
     from .dbutil import SQLAlchemyError
     from .store import Store
 
-    for name, cfg in app.config.get('add-stores', {}).iteritems():
+    for name, cfg in app.config.get('add-stores', {}).items():
         prev = Store.query.filter(Store.name == name).first()
         if prev is None:
             store = Store(name, cfg['path_prefix'], cfg['ssh_host'])
