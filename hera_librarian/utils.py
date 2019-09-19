@@ -169,11 +169,11 @@ def get_md5_from_path(path):
         locale.setlocale(locale.LC_COLLATE, 'C')
 
         for f in sorted(all_files()):
-            subhash = _md5_of_file(f)
+            subhash = _md5_of_file(f).encode("utf-8")
             md5.update(subhash)  # this is the hex digest, like we want
-            md5.update('  .')  # compat with command-line approach
-            md5.update(f[plen:])
-            md5.update('\n')
+            md5.update('  .'.encode("utf-8"))  # compat with command-line approach
+            md5.update(f[plen:].encode("utf-8"))
+            md5.update('\n'.encode("utf-8"))
     finally:
         locale.setlocale(locale.LC_COLLATE, prevlocale)
 

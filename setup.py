@@ -35,8 +35,6 @@ The HERA Librarian is a distributed system for managing HERA collaboration
 data products. This package provides client libraries that allow you to
 communicate with a Librarian server. It also includes the server code,
 although those modules are not installed in a standard ``pip install``.
-
-The Librarian client and server currently only run on Python 2.
 ''',
     install_requires=[
         'astropy >=2.0',

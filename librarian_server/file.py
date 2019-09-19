@@ -4,7 +4,7 @@
 
 "Files."
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 __all__ = str('''
 File
@@ -178,8 +178,8 @@ class File (db.Model):
                 raise ServerError('cannot register %s:%s: %s', store.name, store_path, e)
 
         size = required_arg(info, int, 'size')
-        md5 = required_arg(info, unicode, 'md5')
-        type = required_arg(info, unicode, 'type')
+        md5 = required_arg(info, str, 'md5')
+        type = required_arg(info, str, 'type')
 
         from .observation import Observation
         from . import mc_integration as MC
@@ -356,11 +356,11 @@ class File (db.Model):
 
     @classmethod
     def from_dict(cls, source, info):
-        name = required_arg(info, unicode, 'name')
-        type = required_arg(info, unicode, 'type')
+        name = required_arg(info, str, 'name')
+        type = required_arg(info, str, 'type')
         ctime_unix = required_arg(info, int, 'create_time')
         size = required_arg(info, int, 'size')
-        md5 = required_arg(info, unicode, 'md5')
+        md5 = required_arg(info, str, 'md5')
 
         # obsid needs special handling: it must be present, but it can be None.
         try:
@@ -368,7 +368,7 @@ class File (db.Model):
         except KeyError:
             raise ServerError('required parameter "obsid" not provided')
 
-        if obsid is not None and not isinstance(obsid, (int, long)):
+        if obsid is not None and not isinstance(obsid, int):
             raise ServerError('parameter "obsid" should be an integer or None, but got %r', obsid)
 
         return cls(name, type, obsid, source, size, md5, datetime.datetime.fromtimestamp(ctime_unix))
@@ -560,8 +560,8 @@ def create_file_event(args, sourcename=None):
     We enforce basically no structure on the event data.
 
     """
-    file_name = required_arg(args, unicode, 'file_name')
-    type = required_arg(args, unicode, 'type')
+    file_name = required_arg(args, str, 'file_name')
+    type = required_arg(args, str, 'type')
     payload = required_arg(args, dict, 'payload')
 
     file = File.query.get(file_name)
@@ -587,7 +587,7 @@ def locate_file_instance(args, sourcename=None):
     """Tell the caller where to find an instance of the named file.
 
     """
-    file_name = required_arg(args, unicode, 'file_name')
+    file_name = required_arg(args, str, 'file_name')
 
     file = File.query.get(file_name)
     if file is None:
@@ -619,9 +619,9 @@ def set_one_file_deletion_policy(args, sourcename=None):
     the "one instance" limit still applies.
 
     """
-    file_name = required_arg(args, unicode, 'file_name')
-    deletion_policy = required_arg(args, unicode, 'deletion_policy')
-    restrict_to_store = optional_arg(args, unicode, 'restrict_to_store')
+    file_name = required_arg(args, str, 'file_name')
+    deletion_policy = required_arg(args, str, 'deletion_policy')
+    restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
         restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
@@ -666,9 +666,9 @@ def delete_file_instances(args, sourcename=None):
     See File.delete_instances for a description of the safety interlocks.
 
     """
-    file_name = required_arg(args, unicode, 'file_name')
-    mode = optional_arg(args, unicode, 'mode', 'standard')
-    restrict_to_store = optional_arg(args, unicode, 'restrict_to_store')
+    file_name = required_arg(args, str, 'file_name')
+    mode = optional_arg(args, str, 'mode', 'standard')
+    restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
         restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
@@ -688,9 +688,9 @@ def delete_file_instances_matching_query(args, sourcename=None):
     See File.delete_instances for a description of the safety interlocks.
 
     """
-    query = required_arg(args, unicode, 'query')
-    mode = optional_arg(args, unicode, 'mode', 'standard')
-    restrict_to_store = optional_arg(args, unicode, 'restrict_to_store')
+    query = required_arg(args, str, 'query')
+    mode = optional_arg(args, str, 'mode', 'standard')
+    restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
         from .store import Store
         restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails

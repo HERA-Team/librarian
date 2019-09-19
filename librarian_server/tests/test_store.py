@@ -6,9 +6,9 @@
 
 """
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+
 import pytest
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 from . import ALL_FILES, filetypes, obsids, md5sums, pathsizes
 from librarian_server import webutil

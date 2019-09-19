@@ -22,8 +22,8 @@ def upgrade():
     # This is the schema used by the first Librarian deployments.
     op.create_table('observing_session',
                     sa.Column('id', sa.BigInteger(), nullable=False),
-                    sa.Column('start_time_jd', sa.Float(precision=u'53'), nullable=False),
-                    sa.Column('stop_time_jd', sa.Float(precision=u'53'), nullable=False),
+                    sa.Column('start_time_jd', sa.Float(precision='53'), nullable=False),
+                    sa.Column('stop_time_jd', sa.Float(precision='53'), nullable=False),
                     sa.PrimaryKeyConstraint('id')
                     )
 
@@ -49,11 +49,11 @@ def upgrade():
 
     op.create_table('observation',
                     sa.Column('obsid', sa.BigInteger(), nullable=False),
-                    sa.Column('start_time_jd', sa.Float(precision=u'53'), nullable=False),
-                    sa.Column('stop_time_jd', sa.Float(precision=u'53'), nullable=True),
-                    sa.Column('start_lst_hr', sa.Float(precision=u'53'), nullable=True),
+                    sa.Column('start_time_jd', sa.Float(precision='53'), nullable=False),
+                    sa.Column('stop_time_jd', sa.Float(precision='53'), nullable=True),
+                    sa.Column('start_lst_hr', sa.Float(precision='53'), nullable=True),
                     sa.Column('session_id', sa.BigInteger(), nullable=True),
-                    sa.ForeignKeyConstraint(['session_id'], [u'observing_session.id'], ),
+                    sa.ForeignKeyConstraint(['session_id'], ['observing_session.id'], ),
                     sa.PrimaryKeyConstraint('obsid')
                     )
 
@@ -65,7 +65,7 @@ def upgrade():
                     sa.Column('size', sa.BigInteger(), nullable=False),
                     sa.Column('md5', sa.String(length=32), nullable=False),
                     sa.Column('source', sa.String(length=64), nullable=False),
-                    sa.ForeignKeyConstraint(['obsid'], [u'observation.obsid'], ),
+                    sa.ForeignKeyConstraint(['obsid'], ['observation.obsid'], ),
                     sa.PrimaryKeyConstraint('name')
                     )
 
@@ -75,7 +75,7 @@ def upgrade():
                     sa.Column('time', sa.DateTime(), nullable=False),
                     sa.Column('type', sa.String(length=64), nullable=True),
                     sa.Column('payload', sa.Text(), nullable=True),
-                    sa.ForeignKeyConstraint(['name'], [u'file.name'], ),
+                    sa.ForeignKeyConstraint(['name'], ['file.name'], ),
                     sa.PrimaryKeyConstraint('id')
                     )
 
@@ -83,8 +83,8 @@ def upgrade():
                     sa.Column('store', sa.BigInteger(), nullable=False),
                     sa.Column('parent_dirs', sa.String(length=128), nullable=False),
                     sa.Column('name', sa.String(length=256), nullable=False),
-                    sa.ForeignKeyConstraint(['name'], [u'file.name'], ),
-                    sa.ForeignKeyConstraint(['store'], [u'store.id'], ),
+                    sa.ForeignKeyConstraint(['name'], ['file.name'], ),
+                    sa.ForeignKeyConstraint(['store'], ['store.id'], ),
                     sa.PrimaryKeyConstraint('store', 'parent_dirs', 'name')
                     )
 

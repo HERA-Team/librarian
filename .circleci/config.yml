@@ -7,7 +7,7 @@ jobs:
       python_version:
         type: string
     docker:
-      - image: continuumio/miniconda:latest
+      - image: continuumio/miniconda3:latest
       - image: circleci/postgres:11
         environment:
           POSTGRES_USER: root
@@ -60,5 +60,5 @@ workflows:
   build_and_test:
     jobs:
       - librarian:
-          name: librarian_2.7
-          python_version: "2.7"
+          name: librarian_3.7
+          python_version: "3.7"

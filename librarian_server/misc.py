@@ -2,7 +2,7 @@
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+
 
 __all__ = str('''
 create_records
@@ -52,17 +52,17 @@ def create_records(info, sourcename):
     from .observation import ObservingSession, Observation
     from .file import File
 
-    for subinfo in info.get('sessions', {}).itervalues():
+    for subinfo in info.get('sessions', {}).values():
         obj = ObservingSession.from_dict(subinfo)
         db.session.merge(obj)
 
-    for subinfo in info.get('observations', {}).itervalues():
+    for subinfo in info.get('observations', {}).values():
         obj = Observation.from_dict(subinfo)
         db.session.merge(obj)
 
     from .mc_integration import is_file_record_invalid, note_file_created
 
-    for subinfo in info.get('files', {}).itervalues():
+    for subinfo in info.get('files', {}).values():
         obj = File.from_dict(sourcename, subinfo)
 
         # Things get slightly more complicated here because if we're linked in

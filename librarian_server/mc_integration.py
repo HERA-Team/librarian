@@ -11,7 +11,7 @@ available, the top level of this module isn't allowed to import the `hera_mc`
 package.
 
 """
-from __future__ import absolute_import, division, print_function
+
 
 __all__ = '''
 is_file_record_invalid
@@ -291,7 +291,7 @@ def create_observation_record(obsid):
     in the `initiate_upload` API call.
 
     """
-    if not isinstance(obsid, (int, long)):
+    if not isinstance(obsid, int):
         raise ValueError('obsid must be integer; got %r' % (obsid, ))  # in case a None slips in
 
     if the_mc_manager is None:

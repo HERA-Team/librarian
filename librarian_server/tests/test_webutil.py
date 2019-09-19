@@ -6,11 +6,11 @@
 
 """
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+
 import pytest
 import numpy as np
 import json
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 from librarian_server import webutil
 from librarian_server.webutil import AuthFailedError, ServerError, json_api
@@ -39,7 +39,7 @@ def test_json_api(db_connection):
     mydict = {"val1": 1, "val2": "my_string", "authenticator": "I am a bot"}
     json_dict = json.dumps(mydict)
     req_dict = {"request": json_dict}
-    req_url = urllib.urlencode(req_dict)
+    req_url = urllib.parse.urlencode(req_dict)
     r = c.get("/?" + req_url)
     assert r.status_code == 200
     outdict = json.loads(r.data)
@@ -73,7 +73,7 @@ def test_json_api_errors(db_connection):
     mydict = {"val1": 1, "val2": "my_string"}
     json_dict = json.dumps(mydict)
     req_dict = {"request": json_dict}
-    req_url = urllib.urlencode(req_dict)
+    req_url = urllib.parse.urlencode(req_dict)
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
@@ -84,7 +84,7 @@ def test_json_api_errors(db_connection):
     mydict["authenticator"] = "bad string"
     json_dict = json.dumps(mydict)
     req_dict = {"request": json_dict}
-    req_url = urllib.urlencode(req_dict)
+    req_url = urllib.parse.urlencode(req_dict)
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
@@ -92,7 +92,7 @@ def test_json_api_errors(db_connection):
     assert outdict["message"] == "authentication failed"
 
     # test having no payload
-    req_url = urllib.urlencode({})
+    req_url = urllib.parse.urlencode({})
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
@@ -100,20 +100,20 @@ def test_json_api_errors(db_connection):
     assert outdict["message"] == "no request payload provided"
 
     # make the payload invalid json
-    req_url = urllib.urlencode({"request": "bad_format"})
+    req_url = urllib.parse.urlencode({"request": "bad_format"})
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
     assert outdict["success"] == False
     assert outdict["message"] == (
-        "couldn't parse request payload: No JSON object could be decoded"
+        "couldn't parse request payload: Expecting value: line 1 column 1 (char 0)"
     )
 
     # use a function that doesn't return a dict
     mydict["authenticator"] = "I am a bot"
     json_dict = json.dumps(mydict)
     req_dict = {"request": json_dict}
-    req_url = urllib.urlencode(req_dict)
+    req_url = urllib.parse.urlencode(req_dict)
     r = c.get("/invalid_return/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
@@ -126,7 +126,7 @@ def test_json_api_errors(db_connection):
     outdict = json.loads(r.data)
     assert outdict["success"] == False
     assert outdict["message"] == (
-        "couldn't format response data: array([0, 1, 2]) is not JSON serializable"
+        "couldn't format response data: Object of type ndarray is not JSON serializable"
     )
 
     return
@@ -137,7 +137,7 @@ def test_coerce():
     assert webutil._coerce(bool, "bool_var", True) is True
     assert webutil._coerce(int, "int_var", 7) == 7
     assert (
-        webutil._coerce(unicode, "unicode_var", "this is unicode") == "this is unicode"
+        webutil._coerce(str, "unicode_var", "this is unicode") == "this is unicode"
     )
     assert webutil._coerce(float, "float_var", 1.0) == 1.0
     assert webutil._coerce(dict, "dict_var", {"key": "val"}) == {"key": "val"}
@@ -149,7 +149,7 @@ def test_coerce():
     with pytest.raises(ServerError):
         webutil._coerce(int, "int_var", "foo")
     with pytest.raises(ServerError):
-        webutil._coerce(unicode, "unicode_var", 7)
+        webutil._coerce(str, "unicode_var", 7)
     with pytest.raises(ServerError):
         webutil._coerce(float, "float_var", "foo")
     with pytest.raises(ServerError):
@@ -163,11 +163,11 @@ def test_coerce():
 
 
 def test_required_arg():
-    args = {"arg1": 1, "arg2": u"my_string"}
+    args = {"arg1": 1, "arg2": "my_string"}
     arg1 = webutil.required_arg(args, int, "arg1")
     assert arg1 == 1
-    arg2 = webutil.required_arg(args, unicode, "arg2")
-    assert arg2 == u"my_string"
+    arg2 = webutil.required_arg(args, str, "arg2")
+    assert arg2 == "my_string"
 
     with pytest.raises(ServerError):
         arg3 = webutil.required_arg(args, int, "arg3")
@@ -176,11 +176,11 @@ def test_required_arg():
 
 
 def test_optional_arg():
-    args = {"arg1": 1, "arg2": u"my_string"}
+    args = {"arg1": 1, "arg2": "my_string"}
     arg1 = webutil.optional_arg(args, int, "arg1")
     assert arg1 == 1
-    arg2 = webutil.optional_arg(args, unicode, "arg2")
-    assert arg2 == u"my_string"
+    arg2 = webutil.optional_arg(args, str, "arg2")
+    assert arg2 == "my_string"
 
     arg3 = webutil.optional_arg(args, int, "arg3", 7)
     assert arg3 == 7
