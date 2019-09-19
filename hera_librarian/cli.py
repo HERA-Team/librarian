@@ -203,9 +203,10 @@ def config_add_obs_subparser(sub_parsers):
     doc = """Register a list of files with the librarian.
 
     """
+    hlp = "Register a list of files with the librarian"
 
     # add sub parser
-    sp = sub_parsers.add_parser("add-obs", description=doc)
+    sp = sub_parsers.add_parser("add-obs", description=doc, help=hlp)
     sp.add_argument("connection_name", metavar="CONNECTION-NAME", type=str,
                     help=_conn_name_help)
     sp.add_argument("store_name", metavar="NAME",
@@ -226,9 +227,10 @@ def config_launch_copy_subparser(sub_parsers):
     available store) and copy it over.
 
     """
+    hlp = "Launch a copy from one Librarian to another"
 
     # add sub parser
-    sp = sub_parsers.add_parser("launch-copy", description=doc)
+    sp = sub_parsers.add_parser("launch-copy", description=doc, help=hlp)
     sp.add_argument("--dest", type=str,
                     help="The path in which the file should be stored at the destination. "
                     "Default is the same as used locally.")
@@ -255,9 +257,10 @@ def config_assign_session_subparser(sub_parsers):
     night's data.
 
     """
+    hlp = "Group observations into sessions"
 
     # add sub parser
-    sp = sub_parsers.add_parser("assign-sessions", description=doc)
+    sp = sub_parsers.add_parser("assign-sessions", description=doc, help=hlp)
     sp.add_argument("--min-start-jd", dest="minimum_start_jd", metavar="JD", type=float,
                     help="Only consider observations starting after JD.")
     sp.add_argument("--max-start-jd", dest="maximum_start_jd", metavar="JD", type=float,
@@ -273,9 +276,10 @@ def config_delete_files_subparser(sub_parsers):
     doc = """Request to delete instances of files matching a given query.
 
     """
+    hlp = "Delete instances of files matching a query"
 
     # add sub parser
-    sp = sub_parsers.add_parser("delete-files", description=doc)
+    sp = sub_parsers.add_parser("delete-files", description=doc, help=hlp)
     sp.add_argument("-n", "--noop", dest="noop", action="store_true",
                     help="Enable no-op mode: nothing is actually deleted.")
     sp.add_argument("--store", metavar="STORE-NAME",
@@ -296,9 +300,10 @@ def config_initiate_offload_subparser(sub_parsers):
     are trying to clear out a store so that it can be shut down.
 
     """
+    hlp = "Initiate an 'offload' operation"
 
     # add sub parser
-    sp = sub_parsers.add_parser("initiate-offload", description=doc)
+    sp = sub_parsers.add_parser("initiate-offload", description=doc, help=hlp)
     sp.add_argument("conn_name", metavar="CONNECTION-NAME",
                     help=_conn_name_help)
     sp.add_argument("source_name", metavar="SOURCE-NAME",
@@ -316,8 +321,8 @@ def config_offload_helper_subparser(sub_parsers):
     functionality. Regular users should never need to run it.
 
     """
-
     # add sub parser
+    # purposely don't add help for this function, to prevent users from using it accidentally
     sp = sub_parsers.add_parser("offload-helper", description=doc)
     sp.add_argument("--name", required=True, help="Displayed name of the destination store.")
     sp.add_argument("--pp", required=True, help='"Path prefix" of the destination store.')
@@ -336,9 +341,10 @@ def config_locate_file_subparser(sub_parsers):
     as an SCP-ready string of the form "<host>:<full-path-on-host>".
 
     """
+    hlp = "Find the location of a given file"
 
     # add sub parser
-    sp = sub_parsers.add_parser("locate-file", description=doc)
+    sp = sub_parsers.add_parser("locate-file", description=doc, help=hlp)
     sp.add_argument("conn_name", metavar="CONNECTION-NAME",
                     help=_conn_name_help)
     sp.add_argument("file_name", metavar="PATH",
@@ -357,9 +363,10 @@ def config_search_files_subparser(sub_parsers):
     https://github.com/HERA-Team/librarian/blob/master/librarian_packages/hera_librarian/docs/Searching.md .
     Wrap your JSON in single quotes to prevent your shell from trying to interpret the
     special characters."""
+    hlp = "Search for files matching a query"
 
     # add sub parser
-    sp = sub_parsers.add_parser("search-files", description=doc, epilog=example)
+    sp = sub_parsers.add_parser("search-files", description=doc, epilog=example, help=hlp)
     sp.add_argument("conn_name", metavar="CONNECTION-NAME",
                     help=_conn_name_help)
     sp.add_argument("search", metavar="JSON-SEARCH",
@@ -374,9 +381,10 @@ def config_set_file_deletion_policy_subparser(sub_parsers):
     doc = """Set the "deletion policy" of one instance of this file.
 
     """
+    hlp = "Set the 'deletion policy' of one instance of the specified file"
 
     # add sub parser
-    sp = sub_parsers.add_parser("set-file-deletion-policy", description=doc)
+    sp = sub_parsers.add_parser("set-file-deletion-policy", description=doc, help=hlp)
     sp.add_argument("--store", metavar="STORE-NAME",
                     help="Only alter instances found on the named store.")
     sp.add_argument("conn_name", metavar="CONNECTION-NAME",
@@ -400,9 +408,10 @@ def config_stage_files_subparser(sub_parsers):
     https://github.com/HERA-Team/librarian/blob/master/librarian_packages/hera_librarian/docs/Searching.md ..
     Wrap your JSON in single quotes to prevent your shell from trying to interpret the
     special characters."""
+    hlp = "Stage the files matching a query"
 
     # add sub parser
-    sp = sub_parsers.add_parser("stage-files", description=doc, epilog=example)
+    sp = sub_parsers.add_parser("stage-files", description=doc, epilog=example, help=hlp)
     sp.add_argument("-w", "--wait", dest="wait", action="store_true",
                     help="If specified, do not exit until the staging is done.")
     sp.add_argument("conn_name", metavar="CONNECTION-NAME",
@@ -437,9 +446,10 @@ def config_upload_subparser(sub_parsers):
    under the name "2345678" with an empty 'store path'.
 
    """
+   hlp = "Upload files to the librarian"
 
    # add sub parser
-   sp = sub_parsers.add_parser("upload", description=doc, epilog=example)
+   sp = sub_parsers.add_parser("upload", description=doc, epilog=example, help=hlp)
    sp.add_argument("--meta", dest="meta", default="infer",
                    help='How to gather metadata: "json-stdin" or "infer"')
    sp.add_argument("--null-obsid", dest="null_obsid", action="store_true",
@@ -869,12 +879,11 @@ def upload(args):
     return
 
 
-def main(*args, **kwargs):
-    if len(args) == 1:
-        args = args + ("-h",)
-
+def main():
+    # make a parser and run the specified command
     parser = generate_parser()
-    parsed_args = parser.parse_args(args[1:])
+    parsed_args = parser.parse_args()
+    parsed_args.func(parsed_args)
 
     return
 
