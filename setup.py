@@ -44,6 +44,7 @@ The Librarian client and server currently only run on Python 2.
     tests_require=[
         'pytest',
         'pytest-datafiles',
+        'pytest-console-scripts',
     ],
     packages=packages,
     classifiers=[

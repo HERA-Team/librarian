@@ -10,6 +10,7 @@ from __future__ import print_function, division, absolute_import
 import pytest
 import os
 
+import hera_librarian
 from hera_librarian import cli
 
 def test_die(capsys):
@@ -125,3 +126,9 @@ def test_generate_parser():
     assert "upload" in available_subparsers
 
     return
+
+
+def test_main(script_runner):
+    version = hera_librarian.__version__
+    ret = script_runner.run("librarian", "-V")
+    assert ret.stderr == "librarian {}\n".format(version)
