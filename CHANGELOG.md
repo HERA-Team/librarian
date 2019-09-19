@@ -1,5 +1,6 @@
 # Version *next* (not yet released)
 
+- Move scripts to `cli.py` module and replace with single command.
 - Reorganize repo structure.
 - Add tests and CI support.
 - Support automatic ingestion of uvh5 files.
