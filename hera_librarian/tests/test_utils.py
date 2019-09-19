@@ -10,6 +10,7 @@ import pytest
 import os
 import six
 import sys
+import json
 from contextlib import contextmanager
 from hera_librarian import utils
 
@@ -39,13 +40,7 @@ def test_get_pol_from_path():
 @ALL_FILES
 def test_get_obsid_from_path(datafiles):
     """Test extracting obsid values from datasets"""
-    obsid_uvh5 = 1225829886
-    obsid_miriad = 1192201262
-    obsids = [obsid_uvh5, obsid_miriad]
-    filepaths = list(map(str, datafiles.listdir()))
-    # make sure our files are ordered correctly
-    if filepaths[0].endswith("uvA"):
-        filepaths = filepaths[::-1]
+    filepaths = sorted(list(map(str, datafiles.listdir())))
     for obsid, path in zip(obsids, filepaths):
         assert utils.get_obsid_from_path(path) == obsid
 
@@ -74,11 +69,8 @@ def test_normalize_and_validate_md5():
 @ALL_FILES
 def test_md5_of_file(datafiles):
     """Test generating md5sum of file"""
-    filepaths = list(map(str, datafiles.listdir()))
-    # make sure our files are ordered correctly
-    if filepaths[0].endswith("uvA"):
-        filepaths = filepaths[::-1]
-    assert utils._md5_of_file(filepaths[0]) == md5sums[0]
+    filepaths = sorted(list(map(str, datafiles.listdir())))
+    assert utils._md5_of_file(filepaths[1]) == md5sums[1]
 
     return
 
@@ -86,17 +78,14 @@ def test_md5_of_file(datafiles):
 @ALL_FILES
 def test_get_md5_from_path(datafiles):
     """Test getting the md5sum for both a flat file and directory"""
-    filepaths = list(map(str, datafiles.listdir()))
-    # make sure our files are ordered correctly
-    if filepaths[0].endswith("uvA"):
-        filepaths = filepaths[::-1]
+    filepaths = sorted(list(map(str, datafiles.listdir())))
     # test normal execution
     for md5sum, path in zip(md5sums, filepaths):
         assert utils.get_md5_from_path(path) == md5sum
 
     # test adding funny bits to the ends of the directory names
-    datafile_miriad = filepaths[1] + "//."
-    assert utils.get_md5_from_path(datafile_miriad) == md5sums[1]
+    datafile_miriad = filepaths[0] + "//."
+    assert utils.get_md5_from_path(datafile_miriad) == md5sums[0]
 
     return
 
@@ -104,10 +93,7 @@ def test_get_md5_from_path(datafiles):
 @ALL_FILES
 def test_get_size_from_path(datafiles):
     """Test computing filesize from path"""
-    filepaths = list(map(str, datafiles.listdir()))
-    # make sure our files are ordered correctly
-    if filepaths[0].endswith("uvA"):
-        filepaths = filepaths[::-1]
+    filepaths = sorted(list(map(str, datafiles.listdir())))
     for pathsize, path in zip(pathsizes, filepaths):
         assert utils.get_size_from_path(path) == pathsize
 
@@ -117,10 +103,7 @@ def test_get_size_from_path(datafiles):
 @ALL_FILES
 def test_gather_info_for_path(datafiles):
     """Test getting all info for a given path"""
-    filepaths = list(map(str, datafiles.listdir()))
-    # make sure our files are ordered correctly
-    if filepaths[0].endswith("uvA"):
-        filepaths = filepaths[::-1]
+    filepaths = sorted(list(map(str, datafiles.listdir())))
     for filetype, md5, size, obsid, path in zip(
         filetypes, md5sums, pathsizes, obsids, filepaths
     ):
@@ -136,19 +119,18 @@ def test_gather_info_for_path(datafiles):
 @ALL_FILES
 def test_print_info_for_path(datafiles, capsys):
     """Test printing file info to stdout"""
-    filepaths = list(map(str, datafiles.listdir()))
-    # make sure our files are ordered correctly
-    if filepaths[0].endswith("uvA"):
-        filepaths = filepaths[::-1]
+    filepaths = sorted(list(map(str, datafiles.listdir())))
     for filetype, md5, size, obsid, path in zip(
         filetypes, md5sums, pathsizes, obsids, filepaths
     ):
         utils.print_info_for_path(path)
         out, err = capsys.readouterr()
-        correct_string = '{{"obsid": {0:d}, "size": {1:d}, "type": "{2:}", "md5": "{3:}"}}'.format(
-            obsid, size, filetype, md5
-        )
-        assert out == correct_string
+        # convert from json to dict
+        out_dict = json.loads(out)
+
+        # build up correct dict
+        correct_info = {"type": filetype, "md5": md5, "size": size, "obsid": obsid}
+        assert out_dict == correct_info
 
     return
 
@@ -171,6 +153,6 @@ def test_format_jd_as_iso_date_time():
 
 def test_format_obsid_as_calendar_date():
     """Test converting obsid to calendar date"""
-    assert utils.format_obsid_as_calendar_date(obsids[0]) == "2018-11-09"
+    assert utils.format_obsid_as_calendar_date(obsids[1]) == "2018-11-09"
 
     return

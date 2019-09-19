@@ -125,11 +125,11 @@ class BaseStore (object):
             local_suffix = ''
 
         # flags: archive mode; keep partial transfers. Have SSH work in batch
-        # mode, use the aes128-ctr cipher for speed, and turn off known hosts
-        # and host key checking to Just Work without needing prompts. We used
-        # to have SSH use compression, but this put too high of a CPU load on
-        # the paper1 correlator machine. You could imagine making that an
-        # option if it helped with data transfer from Karoo to US.
+        # mode and turn off known hosts and host key checking to Just Work
+        # without needing prompts. We used to have SSH use compression, but this
+        # put too high of a CPU load on the paper1 correlator machine. You could
+        # imagine making that an option if it helped with data transfer from
+        # Karoo to US.
 
         argv = [
             'rsync',

@@ -44,8 +44,8 @@ def test_ssh_slurp(local_store):
 
 def test_copy_to_store(tmpdir, local_store):
     # make a fake file in our tmpdir
-    tmpfile = os.path.join(str(tmpdir), "my_file.txt")
-    with open(tmpfile, "w") as f:
+    tmppath = os.path.join(str(tmpdir), "my_file.txt")
+    with open(tmppath, "w") as f:
         print("hello world", file=f)
 
     # copy it over
@@ -138,10 +138,7 @@ def test_create_tempdir(local_store):
 @ALL_FILES
 def test_get_info_for_path(local_store, datafiles):
     # copy a datafile to store directory, so we can get its info
-    filepaths = list(map(str, datafiles.listdir()))
-    # make sure our files are ordered correctly
-    if filepaths[0].endswith("uvA"):
-        filepaths = filepaths[::-1]
+    filepaths = sorted(list(map(str, datafiles.listdir())))
     filename = os.path.basename(filepaths[0])
     local_store.copy_to_store(filepaths[0], filename)
 
