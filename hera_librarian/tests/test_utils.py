@@ -37,6 +37,7 @@ def test_get_pol_from_path():
     return
 
 
+@pytest.mark.filterwarnings("ignore:numpy.ufunc size changed")
 @ALL_FILES
 def test_get_obsid_from_path(datafiles):
     """Test extracting obsid values from datasets"""
