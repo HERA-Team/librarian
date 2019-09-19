@@ -1,7 +1,7 @@
 import os
 import re
 import codecs
-from setuptools import setup
+from setuptools import setup, find_packages
 
 package_name = "hera_librarian"
 
@@ -46,29 +46,13 @@ The Librarian client and server currently only run on Python 2.
         'pytest-datafiles',
     ],
     packages=packages,
-    scripts=[
-        'scripts/librarian',
-        'scripts/add_librarian_file_event.py',
-        'scripts/add_obs_librarian.py',
-        'scripts/launch_librarian_copy.py',
-        'scripts/librarian_assign_sessions.py',
-        'scripts/librarian_delete_files.py',
-        'scripts/librarian_initiate_offload.py',
-        'scripts/librarian_locate_file.py',
-        'scripts/librarian_offload_helper.py',
-        'scripts/librarian_search_files.py',
-        'scripts/librarian_set_file_deletion_policy.py',
-        'scripts/librarian_stage_files.py',
-        'scripts/librarian_stream_file_or_directory.sh',
-        'scripts/upload_to_librarian.py',
-    ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: BSD License',
         'Topic :: Scientific/Engineering :: Astronomy',
     ],
-    extras_require = {
+    extras_require={
         'server': [
             'aipy',
             'alembic',
@@ -80,6 +64,14 @@ The Librarian client and server currently only run on Python 2.
             'psycopg2',
             'pyuvdata',
             'sqlalchemy',
+        ],
+    },
+    scripts=[
+        "scripts/librarian_stream_file_or_directory.sh",
+    ],
+    entry_points={
+        "console_scripts": [
+            "librarian=hera_librarian.cli:main",
         ],
     },
 )
