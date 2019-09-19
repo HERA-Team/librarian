@@ -14,7 +14,7 @@ conda activate ${ENV_NAME}
 conda list -n ${ENV_NAME}
 
 # install other dependencies with pip
-pip install pytest-datafiles pytest-cov
+pip install pytest-datafiles pytest-cov pytest-console-scripts
 
 # set up librarian database
 alembic upgrade head
