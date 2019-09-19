@@ -131,4 +131,4 @@ def test_generate_parser():
 def test_main(script_runner):
     version = hera_librarian.__version__
     ret = script_runner.run("librarian", "-V")
-    assert ret.stderr == "librarian {}\n".format(version)
+    assert ret.stdout == "librarian {}\n".format(version)

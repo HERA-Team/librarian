@@ -7,7 +7,7 @@ jobs:
       python_version:
         type: string
     docker:
-      - image: continuumio/miniconda:latest
+      - image: continuumio/miniconda3:latest
       - image: circleci/postgres:11
         environment:
           POSTGRES_USER: root
