@@ -33,7 +33,7 @@ from .webutil import ServerError
 
 
 # M&C severity classes
-FATAL, SEVERE, WARNING, INFO = list(range(1, 5))
+FATAL, SEVERE, WARNING, INFO = range(1, 5)
 
 
 class MCManager(object):

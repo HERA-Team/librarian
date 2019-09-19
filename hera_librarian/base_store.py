@@ -81,7 +81,7 @@ class BaseStore (object):
             raise RPCError(argv, 'exit code %d; stdout:\n\n%r\n\nstderr:\n\n%r'
                            % (proc.returncode, stdout.decode("utf-8"), stderr.decode("utf-8")))
 
-        return stdout.decode("utf-8")
+        return stdout
 
     def _stream_path(self, store_path):
         """Return a subprocess.Popen instance that streams file contents on its
@@ -235,7 +235,8 @@ class BaseStore (object):
         path".
 
         """
-        output = self._ssh_slurp('mktemp -d -p %s %s.XXXXXX' % (self.path_prefix, key))
+        # we need to convert the output of _ssh_slurp -- a path in bytes -- to a string
+        output = self._ssh_slurp('mktemp -d -p %s %s.XXXXXX' % (self.path_prefix, key)).decode("utf-8")
         fullpath = output.splitlines()[-1].strip()
 
         if not fullpath.startswith(self.path_prefix):

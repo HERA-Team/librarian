@@ -79,7 +79,7 @@ class LibrarianClient (object):
 
         """
         kwargs['authenticator'] = self.config['authenticator']
-        for k in list(kwargs.keys()):
+        for k in kwargs.keys():
             if kwargs[k] is None:
                 kwargs.pop(k)
         req_json = json.dumps(kwargs)

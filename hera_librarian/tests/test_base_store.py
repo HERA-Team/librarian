@@ -40,7 +40,7 @@ def test_path(local_store):
 
 def test_ssh_slurp(local_store):
     # test simple command
-    assert local_store[0]._ssh_slurp("echo hello world") == "hello world\n"
+    assert local_store[0]._ssh_slurp("echo hello world").decode("utf-8") == "hello world\n"
 
     # try a bogus command
     with pytest.raises(RPCError):
@@ -63,7 +63,7 @@ def test_copy_to_store(tmpdir, local_store):
 
     # check that it exists
     dirpath = os.path.join(local_store[1], "test_directory")
-    assert local_store[0]._ssh_slurp("ls {}".format(dirpath)) == "my_file.txt\n"
+    assert local_store[0]._ssh_slurp("ls {}".format(dirpath)).decode("utf-8") == "my_file.txt\n"
 
     # clean up
     shutil.rmtree(os.path.join(local_store[1]))
@@ -79,7 +79,7 @@ def test_chmod(local_store):
     local_store[0]._chmod("my_empty_file", "664")
 
     # make sure permissions are correct
-    output = local_store[0]._ssh_slurp("ls -l {}".format(temppath))
+    output = local_store[0]._ssh_slurp("ls -l {}".format(temppath)).decode("utf-8")
     perms = output.split(" ")[0]
     assert perms == "-rw-rw-r--"
 
@@ -95,7 +95,7 @@ def test_move(local_store):
     local_store[0]._ssh_slurp("touch {}".format(temppath))
     local_store[0]._move("my_empty_file", "my_moved_file")
     temppath2 = os.path.join("/tmp", local_store[1], "my_moved_file")
-    assert local_store[0]._ssh_slurp("ls {}".format(temppath2)) == "{}\n".format(temppath2)
+    assert local_store[0]._ssh_slurp("ls {}".format(temppath2)).decode("utf-8") == "{}\n".format(temppath2)
 
     # test trying to overwrite a file that already exists
     with pytest.raises(RPCError):
@@ -106,7 +106,7 @@ def test_move(local_store):
     local_store[0]._ssh_slurp("rm -f {} {}".format(temppath, temppath2))
     local_store[0]._ssh_slurp("touch {}".format(temppath))
     local_store[0]._move("my_empty_file", "my_moved_file", chmod_spec=664)
-    output = local_store[0]._ssh_slurp("ls -l {}".format(temppath2))
+    output = local_store[0]._ssh_slurp("ls -l {}".format(temppath2)).decode("utf-8")
     perms = output.split(" ")[0]
     assert perms == "-rw-rw-r--"
 
@@ -124,7 +124,7 @@ def test_delete(local_store):
     assert (
         local_store[0]._ssh_slurp(
             "if [ -f {} ]; then echo file_still_exists; fi".format(temppath)
-        )
+        ).decode("utf-8")
         == ""
     )
 
@@ -135,7 +135,7 @@ def test_delete(local_store):
     assert (
         local_store[0]._ssh_slurp(
             "if [ -d {} ]; then echo dir_still_exists; fi".format(tempdir)
-        )
+        ).decode("utf-8")
         == ""
     )
 
@@ -156,7 +156,7 @@ def test_create_tempdir(local_store):
     assert len(tmppath) == len("libtmp.") + 6
     # make sure it exists on the host
     assert (
-        local_store[0]._ssh_slurp("ls -d1 {}/{}".format(tempdir, tmppath))
+        local_store[0]._ssh_slurp("ls -d1 {}/{}".format(tempdir, tmppath)).decode("utf-8")
         == "{}/{}\n".format(tempdir, tmppath)
     )
 
