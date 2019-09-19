@@ -31,7 +31,7 @@ jobs:
           command: |
             pip install numpy scipy astropy h5py
             pip install pyuvdata aipy
-            pip install .[server]
+            pip install .
       - run:
           name: run librarian tests
           # run hera_librarian tests, then librarian_server tests
