@@ -12,6 +12,7 @@ dependencies:
   - jinja2
   - numpy
   - psycopg2
+  - pytest
   - pyuvdata
   - sqlalchemy
   - tornado

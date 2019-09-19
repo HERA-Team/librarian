@@ -39,7 +39,7 @@ jobs:
             source ~/.bashrc
             conda activate ${ENV_NAME}
             pytest hera_librarian --cov=hera_librarian --cov-report=xml:hera_librarian_coverage.xml --cov-report=term
-            pytest server --cov=librarian_server --cov-report=xml:librarian_server_coverage.xml --cov-report=term
+            pytest librarian_server --cov=librarian_server --cov-report=xml:librarian_server_coverage.xml --cov-report=term
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "ci/librarian_tests.yml" }}
           paths:
