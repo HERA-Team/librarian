@@ -1,5 +1,9 @@
 # Version *next* (not yet released)
 
+
+# Version 1.0.0 (2019 Sep 19)
+
+- Convert codebase from python2 to python3.
 - Move scripts to `cli.py` module and replace with single command.
 - Reorganize repo structure.
 - Add tests and CI support.
