@@ -31,16 +31,15 @@ jobs:
           command: |
             pip install numpy scipy astropy h5py
             pip install pyuvdata aipy
-            cd librarian_packages/hera_librarian
-            pip install .
+            pip install .[server]
       - run:
           name: run librarian tests
           # run hera_librarian tests, then librarian_server tests
           command: |
             source ~/.bashrc
             conda activate ${ENV_NAME}
-            pytest librarian_packages/hera_librarian --cov=hera_librarian --cov-report=xml:hera_librarian_coverage.xml --cov-report=term
-            pytest librarian_packages/server --cov=librarian_server --cov-report=xml:librarian_server_coverage.xml --cov-report=term
+            pytest hera_librarian --cov=hera_librarian --cov-report=xml:hera_librarian_coverage.xml --cov-report=term
+            pytest server --cov=librarian_server --cov-report=xml:librarian_server_coverage.xml --cov-report=term
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "ci/librarian_tests.yml" }}
           paths:
