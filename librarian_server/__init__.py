@@ -208,13 +208,11 @@ def commandline(argv):
             search.register_standing_order_checkin()
 
         # Hack the logger to indicate which server we are.
-        try:
-            import tornado.process
+        import tornado.process
+        taskid = tornado.process.task_id()
+        if taskid is not None:
             fmtr = logging.getLogger('').handlers[0].formatter
-            fmtr._fmt = fmtr._fmt.replace(': ', ' #%d: ' % tornado.process.task_id())
-        except TypeError:
-            # task_id() returned None; don't change formatter
-            pass
+            fmtr._fmt = fmtr._fmt.replace(': ', ' #%d: ' % taskid)
 
     if server == 'flask':
         print('note: using "flask" server, so background operations will not work',
