@@ -184,8 +184,8 @@ class LibrarianClient (object):
         kwargs.update(rec_info)
         info = self._do_http_post('initiate_upload', **kwargs)
 
-        from .store import Store
-        store = Store(info['name'], info['path_prefix'], info['ssh_host'])
+        from .base_store import BaseStore
+        store = BaseStore(info['name'], info['path_prefix'], info['ssh_host'])
         staging_dir = info['staging_dir']
 
         # Now, (try to) actually copy the data. This runs an SCP, potentially

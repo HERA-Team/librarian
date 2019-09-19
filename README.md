@@ -6,7 +6,8 @@ database and presents a nice frontend, and Python client code that can make
 various requests of one or more servers.
 
 All of the server code is in a subdirectory called `server`. See
-[the README there](server/README.md) for information on how to run a server.
+[the README there](librarian_packages/server/README.md) for
+information on how to run a server.
 
 Besides the server, this repository provides a Python module,
 `hera_librarian`, that lets you talk to one *or more* Librarians
@@ -17,7 +18,7 @@ programmatically. Documentation not yet available. Install it with
 python setup.py install
 ```
 
-in this directory.
+in the `hera_librarian` subdirectory.
 
 
 ## Documentation

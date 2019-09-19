@@ -211,7 +211,7 @@ def _coerce(argtype, name, val):
         return val
 
     if argtype is list:
-        if not isinstance(val, dict):
+        if not isinstance(val, list):
             raise ServerError('parameter "%s" should be a list, but got %r', name, val)
         return val
 

@@ -1,0 +1,64 @@
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.4
+jobs:
+  librarian:
+    parameters:
+      python_version:
+        type: string
+    docker:
+      - image: continuumio/miniconda:latest
+      - image: circleci/postgres:11
+        environment:
+          POSTGRES_USER: root
+          POSTGRES_DB: librarian_test
+    environment:
+      PYTHON: << parameters.python_version >>
+      ENV_NAME: librarian_tests
+    steps:
+      - checkout
+      - restore_cache:
+          key: deps-{{ .Branch }}-{{ checksum "ci/librarian_tests.yml" }}
+      - run:
+          name: export environment variables
+          # python won't expand the tilde (~) character, so we have to do it ourselves
+          command: echo 'export LIBRARIAN_CONFIG_PATH=`eval echo ${CIRCLE_WORKING_DIRECTORY}/ci/server-config-ci.json`' >> $BASH_ENV
+      - run:
+          name: configure environment
+          command: ./ci/install-circle.sh
+      - run:
+          name: install hera_librarian package in base python environment
+          command: |
+            pip install numpy scipy astropy h5py
+            pip install pyuvdata aipy
+            pip install .
+      - run:
+          name: run librarian tests
+          # run hera_librarian tests, then librarian_server tests
+          command: |
+            source ~/.bashrc
+            conda activate ${ENV_NAME}
+            pytest hera_librarian --cov=hera_librarian --cov-report=xml:hera_librarian_coverage.xml --cov-report=term
+            pytest librarian_server --cov=librarian_server --cov-report=xml:librarian_server_coverage.xml --cov-report=term
+      - save_cache:
+          key: deps-{{ .Branch }}-{{ checksum "ci/librarian_tests.yml" }}
+          paths:
+            - "/opt/conda/envs/${ENV_NAME}/"
+      - store_test_results:
+          path: test-reports
+      - store_artifacts:
+          path: test-reports
+      - codecov/upload:
+          file: ./hera_librarian_coverage.xml
+          flags: hera_librarian
+      - codecov/upload:
+          file: ./librarian_server_coverage.xml
+          flags: librarian_server
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - librarian:
+          name: librarian_2.7
+          python_version: "2.7"

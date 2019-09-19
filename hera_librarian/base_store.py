@@ -13,7 +13,7 @@ that.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 __all__ = str('''
-Store
+BaseStore
 ''').split()
 
 import subprocess
@@ -24,7 +24,7 @@ from . import RPCError
 NUM_RSYNC_TRIES = 6
 
 
-class Store (object):
+class BaseStore (object):
     """Note that the Librarian server code subclasses this class, so do not change
     its structure without making sure that you're not breaking it.
 
@@ -125,16 +125,16 @@ class Store (object):
             local_suffix = ''
 
         # flags: archive mode; keep partial transfers. Have SSH work in batch
-        # mode, use the arcfour256 cipher for speed, and turn off known hosts
-        # and host key checking to Just Work without needing prompts. We used
-        # to have SSH use compression, but this put too high of a CPU load on
-        # the paper1 correlator machine. You could imagine making that an
-        # option if it helped with data transfer from Karoo to US.
+        # mode and turn off known hosts and host key checking to Just Work
+        # without needing prompts. We used to have SSH use compression, but this
+        # put too high of a CPU load on the paper1 correlator machine. You could
+        # imagine making that an option if it helped with data transfer from
+        # Karoo to US.
 
         argv = [
             'rsync',
             '-aP',
-            '-e', 'ssh -c arcfour256 -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
+            '-e', 'ssh -c aes128-ctr -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
             local_path + local_suffix, '%s:%s' % (self.ssh_host, self._path(store_path))
         ]
         success = False

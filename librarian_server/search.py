@@ -774,7 +774,7 @@ class StagerTask(bgtasks.BackgroundTask):
 
         try:
             flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
-            fd = os.open(os.path.join(dest, 'STAGING-IN-PROGRESS'), flags, 0666)
+            fd = os.open(os.path.join(dest, 'STAGING-IN-PROGRESS'), flags, 0o666)
         except OSError as e:
             if e.errno == EEXIST:
                 raise Exception(

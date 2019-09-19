@@ -1,0 +1,12 @@
+[run]
+source =
+    librarian_packages/hera_librarian/hera_librarian
+    librarian_packages/server/librarian_server
+omit =
+    */tests/*
+
+[report]
+omit =
+    */tests/*
+exclude_lines =
+    pragma: no cover

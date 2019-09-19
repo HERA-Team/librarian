@@ -1,10 +1,12 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
+package_name = "hera-librarian"
 __version__ = '0.1.7a0'
 
+packages = find_packages(exclude=["*.tests"])
 
 setup(
-    name='hera_librarian',
+    name=package_name,
     version=__version__,
     author='HERA Team',
     author_email='hera@lists.berkeley.edu',
@@ -19,17 +21,14 @@ although those modules are not installed in a standard ``pip install``.
 
 The Librarian client and server currently only run on Python 2.
 ''',
-
-    # These are the requirements for the *client library* only -- much lighter
-    # than for the server.
     install_requires=[
         'astropy >=2.0',
     ],
-
-    packages=[
-        'hera_librarian',
+    tests_require=[
+        'pytest',
+        'pytest-datafiles',
     ],
-
+    packages=find_packages(),
     scripts=[
         'scripts/add_librarian_file_event.py',
         'scripts/add_obs_librarian.py',
@@ -45,11 +44,24 @@ The Librarian client and server currently only run on Python 2.
         'scripts/librarian_stream_file_or_directory.sh',
         'scripts/upload_to_librarian.py',
     ],
-
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: BSD License',
         'Topic :: Scientific/Engineering :: Astronomy',
     ],
+    extras_require = {
+        'server': [
+            'aipy',
+            'alembic',
+            'astropy >=2.0',
+            'flask',
+            'flask-sqlalchemy',
+            'hera-librarian',
+            'numpy',
+            'psycopg2',
+            'pyuvdata',
+            'sqlalchemy',
+        ],
+    },
 )
