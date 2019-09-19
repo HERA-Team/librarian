@@ -1,7 +1,0 @@
-include MANIFEST.in
-
-exclude server-config.json
-
-global-exclude *~
-global-exclude *.pyc *.pyo __pycache__
-global-exclude .gitignore

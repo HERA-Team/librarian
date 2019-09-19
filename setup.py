@@ -1,7 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
-package_name = "hera_librarian"
+package_name = "hera-librarian"
 __version__ = '0.1.7a0'
+
+packages = find_packages(exclude=["*.tests"])
 
 setup(
     name=package_name,
@@ -23,9 +25,10 @@ The Librarian client and server currently only run on Python 2.
         'astropy >=2.0',
     ],
     tests_require=[
+        'pytest',
         'pytest-datafiles',
     ],
-    packages=['hera_librarian'],
+    packages=find_packages(),
     scripts=[
         'scripts/add_librarian_file_event.py',
         'scripts/add_obs_librarian.py',
@@ -47,4 +50,18 @@ The Librarian client and server currently only run on Python 2.
         'License :: OSI Approved :: BSD License',
         'Topic :: Scientific/Engineering :: Astronomy',
     ],
+    extras_require = {
+        'server': [
+            'aipy',
+            'alembic',
+            'astropy >=2.0',
+            'flask',
+            'flask-sqlalchemy',
+            'hera-librarian',
+            'numpy',
+            'psycopg2',
+            'pyuvdata',
+            'sqlalchemy',
+        ],
+    },
 )
