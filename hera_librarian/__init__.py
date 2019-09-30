@@ -84,7 +84,7 @@ class LibrarianClient (object):
                 kwargs.pop(k)
         req_json = json.dumps(kwargs)
 
-        params = urllib.parse.urlencode({'request': req_json})
+        params = urllib.parse.urlencode({'request': req_json}).encode("utf-8")
         url = self.config['url'] + 'api/' + operation
         f = urllib.request.urlopen(url, params)
         reply = f.read()
