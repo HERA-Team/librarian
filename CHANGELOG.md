@@ -1,5 +1,9 @@
 # Version *next* (not yet released)
 
+# Version 1.0.1 (2019 Oct 6)
+- Use setuptools_scm for versioning.
+- Add documentation for quickly setting up a librarian server.
+
 
 # Version 1.0.0 (2019 Sep 19)
 
