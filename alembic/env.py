@@ -7,11 +7,6 @@ migration stuff.
 
 """
 
-
-# A hack so that we can get the librarian_server module.
-import sys
-sys.path.insert(0, '.')
-
 from alembic import context
 
 from logging.config import fileConfig

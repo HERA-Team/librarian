@@ -7,6 +7,7 @@
 import json
 import os.path
 import urllib.request, urllib.parse, urllib.error
+from pkg_resources import get_distribution, DistributionNotFound
 
 __all__ = str('''
 NoSuchConnectionError
@@ -15,7 +16,11 @@ LibrarianClient
 ''').split()
 
 
-__version__ = "1.0.0"
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
 
 
 class NoSuchConnectionError (Exception):
@@ -79,15 +84,18 @@ class LibrarianClient (object):
 
         """
         kwargs['authenticator'] = self.config['authenticator']
-        for k in kwargs.keys():
+        for k in list(kwargs.keys()):
             if kwargs[k] is None:
                 kwargs.pop(k)
         req_json = json.dumps(kwargs)
 
-        params = urllib.parse.urlencode({'request': req_json})
+        params = urllib.parse.urlencode({'request': req_json}).encode("utf-8")
         url = self.config['url'] + 'api/' + operation
-        f = urllib.request.urlopen(url, params)
-        reply = f.read()
+        try:
+            f = urllib.request.urlopen(url, params)
+            reply = f.read()
+        except urllib.error.HTTPError as err:
+            reply = err.read()
         try:
             reply_json = json.loads(reply)
         except ValueError:

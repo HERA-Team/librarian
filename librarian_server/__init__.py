@@ -11,6 +11,15 @@ probably ways to work around that but things work well enough as is.
 
 import logging
 import sys
+from pkg_resources import get_distribution, DistributionNotFound, parse_version
+
+
+try:
+    # version information is saved under hera_librarian package
+    __version__ = get_distribution("hera_librarian").version
+except DistributionNotFound:
+    # package is not installed
+    pass
 
 
 _log_level_names = {
@@ -27,9 +36,18 @@ def _initialize():
     from flask import Flask
     from flask_sqlalchemy import SQLAlchemy
 
-    config_path = os.environ.get('LIBRARIAN_CONFIG_PATH', 'server-config.json')
-    with open(config_path) as f:
-        config = json.load(f)
+    if "LIBRARIAN_CONFIG_PATH" not in os.environ:
+        raise ValueError(
+            "The `LIBRARIAN_CONFIG_PATH` environment variable must be set "
+            "before starting the librarian server. Run `export "
+            "LIBRARIAN_CONFIG_PATH=/path/to/config.json` and try again."
+        )
+    config_path = os.environ["LIBRARIAN_CONFIG_PATH"]
+    try:
+        with open(config_path) as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        raise ValueError(f"Librarian configuration file {config_path} not found.")
 
     if 'SECRET_KEY' not in config:
         print('cannot start server: must define the Flask "secret key" as the item '
@@ -94,52 +112,33 @@ from . import misc
 # Finally ...
 
 def get_version_info():
-    """First thing we do is gather version information. The Librarian server is
-    always run out of a Git tree so there is a straightforward way to figure
-    out what version we've got. Of course the Git version doesn't reflect the
-    current status of all of our dependencies and so on --- stuff like this
-    really makes me miss having a linker.
-
-    If the Git calls fail, we complain but don't abort.
-
     """
-    from os.path import dirname
-    from subprocess import CalledProcessError, check_call, check_output
+    Extract version info from version tag.
 
-    cwd = dirname(__file__)
+    We're using setuptools_scm, so the git information is in the version tag.
 
-    def rungit(get_output, *args):
-        if get_output:
-            runit = check_output
-        else:
-            runit = check_call
+    Parameters
+    ----------
+    None
 
-        argv = ['git'] + list(args)
+    Returns
+    -------
+    tag : str
+        The semantic version of the installed librarian server.
+    git_hash : str
+        The (abbreviated) git hash of the installed librarian server.
+    """
+    parsed_version = parse_version(__version__)
+    tag = parsed_version.base_version
+    local = parsed_version.local
 
-        try:
-            return runit(argv, cwd=cwd, shell=False)
-        except CalledProcessError as e:
-            logger.warn('"%s" failed: %s' % (' '.join(argv), e))
-            return None
+    # check if version has "dirty" tag
+    split_local = local.split(".")
+    if len(split_local) == 2:
+        logger.warn("running from a codebase with uncommited changes")
 
-    rungit(False, 'update-index', '-q', '--refresh')
-
-    tag = rungit(True, 'describe', '--tags', '--match', 'v[0-9]*', '--dirty')
-    if tag is None:
-        logger.warn('couldn\'t identify current version from Git tag!')
-        tag = '???'
-    else:
-        tag = tag.strip()
-
-    if 'dirty' in tag:
-        logger.warn('running from a codebase with uncommitted changes')
-
-    head_info = rungit(True, 'show-ref', '-h', '--hash')
-    if head_info is None:
-        logger.warn('couldn\'t identify current Git hash!')
-        git_hash = '0' * 40
-    else:
-        git_hash = head_info.splitlines()[0].strip()
+    # get git info from the tag
+    git_hash = split_local[0][1:]
 
     return tag, git_hash
 
