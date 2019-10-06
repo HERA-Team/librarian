@@ -48,12 +48,11 @@ your own laptop*, if the port forward is in effect.
 To make the Librarian client programs available, you need to do a standard
 
 ```
-python setup.py install
+pip install .
 ```
 
-from the [top level of this repository](..). This should install scripts like
-[librarian_locate_file.py](../scripts/librarian_locate_file.py) into your
-shell path.
+from the [top level of this repository](..). This should install the main
+librarian script (invoked by running `librarian`) into your shell path.
 
 You also need to create a file called `~/.hl_client.cfg`, which tells the
 programs how they can connect to a Librarian server. Importantly, this
@@ -96,7 +95,7 @@ If everything is working and you believe that you have a working connection to
 the NRAO Librarian, the following command should print out an SSH-friendly file path:
 
 ```
-librarian_locate_file.py local zen.2458030.17452.auto_specs.png
+librarian locate-file local zen.2458030.17452.auto_specs.png
 ```
 
 Above we have assumed that your connection to the NRAO Librarian is named
@@ -120,5 +119,5 @@ Sorry: there’s no clean documentation right now. You can read the source code
 to the command-line programs to see what they do, and read
 [the source code to the client module](../hera_librarian/__init__.py) to see
 what APIs are available. The corresponding
-[server code](../server/librarian_server/) often has fairly extensive internal
+[server code](../librarian_server/) often has fairly extensive internal
 documentation describing arguments and semantics.
