@@ -82,7 +82,7 @@ launch a stage directly from the command line.
 An example command is:
 
 ```
-librarian_stage_files.py local /lustre/aoc/projects/hera/pwilliam/demo \
+librarian stage-files local /lustre/aoc/projects/hera/pwilliam/demo \
  '{"name-matches": "zen.2457644.%.xx.HH.uvc"}'
 ```
 
@@ -99,7 +99,7 @@ the shell. Note that single-quoted shell strings do not have shell-variable
 substitutions applied, though. When in doubt, just use the `echo` command to
 see what the shell is doing to what you type.
 
-The `librarian_stage_files.py` command also has an option called `--wait` or
+The `librarian stage-files` subcommand also has an option called `--wait` or
 `-w`. When specified, the program will not exit until the staging process is
 done. This is useful for scripting.
 
@@ -109,11 +109,12 @@ done. This is useful for scripting.
 The standard `hera_librarian` client module includes an API call that will
 launch a staging operation. Once you’ve created a `LibrarianClient` client
 object, the method is `launch_local_disk_stage_operation`. See the
-implementation of the `librarian_stage_files.py` program for a usage example.
+implementation of the `librarian stage-files` function in the
+[cli module](../hera_librarian/cli.py) for a usage example.
 
 Right now, there is no built-in support for the client to wait for the staging
 operation to complete. If you want that functionality, copy what
-`librarian_stage_files.py` does.
+`librarian stage-files` does.
 
 
 ## Esoterica

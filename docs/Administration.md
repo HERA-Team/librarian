@@ -33,4 +33,4 @@ pg_dump -F custom -f $SITENAME-$(date +%Y%m%d).pgdump $DB_NAME
 
 The database can then be restored with `pg_restore`. These backups can be
 ingested into the Librarian itself using the `--null-obsid` option of
-`upload_to_librarian.py`.
+`librarian upload`.

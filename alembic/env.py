@@ -1,16 +1,16 @@
 # -*- mode: python; coding: utf-8 -*-
 # Copyright 2016 the HERA Collaboration
-# Licensed under the MIT License.
+# Licensed under the 2-clause BSD License.
 
 """This script is some boilerplate needed by Alembic to do its fancy database
 migration stuff.
 
 """
 
-
 # A hack so that we can get the librarian_server module.
 import sys
 sys.path.insert(0, '.')
+
 
 from alembic import context
 

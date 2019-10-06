@@ -3,24 +3,22 @@
 Say you have created a shiny new data file that deserves to be enshrined in
 the Librarian. How do you make that happen?
 
-You should use the [upload_to_librarian.py](../scripts/upload-to-librarian.py)
-program. This tool uses the Librarian “client” modules, so you need to set
-those up first as described in
+You should use the `librarian upload` command. This tool uses the Librarian
+"client" modules, so you need to set those up first as described in
 [Programmatic Access to the Librarian](#programmatic-access-to-the-librarian).
 
-After installing the client modules, the
-[upload_to_librarian.py](../scripts/upload-to-librarian.py) script should be
-visible in your path. You can run it with the `--help` option to see its
-self-contained help. The basic usage format is:
+After installing the client modules, the `librarian` script should be visible in
+your path. You can run the `librarian upload` subcommand with the `--help`
+option to see its self-contained help. The basic usage format is:
 
 ```
-upload_to_librarian.py {connection} {local-path} {dest-path}
+librarian upload {connection} {local-path} {dest-path}
 ```
 
 For instance:
 
 ```
-upload_to_librarian.py human@folio zen.2557561.66007.phases.hdf 2557561/zen.2557561.66007.phases.hdf
+librarian upload human@folio zen.2557561.66007.phases.hdf 2557561/zen.2557561.66007.phases.hdf
 ```
 
 *The name of your file is important for several reasons*. First, obviously,
@@ -61,8 +59,8 @@ associated with an obsid. However, there are some files for which this doesn’t
 make sense — e.g., database backup files, as mentioned in the
 [Administration](./Administration.md) page.
 
-You can upload such a file by adding the `--null-obsid` option to the
-`upload_to_librarian.py` command. By making you have to explicitly indicate
-that you want your file to be unassociated with an obsid, we prevent
-accidental ingestion of files that *should* have an obsid but for which the
-matching scheme identified above failed.
+You can upload such a file by adding the `--null-obsid` option to the `librarian
+upload` command. By making you have to explicitly indicate that you want your
+file to be unassociated with an obsid, we prevent accidental ingestion of files
+that *should* have an obsid but for which the matching scheme identified above
+failed.

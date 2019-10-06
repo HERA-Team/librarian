@@ -1,5 +1,5 @@
 -- Copyright 2016 the HERA Collaboration
--- Licensed under the MIT License
+-- Licensed under the 2-clause BSD License
 --
 -- Use this script to seed the "alembic_version" table on instances
 -- of the Librarian database that have already been deployed. The
