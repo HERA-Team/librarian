@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 # Copyright 2017 the HERA Collaboration
-# Licensed under the MIT License.
+# Licensed under the 2-clause BSD License.
 
 """add index on FileInstance.name
 
