@@ -347,7 +347,7 @@ class BaseStore (object):
         import json
         rec_text = json.dumps(rec_info)
 
-        command = 'upload_to_librarian.py --meta=json-stdin%s %s %s %s' % (
+        command = 'librarian upload --meta=json-stdin%s %s %s %s' % (
             pre_staged_arg, conn_name, self._path(local_store_path), remote_store_path)
         return self._ssh_slurp(command, input=rec_text)
 
@@ -364,7 +364,7 @@ class BaseStore (object):
         feature.
 
         """
-        c = ("librarian_offload_helper.py --name '%s' --pp '%s' --host '%s' "
+        c = ("librarian offload-helper --name '%s' --pp '%s' --host '%s' "
              "--destrel '%s' '%s'" % (dest_store.name, dest_store.path_prefix,
                                       dest_store.ssh_host, dest_rel, self._path(local_store_path)))
         return self._ssh_slurp(c)
