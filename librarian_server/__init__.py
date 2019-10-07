@@ -116,6 +116,8 @@ def get_version_info():
     Extract version info from version tag.
 
     We're using setuptools_scm, so the git information is in the version tag.
+    The one exception is when we're running from a tagged release. In that case,
+    we get the git hash of the corresponding release from GitHub directly.
 
     Parameters
     ----------
@@ -126,19 +128,37 @@ def get_version_info():
     tag : str
         The semantic version of the installed librarian server.
     git_hash : str
-        The (abbreviated) git hash of the installed librarian server.
+        The git hash of the installed librarian server.
     """
     parsed_version = parse_version(__version__)
     tag = parsed_version.base_version
     local = parsed_version.local
 
-    # check if version has "dirty" tag
-    split_local = local.split(".")
-    if len(split_local) == 2:
-        logger.warn("running from a codebase with uncommited changes")
+    if local is None:
+        # we're running from a "clean" (tagged/released) repo
+        # get the git info from GitHub directly
+        from subprocess import CalledProcessError, check_output
 
-    # get git info from the tag
-    git_hash = split_local[0][1:]
+        gitcmd = [
+            "git",
+            "ls-remote",
+            "https://github.com/HERA-Team/librarian.git",
+            f"v{tag}",
+        ]
+
+        try:
+            output = check_output(gitcmd).decode("utf-8")
+            git_hash = output.split()[0]
+        except CalledProcessError:
+            git_hash = "???"
+    else:
+        # check if version has "dirty" tag
+        split_local = local.split(".")
+        if len(split_local) > 1:
+            logger.warn("running from a codebase with uncommited changes")
+
+        # get git info from the tag--the hash has a leading "g" we ignore
+        git_hash = split_local[0][1:]
 
     return tag, git_hash
 
