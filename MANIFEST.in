@@ -1,0 +1,5 @@
+include *.md
+include LICENSE
+include scripts/*.sh
+recursive-include docs *
+graft librarian_server/templates
