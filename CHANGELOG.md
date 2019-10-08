@@ -1,5 +1,10 @@
 # Version *next* (not yet released)
 
+
+# Version 1.1.0 (2019 Oct ?)
+- Add support for transfers with globus.
+
+
 # Version 1.0.2 (2019 Oct 6)
 
 - Fix server versioning for tagged releases.

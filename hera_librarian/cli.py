@@ -450,20 +450,73 @@ def config_upload_subparser(sub_parsers):
 
    # add sub parser
    sp = sub_parsers.add_parser("upload", description=doc, epilog=example, help=hlp)
-   sp.add_argument("--meta", dest="meta", default="infer",
-                   help='How to gather metadata: "json-stdin" or "infer"')
-   sp.add_argument("--null-obsid", dest="null_obsid", action="store_true",
-                   help="Require the new file to have *no* obsid associate (for maintenance files)")
-   sp.add_argument("--deletion", dest="deletion", default="disallowed",
-                   help='Whether the created file instance will be deletable: "allowed" or "disallowed"')
-   sp.add_argument("--pre-staged", dest="pre_staged", metavar="STORENAME:SUBDIR",
-                   help="Specify that the data have already been staged at the destination.")
-   sp.add_argument("conn_name", metavar="CONNECTION-NAME",
-                   help=_conn_name_help)
-   sp.add_argument("local_path", metavar="LOCAL-PATH",
-                   help="The path to the data on this machine.")
-   sp.add_argument("dest_store_path", metavar="DEST-PATH",
-                   help='The destination location: combination of "store path" and file name.')
+   sp.add_argument(
+       "--meta",
+       dest="meta",
+       default="infer",
+       help='How to gather metadata: "json-stdin" or "infer"',
+   )
+   sp.add_argument(
+       "--null-obsid",
+       dest="null_obsid",
+       action="store_true",
+       help="Require the new file to have *no* obsid associate (for maintenance files)",
+   )
+   sp.add_argument(
+       "--deletion",
+       dest="deletion",
+       default="disallowed",
+       help=(
+           'Whether the created file instance will be deletable: "allowed" or "disallowed"'
+       ),
+   )
+   sp.add_argument(
+       "--pre-staged",
+       dest="pre_staged",
+       metavar="STORENAME:SUBDIR",
+       help="Specify that the data have already been staged at the destination.",
+   )
+   sp.add_argument(
+       "conn_name", metavar="CONNECTION-NAME", help=_conn_name_help,
+   )
+   sp.add_argument(
+       "local_path", metavar="LOCAL-PATH", help="The path to the data on this machine.",
+   )
+   sp.add_argument(
+       "dest_store_path",
+       metavar="DEST-PATH",
+       help='The destination location: combination of "store path" and file name.',
+   )
+   sp.add_argument(
+       "--use_globus",
+       dest="use_globus",
+       action="store_true",
+       help="Specify that we should try to use globus to transfer data.",
+   )
+   sp.add_argument(
+       "--client_id",
+       dest="client_id",
+       metavar="CLIENT-ID",
+       help="The globus client ID.",
+   )
+   sp.add_argument(
+       "--transfer_token",
+       dest="transfer_token",
+       metavar="TRANSFER-TOKEN",
+       help="The globus transfer token.",
+   )
+   sp.add_argument(
+       "--source_endpoint_id",
+       dest="source_endpoint_id",
+       metavar="SOURCE-ENDPOINT-ID",
+       help="The source endpoint ID for the globus transfer.",
+   )
+   sp.add_argument(
+       "--destination_endpoint_id",
+       dest="destination_endpoint_id",
+       metavar="DESTINATION-ENDPOINT-ID",
+       help="The destination endpoint ID for the globus transfer.",
+   )
    sp.set_defaults(func=upload)
 
    return
@@ -870,9 +923,20 @@ def upload(args):
     client = LibrarianClient(args.conn_name)
 
     try:
-        client.upload_file(args.local_path, args.dest_store_path, meta_mode, rec_info,
-                           deletion_policy=args.deletion, known_staging_store=known_staging_store,
-                           known_staging_subdir=known_staging_subdir, null_obsid=args.null_obsid)
+        client.upload_file(
+            args.local_path,
+            args.dest_store_path,
+            meta_mode,
+            rec_info,
+            deletion_policy=args.deletion,
+            known_staging_store=known_staging_store,
+            known_staging_subdir=known_staging_subdir,
+            null_obsid=args.null_obsid,
+            use_globus=args.use_globus,
+            client_id=args.client_id,
+            source_endpoint_id=args.source_endpoint_id,
+            destination_endpoint_id=args.destination_endpoint_id,
+        )
     except RPCError as e:
         die("upload failed: {}".format(e))
 

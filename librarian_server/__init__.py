@@ -244,6 +244,32 @@ def commandline(argv):
         print('error: unknown server type %r' % server, file=sys.stderr)
         sys.exit(1)
 
+    use_globus = app.config.get("use_globus", False)
+    if use_globus:
+        globus_dict = {}
+        have_all_info = True
+        # make sure we have the other information that we need
+        if "globus_client_id" in app.config.keys():
+            globus_dict["client_id"] = app.config["globus_client_id"]
+        else:
+            print(
+                "error: globus_client_id must be in the config file to use "
+                "globus.",
+                file=sys.stderr,
+            )
+            have_all_info = False
+        if "globus_transfer_token" in app.config.keys():
+            globus_dict["transfer_token"] = app.config["globus_transfer_token"]
+        else:
+            print(
+                "error: globus_transfer_token must be in the config file to use "
+                "globus.",
+                file=sys.stderr,
+            )
+            have_all_info = False
+        if not have_all_info:
+            app.config["use_globus"] = False
+
     bgtasks.maybe_wait_for_threads_to_finish()
 
 

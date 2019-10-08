@@ -396,19 +396,53 @@ def register_instances(args, sourcename=None):
 from . import bgtasks
 
 
-class UploaderTask (bgtasks.BackgroundTask):
+class UploaderTask(bgtasks.BackgroundTask):
     """Object that manages the task of copying a file to another Librarian.
 
-    `remote_store_path` may be None, in which case we will request the same
-    "store path" as the file was used in this Librarian by whichever
-    FileInstance we happen to have located.
+    If `known_staging_store` and `known_staging_subdir` are not None, the copy
+    will be launched assuming that files have already been staged at a known
+    location at the final destination. This is useful if files have been
+    copied from one Librarian site to another outside of the Librarian
+    framework.
 
+    Parameters
+    ----------
+    store : BaseStore object
+        A BaseStore object corresponding to the originating store.
+    conn_name : str
+        The name of the connection to use, as defined in ~/.hl_client.cfg.
+    rec_info : dict
+        A dictionary containing database information for the file to be
+        transferred.
+    store_path : str
+        The full path to the file in the local store.
+    remote_store_path : str, optional
+        The path to place the file in the destination store. This may be None,
+        in which case we will request the same "store path" as the FileInstance
+        in this Librarian.
+    standing_order_name : str, optional
+        The standing order corresponding to this upload task.
+    known_staging_store : str, optional
+        The store corresponding to the already-uploaded file. Must be specified
+        if `known_staging_subdir` is specified.
+    known_staging_subdir : str, optional
+        The target directory corresponding to the already-uploaded file. Must by
+        specified if `known_staging_store` is specified.
     """
     t_start = None
     t_finish = None
 
-    def __init__(self, store, conn_name, rec_info, store_path, remote_store_path, standing_order_name=None,
-                 known_staging_store=None, known_staging_subdir=None):
+    def __init__(
+            self,
+            store,
+            conn_name,
+            rec_info,
+            store_path,
+            remote_store_path,
+            standing_order_name=None,
+            known_staging_store=None,
+            known_staging_subdir=None,
+    ):
         self.store = store
         self.conn_name = conn_name
         self.rec_info = rec_info
@@ -428,10 +462,15 @@ class UploaderTask (bgtasks.BackgroundTask):
         import time
         self.t_start = time.time()
         self.store.upload_file_to_other_librarian(
-            self.conn_name, self.rec_info,
-            self.store_path, self.remote_store_path,
+            self.conn_name,
+            self.rec_info,
+            self.store_path,
+            self.remote_store_path,
             known_staging_store=self.known_staging_store,
-            known_staging_subdir=self.known_staging_subdir)
+            known_staging_subdir=self.known_staging_subdir,
+            use_globus=use_globus,
+            globus_dict=globus_dict,
+        )
         self.t_finish = time.time()
 
     def wrapup_function(self, retval, exc):
@@ -487,9 +526,15 @@ class UploaderTask (bgtasks.BackgroundTask):
             raise ServerError('failed to commit completion events to database')
 
 
-def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
-                             standing_order_name=None, no_instance='raise',
-                             known_staging_store=None, known_staging_subdir=None):
+def launch_copy_by_file_name(
+        file_name,
+        connection_name,
+        remote_store_path=None,
+        standing_order_name=None,
+        no_instance='raise',
+        known_staging_store=None,
+        known_staging_subdir=None,
+):
     """Launch a copy of a file to a remote Librarian.
 
     A ServerError will be raised if no instance of the file is available.
@@ -534,16 +579,21 @@ def launch_copy_by_file_name(file_name, connection_name, remote_store_path=None,
 
     # Launch the background task. We need to convert the Store to a base object since
     # the background task can't access the database.
-
     basestore = inst.store_object.convert_to_base_object()
-    bgtasks.submit_background_task(UploaderTask(
-        basestore, connection_name, rec_info, inst.store_path,
-        remote_store_path, standing_order_name,
-        known_staging_store=known_staging_store,
-        known_staging_subdir=known_staging_subdir))
+    bgtasks.submit_background_task(
+        UploaderTask(
+            basestore,
+            connection_name,
+            rec_info,
+            inst.store_path,
+            remote_store_path,
+            standing_order_name,
+            known_staging_store=known_staging_store,
+            known_staging_subdir=known_staging_subdir,
+        )
+    )
 
     # Remember that we launched this copy.
-
     db.session.add(file.make_copy_launched_event(connection_name, remote_store_path))
 
     try:
