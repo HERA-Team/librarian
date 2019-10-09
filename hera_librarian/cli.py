@@ -511,12 +511,6 @@ def config_upload_subparser(sub_parsers):
        metavar="SOURCE-ENDPOINT-ID",
        help="The source endpoint ID for the globus transfer.",
    )
-   sp.add_argument(
-       "--destination_endpoint_id",
-       dest="destination_endpoint_id",
-       metavar="DESTINATION-ENDPOINT-ID",
-       help="The destination endpoint ID for the globus transfer.",
-   )
    sp.set_defaults(func=upload)
 
    return
@@ -935,7 +929,6 @@ def upload(args):
             use_globus=args.use_globus,
             client_id=args.client_id,
             source_endpoint_id=args.source_endpoint_id,
-            destination_endpoint_id=args.destination_endpoint_id,
         )
     except RPCError as e:
         die("upload failed: {}".format(e))

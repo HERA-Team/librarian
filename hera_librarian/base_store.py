@@ -183,15 +183,9 @@ class BaseStore(object):
         transfer_token : str
             The globus transfer token to use for the transfer.
         source_endpoint_id : str
-            The globus endpoint ID of the source store. May be omitted, in which
-            case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
+            The globus endpoint ID of the source store.
         destination_endpoint_id : str
-            The globus endpoint ID of the destination store. May be omitted, in
-            which case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
+            The globus endpoint ID of the destination store.
 
         Returns
         -------
@@ -211,27 +205,12 @@ class BaseStore(object):
                 "functionality. Please `pip install globus_sdk` and try again."
             )
 
-        # unpack globus information from dict
-        if not isinstance(globus_info, dict):
-            raise RPCError("globus_info must be passed as a dict to use globus")
-        client_id = globus_info["client_id"]
-        transfer_token = globus_info["transfer_token"]
-        source_endpoint_id = globus_info.get("source_endpoint_id", None)
-        destination_endpoint_id = globus_info.get("destination_endpoint_id", None)
+        # check that both endpoint IDs have been specified
         if source_endpoint_id is None and destination_endpoint_id is None:
             raise RPCError(
-                "at least one of source_endpoint_id or destination_endpoint_id "
-                "must be specified"
+                "Both source_endpoint_id and destination_endpoint_id must be "
+                "specified to initiate globus transfer."
             )
-        transfer_label = globus_info.get("transfer_label", None)
-
-        # if we're missing endpoint IDs, assume they're a local endpoint
-        if source_endpoint_id is None:
-            local_ep = globus_sdk.LocalGlobusConnectPersonal()
-            source_endpoint_id = local_ep.endpoint_id
-        if destination_endpoint_id is None:
-            local_ep = globus_sdk.LocalGlobusConnectPersonal()
-            destination_endpoint_id = local_ep.endpoint_id
 
         # make globus transfer client
         client = globus_sdk.NativeAppAuthClient(client_id)
@@ -295,15 +274,9 @@ class BaseStore(object):
         transfer_token : str, optional
             The globus transfer token to use for the transfer.
         source_endpoint_id : str, optional
-            The globus endpoint ID of the source store. May be omitted, in which
-            case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
+            The globus endpoint ID of the source store.
         destination_endpoint_id : str, optional
-            The globus endpoint ID of the destination store. May be omitted, in
-            which case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
+            The globus endpoint ID of the destination store.
 
         Returns
         -------
@@ -311,7 +284,14 @@ class BaseStore(object):
         """
         if try_globus:
             try:
-                self._globus_transfer(local_path, store_path, globus_info)
+                self._globus_transfer(
+                    local_path,
+                    store_path,
+                    client_id,
+                    transfer_token,
+                    source_endpoint_id,
+                    destination_endpoint_id,
+                )
             except RPCError:
                 # something went wrong with globus--fall back on rsync
                 print("Globus transfer failed, falling back on rsync...")
@@ -500,7 +480,6 @@ class BaseStore(object):
             client_id=None,
             transfer_token=None,
             source_endpoint_id=None,
-            destination_endpoint_id=None,
     ):
         """Upload a given file to a different Librarian.
 
@@ -541,14 +520,7 @@ class BaseStore(object):
             The globus transfer token to use for the transfer.
         source_endpoint_id : str, optional
             The globus endpoint ID of the source store. May be omitted, in which
-            case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
-        destination_endpoint_id : str, optional
-            The globus endpoint ID of the destination store. May be omitted, in
-            which case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
+            case we assume it is a "personal" (as opposed to public) client.
 
         Returns
         -------
@@ -578,8 +550,6 @@ class BaseStore(object):
             command += f" --use_globus --client_id={client_id} --transfer_token={transfer_token}"
             if source_endpoint_id is not None:
                 command += f" --source_endpoint_id={source_endpoint_id}"
-            if destination_endpoint_id is not None:
-                command += f" --destination_endpoint_id={destination_endpoint_id}"
 
         # actually run the command
         return self._ssh_slurp(command, input=rec_text)

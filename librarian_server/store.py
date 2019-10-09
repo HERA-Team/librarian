@@ -36,7 +36,7 @@ from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
-class Store (db.Model, BaseStore):
+class Store(db.Model, BaseStore):
     """A Store is a computer with a disk where we can store data. Several of the
     things we keep track of regarding stores are essentially configuration
     items; but we also keep track of the machine's availability, which is
@@ -71,11 +71,11 @@ class Store (db.Model, BaseStore):
 
     def convert_to_base_object(self):
         """Asynchronous store operations are run on worker threads, which means that
-        they're not allowed to access the database. But we'd like to be able
-        to pass Store references around and reuse the functionality
-        implemented in the `hera_librarian.store.Store` class. So we have this
-        helper function that converts this fancy, database-enabled object into
-        a simpler one that can be passed to other threads and so on.
+        they're not allowed to access the database. But we'd like to be able to
+        pass Store references around and reuse the functionality implemented in
+        the `hera_librarian.base_store.BaseStore` class. So we have this helper
+        function that converts this fancy, database-enabled object into a
+        simpler one that can be passed to other threads and so on.
 
         """
         return BaseStore(self.name, self.path_prefix, self.ssh_host)
@@ -428,6 +428,15 @@ class UploaderTask(bgtasks.BackgroundTask):
     known_staging_subdir : str, optional
         The target directory corresponding to the already-uploaded file. Must by
         specified if `known_staging_store` is specified.
+    use_globus : bool, optional
+        Specify whether to try to use globus to transfer files.
+    client_id : str, optional
+        The globus client ID to use for the transfer.
+    transfer_token : str, optional
+        The globus transfer token to use for the transfer.
+    source_endpoint_id : str, optional
+        The globus endpoint ID of the source store. May be omitted, in which
+        case we assume it is a "personal" (as opposed to public) client.
     """
     t_start = None
     t_finish = None
@@ -442,6 +451,10 @@ class UploaderTask(bgtasks.BackgroundTask):
             standing_order_name=None,
             known_staging_store=None,
             known_staging_subdir=None,
+            use_globus=False,
+            client_id=None,
+            transfer_token=None,
+            source_endpoint_id=None,
     ):
         self.store = store
         self.conn_name = conn_name
@@ -451,6 +464,10 @@ class UploaderTask(bgtasks.BackgroundTask):
         self.standing_order_name = standing_order_name
         self.known_staging_store = known_staging_store
         self.known_staging_subdir = known_staging_subdir
+        self.use_globus = use_globus
+        self.client_id = client_id
+        self.transfer_token = transfer_token
+        self.source_endpoint_id = source_endpoint_id
 
         self.desc = 'upload %s:%s to %s:%s' % (store.name, store_path,
                                                conn_name, remote_store_path or '<any>')
@@ -468,8 +485,10 @@ class UploaderTask(bgtasks.BackgroundTask):
             self.remote_store_path,
             known_staging_store=self.known_staging_store,
             known_staging_subdir=self.known_staging_subdir,
-            use_globus=use_globus,
-            globus_dict=globus_dict,
+            use_globus=self.use_globus,
+            client_id=self.client_id,
+            transfer_token=self.transfer_token,
+            source_endpoint_id=self.source_endpoint_id,
         )
         self.t_finish = time.time()
 
@@ -577,6 +596,18 @@ def launch_copy_by_file_name(
     from .misc import gather_records
     rec_info = gather_records(file)
 
+    # Figure out if we should try to use globus or not
+    if app.config["use_globus"]:
+        use_globus = True
+        client_id = app.config["globus_client_id"]
+        transfer_token = app.config["globus_transfer_token"]
+        source_endpoint_id = app.config["globus_endpoint_id"]
+    else:
+        use_globus = False
+        client_id = None
+        transfer_token = None
+        source_endpoint_id = None
+
     # Launch the background task. We need to convert the Store to a base object since
     # the background task can't access the database.
     basestore = inst.store_object.convert_to_base_object()
@@ -590,6 +621,10 @@ def launch_copy_by_file_name(
             standing_order_name,
             known_staging_store=known_staging_store,
             known_staging_subdir=known_staging_subdir,
+            use_globus=use_globus,
+            client_id=client_id,
+            transfer_token=transfer_token,
+            source_endpoint_id=source_endpoint_id,
         )
     )
 

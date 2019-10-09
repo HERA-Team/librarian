@@ -3,7 +3,6 @@
 # Licensed under the BSD License.
 
 
-
 import json
 import os.path
 import urllib.request, urllib.parse, urllib.error
@@ -23,7 +22,7 @@ except DistributionNotFound:
     pass
 
 
-class NoSuchConnectionError (Exception):
+class NoSuchConnectionError(Exception):
     def __init__(self, conn_name):
         super(NoSuchConnectionError, self).__init__("no such connection " + repr(conn_name))
         self.conn_name = conn_name
@@ -37,7 +36,7 @@ def get_client_config():
     return json.loads(s)
 
 
-class RPCError (Exception):
+class RPCError(Exception):
     def __init__(self, req, message):
         super(RPCError, self).__init__("RPC call %r failed: %s" % (req, message))
         self.req = req
@@ -51,7 +50,7 @@ def _normalize_deletion_policy(deletion_policy):
     return deletion_policy
 
 
-class LibrarianClient (object):
+class LibrarianClient(object):
     conn_name = None
     "The name of the Librarian connection we target."
 
@@ -141,7 +140,6 @@ class LibrarianClient (object):
             client_id=None,
             transfer_token=None,
             source_endpoint_id=None,
-            destination_endpoint_id=None,
     ):
         """Upload the file located at `local_path` to the Librarian.
 
@@ -225,11 +223,6 @@ class LibrarianClient (object):
             case we assume it is a "personal" (as opposed to public)
             client. When using globus, at least one of the source_endpoint_id or
             destination_endpoint_id must be provided.
-        destination_endpoint_id : str, optional
-            The globus endpoint ID of the destination store. May be omitted, in
-            which case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
 
         Returns
         -------
@@ -266,12 +259,36 @@ class LibrarianClient (object):
         store = BaseStore(info['name'], info['path_prefix'], info['ssh_host'])
         staging_dir = info['staging_dir']
 
+        if use_globus:
+            if source_endpoint_id is None:
+                try:
+                    import globus_sdk
+                    # assume we're running a local personal client
+                    # if we're not, local_ep.endpoint_id will return None
+                    local_ep = globus_sdk.LocalGlobusConnectPersonal()
+                    source_endpoint_id = local_ep.endpoint_id
+                except ModuleNotFoundError:
+                    source_endpoint_id = None
+            # get the destination_endpoint_id from config file
+            destination_endpoint_id = self.config.get("globus_endpoint_id", None)
+        else:
+            source_endpiotn_id = None
+            destination_endpoint_id = None
+
         # Now, (try to) actually copy the data. This runs an SCP, potentially
         # across the globe, that in the real world will occasionally stall or
         # die or whatever.
 
         staged_path = os.path.join(staging_dir, os.path.basename(dest_store_path))
-        store.copy_to_store(local_path, staged_path)
+        store.copy_to_store(
+            local_path,
+            staged_path,
+            use_globus,
+            client_id,
+            transfer_token,
+            source_endpoint_id,
+            destination_endpoint_id,
+        )
 
         # If we made it here, though, the upload succeeded and we can tell
         # that Librarian that the data are ready to go. It will verify the

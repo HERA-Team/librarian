@@ -27,7 +27,7 @@ from . import app, logger
 
 # Generic authentication stuff
 
-class AuthFailedError (Exception):
+class AuthFailedError(Exception):
     pass
 
 
@@ -54,7 +54,7 @@ def _check_authentication(auth):
 
 # The RPC (Remote Procedure Call) interface
 
-class ServerErrorBase (Exception):
+class ServerErrorBase(Exception):
     def __init__(self, status, fmt, args):
         self.status = status
 
@@ -67,7 +67,7 @@ class ServerErrorBase (Exception):
         return self.message
 
 
-class ServerError (ServerErrorBase):
+class ServerError(ServerErrorBase):
     """Raise this when an error is encountered in an API call. An error message
     will be returned, and the HTTP request will return error 400, which is
     usually what you want.
