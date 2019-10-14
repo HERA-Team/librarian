@@ -127,19 +127,19 @@ class LibrarianClient(object):
                                   )
 
     def upload_file(
-            self,
-            local_path,
-            dest_store_path,
-            meta_mode,
-            rec_info={},
-            deletion_policy='disallowed',
-            known_staging_store=None,
-            known_staging_subdir=None,
-            null_obsid=False,
-            use_globus=False,
-            client_id=None,
-            transfer_token=None,
-            source_endpoint_id=None,
+        self,
+        local_path,
+        dest_store_path,
+        meta_mode,
+        rec_info={},
+        deletion_policy='disallowed',
+        known_staging_store=None,
+        known_staging_subdir=None,
+        null_obsid=False,
+        use_globus=False,
+        client_id=None,
+        transfer_token=None,
+        source_endpoint_id=None,
     ):
         """Upload the file located at `local_path` to the Librarian.
 
@@ -308,90 +308,113 @@ class LibrarianClient(object):
         )
 
     def register_instances(self, store_name, file_info):
-        return self._do_http_post('register_instances',
-                                  store_name=store_name,
-                                  file_info=file_info,
-                                  )
+        return self._do_http_post(
+            'register_instances',
+            store_name=store_name,
+            file_info=file_info,
+        )
 
     def locate_file_instance(self, file_name):
-        return self._do_http_post('locate_file_instance',
-                                  file_name=file_name,
-                                  )
+        return self._do_http_post(
+            'locate_file_instance',
+            file_name=file_name,
+        )
 
-    def set_one_file_deletion_policy(self, file_name, deletion_policy, restrict_to_store=None):
+    def set_one_file_deletion_policy(
+            self, file_name, deletion_policy, restrict_to_store=None
+    ):
         deletion_policy = _normalize_deletion_policy(deletion_policy)
 
-        return self._do_http_post('set_one_file_deletion_policy',
-                                  file_name=file_name,
-                                  deletion_policy=deletion_policy,
-                                  restrict_to_store=restrict_to_store,
-                                  )
+        return self._do_http_post(
+            'set_one_file_deletion_policy',
+            file_name=file_name,
+            deletion_policy=deletion_policy,
+            restrict_to_store=restrict_to_store,
+        )
 
     def delete_file_instances(self, file_name, mode='standard', restrict_to_store=None):
-        return self._do_http_post('delete_file_instances',
-                                  file_name=file_name,
-                                  mode=mode,
-                                  restrict_to_store=restrict_to_store,
-                                  )
+        return self._do_http_post(
+            'delete_file_instances',
+            file_name=file_name,
+            mode=mode,
+            restrict_to_store=restrict_to_store,
+        )
 
-    def delete_file_instances_matching_query(self, query, mode='standard', restrict_to_store=None):
-        return self._do_http_post('delete_file_instances_matching_query',
-                                  query=query,
-                                  mode=mode,
-                                  restrict_to_store=restrict_to_store,
-                                  )
+    def delete_file_instances_matching_query(
+            self, query, mode='standard', restrict_to_store=None
+    ):
+        return self._do_http_post(
+            'delete_file_instances_matching_query',
+            query=query,
+            mode=mode,
+            restrict_to_store=restrict_to_store,
+        )
 
-    def launch_file_copy(self, file_name, connection_name, remote_store_path=None,
-                         known_staging_store=None, known_staging_subdir=None):
-        return self._do_http_post('launch_file_copy',
-                                  file_name=file_name,
-                                  connection_name=connection_name,
-                                  remote_store_path=remote_store_path,
-                                  known_staging_store=known_staging_store,
-                                  known_staging_subdir=known_staging_subdir,
-                                  )
+    def launch_file_copy(
+        self,
+        file_name,
+        connection_name,
+        remote_store_path=None,
+        known_staging_store=None,
+        known_staging_subdir=None,
+    ):
+        return self._do_http_post(
+            'launch_file_copy',
+            file_name=file_name,
+            connection_name=connection_name,
+            remote_store_path=remote_store_path,
+            known_staging_store=known_staging_store,
+            known_staging_subdir=known_staging_subdir,
+        )
 
     def initiate_offload(self, source_store_name, dest_store_name):
-        return self._do_http_post('initiate_offload',
-                                  source_store_name=source_store_name,
-                                  dest_store_name=dest_store_name,
-                                  )
+        return self._do_http_post(
+            'initiate_offload',
+            source_store_name=source_store_name,
+            dest_store_name=dest_store_name,
+        )
 
     def describe_session_without_event(self, source, event_type):
-        return self._do_http_post('describe_session_without_event',
-                                  source=source,
-                                  event_type=event_type,
-                                  )
+        return self._do_http_post(
+            'describe_session_without_event',
+            source=source,
+            event_type=event_type,
+        )
 
     def launch_local_disk_stage_operation(self, user, search, dest_dir):
-        return self._do_http_post('search',
-                                  stage_user=user,
-                                  search=search,
-                                  stage_dest=dest_dir,
-                                  type='instances-stores',
-                                  output_format='stage-the-files-json',
-                                  )
+        return self._do_http_post(
+            'search',
+            stage_user=user,
+            search=search,
+            stage_dest=dest_dir,
+            type='instances-stores',
+            output_format='stage-the-files-json',
+        )
 
     def search_sessions(self, search):
-        return self._do_http_post('search',
-                                  search=search,
-                                  output_format='session-listing-json',
-                                  )
+        return self._do_http_post(
+            'search',
+            search=search,
+            output_format='session-listing-json',
+        )
 
     def search_files(self, search):
-        return self._do_http_post('search',
-                                  search=search,
-                                  output_format='file-listing-json',
-                                  )
+        return self._do_http_post(
+            'search',
+            search=search,
+            output_format='file-listing-json',
+        )
 
     def search_instances(self, search):
-        return self._do_http_post('search',
-                                  search=search,
-                                  output_format='instance-listing-json',
-                                  )
+        return self._do_http_post(
+            'search',
+            search=search,
+            output_format='instance-listing-json',
+        )
 
     def search_observations(self, search):
-        return self._do_http_post('search',
-                                  search=search,
-                                  output_format='obs-listing-json',
-                                  )
+        return self._do_http_post(
+            'search',
+            search=search,
+            output_format='obs-listing-json',
+        )

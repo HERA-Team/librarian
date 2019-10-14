@@ -159,13 +159,13 @@ class BaseStore(object):
             raise RPCError(argv, 'exit code %d; output:\n\n%r' % (proc.returncode, output))
 
     def _globus_transfer(
-            self,
-            local_path,
-            store_path,
-            client_id,
-            transfer_token,
-            source_endpoint_id,
-            destination_endpoint_id,
+        self,
+        local_path,
+        store_path,
+        client_id,
+        transfer_token,
+        source_endpoint_id,
+        destination_endpoint_id,
     ):
         """Copy a file to a particular path using globus.
 
@@ -244,14 +244,14 @@ class BaseStore(object):
     # the server).
 
     def copy_to_store(
-            self,
-            local_path,
-            store_path,
-            try_globus=False,
-            client_id=None,
-            transfer_token=None,
-            source_endpoint_id=None,
-            destination_endpoint_id=None,
+        self,
+        local_path,
+        store_path,
+        try_globus=False,
+        client_id=None,
+        transfer_token=None,
+        source_endpoint_id=None,
+        destination_endpoint_id=None,
     ):
         """Transfer a file to a particular path in the store.
 
@@ -357,8 +357,10 @@ class BaseStore(object):
         else:
             piece = ''
 
-        return self._ssh_slurp("mkdir -p '%s' && chmod u+w '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
-                               (self._path(dest_parent), ssp, ssp, dsp, ssp, piece))
+        return self._ssh_slurp(
+            "mkdir -p '%s' && chmod u+w '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
+            (self._path(dest_parent), ssp, ssp, dsp, ssp, piece)
+        )
 
     def _delete(self, store_path, chmod_before=False):
         """Delete a path from the store.
@@ -403,8 +405,10 @@ class BaseStore(object):
 
         """
         import json
-        text = self._ssh_slurp("python -c \'import hera_librarian.utils as u; u.print_info_for_path(\"%s\")\'"
-                               % (self._path(storepath)))
+        text = self._ssh_slurp(
+            "python -c \'import hera_librarian.utils as u; u.print_info_for_path(\"%s\")\'"
+            % (self._path(storepath))
+        )
         return json.loads(text)
 
     _cached_space_info = None
@@ -469,17 +473,17 @@ class BaseStore(object):
         return 100. * info['used'] / (info['total'])
 
     def upload_file_to_other_librarian(
-            self,
-            conn_name,
-            rec_info,
-            local_store_path,
-            remote_store_path=None,
-            known_staging_store=None,
-            known_staging_subdir=None,
-            use_globus=False,
-            client_id=None,
-            transfer_token=None,
-            source_endpoint_id=None,
+        self,
+        conn_name,
+        rec_info,
+        local_store_path,
+        remote_store_path=None,
+        known_staging_store=None,
+        known_staging_subdir=None,
+        use_globus=False,
+        client_id=None,
+        transfer_token=None,
+        source_endpoint_id=None,
     ):
         """Upload a given file to a different Librarian.
 

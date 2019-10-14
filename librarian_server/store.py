@@ -442,19 +442,19 @@ class UploaderTask(bgtasks.BackgroundTask):
     t_finish = None
 
     def __init__(
-            self,
-            store,
-            conn_name,
-            rec_info,
-            store_path,
-            remote_store_path,
-            standing_order_name=None,
-            known_staging_store=None,
-            known_staging_subdir=None,
-            use_globus=False,
-            client_id=None,
-            transfer_token=None,
-            source_endpoint_id=None,
+        self,
+        store,
+        conn_name,
+        rec_info,
+        store_path,
+        remote_store_path,
+        standing_order_name=None,
+        known_staging_store=None,
+        known_staging_subdir=None,
+        use_globus=False,
+        client_id=None,
+        transfer_token=None,
+        source_endpoint_id=None,
     ):
         self.store = store
         self.conn_name = conn_name
@@ -546,13 +546,13 @@ class UploaderTask(bgtasks.BackgroundTask):
 
 
 def launch_copy_by_file_name(
-        file_name,
-        connection_name,
-        remote_store_path=None,
-        standing_order_name=None,
-        no_instance='raise',
-        known_staging_store=None,
-        known_staging_subdir=None,
+    file_name,
+    connection_name,
+    remote_store_path=None,
+    standing_order_name=None,
+    no_instance='raise',
+    known_staging_store=None,
+    known_staging_subdir=None,
 ):
     """Launch a copy of a file to a remote Librarian.
 
