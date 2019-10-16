@@ -349,7 +349,7 @@ class BaseStore (object):
 
         command = 'librarian upload --meta=json-stdin%s %s %s %s' % (
             pre_staged_arg, conn_name, self._path(local_store_path), remote_store_path)
-        return self._ssh_slurp(command, input=rec_text)
+        return self._ssh_slurp(command, input=rec_text.encode("utf-8"))
 
     def upload_file_to_local_store(self, local_store_path, dest_store, dest_rel):
         """Fire off an rsync process on the store that will upload a given file to
