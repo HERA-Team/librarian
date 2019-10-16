@@ -3,6 +3,7 @@ set -xe
 # get conda set up
 apt-get update; apt-get install -y gcc g++ openssh-server rsync
 conda config --set always_yes yes --set changeps1 no
+conda install setuptools
 conda update -q conda
 conda config --add channels conda-forge
 conda info -a
