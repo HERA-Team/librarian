@@ -49,9 +49,6 @@
     # setup
     #"n_server_processes": 1,
 
-    # Use this many worker threads for background activities.
-    #"n_worker_threads": 8,
-
     # Control over processing of standing orders. Default "normal". If "disabled",
     # then standing order uploads are disabled. (Implemented for the time that Penn
     # ran out of disk space.) If "nighttime", uploads are *not* launched between

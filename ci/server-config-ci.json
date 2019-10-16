@@ -15,8 +15,6 @@
 
     "n_server_processes": 1,
 
-    "n_worker_threads": 8,
-
     "standing_order_mode": "normal",
 
     "obsid_inference_mode": "hera",
