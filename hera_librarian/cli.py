@@ -489,7 +489,7 @@ def add_file_event(args):
 
         payload[key] = value
 
-    path = os.path.basename(args.path)  # in case user provided a real filesystem path
+    path = os.path.basename(args.file_path)  # in case user provided a real filesystem path
 
     # Let's do it
     client = LibrarianClient(args.conn_name)
