@@ -181,6 +181,7 @@ class TaskManager(object):
 
         task._manager = self
 
+        task.submit_time = time.time()
         self.tasks.append(task)
         await _thread_wrapper(task)
 
