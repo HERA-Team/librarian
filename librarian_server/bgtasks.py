@@ -21,10 +21,9 @@ get_unfinished_task_count
 ''').split()
 
 import time
+import asyncio
 
 from tornado.ioloop import IOLoop
-
-
 from flask import flash, redirect, render_template, url_for
 
 from . import app, db, logger
@@ -32,7 +31,7 @@ from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
-class BackgroundTask (object):
+class BackgroundTask(object):
     """A class implementing a background task.
 
     Instances of this task are also used by the Librarian to keep track of its
@@ -100,7 +99,7 @@ MIN_TASK_LIST_LENGTH = 20  # don't purge tasks if more than these are left
 TASK_LINGER_TIME = 600  # seconds
 
 
-def _thread_wrapper(task):
+async def _thread_wrapper(task):
     task.start_time = time.time()
 
     try:
@@ -112,10 +111,10 @@ def _thread_wrapper(task):
 
     task.finish_time = time.time()
     task.exception = exc
-    IOLoop.instance().add_callback(_wrapup_wrapper, task, retval, exc)
+    IOLoop.current().add_callback(_wrapup_wrapper, task, retval, exc)
 
 
-def _wrapup_wrapper(task, thread_retval, thread_exc):
+async def _wrapup_wrapper(task, thread_retval, thread_exc):
     try:
         task.wrapup_function(thread_retval, thread_exc)
     except Exception as e:
@@ -128,7 +127,7 @@ def _wrapup_wrapper(task, thread_retval, thread_exc):
     the_task_manager._maybe_purge_tasks()
 
 
-class TaskManager (object):
+class TaskManager(object):
     tasks = None
     """This is a list of all tasks that are pending, in processing, or have exited
     recently. Eventually we purge them but it's useful to be able to see the
@@ -164,7 +163,7 @@ class TaskManager (object):
                       if (t.finish_time is None or
                           (now - t.finish_time) < TASK_LINGER_TIME)]
 
-    def submit(self, task):
+    async def submit(self, task):
         """Submit a task to be run in the background.
 
         It may not be launched immediately if there are a lot of background
@@ -182,35 +181,16 @@ class TaskManager (object):
 
         task._manager = self
 
-        if self.worker_pool is None:
-            import multiprocessing.util
-            multiprocessing.util.log_to_stderr(5)
-            from multiprocessing.pool import ThreadPool
-            self.worker_pool = ThreadPool(app.config.get('n_worker_threads', 8))
-
         task.submit_time = time.time()
         self.tasks.append(task)
-        self.worker_pool.apply_async(_thread_wrapper, (task,))
-
-    def maybe_wait_for_threads_to_finish(self):
-        if self.worker_pool is None:
-            return
-
-        print('Waiting for background jobs to complete ...')
-        self.worker_pool.close()
-        self.worker_pool.join()
-        print('   ... done.')
+        await _thread_wrapper(task)
 
 
 the_task_manager = TaskManager()
 
 
 def submit_background_task(task):
-    return the_task_manager.submit(task)
-
-
-def maybe_wait_for_threads_to_finish():
-    the_task_manager.maybe_wait_for_threads_to_finish()
+    return IOLoop.current().add_callback(the_task_manager.submit, task)
 
 
 def log_background_task_status():

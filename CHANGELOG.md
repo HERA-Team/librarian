@@ -1,5 +1,12 @@
 # Version *next* (not yet released)
 
+# Version 1.0.3 (2019 Oct 22)
+
+- Make background tasks work in python3. For now this comes at the
+  expense of multiple background worker threads.
+- Fix distribution so server works from system-wide installation.
+
+
 # Version 1.0.2 (2019 Oct 6)
 
 - Fix server versioning for tagged releases.

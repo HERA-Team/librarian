@@ -489,7 +489,7 @@ def add_file_event(args):
 
         payload[key] = value
 
-    path = os.path.basename(args.path)  # in case user provided a real filesystem path
+    path = os.path.basename(args.file_path)  # in case user provided a real filesystem path
 
     # Let's do it
     client = LibrarianClient(args.conn_name)
@@ -539,7 +539,7 @@ def launch_copy(args):
 
     # Let's do it
     file_name = os.path.basename(args.file_name)  # in case the user has spelled out a path
-    client = hera_librarian.LibrarianClient(args.source_conn_name)
+    client = LibrarianClient(args.source_conn_name)
 
     try:
         client.launch_file_copy(file_name, args.dest_conn_name, remote_store_path=args.dest,
