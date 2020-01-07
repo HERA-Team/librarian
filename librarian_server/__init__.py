@@ -223,7 +223,7 @@ def commandline(argv):
             # anything to do with our standing orders.
             from tornado.ioloop import IOLoop
             from . import search
-            IOLoop.current().add_callback(search.queue_standing_order_copies)
+            IOLoop.instance().add_callback(search.queue_standing_order_copies)
             search.register_standing_order_checkin()
 
         # Hack the logger to indicate which server we are.
@@ -239,10 +239,12 @@ def commandline(argv):
         app.run(host=host, port=port, debug=debug)
     elif server == 'tornado':
         from tornado.ioloop import IOLoop
-        IOLoop.current().start()
+        IOLoop.instance().start()
     else:
         print('error: unknown server type %r' % server, file=sys.stderr)
         sys.exit(1)
+
+    bgtasks.maybe_wait_for_threads_to_finish()
 
 
 def maybe_add_stores():
