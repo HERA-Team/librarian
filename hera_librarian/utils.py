@@ -81,7 +81,7 @@ def get_obsid_from_path(path):
             uv.read_uvh5(path, read_data=False, run_check_acceptability=False)
             t0 = Time(np.unique(uv.time_array)[0], scale='utc', format='jd')
             return int(np.floor(t0.gps))
-        except (IOError, ImportError):
+        except (IOError, ImportError, KeyError, OSError):
             pass
 
     return None
