@@ -244,6 +244,8 @@ def commandline(argv):
         print('error: unknown server type %r' % server, file=sys.stderr)
         sys.exit(1)
 
+    bgtasks.maybe_wait_for_threads_to_finish()
+
 
 def maybe_add_stores():
     """Add any stores specified in the configuration file that we didn't already
