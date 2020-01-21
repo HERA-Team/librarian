@@ -33,7 +33,7 @@ central source (e.g., an observatory).
 Librarian-to-Librarian connections are implemented with two categories of TCP
 network connections. First, Librarians synchronize status information and
 metadata through a fairly standard HTTP/JSON API, the same one that can be
-accessed through the `hera_librarian` Python module. For Librarian *A* to be
+accessed using the `hera_librarian` Python module. For Librarian *A* to be
 able to communicate to Librarian *B*, there must be an entry for *B* in the
 `"connections"` section of the JSON file `$HOME/.hl_client.cfg` on the host
 running the main *A* server, where `$HOME` refers to the home directory of the
@@ -95,23 +95,24 @@ transfer files to Librarian *B*, the process is as follows:
 
 1. *A* connects to *B* using the JSON API described above and registers its
    intent to initiate a transfer.
-2. *B* responds to *A*’s inquiry includes, among other things, an `ssh_host`
+2. *B*’s response to *A*’s inquiry includes, among other things, an `ssh_host`
    field identifying one of its (*B*’s) storage nodes, which *A* relays to one
    of its storage nodes.
-3. The *A* storage node initiates an rsync-over-SSH connection *B* storage
-   node using the hostname given by the `ssh_host` field.
+3. The *A* storage node initiates an rsync-over-SSH connection to the *B*
+   storage node using the hostname given by the `ssh_host` field.
 
 This means that if a Librarian is to receive data transfers, it must be
 possible for potential source Librarians to directly connect to its storage
 nodes over SSH. Furthermore, the same hostnames are provided to all Librarians
-seeking to send data. Finally, SSH keys must be set up so that the source
-stores can establish connections to the destination stores without requiring
-interactive authentication.
+seeking to send data, regardless of whether some of them might (e.g.) be on a
+shared internal network or not. Finally, SSH keys must be set up so that the
+source stores can establish connections to the destination stores without
+requiring interactive authentication.
 
-All this is not as restrictive as it might seem because you can do a *lot* with
-the [.ssh/config](https://www.ssh.com/ssh/config) file. Fields like `HostName`
-or `ProxyCommand` allow the establishment of the SSH connection to be
-customized and established in a more sophisticated way than a simple direct
+All this is not as restrictive as it might seem because you can do a *lot*
+with the [.ssh/config](https://www.ssh.com/ssh/config) file. Fields like
+`HostName` or `ProxyCommand` allow the establishment of the SSH connection to
+be customized and performed in more sophisticated ways than a simple direct
 TCP connection to a DNS name declared on the open Internet. Setting up such
 configuration, however, does require that you synchronize it between all of
 the Librarian *A* storage nodes, as that you well as make sure that any
