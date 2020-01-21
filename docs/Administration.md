@@ -103,9 +103,12 @@ transfer files to Librarian *B*, the process is as follows:
 
 This means that if a Librarian is to receive data transfers, it must be
 possible for potential source Librarians to directly connect to its storage
-nodes over SSH. Furthermore, the same hostnames are provided to all Librarians
-seeking to send data, regardless of whether some of them might (e.g.) be on a
-shared internal network or not. Finally, SSH keys must be set up so that the
+nodes over SSH. Furthermore, the same `ssh_host` setting is sent to all
+Librarians seeking to send data, regardless of whether some of them might
+(e.g.) be on a shared internal network or not, *and* is used by Librarian *B*
+locally to connect to its storage nodes — so, if your Librarian server is also
+acting as its own storage node, this setting must by the DNS name of the
+server and not `localhost`. Finally, SSH keys must be set up so that the
 source stores can establish connections to the destination stores without
 requiring interactive authentication.
 
