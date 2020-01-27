@@ -110,6 +110,9 @@ class LibrarianClient (object):
     def ping(self, **kwargs):
         return self._do_http_post('ping', **kwargs)
 
+    def probe_stores(self, **kwargs):
+        return self._do_http_post('probe_stores', **kwargs)
+
     def create_file_event(self, file_name, type, **kwargs):
         """Note that keyword arguments to this function will automagically be stuffed
         inside the "payload" parameter.
