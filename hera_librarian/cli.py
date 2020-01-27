@@ -156,11 +156,11 @@ def generate_parser():
     sub_parsers = ap.add_subparsers(metavar="command", dest="cmd")
     config_add_file_event_subparser(sub_parsers)
     config_add_obs_subparser(sub_parsers)
-    config_launch_copy_subparser(sub_parsers)
     config_assign_session_subparser(sub_parsers)
     config_delete_files_subparser(sub_parsers)
     config_initiate_offload_subparser(sub_parsers)
     config_offload_helper_subparser(sub_parsers)
+    config_launch_copy_subparser(sub_parsers)
     config_locate_file_subparser(sub_parsers)
     config_search_files_subparser(sub_parsers)
     config_set_file_deletion_policy_subparser(sub_parsers)
@@ -214,35 +214,6 @@ def config_add_obs_subparser(sub_parsers):
     sp.add_argument("paths", metavar="PATHS", nargs="+",
                     help="The paths to the files on this computer.")
     sp.set_defaults(func=add_obs)
-
-    return
-
-
-def config_launch_copy_subparser(sub_parsers):
-    # function documentation
-    doc = """Launch a copy from one Librarian to another. Note that the filename
-    argument is treated just as the name of a file known to the source Librarian:
-    it does NOT have to be a file that exists on this particular machine. The
-    source Librarian will look up an existing instance of the file (on any
-    available store) and copy it over.
-
-    """
-    hlp = "Launch a copy from one Librarian to another"
-
-    # add sub parser
-    sp = sub_parsers.add_parser("launch-copy", description=doc, help=hlp)
-    sp.add_argument("--dest", type=str,
-                    help="The path in which the file should be stored at the destination. "
-                    "Default is the same as used locally.")
-    sp.add_argument("--pre-staged", dest="pre_staged", metavar="STORENAME:SUBDIR",
-                    help="Specify that the data have already been staged at the destination.")
-    sp.add_argument("source_conn_name", metavar="SOURCE-CONNECTION-NAME",
-                    help="Which Librarian originates the copy; as in ~/.hl_client.cfg.")
-    sp.add_argument("dest_conn_name", metavar="DEST-CONNECTION-NAME",
-                    help="Which Librarian receives the copy; as in ~/.hl_client.cfg.")
-    sp.add_argument("file_name", metavar="FILE-NAME",
-                    help="The name of the file to copy; need not be a local path.")
-    sp.set_defaults(func=launch_copy)
 
     return
 
@@ -315,22 +286,31 @@ def config_initiate_offload_subparser(sub_parsers):
     return
 
 
-def config_offload_helper_subparser(sub_parsers):
+def config_launch_copy_subparser(sub_parsers):
     # function documentation
-    doc = """The Librarian launches this script on stores to implement the "offload"
-    functionality. Regular users should never need to run it.
+    doc = """Launch a copy from one Librarian to another. Note that the filename
+    argument is treated just as the name of a file known to the source Librarian:
+    it does NOT have to be a file that exists on this particular machine. The
+    source Librarian will look up an existing instance of the file (on any
+    available store) and copy it over.
 
     """
+    hlp = "Launch a copy from one Librarian to another"
+
     # add sub parser
-    # purposely don't add help for this function, to prevent users from using it accidentally
-    sp = sub_parsers.add_parser("offload-helper", description=doc)
-    sp.add_argument("--name", required=True, help="Displayed name of the destination store.")
-    sp.add_argument("--pp", required=True, help='"Path prefix" of the destination store.')
-    sp.add_argument("--host", required=True, help="Target SSH host of the destination store.")
-    sp.add_argument("--destrel", required=True, help="Destination path, relative to the path prefix.")
-    sp.add_argument("local_path", metavar="LOCAL-PATH",
-                    help="The name of the file to upload on this machine.")
-    sp.set_defaults(func=offload_helper)
+    sp = sub_parsers.add_parser("launch-copy", description=doc, help=hlp)
+    sp.add_argument("--dest", type=str,
+                    help="The path in which the file should be stored at the destination. "
+                    "Default is the same as used locally.")
+    sp.add_argument("--pre-staged", dest="pre_staged", metavar="STORENAME:SUBDIR",
+                    help="Specify that the data have already been staged at the destination.")
+    sp.add_argument("source_conn_name", metavar="SOURCE-CONNECTION-NAME",
+                    help="Which Librarian originates the copy; as in ~/.hl_client.cfg.")
+    sp.add_argument("dest_conn_name", metavar="DEST-CONNECTION-NAME",
+                    help="Which Librarian receives the copy; as in ~/.hl_client.cfg.")
+    sp.add_argument("file_name", metavar="FILE-NAME",
+                    help="The name of the file to copy; need not be a local path.")
+    sp.set_defaults(func=launch_copy)
 
     return
 
@@ -350,6 +330,26 @@ def config_locate_file_subparser(sub_parsers):
     sp.add_argument("file_name", metavar="PATH",
                     help="The name of the file to locate.")
     sp.set_defaults(func=locate_file)
+
+    return
+
+
+def config_offload_helper_subparser(sub_parsers):
+    # function documentation
+    doc = """The Librarian launches this script on stores to implement the "offload"
+    functionality. Regular users should never need to run it.
+
+    """
+    # add sub parser
+    # purposely don't add help for this function, to prevent users from using it accidentally
+    sp = sub_parsers.add_parser("offload-helper", description=doc)
+    sp.add_argument("--name", required=True, help="Displayed name of the destination store.")
+    sp.add_argument("--pp", required=True, help='"Path prefix" of the destination store.')
+    sp.add_argument("--host", required=True, help="Target SSH host of the destination store.")
+    sp.add_argument("--destrel", required=True, help="Destination path, relative to the path prefix.")
+    sp.add_argument("local_path", metavar="LOCAL-PATH",
+                    help="The name of the file to upload on this machine.")
+    sp.set_defaults(func=offload_helper)
 
     return
 
