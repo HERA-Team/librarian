@@ -42,6 +42,7 @@ installation with the following modules:
 1. [tornado](http://www.tornadoweb.org/) optionally, for robust HTTP service
 1. [alembic](http://alembic.zzzcomputing.com/)
 1. [pyuvdata](https://github.com/RadioAstronomySoftwareGroup/pyuvdata)
+1. [pytz](http://pytz.sourceforge.net/)
 
 A standard Anaconda Python installation can provide all of these except
 `aipy` and `pyuvdata`. These are available through `pip` or the `conda-forge`
