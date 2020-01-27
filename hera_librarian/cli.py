@@ -157,6 +157,7 @@ def generate_parser():
     config_add_file_event_subparser(sub_parsers)
     config_add_obs_subparser(sub_parsers)
     config_assign_session_subparser(sub_parsers)
+    config_check_connections_subparser(sub_parsers)
     config_delete_files_subparser(sub_parsers)
     config_initiate_offload_subparser(sub_parsers)
     config_offload_helper_subparser(sub_parsers)
@@ -172,7 +173,7 @@ def generate_parser():
 
 def config_add_file_event_subparser(sub_parsers):
     # function documentation
-    doc = """Add an "event" record for a File known to the Librarian. These records are 
+    doc = """Add an "event" record for a File known to the Librarian. These records are
     essentially freeform. The event data are specified as "key=value" items on the
     command line after the event type. The data are parsed as JSON before being
     sent to the Librarian. This makes it possible to use data structures like
@@ -239,6 +240,19 @@ def config_assign_session_subparser(sub_parsers):
     sp.add_argument("conn_name", metavar="CONNECTION-NAME",
                     help=_conn_name_help)
     sp.set_defaults(func=assign_sessions)
+
+    return
+
+
+def config_check_connections_subparser(sub_parsers):
+    doc = """Check whether this machine can connect to all the stores of its Librarian
+    peers.
+
+    """
+    hlp = "Check connectivity to remote stores"
+
+    sp = sub_parsers.add_parser("check-connections", description=doc, help=hlp)
+    sp.set_defaults(func=check_connections)
 
     return
 
@@ -580,6 +594,47 @@ def assign_sessions(args):
         die("sessions created, but failed to print info: {}".format(e))
 
     return
+
+
+def check_connections(args):
+    """
+    Check this host's ability to connect to the other Librarians that have been configured,
+    as well as their stores.
+
+    """
+    from . import all_connections
+
+    any_failed = False
+
+    for client in all_connections():
+        print('Checking ability to establish HTTP connection to "%s" (%s) ...' % (client.conn_name, client.config['url']))
+
+        try:
+            result = client.ping()
+            print('   ... OK')
+        except Exception as e:
+            print('   ... error: %s' % e)
+            any_failed = True
+            continue
+
+        print('   Querying this Librarian for its stores and how to connect to them ...')
+
+        for store in client.stores():
+            print('   Checking ability to establish SSH connection to store "%s" (%s:%s) ...'
+                  % (store.name, store.ssh_host, store.path_prefix))
+
+            try:
+                result = store.get_space_info()
+                print('   ... OK')
+            except Exception as e:
+                print('   ... error: %s' % e)
+                any_failed = True
+
+    if any_failed:
+        sys.exit(1)
+
+    print()
+    print('Everything worked!')
 
 
 def delete_files(args):
