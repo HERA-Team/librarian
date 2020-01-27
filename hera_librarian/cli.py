@@ -617,10 +617,10 @@ def check_connections(args):
             any_failed = True
             continue
 
-        print('   Querying this Librarian for its stores and how to connect to them ...')
+        print('   Querying "%s" for its stores and how to connect to them ...' % client.conn_name)
 
         for store in client.stores():
-            print('   Checking ability to establish SSH connection to store "%s" (%s:%s) ...'
+            print('   Checking ability to establish SSH connection to remote store "%s" (%s:%s) ...'
                   % (store.name, store.ssh_host, store.path_prefix))
 
             try:
