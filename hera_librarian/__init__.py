@@ -113,6 +113,16 @@ class LibrarianClient (object):
     def probe_stores(self, **kwargs):
         return self._do_http_post('probe_stores', **kwargs)
 
+    def stores(self):
+        """Generate a sequence of Stores that are attached to the remote Librarian."""
+
+        from .base_store import BaseStore
+        info = self.probe_stores()
+
+        for item in info['stores']:
+            yield BaseStore(item['name'], item['path_prefix'], item['ssh_host'])
+
+
     def create_file_event(self, file_name, type, **kwargs):
         """Note that keyword arguments to this function will automagically be stuffed
         inside the "payload" parameter.
