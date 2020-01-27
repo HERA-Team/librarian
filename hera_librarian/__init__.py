@@ -10,6 +10,8 @@ import urllib.request, urllib.parse, urllib.error
 from pkg_resources import get_distribution, DistributionNotFound
 
 __all__ = str('''
+all_connections
+get_client_config
 NoSuchConnectionError
 RPCError
 LibrarianClient
@@ -35,6 +37,17 @@ def get_client_config():
     with open(path, 'r') as f:
         s = f.read()
     return json.loads(s)
+
+
+def all_connections():
+    """Generate a sequence of LibrarianClient objects for all connections in the
+    configuration file.
+
+    """
+    config = get_client_config()
+
+    for name, info in config.get('connections', {}).items():
+        yield LibrarianClient(name, info)
 
 
 class RPCError (Exception):
