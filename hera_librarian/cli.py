@@ -156,11 +156,12 @@ def generate_parser():
     sub_parsers = ap.add_subparsers(metavar="command", dest="cmd")
     config_add_file_event_subparser(sub_parsers)
     config_add_obs_subparser(sub_parsers)
-    config_launch_copy_subparser(sub_parsers)
     config_assign_session_subparser(sub_parsers)
+    config_check_connections_subparser(sub_parsers)
     config_delete_files_subparser(sub_parsers)
     config_initiate_offload_subparser(sub_parsers)
     config_offload_helper_subparser(sub_parsers)
+    config_launch_copy_subparser(sub_parsers)
     config_locate_file_subparser(sub_parsers)
     config_search_files_subparser(sub_parsers)
     config_set_file_deletion_policy_subparser(sub_parsers)
@@ -172,7 +173,7 @@ def generate_parser():
 
 def config_add_file_event_subparser(sub_parsers):
     # function documentation
-    doc = """Add an "event" record for a File known to the Librarian. These records are 
+    doc = """Add an "event" record for a File known to the Librarian. These records are
     essentially freeform. The event data are specified as "key=value" items on the
     command line after the event type. The data are parsed as JSON before being
     sent to the Librarian. This makes it possible to use data structures like
@@ -218,35 +219,6 @@ def config_add_obs_subparser(sub_parsers):
     return
 
 
-def config_launch_copy_subparser(sub_parsers):
-    # function documentation
-    doc = """Launch a copy from one Librarian to another. Note that the filename
-    argument is treated just as the name of a file known to the source Librarian:
-    it does NOT have to be a file that exists on this particular machine. The
-    source Librarian will look up an existing instance of the file (on any
-    available store) and copy it over.
-
-    """
-    hlp = "Launch a copy from one Librarian to another"
-
-    # add sub parser
-    sp = sub_parsers.add_parser("launch-copy", description=doc, help=hlp)
-    sp.add_argument("--dest", type=str,
-                    help="The path in which the file should be stored at the destination. "
-                    "Default is the same as used locally.")
-    sp.add_argument("--pre-staged", dest="pre_staged", metavar="STORENAME:SUBDIR",
-                    help="Specify that the data have already been staged at the destination.")
-    sp.add_argument("source_conn_name", metavar="SOURCE-CONNECTION-NAME",
-                    help="Which Librarian originates the copy; as in ~/.hl_client.cfg.")
-    sp.add_argument("dest_conn_name", metavar="DEST-CONNECTION-NAME",
-                    help="Which Librarian receives the copy; as in ~/.hl_client.cfg.")
-    sp.add_argument("file_name", metavar="FILE-NAME",
-                    help="The name of the file to copy; need not be a local path.")
-    sp.set_defaults(func=launch_copy)
-
-    return
-
-
 def config_assign_session_subparser(sub_parsers):
     # function documentation
     doc = """Tell the Librarian to assign any recent Observations to grouped "observing
@@ -268,6 +240,19 @@ def config_assign_session_subparser(sub_parsers):
     sp.add_argument("conn_name", metavar="CONNECTION-NAME",
                     help=_conn_name_help)
     sp.set_defaults(func=assign_sessions)
+
+    return
+
+
+def config_check_connections_subparser(sub_parsers):
+    doc = """Check whether this machine can connect to all the stores of its Librarian
+    peers.
+
+    """
+    hlp = "Check connectivity to remote stores"
+
+    sp = sub_parsers.add_parser("check-connections", description=doc, help=hlp)
+    sp.set_defaults(func=check_connections)
 
     return
 
@@ -315,22 +300,31 @@ def config_initiate_offload_subparser(sub_parsers):
     return
 
 
-def config_offload_helper_subparser(sub_parsers):
+def config_launch_copy_subparser(sub_parsers):
     # function documentation
-    doc = """The Librarian launches this script on stores to implement the "offload"
-    functionality. Regular users should never need to run it.
+    doc = """Launch a copy from one Librarian to another. Note that the filename
+    argument is treated just as the name of a file known to the source Librarian:
+    it does NOT have to be a file that exists on this particular machine. The
+    source Librarian will look up an existing instance of the file (on any
+    available store) and copy it over.
 
     """
+    hlp = "Launch a copy from one Librarian to another"
+
     # add sub parser
-    # purposely don't add help for this function, to prevent users from using it accidentally
-    sp = sub_parsers.add_parser("offload-helper", description=doc)
-    sp.add_argument("--name", required=True, help="Displayed name of the destination store.")
-    sp.add_argument("--pp", required=True, help='"Path prefix" of the destination store.')
-    sp.add_argument("--host", required=True, help="Target SSH host of the destination store.")
-    sp.add_argument("--destrel", required=True, help="Destination path, relative to the path prefix.")
-    sp.add_argument("local_path", metavar="LOCAL-PATH",
-                    help="The name of the file to upload on this machine.")
-    sp.set_defaults(func=offload_helper)
+    sp = sub_parsers.add_parser("launch-copy", description=doc, help=hlp)
+    sp.add_argument("--dest", type=str,
+                    help="The path in which the file should be stored at the destination. "
+                    "Default is the same as used locally.")
+    sp.add_argument("--pre-staged", dest="pre_staged", metavar="STORENAME:SUBDIR",
+                    help="Specify that the data have already been staged at the destination.")
+    sp.add_argument("source_conn_name", metavar="SOURCE-CONNECTION-NAME",
+                    help="Which Librarian originates the copy; as in ~/.hl_client.cfg.")
+    sp.add_argument("dest_conn_name", metavar="DEST-CONNECTION-NAME",
+                    help="Which Librarian receives the copy; as in ~/.hl_client.cfg.")
+    sp.add_argument("file_name", metavar="FILE-NAME",
+                    help="The name of the file to copy; need not be a local path.")
+    sp.set_defaults(func=launch_copy)
 
     return
 
@@ -350,6 +344,26 @@ def config_locate_file_subparser(sub_parsers):
     sp.add_argument("file_name", metavar="PATH",
                     help="The name of the file to locate.")
     sp.set_defaults(func=locate_file)
+
+    return
+
+
+def config_offload_helper_subparser(sub_parsers):
+    # function documentation
+    doc = """The Librarian launches this script on stores to implement the "offload"
+    functionality. Regular users should never need to run it.
+
+    """
+    # add sub parser
+    # purposely don't add help for this function, to prevent users from using it accidentally
+    sp = sub_parsers.add_parser("offload-helper", description=doc)
+    sp.add_argument("--name", required=True, help="Displayed name of the destination store.")
+    sp.add_argument("--pp", required=True, help='"Path prefix" of the destination store.')
+    sp.add_argument("--host", required=True, help="Target SSH host of the destination store.")
+    sp.add_argument("--destrel", required=True, help="Destination path, relative to the path prefix.")
+    sp.add_argument("local_path", metavar="LOCAL-PATH",
+                    help="The name of the file to upload on this machine.")
+    sp.set_defaults(func=offload_helper)
 
     return
 
@@ -580,6 +594,47 @@ def assign_sessions(args):
         die("sessions created, but failed to print info: {}".format(e))
 
     return
+
+
+def check_connections(args):
+    """
+    Check this host's ability to connect to the other Librarians that have been configured,
+    as well as their stores.
+
+    """
+    from . import all_connections
+
+    any_failed = False
+
+    for client in all_connections():
+        print('Checking ability to establish HTTP connection to "%s" (%s) ...' % (client.conn_name, client.config['url']))
+
+        try:
+            result = client.ping()
+            print('   ... OK')
+        except Exception as e:
+            print('   ... error: %s' % e)
+            any_failed = True
+            continue
+
+        print('   Querying "%s" for its stores and how to connect to them ...' % client.conn_name)
+
+        for store in client.stores():
+            print('   Checking ability to establish SSH connection to remote store "%s" (%s:%s) ...'
+                  % (store.name, store.ssh_host, store.path_prefix))
+
+            try:
+                result = store.get_space_info()
+                print('   ... OK')
+            except Exception as e:
+                print('   ... error: %s' % e)
+                any_failed = True
+
+    if any_failed:
+        sys.exit(1)
+
+    print()
+    print('Everything worked!')
 
 
 def delete_files(args):

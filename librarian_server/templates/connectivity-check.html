@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block content %}
+<h1>{{title}}</h1>
+
+<p>This operation checks whether the stores attached to this Librarian are
+able to communicate with the other Librarians defined in
+their <tt>~/.hl_client.cfg</tt> files, and the stores attached to those other
+Librarians.</p>
+
+{% for name, result_text in results.items() %}
+
+<h2>Local Store "{{name}}"</h2>
+
+<p>The output of the command <tt>librarian check-connections</tt> on this store is:</p>
+
+<pre>{{result_text}}</pre>
+
+{% endfor %}
+
+{% endblock %}

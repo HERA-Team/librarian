@@ -10,6 +10,8 @@ import urllib.request, urllib.parse, urllib.error
 from pkg_resources import get_distribution, DistributionNotFound
 
 __all__ = str('''
+all_connections
+get_client_config
 NoSuchConnectionError
 RPCError
 LibrarianClient
@@ -35,6 +37,17 @@ def get_client_config():
     with open(path, 'r') as f:
         s = f.read()
     return json.loads(s)
+
+
+def all_connections():
+    """Generate a sequence of LibrarianClient objects for all connections in the
+    configuration file.
+
+    """
+    config = get_client_config()
+
+    for name, info in config.get('connections', {}).items():
+        yield LibrarianClient(name, info)
 
 
 class RPCError (Exception):
@@ -109,6 +122,19 @@ class LibrarianClient (object):
 
     def ping(self, **kwargs):
         return self._do_http_post('ping', **kwargs)
+
+    def probe_stores(self, **kwargs):
+        return self._do_http_post('probe_stores', **kwargs)
+
+    def stores(self):
+        """Generate a sequence of Stores that are attached to the remote Librarian."""
+
+        from .base_store import BaseStore
+        info = self.probe_stores()
+
+        for item in info['stores']:
+            yield BaseStore(item['name'], item['path_prefix'], item['ssh_host'])
+
 
     def create_file_event(self, file_name, type, **kwargs):
         """Note that keyword arguments to this function will automagically be stuffed
