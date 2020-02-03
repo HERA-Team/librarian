@@ -18,6 +18,8 @@ BaseStore
 
 import subprocess
 import os.path
+import time
+import warnings
 
 from . import RPCError
 
@@ -166,6 +168,7 @@ class BaseStore(object):
         transfer_token,
         source_endpoint_id,
         destination_endpoint_id,
+        host_path,
     ):
         """Copy a file to a particular path using globus.
 
@@ -177,7 +180,9 @@ class BaseStore(object):
         local_path : str
             Path to local file to be copied.
         store_path : str
-            Path to store file at on destination host.
+            Path to store file at on destination host. Note that if the target
+            endpoint is a "shared endpoint", this may be relative to the globus
+            root directory rather than the filesystem root.
         client_id : str
             The globus client ID to use for the transfer.
         transfer_token : str
@@ -186,6 +191,9 @@ class BaseStore(object):
             The globus endpoint ID of the source store.
         destination_endpoint_id : str
             The globus endpoint ID of the destination store.
+        host_path : str, optional
+            The `host_path` of the globus store. When using shared endpoints,
+            this is the root directory presented to the client.
 
         Returns
         -------
@@ -199,22 +207,32 @@ class BaseStore(object):
         """
         try:
             import globus_sdk
+            from globus_sdk.exc import AuthAPIError
         except ModuleNotFoundError:
             raise RPCError(
+                "globus_sdk import",
                 "The globus_sdk package must be installed for globus "
                 "functionality. Please `pip install globus_sdk` and try again."
             )
 
         # check that both endpoint IDs have been specified
-        if source_endpoint_id is None and destination_endpoint_id is None:
+        if source_endpoint_id is None or destination_endpoint_id is None:
             raise RPCError(
+                "globus endpoint check",
                 "Both source_endpoint_id and destination_endpoint_id must be "
                 "specified to initiate globus transfer."
             )
 
         # make globus transfer client
         client = globus_sdk.NativeAppAuthClient(client_id)
-        authorizer = globus_sdk.RefreshTokenAuthorizer(transfer_token, client)
+        try:
+            authorizer = globus_sdk.RefreshTokenAuthorizer(transfer_token, client)
+        except AuthAPIError:
+            raise RPCError(
+                "globus authorization",
+                "globus authentication failed. Please check client_id and "
+                "authentication token and try again."
+            )
         tc = globus_sdk.TransferClient(authorizer=authorizer)
 
         # make a new data transfer object
@@ -222,9 +240,20 @@ class BaseStore(object):
             tc,
             source_endpoint_id,
             destination_endpoint_id,
-            label=label,
             sync_level="checksum",
+            notify_on_succeeded=False,
+            notify_on_failed=True,
+            notify_on_inactive=True,
         )
+
+        # format the path correctly
+        store_path = self._path(store_path)
+        if host_path is not None:
+            if store_path.startswith(host_path):
+                store_path = store_path[len(host_path):]
+                # trim off leading "/" if present
+                if store_path.startswith("/"):
+                    store_path = store_path.lstrip("/")
 
         # add data to be transferred
         tdata.add_item(local_path, store_path)
@@ -232,11 +261,21 @@ class BaseStore(object):
         # initiate transfer
         transfer_result = tc.submit_transfer(tdata)
 
-        # TODO: figure out appropriate error condition
-        success = "task_id" in transfer_result.keys()
-        if not success:
-            raise RPCError(argv, 'exit code %d; output:\n\n%r' % (proc.returncode, output))
-
+        # get task_id and query status until it finishes
+        task_id = transfer_result["task_id"]
+        while True:
+            task = tc.get_task(task_id)
+            if task["status"] == "SUCCEEDED":
+                return
+            elif task["status"] == "FAILED":
+                # get the events associated with this transfer to help with debugging
+                events = tc.task_event_list(task_id)
+                error_string = ""
+                for event in events:
+                    error_string.append(event["time"] + ": " + event["description"] + "\n")
+                raise RPCError("globus transfer", 'events:\n\n%r' % (error_string))
+            else:  # task is "ACTIVE"
+                time.sleep(5)
 
     # Modifications of the store host. These should always be paired with
     # appropriate modifications of the Librarian server database, either
@@ -252,6 +291,7 @@ class BaseStore(object):
         transfer_token=None,
         source_endpoint_id=None,
         destination_endpoint_id=None,
+        host_path=None,
     ):
         """Transfer a file to a particular path in the store.
 
@@ -277,6 +317,10 @@ class BaseStore(object):
             The globus endpoint ID of the source store.
         destination_endpoint_id : str, optional
             The globus endpoint ID of the destination store.
+        host_path : str, optional
+            The `host_path` of the globus store. When using shared endpoints,
+            this is the root directory presented to the client. Note that this
+            may be different from the `path_prefix` for a given store.
 
         Returns
         -------
@@ -291,10 +335,11 @@ class BaseStore(object):
                     transfer_token,
                     source_endpoint_id,
                     destination_endpoint_id,
+                    host_path,
                 )
-            except RPCError:
+            except RPCError as e:
                 # something went wrong with globus--fall back on rsync
-                print("Globus transfer failed, falling back on rsync...")
+                print("Globus transfer failed: {}\nFalling back on rsync...".format(e))
                 self._rsync_transfer(local_path, store_path)
         else:
             # use rsync from the get-go

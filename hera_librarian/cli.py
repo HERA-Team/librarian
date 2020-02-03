@@ -928,6 +928,7 @@ def upload(args):
             null_obsid=args.null_obsid,
             use_globus=args.use_globus,
             client_id=args.client_id,
+            transfer_token=args.transfer_token,
             source_endpoint_id=args.source_endpoint_id,
         )
     except RPCError as e:

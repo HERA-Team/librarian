@@ -223,6 +223,10 @@ class LibrarianClient(object):
             case we assume it is a "personal" (as opposed to public)
             client. When using globus, at least one of the source_endpoint_id or
             destination_endpoint_id must be provided.
+        host_path : str, optional
+            The `host_path` of the globus store. When using shared endpoints,
+            this is the root directory presented to the client. Note that this
+            may be different from the `path_prefix` for a given store.
 
         Returns
         -------
@@ -269,11 +273,13 @@ class LibrarianClient(object):
                     source_endpoint_id = local_ep.endpoint_id
                 except ModuleNotFoundError:
                     source_endpoint_id = None
-            # get the destination_endpoint_id from config file
+            # get the relevant destination info from config file
             destination_endpoint_id = self.config.get("globus_endpoint_id", None)
+            host_path = self.config.get("globus_host_path", None)
         else:
-            source_endpiotn_id = None
+            source_endpoint_id = None
             destination_endpoint_id = None
+            host_path = None
 
         # Now, (try to) actually copy the data. This runs an SCP, potentially
         # across the globe, that in the real world will occasionally stall or
@@ -288,6 +294,7 @@ class LibrarianClient(object):
             transfer_token,
             source_endpoint_id,
             destination_endpoint_id,
+            host_path,
         )
 
         # If we made it here, though, the upload succeeded and we can tell
