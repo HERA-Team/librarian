@@ -32,7 +32,7 @@ from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 
-class BackgroundTask (object):
+class BackgroundTask(object):
     """A class implementing a background task.
 
     Instances of this task are also used by the Librarian to keep track of its
@@ -100,7 +100,7 @@ MIN_TASK_LIST_LENGTH = 20  # don't purge tasks if more than these are left
 TASK_LINGER_TIME = 600  # seconds
 
 
-def _thread_wrapper(task):
+def _thread_wrapper(task, parent_IOLoop):
     task.start_time = time.time()
 
     try:
@@ -112,7 +112,7 @@ def _thread_wrapper(task):
 
     task.finish_time = time.time()
     task.exception = exc
-    IOLoop.instance().add_callback(_wrapup_wrapper, task, retval, exc)
+    parent_IOLoop.add_callback(_wrapup_wrapper, task, retval, exc)
 
 
 def _wrapup_wrapper(task, thread_retval, thread_exc):
@@ -128,7 +128,7 @@ def _wrapup_wrapper(task, thread_retval, thread_exc):
     the_task_manager._maybe_purge_tasks()
 
 
-class TaskManager (object):
+class TaskManager(object):
     tasks = None
     """This is a list of all tasks that are pending, in processing, or have exited
     recently. Eventually we purge them but it's useful to be able to see the
@@ -190,7 +190,7 @@ class TaskManager (object):
 
         task.submit_time = time.time()
         self.tasks.append(task)
-        self.worker_pool.apply_async(_thread_wrapper, (task,))
+        self.worker_pool.apply_async(_thread_wrapper, (task, IOLoop.current()))
 
     def maybe_wait_for_threads_to_finish(self):
         if self.worker_pool is None:

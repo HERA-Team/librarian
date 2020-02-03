@@ -1,10 +1,13 @@
 *.pyc
 *.pyo
 __pycache__
-/*.egg-info
+*.egg-info
 /build
 /dist
 *~
 .coverage
 *coverage.xml
 pip-wheel-metadata
+eggs/
+.eggs/
+*.egg

@@ -593,7 +593,6 @@ class BaseStore(object):
 
         command = 'librarian upload --meta=json-stdin%s %s %s %s' % (
             pre_staged_arg, conn_name, self._path(local_store_path), remote_store_path)
-
         # optional globus additions to the command
         if use_globus:
             command += f" --use_globus --client_id={client_id} --transfer_token={transfer_token}"
@@ -601,7 +600,7 @@ class BaseStore(object):
                 command += f" --source_endpoint_id={source_endpoint_id}"
 
         # actually run the command
-        return self._ssh_slurp(command, input=rec_text)
+        return self._ssh_slurp(command, input=rec_text.encode("utf-8"))
 
     def upload_file_to_local_store(self, local_store_path, dest_store, dest_rel):
         """Fire off an rsync process on the store that will upload a given file to
@@ -620,3 +619,15 @@ class BaseStore(object):
              "--destrel '%s' '%s'" % (dest_store.name, dest_store.path_prefix,
                                       dest_store.ssh_host, dest_rel, self._path(local_store_path)))
         return self._ssh_slurp(c)
+
+    def check_stores_connections(self):
+        """Tell the store to check its ability to connect to other Librarians and
+        *their* stores.
+
+        This just runs the command "librarian check-connections" and returns
+        its textual output. In principle this command could be given an option
+        to return its output in JSON and we could parse it, but for the
+        envisioned use cases text will be OK.
+
+        """
+        return self._ssh_slurp('librarian check-connections').decode('utf-8')

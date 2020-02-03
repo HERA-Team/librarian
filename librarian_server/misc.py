@@ -286,3 +286,19 @@ def index():
         recent_files=rf,
         recent_sessions=rs,
     )
+
+@app.route('/connectivity-check')
+@login_required
+def connectivity_check():
+    from .store import Store
+
+    results = {}
+
+    for store in Store.query.filter(Store.available):
+        results[store.name] = store.check_stores_connections()
+
+    return render_template(
+        'connectivity-check.html',
+        title = 'Connectivity Check',
+        results = results,
+    )

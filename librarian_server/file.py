@@ -12,6 +12,7 @@ FileInstance
 FileEvent
 ''').split()
 
+import sys
 import datetime
 import json
 import os.path

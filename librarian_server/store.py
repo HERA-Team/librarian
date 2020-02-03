@@ -49,7 +49,7 @@ class Store(db.Model, BaseStore):
     name = NotNull(db.String(256), unique=True)
     ssh_host = NotNull(db.String(256))
     path_prefix = NotNull(db.String(256))
-    http_prefix = db.Column(db.String(256))
+    http_prefix = db.Column(db.String(256))  # NOTE: this is totally unused
     available = NotNull(db.Boolean)
     instances = db.relationship('FileInstance', back_populates='store_object')
 
@@ -79,6 +79,17 @@ class Store(db.Model, BaseStore):
 
         """
         return BaseStore(self.name, self.path_prefix, self.ssh_host)
+
+    def to_dict(self):
+        """This function is currently only used for the /api/probe_stores command,
+        so it's a bit limited. That could be changed.
+
+        """
+        return {
+            "name": self.name,
+            "path_prefix": self.path_prefix,
+            "ssh_host": self.ssh_host,
+        }
 
     def process_staged_file(self, staged_path, dest_store_path, meta_mode,
                             deletion_policy, source_name=None, null_obsid=False):
@@ -207,6 +218,28 @@ class Store(db.Model, BaseStore):
 
 
 # RPC API
+
+@app.route('/api/probe_stores', methods=['GET', 'POST'])
+@json_api
+def probe_stores(args, sourcename=None):
+    """Get information about the stores attached to this Librarian.
+
+    The purpose of this API is to help administrators verify the configuration
+    of one or more Librarian instances. It helps make it possible for a store
+    host attached to Librarian A to check whether it is capable of connecting
+    to the store hosts attached to Librarian B.
+
+    As such, right now this command returns only the minimal amount of
+    information needed to implement this behavior. It could give more detailed
+    information.
+
+    """
+    store_list = []
+
+    for store in Store.query.filter(Store.available):
+        store_list.append(store.to_dict())
+
+    return {'stores': store_list}
 
 @app.route('/api/initiate_upload', methods=['GET', 'POST'])
 @json_api

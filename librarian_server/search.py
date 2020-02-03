@@ -605,7 +605,7 @@ def _launch_copy_timeout():
         # re-queue ourselves to run again.
         from tornado.ioloop import IOLoop
         stord_logger.debug('re-scheduling timeout')
-        IOLoop.instance().call_later(DEFAULT_STANDING_ORDER_DELAY, _launch_copy_timeout)
+        IOLoop.current().call_later(DEFAULT_STANDING_ORDER_DELAY, _launch_copy_timeout)
 
 
 class StandingOrderManager(object):
@@ -676,7 +676,7 @@ class StandingOrderManager(object):
         self.launch_queued = True
         from tornado.ioloop import IOLoop
         stord_logger.debug('timeout actually scheduled')
-        IOLoop.instance().call_later(DEFAULT_STANDING_ORDER_DELAY, _launch_copy_timeout)
+        IOLoop.current().call_later(DEFAULT_STANDING_ORDER_DELAY, _launch_copy_timeout)
 
 
 the_standing_order_manager = StandingOrderManager()

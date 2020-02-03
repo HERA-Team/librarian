@@ -9,15 +9,6 @@ from setuptools import setup, find_packages
 
 package_name = "hera_librarian"
 
-# get the version from __init__.py
-here = os.path.abspath(os.path.dirname(__file__))
-
-
-def read(*parts):
-    with codecs.open(os.path.join(here, *parts), "r") as fp:
-        return fp.read()
-
-
 packages = find_packages(exclude=["*.tests"])
 
 
@@ -53,7 +44,8 @@ although those modules are not installed in a standard ``pip install``.
             "flask-sqlalchemy",
             "hera-librarian",
             "numpy",
-            "psycopg2",
+            "psycopg2",  # FIXME: only of using Postgres
+            "pytz",
             "pyuvdata",
             "sqlalchemy",
         ]
@@ -65,4 +57,6 @@ although those modules are not installed in a standard ``pip install``.
     entry_points={"console_scripts": ["librarian=hera_librarian.cli:main"]},
     use_scm_version=True,
     setup_requires=["setuptools_scm", "setuptools_scm_git_archive"],
+    include_package_data=True,
+    zip_safe=False,
 )
