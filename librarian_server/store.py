@@ -631,10 +631,15 @@ def launch_copy_by_file_name(
 
     # Figure out if we should try to use globus or not
     if app.config["use_globus"]:
-        use_globus = True
-        client_id = app.config["globus_client_id"]
-        transfer_token = app.config["globus_transfer_token"]
-        source_endpoint_id = app.config["globus_endpoint_id"]
+        source_endpoint_id = app.config.get("globus_endpoint_id", None)
+        try:
+            client_id = app.config["globus_client_id"]
+            transfer_token = app.config["globus_transfer_token"]
+            use_globus = True
+        except KeyError:
+            client_id = None
+            transfer_token = None
+            use_globus = False
     else:
         use_globus = False
         client_id = None
