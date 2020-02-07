@@ -130,11 +130,9 @@ A sample server config file may look in part like:
 ```json
 {
     "server": "tornado",
-    # other server options
     "use_globus": true,
     "globus_client_id": "224532bb-8a4b-4d32-8995-e1fb442be98e",
     "globus_transfer_token": "AQBX8YvVAAAAAAADxhAtF46RxjcFuoxN1oSOmEk-hBqvOejY4imMbZlC0B8THfoFuOK9rshN6TV7I0uwf0hb",
-    # more options follow
 }
 ```
 
@@ -156,7 +154,7 @@ purpose are:
 - `globus_endpoint_id`: the Globus Endpoint ID that should be used for the
   destination.
 - `globus_host_path` (optional): if the destination Globus Endpoint is a Shared
-  Endpoint (discussed more (below)[#globus-shared-endpoints]), the path to the
+  Endpoint (discussed more [below](#globus-shared-endpoints)), the path to the
   root exposed directory.
 
 For example, a `~/.hl_client.cfg` file with Globus information may look like:
