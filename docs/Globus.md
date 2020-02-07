@@ -2,9 +2,15 @@
 
 [Globus](https://www.globus.org/) is a service for transferring research data
 between data processing environments. The Librarian has functionality for making
-use of globus to copy instances of files between librarian stores. Globus
-installations on machines are referred to as "endpoints". The service makes a
-distinction between "Personal Endpoints", which can be made for personal
+use of globus to copy instances of files between Librarian stores. Below we
+provide a brief overview of the Globus infrastructure as it relates to
+interoperating with the Librarian, as well as provide instructions for how to
+install and configure Globus for use in the Librarian. For additional
+information about Globus and the services it provides, please refer to their
+online documentation.
+
+Globus installations on machines are referred to as "endpoints". The service
+makes a distinction between "Personal Endpoints", which can be made for personal
 machines and workstations, and "Server Endpoints", which are typically
 facility-wide installations at large computing centers (e.g., XSEDE sites,
 NERSC, etc.). When using Globus to transfer data, at least one endopint must be
@@ -68,7 +74,7 @@ been specified, the Globus client should be started. Because this process will
 be running in the background, it is best to launch the following command inside
 of a `screen` session or as part of a daemon. Run
 ```bash
-$ ./globousconnectpersonal -start
+$ ./globusconnectpersonal -start
 ```
 To confirm that the Globus installation provides the information necessary for
 the Librarian, run the following command inside of a python interpreter:
@@ -102,7 +108,8 @@ Globus. They are:
   transfers.)
 - `globus_client_id`: the Client ID of the Globus account associated with
   invoking transfers. This can be be retrieved after logging into Globus using
-  the `globus-cli` package:
+  the `globus-cli` python package (which can be installed with
+  `pip install globus-cli`):
   ```bash
   $ globus whoami
   username@globusid.org
@@ -186,9 +193,9 @@ using Globus. Additional information can be found by running `librarian upload
   for the upload.
 - `--client_id`: the Globus Client ID that should be used. In general this is
   the same as the one that would be specified in the server config file.
-- `transfer_token`: the Globus Refresh Token that should be used. As with the
+- `--transfer_token`: the Globus Refresh Token that should be used. As with the
   `client_id`, this is generally the same as the one in the server config.
-- `source_endpoint_id`: optional, again to specify the local Endpoint ID that
+- `--source_endpoint_id`: optional, again to specify the local Endpoint ID that
   should be used. If not specified, it will be inferred using the
   `LocalGlobusConnectPersonal` class provided by the `globus_sdk` module.
 
