@@ -1,5 +1,15 @@
 # Version *next* (not yet released)
 
+
+
+# Version 1.1.0 (2020 Feb 7)
+- Add support for transfers using Globus as well as associated documentation.
+- Add `librarian check-connections` command to test connectivity.
+- Improve documentation of the connectivity model.
+- Fix background tasks in python3. This adds multiple background
+  worker thread functionality again.
+
+
 # Version 1.0.3 (2019 Oct 22)
 
 - Make background tasks work in python3. For now this comes at the
