@@ -236,11 +236,13 @@ class BaseStore(object):
         tc = globus_sdk.TransferClient(authorizer=authorizer)
 
         # make a new data transfer object
+        basename = os.path.basename(os.path.normpath(local_path))
         tdata = globus_sdk.TransferData(
             tc,
             source_endpoint_id,
             destination_endpoint_id,
             sync_level="checksum",
+            label=basename,
             notify_on_succeeded=False,
             notify_on_failed=True,
             notify_on_inactive=True,
