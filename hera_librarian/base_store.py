@@ -258,7 +258,11 @@ class BaseStore(object):
                     store_path = store_path.lstrip("/")
 
         # add data to be transferred
-        tdata.add_item(local_path, store_path)
+        if os.path.isdir(local_path):
+            recursive = True
+        else:
+            recursive = False
+        tdata.add_item(local_path, store_path, recursive=recursive)
 
         # initiate transfer
         transfer_result = tc.submit_transfer(tdata)
