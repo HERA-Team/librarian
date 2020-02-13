@@ -1,5 +1,5 @@
 # Version *next* (not yet released)
-
+- Fix handling of directories in Globus.
 
 
 # Version 1.1.0 (2020 Feb 7)
