@@ -14,7 +14,7 @@ packages = find_packages(exclude=["*.tests"])
 
 setup(
     name=package_name,
-    version="1.1.0",
+    version="1.1.1",
     author="HERA Team",
     author_email="hera@lists.berkeley.edu",
     url="https://github.com/HERA-Team/librarian/",
