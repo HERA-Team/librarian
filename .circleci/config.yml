@@ -12,6 +12,7 @@ jobs:
         environment:
           POSTGRES_USER: root
           POSTGRES_DB: librarian_test
+          POSTGRES_HOST_AUTH_METHOD: trust
     environment:
       PYTHON: << parameters.python_version >>
       ENV_NAME: librarian_tests
