@@ -1,0 +1,12 @@
+# ignore docs
+docs/*
+README.md
+LICENSE
+CHANGELOG.md
+hl_client.cfg.sample
+
+# ignore ci files except ones we need to start server
+ci/*
+!ci/server-config-docker.json
+!ci/start.sh
+!ci/wait-for-it.sh

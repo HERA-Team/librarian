@@ -1,0 +1,34 @@
+version: '3.3'
+services:
+  db:
+    image: postgres:13.1
+    restart: always
+    container_name: db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: librarian
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+
+  librarian-app:
+    build: .
+    container_name: librarian
+    environment:
+      LIBRARIAN_CONFIG_PATH: /usr/src/app/ci/server-config-docker.json
+    stdin_open: true
+    tty: true
+    links:
+      - db
+    depends_on:
+      - db
+    ports:
+      - 21108:21108
+    volumes:
+      - .:/usr/src/app
+      - libdata:/data
+
+volumes:
+  pgdata:
+    driver: local
+  libdata:
