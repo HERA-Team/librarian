@@ -10,3 +10,4 @@ ci/*
 !ci/server-config-docker.json
 !ci/start.sh
 !ci/wait-for-it.sh
+!ci/librarian_server_conda_env.yml
