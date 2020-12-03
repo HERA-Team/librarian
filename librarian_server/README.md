@@ -108,9 +108,13 @@ that we want to commit to.
 Quick and Dirty Guide for Installing and Testing a Librarian Server
 ===================================================================
 
-Here is a quick introduction for how to stand up a librarian server and upload
-a file to it. We assume the user is using Postgres as the backing database,
-and is running on Ubuntu 18.04.
+Here is a quick introduction for how to stand up a librarian server and upload a
+file to it. We assume the user is using Postgres as the backing database, and is
+running on Ubuntu 18.04. This is a "bare-metal" installation approach, in which
+the librarian is installed directly on the system. Alternatively, one can refer
+to [the instructions on running a Docker
+installation](#docker-installation-instructions) for running inside of a
+container.
 
 1. Install the postgres package:
    ```
@@ -165,3 +169,20 @@ and is running on Ubuntu 18.04.
    browser, navigate to `localhost:21108`. You should use the authenticator
    string `I am a human`. After authenticating, you should see `README.md`
    listed under "Most Recent Files". Success!
+
+
+Docker Installation Instructions
+================================
+
+As an alternative to the above installation, the librarian server supports
+running inside of a container using [Docker](https://www.docker.com/). The
+server can be launched by running the following from the top-level directory:
+```
+docker-compose up
+```
+This will launch the librarian server using [this config
+file](../ci/server-config-docker.json). The `docker-compose.yml` file may be
+modified to use an alternative file if this is desired. A local volume is used
+for supporting long-term storage of both the database data (for postgres) and
+librarian file data storage. As with the installation above, it can be accessed
+on `localhost:21108`, using the same authenticator.
