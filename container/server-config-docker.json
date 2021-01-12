@@ -33,7 +33,7 @@
     "add-stores": {
 	"samplestore": {
 	    "path_prefix": "/data",
-    	    "ssh_host": "localhost",
+    	    "ssh_host": "libstore",
     	    "available": true
     	}
     }

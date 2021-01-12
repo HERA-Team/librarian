@@ -5,9 +5,9 @@ LICENSE
 CHANGELOG.md
 hl_client.cfg.sample
 
-# ignore ci files except ones we need to start server
-ci/*
-!ci/server-config-docker.json
-!ci/start.sh
-!ci/wait-for-it.sh
+# ignore ci files, except what we need to build the app
+ci
 !ci/librarian_server_conda_env.yml
+
+# don't include secrets folder
+container/secrets

@@ -1,4 +1,4 @@
-version: '3.3'
+version: '3.8'
 services:
   db:
     image: postgres:13.1
@@ -10,25 +10,59 @@ services:
       POSTGRES_DB: librarian
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    networks:
+      - lib-network
 
   librarian-app:
-    build: .
+    build:
+      context: .
+      dockerfile: container/Dockerfile
+      target: librarian-app
     container_name: librarian
     environment:
-      LIBRARIAN_CONFIG_PATH: /usr/src/app/ci/server-config-docker.json
+      LIBRARIAN_CONFIG_PATH: /usr/src/app/container/server-config-docker.json
     stdin_open: true
     tty: true
-    links:
-      - db
     depends_on:
       - db
+      - librarian-store
     ports:
       - 21108:21108
     volumes:
       - .:/usr/src/app
-      - libdata:/data
+    networks:
+      - lib-network
+    secrets:
+      - id_rsa
+      - id_rsa_pub
+
+  librarian-store:
+    build:
+      context: .
+      dockerfile: container/Dockerfile
+      target: librarian-store
+    container_name: libstore
+    hostname: libstore
+    volumes:
+      - libstore:/data
+    ports:
+      - "2222:22"
+    restart: unless-stopped
+    networks:
+      - lib-network
+    secrets:
+      - id_rsa_pub
 
 volumes:
   pgdata:
     driver: local
-  libdata:
+  libstore:
+
+networks:
+  lib-network:
+
+secrets:
+  id_rsa:
+    file: ./container/secrets/id_rsa.txt
+  id_rsa_pub:
+    file: ./container/secrets/id_rsa_pub.txt
