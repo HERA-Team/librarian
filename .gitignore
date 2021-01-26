@@ -11,3 +11,4 @@ pip-wheel-metadata
 eggs/
 .eggs/
 *.egg
+container/secrets
