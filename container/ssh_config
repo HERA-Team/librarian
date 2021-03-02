@@ -1,0 +1,4 @@
+Host = libstore
+  User = root
+  IdentityFile = ~/.ssh/id_rsa
+  StrictHostKeyChecking = no

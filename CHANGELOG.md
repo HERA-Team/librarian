@@ -1,6 +1,10 @@
 # Version *next* (not yet released)
 
 
+# Version 1.2.0 (2021 Jan 25)
+- Add support for running inside a Docker container.
+
+
 # Version 1.1.1 (2020 Feb 17)
 - Fix handling of directories in Globus.
 

@@ -108,9 +108,13 @@ that we want to commit to.
 Quick and Dirty Guide for Installing and Testing a Librarian Server
 ===================================================================
 
-Here is a quick introduction for how to stand up a librarian server and upload
-a file to it. We assume the user is using Postgres as the backing database,
-and is running on Ubuntu 18.04.
+Here is a quick introduction for how to stand up a librarian server and upload a
+file to it. We assume the user is using Postgres as the backing database, and is
+running on Ubuntu 18.04. This is a "bare-metal" installation approach, in which
+the librarian is installed directly on the system. Alternatively, one can refer
+to [the instructions on running a Docker
+installation](#docker-installation-instructions) for running inside of a
+container.
 
 1. Install the postgres package:
    ```
@@ -165,3 +169,52 @@ and is running on Ubuntu 18.04.
    browser, navigate to `localhost:21108`. You should use the authenticator
    string `I am a human`. After authenticating, you should see `README.md`
    listed under "Most Recent Files". Success!
+
+
+Docker Installation Instructions
+================================
+
+As an alternative to the above installation, the librarian server supports
+running inside of a container using [Docker](https://www.docker.com/). Before
+building and launching the container, an ssh key pair should be generated to
+facilitate interaction between the librarian app and the store. A new ssh key
+can be generated using the `ssh-keygen` command:
+```
+ssh-keygen -t rsa
+```
+
+The key should have no password associated with it. Once the key pair has been
+generated, copies should be placed into a folder inside [the container
+folder](../container) called `secrets`. The public key should be saved as
+`id_rsa_pub.txt`, and the private key should be `id_rsa.txt`. These files will
+be mounted inside of the running containers as
+[secrets](https://docs.docker.com/engine/swarm/secrets/). You should also make
+sure they are accessible on your local machine. In what follows, they are
+assumed to be available at `~/.ssh/id_docker_rsa`.
+
+In addition, the following changes should be made to the ssh config file on your
+local machine (`~/.ssh/config`). This allows you to use `rsync` to read and
+write data from the libstore container:
+```
+Host = libstore
+  User = root
+  Port = 2222
+  IdentityFile = ~/.ssh/id_docker_rsa
+  HostName = localhost
+```
+To test that the store is accessible, once the containers are running, try to
+`ssh libstore`, which should provide access without requiring a password. If
+this does not yield a shell inside of the running container, then the primary
+functionality of the librarian will not work.
+
+The full librarian application can be launched by running the following command
+from the top-level directory:
+```
+docker-compose up
+```
+This will launch the librarian server using [this config
+file](../container/server-config-docker.json). The `docker-compose.yml` file may
+be modified to use an alternative file if this is desired. A local volume is
+used for supporting long-term storage of both the database data (for postgres)
+and librarian file data storage. As with the installation above, it can be
+accessed on `localhost:21108`, using the same authenticator.

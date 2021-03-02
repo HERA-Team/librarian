@@ -1,0 +1,17 @@
+name: base
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - aipy
+  - alembic
+  - astropy
+  - flask
+  - flask-sqlalchemy
+  - jinja2
+  - numpy
+  - psycopg2
+  - pytz
+  - pyuvdata
+  - sqlalchemy
+  - tornado
