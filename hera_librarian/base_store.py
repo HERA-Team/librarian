@@ -445,9 +445,6 @@ class BaseStore(object):
             raise RPCError('unexpected output from mktemp on %s: %s'
                            % (self.name, fullpath))
 
-        # change permissions to allow writing
-        output = self._ssh_slurp('chmod 777 %s' % fullpath).decode("utf-8")
-
         return fullpath[len(self.path_prefix) + 1:]
 
     # Interrogations of the store -- these don't change anything so they don't
