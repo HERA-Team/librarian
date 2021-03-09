@@ -699,6 +699,35 @@ def launch_file_copy(args, sourcename=None):
     return {}
 
 
+@app.route('/api/gather_file_record', methods=['GET', 'POST'])
+@json_api
+def gather_file_record(args):
+    """Get the record info for a file.
+
+    """
+    from .file import File
+    from .misc import gather_records
+
+    file_name = required_arg(args, str, "file_name")
+    file = File.query.get(file_name)
+    rec_info = gather_records(file)
+
+    return rec_info
+
+
+@app.route('/api/create_file_record', methods=['GET', 'POST'])
+@json_api
+def create_file_record(args, sourcename=None):
+    """Create file records.
+
+    """
+    from .misc import create_records
+
+    create_records(args, sourcename)
+
+    return {}
+
+
 # Offloading files. This functionality was developed for a time when we had to
 # use the RTP "still" machines as temporary emergency Librarian stores. After
 # the emergency was over, we wanted to transfer their files back to the main

@@ -158,6 +158,7 @@ def generate_parser():
     config_add_obs_subparser(sub_parsers)
     config_assign_session_subparser(sub_parsers)
     config_check_connections_subparser(sub_parsers)
+    config_copy_metadata_subparser(sub_parsers)
     config_delete_files_subparser(sub_parsers)
     config_initiate_offload_subparser(sub_parsers)
     config_offload_helper_subparser(sub_parsers)
@@ -253,6 +254,34 @@ def config_check_connections_subparser(sub_parsers):
 
     sp = sub_parsers.add_parser("check-connections", description=doc, help=hlp)
     sp.set_defaults(func=check_connections)
+
+    return
+
+
+def config_copy_metadata_subparser(sub_parsers):
+    doc = """Copy File metadata to another librarian server.
+
+    """
+    hlp = "Copy a file's metadata to another libarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("copy-metadata", description=doc, help=hlp)
+    sp.add_argument(
+        "source_conn_name",
+        metavar="SOURCE-CONNECTION-NAME",
+        help="Which Librarian originates the metadata; as in ~/.hl_client.cfg.",
+    )
+    sp.add_argument(
+        "dest_conn_name",
+        metavar="DEST-CONNECTION-NAME",
+        help="Which Librarian receives the metadata; as in ~/.hl_client.cfg.",
+    )
+    sp.add_argument(
+        "file_name",
+        metavar="FILE-NAME",
+        help="The name of the file's metadata to copy; need not be a local path.",
+    )
+    sp.set_defaults(func=copy_metadata)
 
     return
 
@@ -581,7 +610,7 @@ def add_obs(args):
     client = LibrarianClient(args.conn_name)
     try:
         client.register_instances(args.store_name, file_info)
-    except RCPError as e:
+    except RPCError as e:
         die("RPC failed: {}".format(e))
 
     return
@@ -682,6 +711,28 @@ def check_connections(args):
 
     print()
     print('Everything worked!')
+
+
+def copy_metadata(args):
+    """
+    Copy metadata for files from one librarian to another.
+    """
+    source_client = LibrarianClient(args.source_conn_name)
+    dest_client = LibrarianClient(args.dest_conn_name)
+
+    # get metadata from source...
+    try:
+        rec_info = source_client.gather_file_record(args.file_name)
+    except RPCError as e:
+        die("fetching metadata failed: {}".format(e))
+
+    # ...and upload it to dest
+    try:
+        dest_client.create_file_record(args.file_name, args.source_conn_name)
+    except RPCError as e:
+        die("uploading metadata failed: {}".format(e))
+
+    return
 
 
 def delete_files(args):

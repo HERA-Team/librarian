@@ -451,3 +451,11 @@ class LibrarianClient(object):
             search=search,
             output_format='obs-listing-json',
         )
+
+    def gather_file_record(self, file_name):
+        return self._do_http_post('gather_file_record', file_name=file_name)
+
+    def create_file_record(self, file_name, sourcename):
+        return self._do_http_post(
+            'create_file_record', file_name=file_name, sourcename=sourcename
+        )
