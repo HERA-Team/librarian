@@ -710,6 +710,9 @@ def gather_file_record(args, sourcename=None):
 
     file_name = required_arg(args, str, "file_name")
     file = File.query.get(file_name)
+    if file is None:
+        raise ServerError('no file with that name found')
+
     rec_info = gather_records(file)
 
     return rec_info
