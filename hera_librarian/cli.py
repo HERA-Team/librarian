@@ -187,7 +187,7 @@ def config_add_file_event_subparser(sub_parsers):
 
     # add sub parser
     sp = sub_parsers.add_parser("add-file-event", description=doc, help=hlp)
-    sp.add_argument("connection_name", metavar="CONNECTION-NAME", type=str,
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", type=str,
                     help=_conn_name_help)
     sp.add_argument("file_path", metavar="PATH/TO/FILE", type=str,
                     help="The path to file in librarian.")
@@ -209,7 +209,7 @@ def config_add_obs_subparser(sub_parsers):
 
     # add sub parser
     sp = sub_parsers.add_parser("add-obs", description=doc, help=hlp)
-    sp.add_argument("connection_name", metavar="CONNECTION-NAME", type=str,
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", type=str,
                     help=_conn_name_help)
     sp.add_argument("store_name", metavar="NAME",
                     help="The 'store' name under which the Librarian knows this computer.")
