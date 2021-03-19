@@ -630,7 +630,7 @@ def launch_copy_by_file_name(
     rec_info = gather_records(file)
 
     # Figure out if we should try to use globus or not
-    if app.config["use_globus"]:
+    if app.config.get("use_globus", False):
         source_endpoint_id = app.config.get("globus_endpoint_id", None)
         try:
             client_id = app.config["globus_client_id"]
@@ -701,7 +701,7 @@ def launch_file_copy(args, sourcename=None):
 
 @app.route('/api/gather_file_record', methods=['GET', 'POST'])
 @json_api
-def gather_file_record(args):
+def gather_file_record(args, sourcename=None):
     """Get the record info for a file.
 
     """

@@ -728,7 +728,7 @@ def copy_metadata(args):
 
     # ...and upload it to dest
     try:
-        dest_client.create_file_record(args.file_name, args.source_conn_name)
+        dest_client.create_file_record(rec_info)
     except RPCError as e:
         die("uploading metadata failed: {}".format(e))
 
