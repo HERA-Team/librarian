@@ -142,7 +142,7 @@ class BaseStore(object):
             'rsync',
             '-aP',
             '-e',
-            'ssh -c aes256-ctr -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
+            'ssh -c aes256-gcm@openssh.com -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
             local_path + local_suffix,
             '%s:%s' % (self.ssh_host, self._path(store_path))
         ]

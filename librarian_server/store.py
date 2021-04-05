@@ -630,7 +630,7 @@ def launch_copy_by_file_name(
     rec_info = gather_records(file)
 
     # Figure out if we should try to use globus or not
-    if app.config["use_globus"]:
+    if app.config.get("use_globus", False):
         source_endpoint_id = app.config.get("globus_endpoint_id", None)
         try:
             client_id = app.config["globus_client_id"]
@@ -696,6 +696,38 @@ def launch_file_copy(args, sourcename=None):
     launch_copy_by_file_name(file_name, connection_name, remote_store_path,
                              known_staging_store=known_staging_store,
                              known_staging_subdir=known_staging_subdir)
+    return {}
+
+
+@app.route('/api/gather_file_record', methods=['GET', 'POST'])
+@json_api
+def gather_file_record(args, sourcename=None):
+    """Get the record info for a file.
+
+    """
+    from .file import File
+    from .misc import gather_records
+
+    file_name = required_arg(args, str, "file_name")
+    file = File.query.get(file_name)
+    if file is None:
+        raise ServerError('no file with that name found')
+
+    rec_info = gather_records(file)
+
+    return rec_info
+
+
+@app.route('/api/create_file_record', methods=['GET', 'POST'])
+@json_api
+def create_file_record(args, sourcename=None):
+    """Create file records.
+
+    """
+    from .misc import create_records
+
+    create_records(args, sourcename)
+
     return {}
 
 
