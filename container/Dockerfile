@@ -3,14 +3,17 @@
 # define base image that has librarian installed
 FROM continuumio/miniconda3:4.8.2 AS librarian-base
 
-# copy app
+# copy setup file
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
-COPY . .
+COPY ci/librarian_server_conda_env.yml ci/librarian_server_conda_env.yml
 
 # update base environment
 RUN conda update conda && conda update --all
 RUN conda env update --file ci/librarian_server_conda_env.yml
+
+# copy app code
+COPY . .
 
 # install
 RUN pip install .
