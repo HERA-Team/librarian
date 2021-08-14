@@ -21,8 +21,14 @@ from flask import Response, flash, redirect, render_template, request, session, 
 import json
 import os
 import sys
+from requests_oauthlib import OAuth2Session
 
 from . import app, logger
+
+
+# define OAuth2 stuff
+OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
+OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
 
 
 # Generic authentication stuff
@@ -278,12 +284,33 @@ def login():
         return render_template('login.html', next=next)
 
     session['sourcename'] = sourcename
+
+    if "oauth2_client_id" in app.config:
+        github = OAuth2Session(app.config["oauth2_client_id"])
+        authorization_url, state = github.authorization_url(OAUTH_AUTHORIZE_URL)
+        session["oauth_state"] = state
+        return redirect(authorization_url)
+
     return redirect(next)
+
+
+@app.route("/callback", methods=["GET"])
+def callback():
+    github = OAuth2Session(app.config["oauth2_client_id"], state=session["oauth_state"])
+    token = github.fetch_token(
+        OAUTH_ACCESS_TOKEN_URL,
+        client_secret=app.config["oauth2_client_secret"],
+        authorization_response=request.url
+    )
+    session["oauth_token"] = token
+
+    return redirect(url_for("index"))
 
 
 @app.route('/logout')
 def logout():
     session.pop('sourcename', None)
+    session.pop("oauth_token", None)
     return redirect(url_for('index'))
 
 

@@ -47,6 +47,8 @@ although those modules are not installed in a standard ``pip install``.
             "psycopg2",  # FIXME: only of using Postgres
             "pytz",
             "pyuvdata",
+            "requests",
+            "requests-oauth2",
             "sqlalchemy",
         ]
     },
