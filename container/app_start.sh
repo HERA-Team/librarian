@@ -8,4 +8,4 @@ cp /secrets/id_rsa ~/.ssh/id_rsa
 
 # wait for postgres to be available
 ./container/wait-for-it.sh db:5432 -- alembic upgrade head
-runserver.py
+exec runserver.py
