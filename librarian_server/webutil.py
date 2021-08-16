@@ -29,6 +29,7 @@ from . import app, logger
 # define OAuth2 stuff
 OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
+OAUTH_USER_URL = "https://api.github.com/user"
 
 
 # Generic authentication stuff
@@ -56,6 +57,93 @@ def _check_authentication(auth):
                 return name
 
     raise AuthFailedError()
+
+
+def _check_github(client_id, oauth_token):
+    """
+    Check whether a user is permitted to access based on GitHub authentication.
+
+    Parameters
+    ----------
+    client_id : str
+        The client_id corresponding to the GitHub app providing authentication.
+    oauth_token : str
+        The OAuth token corresponding to the user's login attempt.
+
+    Returns
+    -------
+    username : str
+        The username of the corresponding GitHub account.
+
+    Raises
+    ------
+    AuthFailedError
+        This is raised if the user is not allowed to access the Librarian.
+    """
+    github = OAuth2Session(client_id, token=oauth_token)
+    try:
+        user_info = github.get(OAUTH_USER_URL).json()
+    except Exception:
+        github.close()
+        raise AuthFailedError()
+    username = user_info["login"]
+
+    try:
+        orgs_dict = github.get(user_info["organizations_url"]).json()
+    except Exception:
+        github.close()
+        raise AuthFailedError()
+    github.close()
+
+    allowed_in = False
+    for org in orgs_dict:
+        if org["login"] in app.config["oauth2_allowed_orgs"]:
+            allowed_in = True
+
+    if allowed_in:
+        return username
+
+    raise AuthFailedError()
+
+
+def _check_session():
+    """
+    Check the session to see if we need to login.
+
+    The login parameters are different for GitHub-based and authenticator-based
+    methods.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    str
+        The status of the session. Must be one of: "login_required",
+        "permission_denied", "permission_granted".
+    """
+    if "oauth2_client_id" in app.config:
+        # GitHub-based authentication
+        if "sourcename" in session and "oauth_token" in session:
+            try:
+                username = _check_github(app.config["oauth2_client_id"], session["oauth_token"])
+            except AuthFailedError:
+                # permission denied
+                return "permission_denied"
+
+            if username == session["sourcename"]:
+                return "permission_granted"
+            else:
+                return "permission_denied"
+
+        # try to login
+        return "login_required"
+    else:
+        if "sourcename" in session:
+            return "permission_granted"
+        else:
+            return "login_required"
 
 
 # The RPC (Remote Procedure Call) interface
@@ -255,8 +343,11 @@ def optional_arg(args, argtype, name, default=None):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'sourcename' not in session:
+        status = _check_session()
+        if status == "login_required":
             return redirect(url_for('login', next=request.url))
+        if status == "permission_denied":
+            return render_template("permission-denied.html")
         return f(*args, **kwargs)
     return decorated_function
 
@@ -272,26 +363,27 @@ def login():
     if next is None:
         next = url_for('index')
 
-    if request.method == 'GET':
-        return render_template('login.html', next=next)
-
-    # This is a POST request -- user is actually trying to log in.
-
-    try:
-        sourcename = _check_authentication(request.form.get('auth'))
-    except AuthFailedError:
-        flash('Login failed.')
-        return render_template('login.html', next=next)
-
-    session['sourcename'] = sourcename
-
     if "oauth2_client_id" in app.config:
+        # use GitHub authentication
         github = OAuth2Session(app.config["oauth2_client_id"])
         authorization_url, state = github.authorization_url(OAUTH_AUTHORIZE_URL)
         session["oauth_state"] = state
+        github.close()
         return redirect(authorization_url)
+    else:
+        # use "authenticator"-based authentication
+        if request.method == 'GET':
+            return render_template('login.html', next=next)
 
-    return redirect(next)
+        # This is a POST request -- user is actually trying to log in.
+        try:
+            sourcename = _check_authentication(request.form.get('auth'))
+        except AuthFailedError:
+            flash('Login failed.')
+            return render_template('login.html', next=next)
+
+        session['sourcename'] = sourcename
+        return redirect(next)
 
 
 @app.route("/callback", methods=["GET"])
@@ -304,6 +396,15 @@ def callback():
     )
     session["oauth_token"] = token
 
+    github.close()
+
+    # get GitHub profile info
+    try:
+        username = _check_github(app.config["oauth2_client_id"], token)
+    except AuthFailedError:
+        return render_template("permission-denied.html")
+
+    session["sourcename"] = username
     return redirect(url_for("index"))
 
 

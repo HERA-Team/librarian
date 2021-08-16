@@ -1,7 +1,7 @@
 ## -*- docker-image-name: "librarian-app" -*-
 
 # define base image that has librarian installed
-FROM continuumio/miniconda3:4.8.2 AS librarian-base
+FROM continuumio/miniconda3:latest AS librarian-base
 
 # copy setup file
 RUN mkdir -p /usr/src/app
