@@ -21,6 +21,7 @@ from flask import Response, flash, redirect, render_template, request, session, 
 import json
 import os
 import sys
+import requests
 from requests_oauthlib import OAuth2Session
 
 from . import app, logger
@@ -59,16 +60,30 @@ def _check_authentication(auth):
     raise AuthFailedError()
 
 
-def _check_github(client_id, oauth_token):
+def _check_github(web_access, client_id, oauth_token):
     """
     Check whether a user is permitted to access based on GitHub authentication.
 
+    This method behaves differently based on whether the user is trying to login
+    via the web interface or the API, indicated by the value of `web_access`. If
+    web_access is True, then we use an OAuth2 session to verify the user's
+    credentials using the web-based authentication. If web_access is False, then
+    we're in a headless mode (CLI or Python API), so we're relying on the user
+    providing their username and GitHub personal access token for us to verify.
+
     Parameters
     ----------
+    web_access : bool
+        Whether this request is soming from a web session (True), or from the
+        API. This determines what kind of session we make and how other
+        arguments are treated.
     client_id : str
-        The client_id corresponding to the GitHub app providing authentication.
-    oauth_token : str
-        The OAuth token corresponding to the user's login attempt.
+        If web_access is True, this is the client_id corresponding to the GitHub
+        app providing authentication. If False, it is the user's GitHub username.
+    oauth_token : request or str
+        If web_access is True, the OAuth token corresponding to the user's login
+        attempt. In this case, this is a response from a request. If web_access
+        is False, this is a string (the user's personal access token).
 
     Returns
     -------
@@ -80,13 +95,21 @@ def _check_github(client_id, oauth_token):
     AuthFailedError
         This is raised if the user is not allowed to access the Librarian.
     """
-    github = OAuth2Session(client_id, token=oauth_token)
+    if web_access:
+        github = OAuth2Session(client_id, token=oauth_token)
+    else:
+        github = requests.session()
+        github.auth = (client_id, oauth_token)
+
+    user_info = github.get(OAUTH_USER_URL).json()
+
+    # if authentication with GitHub failed, we won't have the info we're
+    # expecting in our response
     try:
-        user_info = github.get(OAUTH_USER_URL).json()
-    except Exception:
+        username = user_info["login"]
+    except KeyError:
         github.close()
         raise AuthFailedError()
-    username = user_info["login"]
 
     try:
         orgs_dict = github.get(user_info["organizations_url"]).json()
@@ -127,7 +150,9 @@ def _check_session():
         # GitHub-based authentication
         if "sourcename" in session and "oauth_token" in session:
             try:
-                username = _check_github(app.config["oauth2_client_id"], session["oauth_token"])
+                username = _check_github(
+                    True, app.config["oauth2_client_id"], session["oauth_token"]
+                )
             except AuthFailedError:
                 # permission denied
                 return "permission_denied"
@@ -191,14 +216,23 @@ def _json_inner(f, **kwargs):
         raise ServerError('request payload is %s, not dictionary',
                           payload.__class__.__name__)
 
-    auth = payload.pop('authenticator', None)
-    if auth is None:
-        raise ServerError('no authentication provided')
+    if "oauth2_client_id" in app.config:
+        try:
+            # use github-based oauth2 authentication
+            username = payload.pop("github_username", None)
+            oauth_token = payload.pop("github_pat", None)
+            sourcename = _check_github(False, username, oauth_token)
+        except AuthFailedError:
+            raise ServerError("authentication failed")
+    else:
+        auth = payload.pop("authenticator", None)
+        if auth is None:
+            raise ServerError("no authentication provided")
 
-    try:
-        sourcename = _check_authentication(auth)
-    except AuthFailedError:
-        raise ServerError('authentication failed')
+        try:
+            sourcename = _check_authentication(auth)
+        except AuthFailedError:
+            raise ServerError("authentication failed")
 
     result = f(payload, sourcename=sourcename, **kwargs)
 
@@ -400,7 +434,7 @@ def callback():
 
     # get GitHub profile info
     try:
-        username = _check_github(app.config["oauth2_client_id"], token)
+        username = _check_github(True, app.config["oauth2_client_id"], token)
     except AuthFailedError:
         return render_template("permission-denied.html")
 
