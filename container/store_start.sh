@@ -9,4 +9,4 @@ chmod 600 $HOME/.ssh/authorized_keys
 
 # start sshd process
 echo "starting sshd process"
-/usr/sbin/sshd -D -p 2222 -o ListenAddress=0.0.0.0 -o PasswordAuthentication=no
+/usr/sbin/sshd -D -f /secret_keys/sshd_config
