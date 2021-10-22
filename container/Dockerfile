@@ -32,5 +32,6 @@ FROM librarian-base AS librarian-store
 # install openssh-server
 RUN apt-get update && apt-get install -y openssh-server rsync
 RUN mkdir -p /run/sshd
-EXPOSE 22
+RUN groupadd -r sobs && useradd --no-log-init -r -g sobs sobs
+USER sobs
 ENTRYPOINT ["./container/store_start.sh"]
