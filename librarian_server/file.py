@@ -18,6 +18,7 @@ import json
 import os.path
 import re
 from flask import flash, redirect, render_template, url_for
+from sqlalchemy.engine.row import Row
 
 from . import app, db, logger
 from .dbutil import NotNull, SQLAlchemyError
@@ -216,6 +217,9 @@ class File (db.Model):
                 # Librarians.
                 MC.create_observation_record(obsid)
 
+        if isinstance(obsid, Row):
+            # convert from Row object to integer
+            obsid = obsid._asdict()["obsid"]
         fobj = File(name, type, obsid, source_name, size, md5)
 
         if MC.is_file_record_invalid(fobj):
