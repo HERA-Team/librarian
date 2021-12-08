@@ -26,6 +26,7 @@ import time
 from astropy.time import Time
 import six
 from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.engine.row import Row
 
 from . import app, db, is_primary_server, logger
 from .dbutil import SQLAlchemyError
@@ -199,7 +200,12 @@ class MCManager(object):
         if file_obj.obsid is None:
             return False  # this is OK, for maintenance files
 
-        for mc_obs in self.mc_session.get_obs(obsid=file_obj.obsid):
+        if isinstance(file_obj.obsid, Row):
+            # convert from Row object to int
+            obsid = file_obj.obsid._asdict()["obsid"]
+        else:
+            obsid = file_obj.obsid
+        for mc_obs in self.mc_session.get_obs(obsid=obsid):
             return False  # if this executes, we got one and the file's OK
 
         # If we got here, there was no session and something bad is up!
