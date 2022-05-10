@@ -44,7 +44,7 @@ although those modules are not installed in a standard ``pip install``.
             "flask-sqlalchemy",
             "hera-librarian",
             "numpy",
-            "psycopg2",  # FIXME: only of using Postgres
+            "psycopg2-binary",
             "pytz",
             "pyuvdata",
             "sqlalchemy>=1.4.0",
