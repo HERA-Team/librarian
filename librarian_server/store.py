@@ -378,7 +378,7 @@ def register_instances(args, sourcename=None):
     """
     store_name = required_arg(args, str, 'store_name')
     file_info = required_arg(args, dict, 'file_info')
-    null_obsid = required_arg(args, bool, 'null_obsid')
+    null_obsid = optional_arg(args, bool, 'null_obsid', False)
 
     from .file import File, FileInstance
 
