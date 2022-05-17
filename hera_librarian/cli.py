@@ -214,11 +214,8 @@ def config_add_obs_subparser(sub_parsers):
                     help="The 'store' name under which the Librarian knows this computer.")
     sp.add_argument("paths", metavar="PATHS", nargs="+",
                     help="The paths to the files on this computer.")
-    sp.add_argument(
-        "--null-obsid",
-        dest="null_obsid",
-        action="store_true",
-        help="Require the new file to have *no* obsid associate (for maintenance files)",
+    sp.add_argument("--null-obsid", dest="null_obsid", action="store_true",
+                    help="Require the new file to have *no* obsid associated (for maintenance files)",
     )
     sp.set_defaults(func=add_obs)
 
@@ -480,7 +477,7 @@ def config_upload_subparser(sub_parsers):
        "--null-obsid",
        dest="null_obsid",
        action="store_true",
-       help="Require the new file to have *no* obsid associate (for maintenance files)",
+       help="Require the new file to have *no* obsid associated (for maintenance files)",
    )
    sp.add_argument(
        "--deletion",
