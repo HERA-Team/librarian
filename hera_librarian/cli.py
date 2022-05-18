@@ -208,12 +208,15 @@ def config_add_obs_subparser(sub_parsers):
 
     # add sub parser
     sp = sub_parsers.add_parser("add-obs", description=doc, help=hlp)
-    sp.add_argument("connection_name", metavar="CONNECTION-NAME", type=str,
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", type=str,
                     help=_conn_name_help)
     sp.add_argument("store_name", metavar="NAME",
                     help="The 'store' name under which the Librarian knows this computer.")
     sp.add_argument("paths", metavar="PATHS", nargs="+",
                     help="The paths to the files on this computer.")
+    sp.add_argument("--null-obsid", dest="null_obsid", action="store_true",
+                    help="Require the new file to have *no* obsid associated (for maintenance files)",
+    )
     sp.set_defaults(func=add_obs)
 
     return
@@ -474,7 +477,7 @@ def config_upload_subparser(sub_parsers):
        "--null-obsid",
        dest="null_obsid",
        action="store_true",
-       help="Require the new file to have *no* obsid associate (for maintenance files)",
+       help="Require the new file to have *no* obsid associated (for maintenance files)",
    )
    sp.add_argument(
        "--deletion",
@@ -580,8 +583,8 @@ def add_obs(args):
     print("Registering with Librarian.")
     client = LibrarianClient(args.conn_name)
     try:
-        client.register_instances(args.store_name, file_info)
-    except RCPError as e:
+        client.register_instances(args.store_name, file_info, null_obsid=args.null_obsid)
+    except RPCError as e:
         die("RPC failed: {}".format(e))
 
     return

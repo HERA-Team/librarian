@@ -378,6 +378,7 @@ def register_instances(args, sourcename=None):
     """
     store_name = required_arg(args, str, 'store_name')
     file_info = required_arg(args, dict, 'file_info')
+    null_obsid = optional_arg(args, bool, 'null_obsid', False)
 
     from .file import File, FileInstance
 
@@ -404,7 +405,7 @@ def register_instances(args, sourcename=None):
         # OK, we have to create some stuff.
 
         file = File.get_inferring_info(store, store_path, sourcename,
-                                       info=file_info[full_path])
+                                       info=file_info[full_path], null_obsid=null_obsid)
         inst = FileInstance(store, parent_dirs, name)
         db.session.add(inst)
         db.session.add(file.make_instance_creation_event(inst, store))

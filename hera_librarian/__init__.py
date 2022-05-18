@@ -340,11 +340,12 @@ class LibrarianClient(object):
             null_obsid=null_obsid,
         )
 
-    def register_instances(self, store_name, file_info):
+    def register_instances(self, store_name, file_info, null_obsid):
         return self._do_http_post(
             'register_instances',
             store_name=store_name,
             file_info=file_info,
+            null_obsid=null_obsid,
         )
 
     def locate_file_instance(self, file_name):
