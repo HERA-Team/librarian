@@ -33,8 +33,9 @@ def run_migrations_offline():
         literal_binds=True
     )
 
-    with context.begin_transaction():
-        context.run_migrations()
+    with app.app_context():
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 def run_migrations_online():
@@ -42,14 +43,15 @@ def run_migrations_online():
     connection.
 
     """
-    with db.engine.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata
-        )
+    with app.app_context():
+        with db.engine.connect() as connection:
+            context.configure(
+                connection=connection,
+                target_metadata=target_metadata
+            )
 
-        with context.begin_transaction():
-            context.run_migrations()
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 if context.is_offline_mode():
