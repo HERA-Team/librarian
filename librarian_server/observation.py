@@ -144,28 +144,90 @@ class Observation (db.Model):
     __tablename__ = 'observation'
 
     obsid = db.Column(db.BigInteger, primary_key=True)
-    start_time_jd = NotNull(db.Float(precision='53'))
-    # XXX HACK: these should probably be NotNull. But in testing, we are creating
-    # observations with add_obs_librarian, and it doesn't know these pieces of
-    # information. Yet.
-    stop_time_jd = db.Column(db.Float(precision='53'))
-    start_lst_hr = db.Column(db.Float(precision='53'))
+    observatory = db.Column(db.String(64))
+    telescope = db.Column(db.String(64))
+    stream_ids = db.Column(db.String(64))
+    timestamp_start = db.Column(db.DateTime)
+    timestamp_end = db.Column(db.DateTime)
+    type = db.Column(db.String(64))
+    subtype = db.Column(db.String(64))
+    tags = db.Column(db.String(64))
+    scanification = db.Column(db.String(64))
+    hwp_rate_hz = db.Column(db.Float(precision="53"))
+    hwp_angles = db.Column(db.String(64))
+    sequencer_ref = db.Column(db.Text)
+    bid = db.Column(db.String(64))
+    start = db.Column(db.DateTime)
+    stop = db.Column(db.DateTime)
+    max_channels = db.Column(db.Integer)
+    status = db.Column(db.String(64))
+    message = db.Column(db.String(64))
+    tel_tube = db.Column(db.String(64))
+    slots = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime)
+    updated_at = db.Column(db.DateTime)
+
+    # foreign keys/relationships
     session_id = db.Column(db.BigInteger, db.ForeignKey(ObservingSession.id), nullable=True)
     session = db.relationship('ObservingSession', back_populates='observations')
     files = db.relationship('File', back_populates='observation')
 
-    def __init__(self, obsid, start_time_jd, stop_time_jd, start_lst_hr):
+    def __init__(
+        self,
+        obsid,
+        observatory,
+        telescope,
+        stream_ids,
+        timestamp_start,
+        timestamp_end,
+        type,
+        subtype,
+        tags,
+        scanification,
+        hwp_rate_hz,
+        hwp_angles,
+        sequencer_ref,
+        bid,
+        start,
+        stop,
+        max_channels,
+        status,
+        message,
+        tel_tube,
+        slots,
+        created_at,
+        updated_at,
+    ):
         self.obsid = obsid
-        self.start_time_jd = start_time_jd
-        self.stop_time_jd = stop_time_jd
-        self.start_lst_hr = start_lst_hr
+        self.observatory = observatory
+        self.telescope = telescope
+        self.stream_ids = stream_ids
+        self.timestamp_start = timestamp_start
+        self.timestamp_end = timestamp_end
+        self.type = type
+        self.subtype = subtype
+        self.tags = tags
+        self.scanification = scanification
+        self.hwp_rate_hz = hwp_rate_hz
+        self.hwp_angles = hwp_angles
+        self.sequencer_ref = sequencer_ref
+        self.bid = bid
+        self.start = start
+        self.stop = stop
+        self.max_channels = max_channels
+        self.status = status
+        self.message = message
+        self.tel_tube = tel_tube
+        self.slots = slots
+        self.created_at = created_at
+        self.updated_at = updated_at
         self._validate()
 
     def _validate(self):
         """Check that this object's fields follow our invariants.
 
         """
-        if self.stop_time_jd is not None and not (self.start_time_jd < self.stop_time_jd):
+        if self.timestamp_end is not None and not (self.timestamp_end < self.timestamp_end):
             raise ValueError('observation start time must precede stop time; got %f, %f'
                              % (self.start_time_jd, self.stop_time_jd))
 
