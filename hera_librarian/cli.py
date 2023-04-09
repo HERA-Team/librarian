@@ -42,10 +42,7 @@ def die(fmt, *args):
     None
 
     """
-    if not len(args):
-        text = str(fmt)
-    else:
-        text = fmt % args
+    text = fmt % args if len(args) else str(fmt)
     print("error:", text, file=sys.stderr)
     sys.exit(1)
 
@@ -84,10 +81,10 @@ def print_table(dict_list, col_list=None, col_names=None):
         col_list = sorted(list(dict_list[0].keys()) if dict_list else [])
     if col_names is None:
         myList = [col_list]  # 1st row = header
-    else:
-        if len(col_names) != len(col_list):
-            raise ValueError("Number of column headers specified must match number of columns")
+    elif len(col_names) == len(col_list):
         myList = [col_names]
+    else:
+        raise ValueError("Number of column headers specified must match number of columns")
     for item in dict_list:
         myList.append([str(item[col] or '') for col in col_list])
     # figure out the maximum size for each column
@@ -146,10 +143,11 @@ def generate_parser():
         description="librarian is a command for interacting with the hera_librarian"
     )
     ap.add_argument(
-        "-V", "--version",
+        "-V",
+        "--version",
         action="version",
-        version="librarian {}".format(__version__),
-        help="Show the librarian version and exit."
+        version=f"librarian {__version__}",
+        help="Show the librarian version and exit.",
     )
 
     # add subparsers
@@ -541,7 +539,7 @@ def add_file_event(args):
     for arg in args.key_vals:
         bits = arg.split("=", 1)
         if len(bits) != 2:
-            die('argument {} must take the form "key=value"'.format(arg))
+            die(f'argument {arg} must take the form "key=value"')
 
         # We parse each "value" as JSON ... and then re-encode it as JSON when
         # talking to the server. So this is mostly about sanity checking.
@@ -549,7 +547,7 @@ def add_file_event(args):
         try:
             value = json.loads(text_val)
         except ValueError:
-            die("value {} for keyword {} does not parse as JSON".format(text_val, key))
+            die(f"value {text_val} for keyword {key} does not parse as JSON")
 
         payload[key] = value
 
@@ -561,7 +559,7 @@ def add_file_event(args):
     try:
         client.create_file_event(path, event_type, **payload)
     except RPCError as e:
-        die("event creation failed: {}".format(e))
+        die(f"event creation failed: {e}")
 
     return
 
@@ -585,7 +583,7 @@ def add_obs(args):
     try:
         client.register_instances(args.store_name, file_info, null_obsid=args.null_obsid)
     except RPCError as e:
-        die("RPC failed: {}".format(e))
+        die(f"RPC failed: {e}")
 
     return
 
@@ -610,7 +608,7 @@ def launch_copy(args):
                                 known_staging_store=known_staging_store,
                                 known_staging_subdir=known_staging_subdir)
     except RPCError as e:
-        die("launch failed: {}".format(e))
+        die(f"launch failed: {e}")
 
     return
 
@@ -627,7 +625,7 @@ def assign_sessions(args):
             maximum_start_jd=args.maximum_start_jd,
         )
     except RPCError as e:
-        die("assignment failed: {}".format(e))
+        die(f"assignment failed: {e}")
 
     try:
         n = 0
@@ -641,7 +639,7 @@ def assign_sessions(args):
         if n == 0:
             print("No new sessions created.")
     except Exception as e:
-        die("sessions created, but failed to print info: {}".format(e))
+        die(f"sessions created, but failed to print info: {e}")
 
     return
 
@@ -657,27 +655,32 @@ def check_connections(args):
     any_failed = False
 
     for client in all_connections():
-        print('Checking ability to establish HTTP connection to "%s" (%s) ...' % (client.conn_name, client.config['url']))
+        print(
+            f"""Checking ability to establish HTTP connection to "{client.conn_name}" ({client.config['url']}) ..."""
+        )
 
         try:
             result = client.ping()
             print('   ... OK')
         except Exception as e:
-            print('   ... error: %s' % e)
+            print(f'   ... error: {e}')
             any_failed = True
             continue
 
-        print('   Querying "%s" for its stores and how to connect to them ...' % client.conn_name)
+        print(
+            f'   Querying "{client.conn_name}" for its stores and how to connect to them ...'
+        )
 
         for store in client.stores():
-            print('   Checking ability to establish SSH connection to remote store "%s" (%s:%s) ...'
-                  % (store.name, store.ssh_host, store.path_prefix))
+            print(
+                f'   Checking ability to establish SSH connection to remote store "{store.name}" ({store.ssh_host}:{store.path_prefix}) ...'
+            )
 
             try:
                 result = store.get_space_info()
                 print('   ... OK')
             except Exception as e:
-                print('   ... error: %s' % e)
+                print(f'   ... error: {e}')
                 any_failed = True
 
     if any_failed:
@@ -692,9 +695,7 @@ def delete_files(args):
     Request to delete instances of files matching a given query.
     """
     def str_or_huh(x):
-        if x is None:
-            return "???"
-        return str(x)
+        return "???" if x is None else str(x)
 
     # Let's do it
     client = LibrarianClient(args.conn_name)
@@ -764,21 +765,25 @@ def initiate_offload(args):
     try:
         result = client.initiate_offload(args.source_name, args.dest_name)
     except RPCError as e:
-        die("offload failed to launch: {}".format(e))
+        die(f"offload failed to launch: {e}")
 
     if "outcome" not in result:
-        die('malformed server response (no "outcome" field): {}'.format(repr(result)))
+        die(f'malformed server response (no "outcome" field): {repr(result)}')
 
     if result["outcome"] == "store-shut-down":
         print("The store has no file instances needing offloading. It was placed offline and may now be closed out.")
     elif result["outcome"] == "task-launched":
-        print("Task launched, intending to offload {} instances".format(str(result.get("instance-count", "???"))))
+        print(
+            f'Task launched, intending to offload {str(result.get("instance-count", "???"))} instances'
+        )
         print()
         print("A noop-ified command to delete offloaded instances from the store is:")
         print("  librarian delete-files --noop --store '{}' '{}' '{\"at-least-instances\": 2}'".format(
             args.source_name, args.conn_name))
     else:
-        die('malformed server response (unrecognized "outcome" field): {}'.format(repr(result)))
+        die(
+            f'malformed server response (unrecognized "outcome" field): {repr(result)}'
+        )
 
     return
 
@@ -795,7 +800,7 @@ def locate_file(args):
     try:
         result = client.locate_file_instance(file_name)
     except RPCError as e:
-        die("couldn't locate file: {}".format(e))
+        die(f"couldn't locate file: {e}")
 
     print("{store_ssh_host}:{full_path_on_store}".format(**result))
 
@@ -810,7 +815,7 @@ def offload_helper(args):
     # instance that we want to copy was deleted before this script got run. If so,
     # so be it -- don't signal an error.
     if not os.path.exists(args.local_path):
-        print("source path {} does not exist -- doing nothing".format(args.local_path))
+        print(f"source path {args.local_path} does not exist -- doing nothing")
         sys.exit(0)
 
     # The rare librarian script that does not use the LibrarianClient class!
@@ -833,7 +838,7 @@ def search_files(args):
     try:
         result = client.search_files(args.search)
     except RPCError as e:
-        die("search failed: {}".format(e))
+        die(f"search failed: {e}")
 
     nresults = len(result["results"])
     if nresults == 0:
@@ -867,12 +872,13 @@ def set_file_deletion_policy(args):
         result = client.set_one_file_deletion_policy(file_name, args.deletion_policy,
                                                      restrict_to_store=args.store)
     except RPCError as e:
-        die("couldn't alter policy: {}".format(e))
+        die(f"couldn't alter policy: {e}")
 
     return
 
 
 def stage_files(args):
+    # sourcery skip: extract-method, use-fstring-for-formatting
     """
     Tell the Librarian to stage files onto the local scratch disk.
     """
@@ -895,7 +901,7 @@ def stage_files(args):
     try:
         result = client.launch_local_disk_stage_operation(user, args.search, our_dest)
     except RPCError as e:
-        die("couldn't start the stage operation: {}".format(e))
+        die(f"couldn't start the stage operation: {e}")
 
     # This is a bit of future-proofing; we might teach the Librarian to choose a
     # "reasonable" output directory on your behalf.
@@ -948,7 +954,9 @@ def upload(args):
     """
     # Argument validation is pretty simple
     if os.path.isabs(args.dest_store_path):
-        die("destination path must be relative to store top; got {}".format(args.dest_store_path))
+        die(
+            f"destination path must be relative to store top; got {args.dest_store_path}"
+        )
 
     if args.null_obsid and args.meta != "infer":
         die('illegal to specify --null-obsid when --meta is not "infer"')
@@ -957,13 +965,13 @@ def upload(args):
         try:
             rec_info = json.load(sys.stdin)
         except Exception as e:
-            die("cannot parse stdin as JSON data: {}".format(e))
+            die(f"cannot parse stdin as JSON data: {e}")
         meta_mode = "direct"
     elif args.meta == "infer":
         rec_info = {}
         meta_mode = "infer"
     else:
-        die("unexpected metadata-gathering method {}".format(args.meta))
+        die(f"unexpected metadata-gathering method {args.meta}")
 
     known_staging_store = None
     known_staging_subdir = None
@@ -990,7 +998,7 @@ def upload(args):
             source_endpoint_id=args.source_endpoint_id,
         )
     except RPCError as e:
-        die("upload failed: {}".format(e))
+        die(f"upload failed: {e}")
 
     return
 

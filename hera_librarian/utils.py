@@ -10,7 +10,10 @@ Librarian "files" are MIRIAD data sets that are actually directories.
 
 """
 
-__all__ = str('''
+
+
+import contextlib
+__all__ = '''
 gather_info_for_path
 get_type_from_path
 get_obsid_from_path
@@ -22,7 +25,7 @@ print_info_for_path
 format_jd_as_calendar_date
 format_jd_as_iso_date_time
 format_obsid_as_calendar_date
-''').split()
+'''.split()
 
 import hashlib
 import locale
@@ -53,9 +56,7 @@ def get_pol_from_path(path):
 
     """
     matches = re.findall(r'\.([xy][xy])\.', path)
-    if not len(matches):
-        return None
-    return matches[-1]
+    return matches[-1] if len(matches) else None
 
 
 def get_obsid_from_path(path):
@@ -67,24 +68,24 @@ def get_obsid_from_path(path):
 
     """
     if os.path.isdir(path):
-        try:
+        with contextlib.suppress(RuntimeError, ImportError, IndexError, KeyError):
             import aipy
             uv = aipy.miriad.UV(path)
             return uv['obsid']
-        except (RuntimeError, ImportError, IndexError, KeyError):
-            pass
     else:
-        try:
-            from astropy.time import Time
-            from pyuvdata import UVData
-            uv = UVData()
-            uv.read_uvh5(path, read_data=False, run_check_acceptability=False)
-            t0 = Time(np.unique(uv.time_array)[0], scale='utc', format='jd')
-            return int(np.floor(t0.gps))
-        except (IOError, ImportError, KeyError, OSError):
-            pass
-
+        with contextlib.suppress(IOError, ImportError, KeyError, OSError):
+            return _extracted_from_get_obsid_from_path_(path)
     return None
+
+
+# TODO Rename this here and in `get_obsid_from_path`
+def _extracted_from_get_obsid_from_path_(path):
+    from astropy.time import Time
+    from pyuvdata import UVData
+    uv = UVData()
+    uv.read_uvh5(path, read_data=False, run_check_acceptability=False)
+    t0 = Time(np.unique(uv.time_array)[0], scale='utc', format='jd')
+    return int(np.floor(t0.gps))
 
 
 _lc_md5_pattern = re.compile('^[0-9a-f]{32}$')
@@ -157,7 +158,7 @@ def get_md5_from_path(path):
     def all_files():
         for dirname, dirs, files in os.walk(path):
             for f in files:
-                yield dirname + '/' + f
+                yield f'{dirname}/{f}'
 
     md5 = hashlib.md5()
     plen = len(path)
@@ -194,14 +195,13 @@ def get_size_from_path(path):
 
     for dirname, dirs, files in os.walk(path):
         for f in files:
-            size += os.path.getsize(dirname + '/' + f)
+            size += os.path.getsize(f'{dirname}/{f}')
 
     return size
 
 
 def gather_info_for_path(path):
-    info = {}
-    info['type'] = get_type_from_path(path)
+    info = {'type': get_type_from_path(path)}
     info['md5'] = get_md5_from_path(path)
     info['size'] = get_size_from_path(path)
 
