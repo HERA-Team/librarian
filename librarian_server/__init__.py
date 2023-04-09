@@ -10,22 +10,13 @@ probably ways to work around that but things work well enough as is.
 
 from pkg_resources import DistributionNotFound, get_distribution, parse_version
 
+import contextlib
 import logging
 import sys
 
-# We have to manually import the modules that implement services. It's not
-# crazy to worry about circular dependency issues, but everything will be all
-# right.
-from . import bgtasks, file, misc, observation, search, store, webutil
-
-try:
+with contextlib.suppress(DistributionNotFound):
     # version information is saved under hera_librarian package
     __version__ = get_distribution("hera_librarian").version
-except DistributionNotFound:
-    # package is not installed
-    pass
-
-
 _log_level_names = {
     "debug": logging.DEBUG,
     "info": logging.INFO,
@@ -103,6 +94,12 @@ def is_primary_server():
     return tornado.process.task_id() == 0
 
 
+# We have to manually import the modules that implement services. It's not
+# crazy to worry about circular dependency issues, but everything will be all
+# right.
+from . import bgtasks, file, misc, observation, search, store, webutil  # noqa: E402
+
+
 def get_version_info():
     """
     Extract version info from version tag.
@@ -169,10 +166,9 @@ def commandline(argv):
 
     maybe_add_stores()
 
-    if n_server_processes > 1:
-        if server != "tornado":
-            print("error: can only use multiple processes with Tornado server", file=sys.stderr)
-            sys.exit(1)
+    if n_server_processes > 1 and server != "tornado":
+        print("error: can only use multiple processes with Tornado server", file=sys.stderr)
+        sys.exit(1)
 
     if server == "tornado":
         # Need to set up HTTP server and fork subprocesses before doing
