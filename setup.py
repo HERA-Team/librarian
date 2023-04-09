@@ -37,7 +37,7 @@ although those modules are not installed in a standard ``pip install``.
             "alembic",
             "astropy >=2.0",
             "flask",
-            "flask-sqlalchemy",
+            "flask_sqlalchemy",
             "hera-librarian",
             "numpy",
             "psycopg2-binary",

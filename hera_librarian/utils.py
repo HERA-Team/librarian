@@ -73,19 +73,14 @@ def get_obsid_from_path(path):
             return uv["obsid"]
     else:
         with contextlib.suppress(IOError, ImportError, KeyError, OSError):
-            return _extracted_from_get_obsid_from_path_(path)
+            from astropy.time import Time
+            from pyuvdata import UVData
+
+            uv = UVData()
+            uv.read_uvh5(path, read_data=False, run_check_acceptability=False)
+            t0 = Time(np.unique(uv.time_array)[0], scale="utc", format="jd")
+            return int(np.floor(t0.gps))
     return None
-
-
-# TODO Rename this here and in `get_obsid_from_path`
-def _extracted_from_get_obsid_from_path_(path):
-    from astropy.time import Time
-    from pyuvdata import UVData
-
-    uv = UVData()
-    uv.read_uvh5(path, read_data=False, run_check_acceptability=False)
-    t0 = Time(np.unique(uv.time_array)[0], scale="utc", format="jd")
-    return int(np.floor(t0.gps))
 
 
 _lc_md5_pattern = re.compile("^[0-9a-f]{32}$")

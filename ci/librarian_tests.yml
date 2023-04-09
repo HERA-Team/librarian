@@ -3,17 +3,17 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - aipy
+  # - aipy
   - alembic
-  - astropy
+  # - astropy
   - flask
-  - flask-sqlalchemy
-  - h5py
+  # - flask-sqlalchemy
+  # - h5py
   - jinja2
-  - numpy
+  # - numpy
   - psycopg2
   - pytest
   - pytz
-  - pyuvdata
+  # - pyuvdata
   - sqlalchemy
   - tornado
