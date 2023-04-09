@@ -18,9 +18,10 @@ import os.path
 import sys
 from flask import flash, redirect, render_template, url_for
 from sqlalchemy.engine.row import Row
+from sqlalchemy.exc import SQLAlchemyError
 
 from . import app, db, logger
-from .dbutil import NotNull, SQLAlchemyError
+from .dbutil import NotNull
 from .observation import Observation
 from .store import Store
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
