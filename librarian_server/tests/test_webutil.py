@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2019 the HERA Collaboration
 # Licensed under the 2-clause BSD License
 
@@ -8,9 +7,12 @@
 
 
 import pytest
-import numpy as np
+
 import json
-import urllib.request, urllib.parse, urllib.error
+import numpy as np
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from librarian_server import webutil
 from librarian_server.webutil import AuthFailedError, ServerError, json_api
@@ -43,7 +45,7 @@ def test_json_api(db_connection):
     r = c.get("/?" + req_url)
     assert r.status_code == 200
     outdict = json.loads(r.data)
-    assert outdict["success"] == True
+    assert outdict["success"]
     assert outdict["val1"] == 1
     assert outdict["val2"] == "my_string"
 
@@ -77,7 +79,7 @@ def test_json_api_errors(db_connection):
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
-    assert outdict["success"] == False
+    assert outdict["success"] is False
     assert outdict["message"] == "no authentication provided"
 
     # test having a bad authenticator
@@ -88,7 +90,7 @@ def test_json_api_errors(db_connection):
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
-    assert outdict["success"] == False
+    assert outdict["success"] is False
     assert outdict["message"] == "authentication failed"
 
     # test having no payload
@@ -96,7 +98,7 @@ def test_json_api_errors(db_connection):
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
-    assert outdict["success"] == False
+    assert outdict["success"] is False
     assert outdict["message"] == "no request payload provided"
 
     # make the payload invalid json
@@ -104,7 +106,7 @@ def test_json_api_errors(db_connection):
     r = c.get("/test_error_func/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
-    assert outdict["success"] == False
+    assert outdict["success"] is False
     assert outdict["message"] == (
         "couldn't parse request payload: Expecting value: line 1 column 1 (char 0)"
     )
@@ -117,14 +119,14 @@ def test_json_api_errors(db_connection):
     r = c.get("/invalid_return/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
-    assert outdict["success"] == False
+    assert outdict["success"] is False
     assert outdict["message"] == "internal error: response is list, not a dictionary"
 
     # use a function that returns a dict that can't be encoded in json
     r = c.get("/ndarray_return/?" + req_url)
     assert r.status_code == 400
     outdict = json.loads(r.data)
-    assert outdict["success"] == False
+    assert outdict["success"] is False
     assert outdict["message"] == (
         "couldn't format response data: Object of type ndarray is not JSON serializable"
     )
@@ -136,9 +138,7 @@ def test_coerce():
     # test coercion of different types
     assert webutil._coerce(bool, "bool_var", True) is True
     assert webutil._coerce(int, "int_var", 7) == 7
-    assert (
-        webutil._coerce(str, "unicode_var", "this is unicode") == "this is unicode"
-    )
+    assert webutil._coerce(str, "unicode_var", "this is unicode") == "this is unicode"
     assert webutil._coerce(float, "float_var", 1.0) == 1.0
     assert webutil._coerce(dict, "dict_var", {"key": "val"}) == {"key": "val"}
     assert webutil._coerce(list, "list_var", [0, 1, 2]) == [0, 1, 2]
@@ -170,7 +170,7 @@ def test_required_arg():
     assert arg2 == "my_string"
 
     with pytest.raises(ServerError):
-        arg3 = webutil.required_arg(args, int, "arg3")
+        webutil.required_arg(args, int, "arg3")
 
     return
 

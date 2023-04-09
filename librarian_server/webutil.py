@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
 
@@ -8,24 +7,28 @@ interface end of things.
 """
 
 
-__all__ = str('''
+__all__ = str(
+    """
 AuthFailedError
 ServerError
 json_api
 login_required
 login
 logout
-''').split()
+"""
+).split()
 
-from flask import Response, flash, redirect, render_template, request, session, url_for
 import json
 import os
 import sys
+from flask import Response, flash, redirect, render_template, request, session, url_for
+from functools import wraps
+from tornado import gen, iostream, web
 
-from . import app, logger
-
+from . import app
 
 # Generic authentication stuff
+
 
 class AuthFailedError(Exception):
     pass
@@ -45,8 +48,8 @@ def _check_authentication(auth):
 
     """
     if auth is not None:
-        for name, info in app.config['sources'].items():
-            if info['authenticator'] == auth:
+        for name, info in app.config["sources"].items():
+            if info["authenticator"] == auth:
                 return name
 
     raise AuthFailedError()
@@ -54,7 +57,8 @@ def _check_authentication(auth):
 
 # The RPC (Remote Procedure Call) interface
 
-class ServerErrorBase(Exception):
+
+class ServerErrorBase(Exception):  # noqa: N818
     def __init__(self, status, fmt, args):
         self.status = status
 
@@ -75,7 +79,7 @@ class ServerError(ServerErrorBase):
     """
 
     def __init__(self, fmt, *args):
-        super(ServerError, self).__init__(400, fmt, args)
+        super().__init__(400, fmt, args)
 
 
 def _json_inner(f, **kwargs):
@@ -84,41 +88,38 @@ def _json_inner(f, **kwargs):
     else:
         reqdata = request.args
 
-    reqtext = reqdata.get('request')
+    reqtext = reqdata.get("request")
     if reqtext is None:
-        raise ServerError('no request payload provided')
+        raise ServerError("no request payload provided")
 
     try:
         payload = json.loads(reqtext)
     except Exception as e:
-        raise ServerError('couldn\'t parse request payload: %s', e)
+        raise ServerError("couldn't parse request payload: %s", e)
 
     if not isinstance(payload, dict):
-        raise ServerError('request payload is %s, not dictionary',
-                          payload.__class__.__name__)
+        raise ServerError("request payload is %s, not dictionary", payload.__class__.__name__)
 
-    auth = payload.pop('authenticator', None)
+    auth = payload.pop("authenticator", None)
     if auth is None:
-        raise ServerError('no authentication provided')
+        raise ServerError("no authentication provided")
 
     try:
         sourcename = _check_authentication(auth)
     except AuthFailedError:
-        raise ServerError('authentication failed')
+        raise ServerError("authentication failed")
 
     result = f(payload, sourcename=sourcename, **kwargs)
 
     if not isinstance(result, dict):
-        raise ServerError('internal error: response is %s, not a dictionary',
-                          result.__class__.__name__)
+        raise ServerError(
+            "internal error: response is %s, not a dictionary", result.__class__.__name__
+        )
 
-    if 'success' not in result:
-        result['success'] = True  # optimism!
+    if "success" not in result:
+        result["success"] = True  # optimism!
 
     return result
-
-
-from functools import wraps
 
 
 def json_api(f):
@@ -140,16 +141,14 @@ def json_api(f):
     See also login_required() below.
 
     """
+
     @wraps(f)
     def decorated_function(**kwargs):
         try:
             result = _json_inner(f, **kwargs)
             status = 200
         except ServerErrorBase as e:
-            result = {
-                'success': False,
-                'message': e.message,
-            }
+            result = {"success": False, "message": e.message}
             status = e.status
         except Exception as e:
             app.log_exception(sys.exc_info())
@@ -157,25 +156,23 @@ def json_api(f):
             # I'm not sure what log_exception() does, but it doesn't seem to
             # print a traceback to stderr, which is helpful.
             import traceback
+
             traceback.print_exc(file=sys.stderr)
 
             result = {
-                'success': False,
-                'message': 'internal exception: %s (details logged by server)' % e,
+                "success": False,
+                "message": "internal exception: %s (details logged by server)" % e,
             }
             status = 400
 
         try:
             outtext = json.dumps(result)
         except Exception as e:
-            result = {
-                'success': False,
-                'message': 'couldn\'t format response data: %s' % e
-            }
+            result = {"success": False, "message": "couldn't format response data: %s" % e}
             status = 400
             outtext = json.dumps(result)
 
-        return Response(outtext, mimetype='application/json', status=status)
+        return Response(outtext, mimetype="application/json", status=status)
 
     return decorated_function
 
@@ -215,7 +212,7 @@ def _coerce(argtype, name, val):
             raise ServerError('parameter "%s" should be a list, but got %r', name, val)
         return val
 
-    raise ServerError('internal bug: unexpected argument type %s', argtype)
+    raise ServerError("internal bug: unexpected argument type %s", argtype)
 
 
 def required_arg(args, argtype, name):
@@ -246,68 +243,69 @@ def optional_arg(args, argtype, name, default=None):
 
 # Human user session handling
 
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'sourcename' not in session:
-            return redirect(url_for('login', next=request.url))
+        if "sourcename" not in session:
+            return redirect(url_for("login", next=request.url))
         return f(*args, **kwargs)
+
     return decorated_function
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if len(request.form):
         reqdata = request.form  # POST
     else:
         reqdata = request.args  # GET
 
-    next = reqdata.get('next')
-    if next is None:
-        next = url_for('index')
+    nxt = reqdata.get("next")
+    if nxt is None:
+        nxt = url_for("index")
 
-    if request.method == 'GET':
-        return render_template('login.html', next=next)
+    if request.method == "GET":
+        return render_template("login.html", next=nxt)
 
     # This is a POST request -- user is actually trying to log in.
 
     try:
-        sourcename = _check_authentication(request.form.get('auth'))
+        sourcename = _check_authentication(request.form.get("auth"))
     except AuthFailedError:
-        flash('Login failed.')
-        return render_template('login.html', next=next)
+        flash("Login failed.")
+        return render_template("login.html", next=nxt)
 
-    session['sourcename'] = sourcename
-    return redirect(next)
+    session["sourcename"] = sourcename
+    return redirect(nxt)
 
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
-    session.pop('sourcename', None)
-    return redirect(url_for('index'))
+    session.pop("sourcename", None)
+    return redirect(url_for("index"))
 
 
 # Streaming of data through the tornado asynchronous API
 
-from tornado import gen, iostream, web
 
-
-class StreamFile (web.RequestHandler):
-    uri_prefix = '/stream/'
+class StreamFile(web.RequestHandler):
+    uri_prefix = "/stream/"
 
     @gen.coroutine
     def get(self):
         if not self.request.uri.startswith(self.uri_prefix):
             self.clear()
             self.set_status(500)
-            self.finish('internal server error: bad URI prefix')
+            self.finish("internal server error: bad URI prefix")
             return
 
-        file_name = self.request.uri[len(self.uri_prefix):]
+        file_name = self.request.uri[len(self.uri_prefix) :]
 
         # Find an instance
 
         from .file import FileInstance
+
         inst = FileInstance.query.filter(FileInstance.name == file_name).first()
         if inst is None:
             self.clear()
@@ -330,27 +328,27 @@ class StreamFile (web.RequestHandler):
             while True:
                 try:
                     data = yield stream.read_bytes(4096, partial=True)
-                except iostream.StreamClosedError as e:
+                except iostream.StreamClosedError:
                     break
 
                 if first:
-                    ctype = 'text/plain'
-                    if data.startswith(b'\x89PNG\x0d\x0a\x1a\x0a'):
-                        ctype = 'image/png'
-                    elif len(data) > 260 and data[257:].startswith(b'ustar'):
-                        ctype = 'application/tar'
+                    ctype = "text/plain"
+                    if data.startswith(b"\x89PNG\x0d\x0a\x1a\x0a"):
+                        ctype = "image/png"
+                    elif len(data) > 260 and data[257:].startswith(b"ustar"):
+                        ctype = "application/tar"
                         # Bonus: we auto-tar directories, so it's helpful to
                         # tweak the filename to reflect that fact. Github
                         # issue #19. We also try to have an ASCII-only name,
                         # although probably other things will break if the
                         # name isn't ASCII anyway.
                         ret_name = file_name
-                        if not ret_name.endswith('.tar'):
-                            ret_name += '.tar'
-                        ret_name = ret_name.encode('ascii', 'replace').replace('?', '_')
-                        self.set_header('Content-disposition', 'attachment; filename=' + ret_name)
+                        if not ret_name.endswith(".tar"):
+                            ret_name += ".tar"
+                        ret_name = ret_name.encode("ascii", "replace").replace("?", "_")
+                        self.set_header("Content-disposition", "attachment; filename=" + ret_name)
 
-                    self.set_header('Content-Type', ctype)
+                    self.set_header("Content-Type", ctype)
                     first = False
 
                 self.write(data)
@@ -361,10 +359,11 @@ class StreamFile (web.RequestHandler):
             if proc.returncode != 0:
                 try:
                     msg = proc.stderr.read()
-                except Exception as e:
-                    msg = '(could not fetch error output)'
-                raise Exception('streaming proxy exited with error code %d: %s' %
-                                (proc.returncode, msg))
+                except Exception:
+                    msg = "(could not fetch error output)"
+                raise Exception(
+                    "streaming proxy exited with error code %d: %s" % (proc.returncode, msg)
+                )
         except Exception as e:
             self.clear()
             self.set_status(503)

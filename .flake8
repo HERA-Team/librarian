@@ -1,0 +1,25 @@
+# B905 is for using zip without the `strict` argument, which was introduced in
+# python 3.10. We should probably add this check (remove it from the ignore) when we
+# require 3.10.
+# B907 wants us to not have quotes inside fstrings. We decided they helped with readability.
+# B028 wants us to set the stacklevel for warnings, we decided that was unnecessary
+# D: documentation. We should un-ignore this asap.
+# C408: Unnecessary dict call - rewrite as a literal. We should un-ignore this asap.
+# A003: class attribute shadowing a python built. We should un-ignore this asap.
+# A002: argument shadowing a python built. We should un-ignore this asap.
+[flake8]
+ignore = W503, E203, N806, B905, B907, B028, D, C408, A003, A002
+max-line-length = 100
+docstring-convention = numpy
+rst-roles =
+    class
+    func
+    mod
+    data
+    const
+    meth
+    attr
+    exc
+    obj
+per-file-ignores =
+   librarian_server/__init__.py: F401

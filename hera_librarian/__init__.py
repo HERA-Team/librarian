@@ -1,20 +1,25 @@
-# -*- mode: python; coding: utf-8 -*-
+"""The HERA librarian."""
 # Copyright 2016 the HERA Team.
 # Licensed under the BSD License.
 
 
+from pkg_resources import DistributionNotFound, get_distribution
+
 import json
 import os.path
-import urllib.request, urllib.parse, urllib.error
-from pkg_resources import get_distribution, DistributionNotFound
+import urllib.error
+import urllib.parse
+import urllib.request
 
-__all__ = str('''
+__all__ = str(
+    """
 all_connections
 get_client_config
 NoSuchConnectionError
 RPCError
 LibrarianClient
-''').split()
+"""
+).split()
 
 
 try:
@@ -25,45 +30,46 @@ except DistributionNotFound:
 
 
 class NoSuchConnectionError(Exception):
+    """Raised when a connection name is not found in the client configuration file."""
+
     def __init__(self, conn_name):
-        super(NoSuchConnectionError, self).__init__("no such connection " + repr(conn_name))
+        super().__init__("no such connection " + repr(conn_name))
         self.conn_name = conn_name
 
 
 def get_client_config():
     """Parse the client configuration file and return it as a dictionary."""
-    path = os.path.expanduser('~/.hl_client.cfg')
-    with open(path, 'r') as f:
+    path = os.path.expanduser("~/.hl_client.cfg")
+    with open(path) as f:
         s = f.read()
     return json.loads(s)
 
 
 def all_connections():
-    """Generate a sequence of LibrarianClient objects for all connections in the
-    configuration file.
-
-    """
+    """Yield LibrarianClient objects for all connections in the configuration file."""
     config = get_client_config()
 
-    for name, info in config.get('connections', {}).items():
+    for name, info in config.get("connections", {}).items():
         yield LibrarianClient(name, info)
 
 
 class RPCError(Exception):
+    """Raised when an RPC call fails."""
+
     def __init__(self, req, message):
-        super(RPCError, self).__init__("RPC call %r failed: %s" % (req, message))
+        super().__init__(f"RPC call {req!r} failed: {message}")
         self.req = req
         self.message = message
 
 
 def _normalize_deletion_policy(deletion_policy):
     # Keep this test in sync with librarian_server/file.py:DeletionPolicy.parse_safe()
-    if deletion_policy not in ('allowed', 'disallowed'):
-        raise Exception('unrecognized deletion policy %r' % (deletion_policy,))
+    if deletion_policy not in ("allowed", "disallowed"):
+        raise Exception(f"unrecognized deletion policy {deletion_policy!r}")
     return deletion_policy
 
 
-class LibrarianClient(object):
+class LibrarianClient:
     conn_name = None
     "The name of the Librarian connection we target."
 
@@ -71,7 +77,9 @@ class LibrarianClient(object):
     "The JSON config fragment corresponding to the desired connection."
 
     def __init__(self, conn_name, conn_config=None):
-        """If `conn_config` is not None, it should be a dict containing at least the
+        """A client for the Librarian's RPC API.
+
+        If `conn_config` is not None, it should be a dict containing at least the
         entries "authenticator" and "url" that define how to talk to the
         target Librarian. Otherwise, the file `~/.hl_client.cfg` will be used
         to look up a dict containing the same information.
@@ -86,23 +94,24 @@ class LibrarianClient(object):
             self.config = conn_config
         else:
             config = get_client_config()
-            self.config = config['connections'].get(conn_name)
+            self.config = config["connections"].get(conn_name)
             if self.config is None:
                 raise NoSuchConnectionError(conn_name)
 
     def _do_http_post(self, operation, **kwargs):
-        """do a POST operation, passing a JSON version of the request and expecting a
-        JSON reply; return the decoded version of the latter.
+        """Do a POST operation.
 
+        Pass a JSON version of the request and expecting a
+        JSON reply; return the decoded version of the latter.
         """
-        kwargs['authenticator'] = self.config['authenticator']
+        kwargs["authenticator"] = self.config["authenticator"]
         for k in list(kwargs.keys()):
             if kwargs[k] is None:
                 kwargs.pop(k)
         req_json = json.dumps(kwargs)
 
-        params = urllib.parse.urlencode({'request': req_json}).encode("utf-8")
-        url = self.config['url'] + 'api/' + operation
+        params = urllib.parse.urlencode({"request": req_json}).encode("utf-8")
+        url = self.config["url"] + "api/" + operation
         try:
             f = urllib.request.urlopen(url, params)
             reply = f.read()
@@ -110,55 +119,57 @@ class LibrarianClient(object):
             reply = err.read()
         try:
             reply_json = json.loads(reply)
-        except ValueError:
-            raise RPCError(kwargs, 'failed to parse reply as JSON: ' + repr(reply))
+        except ValueError as e:
+            raise RPCError(kwargs, f"failed to parse reply as JSON: {repr(reply)}") from e
 
-        if not reply_json.get('success', False):
-            raise RPCError(kwargs,
-                           reply_json.get('message', '<no error message provided>'))
+        if not reply_json.get("success", False):
+            raise RPCError(kwargs, reply_json.get("message", "<no error message provided>"))
 
         return reply_json
 
     def ping(self, **kwargs):
-        return self._do_http_post('ping', **kwargs)
+        """Ping the Librarian."""
+        return self._do_http_post("ping", **kwargs)
 
     def probe_stores(self, **kwargs):
-        return self._do_http_post('probe_stores', **kwargs)
+        """Probe the Librarian for information about the attached stores."""
+        return self._do_http_post("probe_stores", **kwargs)
 
     def stores(self):
         """Generate a sequence of Stores that are attached to the remote Librarian."""
 
         from .base_store import BaseStore
+
         info = self.probe_stores()
 
-        for item in info['stores']:
-            yield BaseStore(item['name'], item['path_prefix'], item['ssh_host'])
+        for item in info["stores"]:
+            yield BaseStore(item["name"], item["path_prefix"], item["ssh_host"])
 
+    def create_file_event(self, file_name, type, **kwargs):  # noqa: A002
+        """Create a file event.
 
-    def create_file_event(self, file_name, type, **kwargs):
-        """Note that keyword arguments to this function will automagically be stuffed
+        Note that keyword arguments to this function will automagically be stuffed
         inside the "payload" parameter.
-
         """
-        return self._do_http_post('create_file_event',
-                                  file_name=file_name,
-                                  type=type,
-                                  payload=kwargs,
-                                  )
+        return self._do_http_post(
+            "create_file_event", file_name=file_name, type=type, payload=kwargs
+        )
 
     def assign_observing_sessions(self, minimum_start_jd=None, maximum_start_jd=None):
-        return self._do_http_post('assign_observing_sessions',
-                                  minimum_start_jd=minimum_start_jd,
-                                  maximum_start_jd=maximum_start_jd,
-                                  )
+        """Assign observing sessions to files in the Librarian."""
+        return self._do_http_post(
+            "assign_observing_sessions",
+            minimum_start_jd=minimum_start_jd,
+            maximum_start_jd=maximum_start_jd,
+        )
 
     def upload_file(
         self,
         local_path,
         dest_store_path,
         meta_mode,
-        rec_info={},
-        deletion_policy='disallowed',
+        rec_info=None,
+        deletion_policy="disallowed",
         known_staging_store=None,
         known_staging_subdir=None,
         null_obsid=False,
@@ -265,34 +276,39 @@ class LibrarianClient(object):
             Raised if `dest_store_path` is an absolute path. Also raised if
             `meta_mode` is "infer" and `null_obsid` is True.
         """
+        rec_info = rec_info or {}
+
         if os.path.isabs(dest_store_path):
-            raise Exception('destination path may not be absolute; got %r' % (dest_store_path,))
+            raise Exception(f"destination path may not be absolute; got {dest_store_path!r}")
 
         deletion_policy = _normalize_deletion_policy(deletion_policy)
 
-        if null_obsid and meta_mode != 'infer':
+        if null_obsid and meta_mode != "infer":
             raise Exception('null_obsid may only be True when meta_mode is "infer"')
 
         # In the first stage, we tell the Librarian how much data we're going to upload,
         # send it the database records, and get told the staging directory.
 
         from . import utils
+
         kwargs = {
-            'upload_size': utils.get_size_from_path(local_path),
-            'known_staging_store': known_staging_store,
-            'known_staging_subdir': known_staging_subdir,
+            "upload_size": utils.get_size_from_path(local_path),
+            "known_staging_store": known_staging_store,
+            "known_staging_subdir": known_staging_subdir,
         }
         kwargs.update(rec_info)
-        info = self._do_http_post('initiate_upload', **kwargs)
+        info = self._do_http_post("initiate_upload", **kwargs)
 
         from .base_store import BaseStore
-        store = BaseStore(info['name'], info['path_prefix'], info['ssh_host'])
-        staging_dir = info['staging_dir']
+
+        store = BaseStore(info["name"], info["path_prefix"], info["ssh_host"])
+        staging_dir = info["staging_dir"]
 
         if use_globus:
             if source_endpoint_id is None:
                 try:
                     import globus_sdk
+
                     # assume we're running a local personal client
                     # if we're not, local_ep.endpoint_id will return None
                     local_ep = globus_sdk.LocalGlobusConnectPersonal()
@@ -330,7 +346,7 @@ class LibrarianClient(object):
         # into play.
 
         return self._do_http_post(
-            'complete_upload',
+            "complete_upload",
             store_name=store.name,
             staging_dir=staging_dir,
             dest_store_path=dest_store_path,
@@ -342,43 +358,33 @@ class LibrarianClient(object):
 
     def register_instances(self, store_name, file_info, null_obsid):
         return self._do_http_post(
-            'register_instances',
-            store_name=store_name,
-            file_info=file_info,
-            null_obsid=null_obsid,
+            "register_instances", store_name=store_name, file_info=file_info, null_obsid=null_obsid
         )
 
     def locate_file_instance(self, file_name):
-        return self._do_http_post(
-            'locate_file_instance',
-            file_name=file_name,
-        )
+        return self._do_http_post("locate_file_instance", file_name=file_name)
 
-    def set_one_file_deletion_policy(
-            self, file_name, deletion_policy, restrict_to_store=None
-    ):
+    def set_one_file_deletion_policy(self, file_name, deletion_policy, restrict_to_store=None):
         deletion_policy = _normalize_deletion_policy(deletion_policy)
 
         return self._do_http_post(
-            'set_one_file_deletion_policy',
+            "set_one_file_deletion_policy",
             file_name=file_name,
             deletion_policy=deletion_policy,
             restrict_to_store=restrict_to_store,
         )
 
-    def delete_file_instances(self, file_name, mode='standard', restrict_to_store=None):
+    def delete_file_instances(self, file_name, mode="standard", restrict_to_store=None):
         return self._do_http_post(
-            'delete_file_instances',
+            "delete_file_instances",
             file_name=file_name,
             mode=mode,
             restrict_to_store=restrict_to_store,
         )
 
-    def delete_file_instances_matching_query(
-            self, query, mode='standard', restrict_to_store=None
-    ):
+    def delete_file_instances_matching_query(self, query, mode="standard", restrict_to_store=None):
         return self._do_http_post(
-            'delete_file_instances_matching_query',
+            "delete_file_instances_matching_query",
             query=query,
             mode=mode,
             restrict_to_store=restrict_to_store,
@@ -393,7 +399,7 @@ class LibrarianClient(object):
         known_staging_subdir=None,
     ):
         return self._do_http_post(
-            'launch_file_copy',
+            "launch_file_copy",
             file_name=file_name,
             connection_name=connection_name,
             remote_store_path=remote_store_path,
@@ -403,52 +409,32 @@ class LibrarianClient(object):
 
     def initiate_offload(self, source_store_name, dest_store_name):
         return self._do_http_post(
-            'initiate_offload',
-            source_store_name=source_store_name,
-            dest_store_name=dest_store_name,
+            "initiate_offload", source_store_name=source_store_name, dest_store_name=dest_store_name
         )
 
     def describe_session_without_event(self, source, event_type):
         return self._do_http_post(
-            'describe_session_without_event',
-            source=source,
-            event_type=event_type,
+            "describe_session_without_event", source=source, event_type=event_type
         )
 
     def launch_local_disk_stage_operation(self, user, search, dest_dir):
         return self._do_http_post(
-            'search',
+            "search",
             stage_user=user,
             search=search,
             stage_dest=dest_dir,
-            type='instances-stores',
-            output_format='stage-the-files-json',
+            type="instances-stores",
+            output_format="stage-the-files-json",
         )
 
     def search_sessions(self, search):
-        return self._do_http_post(
-            'search',
-            search=search,
-            output_format='session-listing-json',
-        )
+        return self._do_http_post("search", search=search, output_format="session-listing-json")
 
     def search_files(self, search):
-        return self._do_http_post(
-            'search',
-            search=search,
-            output_format='file-listing-json',
-        )
+        return self._do_http_post("search", search=search, output_format="file-listing-json")
 
     def search_instances(self, search):
-        return self._do_http_post(
-            'search',
-            search=search,
-            output_format='instance-listing-json',
-        )
+        return self._do_http_post("search", search=search, output_format="instance-listing-json")
 
     def search_observations(self, search):
-        return self._do_http_post(
-            'search',
-            search=search,
-            output_format='obs-listing-json',
-        )
+        return self._do_http_post("search", search=search, output_format="obs-listing-json")

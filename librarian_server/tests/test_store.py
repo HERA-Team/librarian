@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2019 the HERA Collaboration
 # Licensed under the 2-clause BSD License
 
@@ -6,13 +5,7 @@
 
 """
 
-
-import pytest
-import urllib.request, urllib.error, urllib.parse
-
-from . import ALL_FILES, filetypes, obsids, md5sums, pathsizes
-from librarian_server import webutil
-from librarian_server.webutil import AuthFailedError, ServerError
+from . import ALL_FILES
 
 
 @ALL_FILES
