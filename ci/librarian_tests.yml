@@ -7,7 +7,7 @@ dependencies:
   - alembic
   # - astropy
   - flask
-  # - flask-sqlalchemy
+  - flask-sqlalchemy
   # - h5py
   - jinja2
   # - numpy
