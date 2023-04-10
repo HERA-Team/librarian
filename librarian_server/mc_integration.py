@@ -23,10 +23,9 @@ register_callbacks
 import time
 from astropy.time import Time
 from sqlalchemy.engine.row import Row
-from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 
 from . import db, is_primary_server, logger
-from .dbutil import SQLAlchemyError
 from .webutil import ServerError
 
 # M&C severity classes

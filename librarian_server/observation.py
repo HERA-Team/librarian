@@ -13,11 +13,12 @@ Observation
 
 import sys
 from flask import flash, redirect, render_template, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from hera_librarian.utils import format_jd_as_calendar_date, format_jd_as_iso_date_time
 
 from . import app, db
-from .dbutil import NotNull, SQLAlchemyError
+from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 

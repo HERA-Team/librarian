@@ -24,9 +24,10 @@ import os.path
 import sys
 import time
 from flask import Response, flash, redirect, render_template, request, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from . import app, bgtasks, db, is_primary_server, logger
-from .dbutil import NotNull, SQLAlchemyError
+from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 # The search parser. We save searches in a (hopefully) simple JSON format. The

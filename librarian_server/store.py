@@ -28,11 +28,12 @@ OffloaderTask
 import os.path
 import sys
 from flask import flash, redirect, render_template, url_for
+from sqlalchemy.exc import SQLAlchemyError
 
 from hera_librarian.base_store import BaseStore
 
 from . import app, bgtasks, db, logger
-from .dbutil import NotNull, SQLAlchemyError
+from .dbutil import NotNull
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 

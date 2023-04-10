@@ -407,8 +407,10 @@ def config_search_files_subparser(sub_parsers):
     doc = """Search for files in the librarian.
 
     """
-    _url = "https://github.com/HERA-Team/librarian/blob/master/librarian_packages/"
-    _url += "hera_librarian/docs/Searching.md"
+    _url = (
+        "https://github.com/HERA-Team/librarian/blob/master/librarian_packages/"
+        + "hera_librarian/docs/Searching.md"
+    )
     example = f"""For documentation of the JSON search format, see
     {_url} .
     Wrap your JSON in single quotes to prevent your shell from trying to interpret the

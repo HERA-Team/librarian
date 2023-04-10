@@ -10,11 +10,10 @@ gather_records
 ).split()
 
 from flask import render_template
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
 from . import app, db
-from .dbutil import SQLAlchemyError
 from .webutil import ServerError, json_api, login_required
 
 
