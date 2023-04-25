@@ -34,6 +34,9 @@ def infer_file_obsid(parent_dirs, name, info):
     The "hera" mode does this by looking for existing files whose names start
     with the same "zen.JD" prefix.
 
+    The "so" mode does this by looking for existing files whose names start
+    with the same "book_id" prefix.
+
     The "none" mode refuses to do this.
 
     There is also a secret "_testing" mode.
@@ -58,6 +61,28 @@ def infer_file_obsid(parent_dirs, name, info):
         if len(obsids) != 1:
             raise ServerError('need to infer obsid of HERA file \"%s\", but got %d candidate '
                               'obsids from similarly-named files', name, len(obsids))
+
+        return obsids[0]
+
+    if mode == "so":
+        bits = name.split("_")
+        if len(bits) < 2:
+            raise ServerError(
+                "need to infer obsid of SO file \"%s\", but its name looks weird", name
+            )
+
+        prefix = "_".join(bits[:2])
+        obsids = list(
+            db.session.query(File.obsid)
+            .filter(File.name.like(prefix + "_%"))
+            .group_by(File.obsid)
+        )
+
+        if len(obsids) != 1:
+            raise ServerError(
+                "need to infer obsid of SO file \"%s\", but got %d candidate obsids from "
+                "similarly-named files", name, len(obsids)
+            )
 
         return obsids[0]
 
@@ -193,28 +218,22 @@ class File (db.Model):
                                   name, obsid)
         else:
             if obsid is None:
-                # Our UV data files embed their obsids in a way that we can
+                # Our SO data files embed their obsids in a way that we can
                 # extract robustly, but we want to be able to ingest new files
-                # that don't necessarily have obsid information embedded. We used
-                # to do this by guessing from the JD in the filename, but that
-                # proved to be unreliable (as you might guess). So we now have a
-                # configurable scheme to make this possible; the only implemented
-                # technique still looks at filenames, but does it in a somewhat
-                # better-justified way where it requires preexisting files to have
-                # an assigned obsid that it can copy.
+                # that don't necessarily have obsid information embedded.
                 obsid = infer_file_obsid(parent_dirs, name, info)
 
             obs = Observation.query.get(obsid)
 
             if obs is None:
-                # The other piece of the puzzle is that we used to sometimes
-                # create new Observation records based on data that we tried to
-                # infer from standalone files. Now that the we have an on-site M&C
-                # system that records the canonical metadata for observations,
-                # that mode is deprecated. On-site, we only create Observations
-                # from M&C. Off-site, we only get them from uploads from other
-                # Librarians.
-                MC.create_observation_record(obsid)
+                # Sometimes we are trying to add a file that does not yet have
+                # an observation associated with it, so we need to add one to
+                # the database. In this case, we need the obsid, as well as the
+                # starting timestamp and type.
+                timestamp_start = optional_arg(info, float, "timestamp_start")
+                type = optional_arg(info, str, "type")
+                oobj = Observation(obsid, timestamp_start, type)
+                db.session.add(oobj)
 
         fobj = File(name, type, obsid, source_name, size, md5)
 
