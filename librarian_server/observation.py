@@ -11,6 +11,7 @@ ObservingSession
 Observation
 ''').split()
 
+from datetime import datetime
 from flask import flash, redirect, render_template, url_for
 
 from hera_librarian.utils import format_jd_as_calendar_date, format_jd_as_iso_date_time
@@ -136,36 +137,64 @@ class ObservingSession (db.Model):
         return cls(id, start, stop)
 
 
-class Observation (db.Model):
-    """An Observation is a span of time during which we have probably taken data.
-    Every File is associated with a single Observation.
+class Observation(db.Model):
+    """
+    An Observation is a span of time during which we have probably taken data.
 
+    Every File is associated with a single Observation. When creating an
+    Observation, columns not specified will have NULL values.
+
+    Parameters
+    ----------
+    obsid : int
+        The unique obsid associated with an observation.
+    timestamp_start : int or datetime
+        The start time of the observation. If an integer, this is interpreted as
+        a ctime. Otherwise, it is left as-is (hopefully in a format that is
+        compatible with the database).
+    type : str
+        The type of observation. Should be one of: obs, oper, smurf, hk, stray,
+        misc.
+    timestamp_end : int or datetime, optional
+        The end time of the observation. If an integer, this is interpreted as a
+        ctime. Otherwise, it is left as-is (hopefully in a format that is
+        compatible with the database).
+    observatory : str, optional
+        The observatory at which the observation was made.
+    telescope : str, optional
+        The telescope at which the observation was made.
+    stream_ids : str, optional
+        The stream IDs for the observation.
+    subtype : str, optional
+        The sub-type of the observation. Typically only used for obs and oper
+        book types.
+    tags : str, optional
+        Tags associated with the observation.
+    scanification : str, optional
+        The scanification of the observation.
+    hwp_rate_hz : float, optional
+        The rate (in Hz) at which the half-wave plate (HWP) was rotating for the
+        observation.
+    hwp_angles : str, optional
+        The angles of the HWP.
+    sequencer_ref : str, optional
+        The sequencer information.
     """
     __tablename__ = 'observation'
 
     obsid = db.Column(db.BigInteger, primary_key=True)
-    observatory = db.Column(db.String(64))
-    telescope = db.Column(db.String(64))
-    stream_ids = db.Column(db.String(64))
     timestamp_start = db.Column(db.DateTime)
-    timestamp_end = db.Column(db.DateTime)
     type = db.Column(db.String(64))
-    subtype = db.Column(db.String(64))
-    tags = db.Column(db.String(64))
-    scanification = db.Column(db.String(64))
-    hwp_rate_hz = db.Column(db.Float(precision="53"))
-    hwp_angles = db.Column(db.String(64))
-    sequencer_ref = db.Column(db.Text)
-    bid = db.Column(db.String(64))
-    start = db.Column(db.DateTime)
-    stop = db.Column(db.DateTime)
-    max_channels = db.Column(db.Integer)
-    status = db.Column(db.String(64))
-    message = db.Column(db.String(64))
-    tel_tube = db.Column(db.String(64))
-    slots = db.Column(db.String(64))
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    observatory = db.Column(db.String(64), nullable=True)
+    telescope = db.Column(db.String(64), nullable=True)
+    stream_ids = db.Column(db.String(64), nullable=True)
+    timestamp_end = db.Column(db.DateTime, nullable=True)
+    subtype = db.Column(db.String(64), nullable=True)
+    tags = db.Column(db.String(64), nullable=True)
+    scanification = db.Column(db.String(64), nullable=True)
+    hwp_rate_hz = db.Column(db.Float(precision="53"), nullable=True)
+    hwp_angles = db.Column(db.String(64), nullable=True)
+    sequencer_ref = db.Column(db.Text, nullable=True)
 
     # foreign keys/relationships
     session_id = db.Column(db.BigInteger, db.ForeignKey(ObservingSession.id), nullable=True)
@@ -175,35 +204,31 @@ class Observation (db.Model):
     def __init__(
         self,
         obsid,
-        observatory,
-        telescope,
-        stream_ids,
         timestamp_start,
-        timestamp_end,
         type,
-        subtype,
-        tags,
-        scanification,
-        hwp_rate_hz,
-        hwp_angles,
-        sequencer_ref,
-        bid,
-        start,
-        stop,
-        max_channels,
-        status,
-        message,
-        tel_tube,
-        slots,
-        created_at,
-        updated_at,
+        timestamp_end=None,
+        observatory=None,
+        telescope=None,
+        stream_ids=None,
+        subtype=None,
+        tags=None,
+        scanification=None,
+        hwp_rate_hz=None,
+        hwp_angles=None,
+        sequencer_ref=None,
     ):
         self.obsid = obsid
+        if isinstance(timestamp_start, int):
+            self.timestamp_start = datetime.fromtimestamp(timestamp_start)
+        else:
+            self.timestamp_start = timestamp_start
+        if isinstance(timestamp_end, int):
+            self.timestamp_end = datetime.fromtimestamp(timestamp_end)
+        else:
+            self.timestamp_end = timestamp_end
         self.observatory = observatory
         self.telescope = telescope
         self.stream_ids = stream_ids
-        self.timestamp_start = timestamp_start
-        self.timestamp_end = timestamp_end
         self.type = type
         self.subtype = subtype
         self.tags = tags
@@ -211,32 +236,22 @@ class Observation (db.Model):
         self.hwp_rate_hz = hwp_rate_hz
         self.hwp_angles = hwp_angles
         self.sequencer_ref = sequencer_ref
-        self.bid = bid
-        self.start = start
-        self.stop = stop
-        self.max_channels = max_channels
-        self.status = status
-        self.message = message
-        self.tel_tube = tel_tube
-        self.slots = slots
-        self.created_at = created_at
-        self.updated_at = updated_at
         self._validate()
 
     def _validate(self):
         """Check that this object's fields follow our invariants.
 
         """
-        if self.timestamp_end is not None and not (self.timestamp_end < self.timestamp_end):
+        if self.timestamp_end is not None and not (self.timestamp_start < self.timestamp_end):
             raise ValueError('observation start time must precede stop time; got %f, %f'
-                             % (self.start_time_jd, self.stop_time_jd))
+                             % (self.timestamp_start, self.timestamp_stop))
 
     @property
     def duration(self):
         """Measured in days."""
-        if self.stop_time_jd is None or self.start_time_jd is None:
+        if self.timestamp_stop is None or self.timestamp_end is None:
             return float('NaN')
-        return self.stop_time_jd - self.start_time_jd
+        return self.timestamp_end - self.timestamp_start
 
     @property
     def total_size(self):
@@ -250,21 +265,19 @@ class Observation (db.Model):
     def to_dict(self):
         return dict(
             obsid=self.obsid,
-            start_time_jd=self.start_time_jd,
-            stop_time_jd=self.stop_time_jd,
-            start_lst_hr=self.start_lst_hr,
+            timestamp_start=self.timestamp_start,
+            type=self.type,
             session_id=self.session_id,
         )
 
     @classmethod
     def from_dict(cls, info):
         obsid = required_arg(info, int, 'obsid')
-        start_jd = required_arg(info, float, 'start_time_jd')
-        stop_jd = optional_arg(info, float, 'stop_time_jd')
-        start_hr = optional_arg(info, float, 'start_lst_hr')
+        timestamp_start = required_arg(info, float, 'timestamp_start')
+        type = required_arg(info, str, "type")
         sessid = optional_arg(info, int, 'session_id')
 
-        obj = cls(obsid, start_jd, stop_jd, start_hr)
+        obj = cls(obsid, timestamp_start, type)
         obj.session_id = sessid
         return obj
 
