@@ -208,7 +208,6 @@ class File (db.Model):
         type = required_arg(info, str, 'type')
 
         from .observation import Observation
-        from . import mc_integration as MC
 
         obsid = optional_arg(info, int, 'obsid')
 
@@ -237,10 +236,6 @@ class File (db.Model):
 
         fobj = File(name, type, obsid, source_name, size, md5)
 
-        if MC.is_file_record_invalid(fobj):
-            raise ServerError('new file %s (obsid %s) rejected by M&C; see M&C error logs for the reason',
-                              name, obsid)
-
         db.session.add(fobj)
 
         try:
@@ -249,8 +244,6 @@ class File (db.Model):
             db.session.rollback()
             app.log_exception(sys.exc_info())
             raise ServerError('failed to add new file %s to database; see logs for details', name)
-
-        MC.note_file_created(fobj)
 
         return fobj
 
