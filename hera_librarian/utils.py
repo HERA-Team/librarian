@@ -58,31 +58,219 @@ def get_pol_from_path(path):
     return matches[-1]
 
 
-def get_obsid_from_path(path):
-    """Get the obsid from a path, if it is a MIRIAD UV or UVH5 dataset.
-
-    We used to try to guess the obsid from non-UV data sets if something like
-    a JD was in the name, but that's too fragile, and as of September 2017 our
-    data sets have obsids embedded in them.
-
+def _convert_book_id_to_obsid(book_id):
     """
-    if os.path.isdir(path):
-        try:
-            import aipy
-            uv = aipy.miriad.UV(path)
-            return uv['obsid']
-        except (RuntimeError, ImportError, IndexError, KeyError):
-            pass
+    Convert an SO book_id into an obsid deterministically.
+
+    We save the obsid as a unique bigint (signed 8-byte integer) in postgres,
+    and want a deterministic way to generate it based on the book_id (which
+    should be unique). Some components of the book_id are not numbers, so we use
+    enums to convert to numbers. We also "pack" the values as a series of bits
+    in different positions, as shown below:
+
+        0111111122222222333333334444444455555555555555555555555555555555
+
+    The different groups of numbers are:
+        0: sign bit (unused)
+        1: revision information
+        2: book type
+        3: telescope + optics tube
+        4: slot flags
+        5: timestamp
+
+    We shift the different components into the corresponding parts and then
+    return it to the calling context. The supported list of book types is:
+    obs (observation), oper (operation), smurf, hk (housekeeping), stray, misc
+    (miscellaneous).
+
+    Not all formats use all components, in which case we use zeros. Some book
+    types use a 5-digit ctime (the first 5 digits of the full 10-digit ctime),
+    which we convert to a 10-digit timestamp by multiplying by 10**5. Also note
+    that for hk data, the "daq_node" information is stored in place of the
+    "tel_tube" information.
+
+    Parameters
+    ----------
+    book_id : str
+        The book_id of an SO book.
+
+    Returns
+    -------
+    obsid : int
+        The unique obsid corresponding to that book.
+
+    Raises
+    ------
+    ValueError
+        This is raised for various problems with parsing.
+    """
+    # build enum for book type
+    book_type_enum = {
+        "obs": 1,
+        "oper": 2,
+        "smurf": 3,
+        "hk": 4,
+        "stray": 5,
+        "misc": 6,
+    }
+
+    # parse book_id into component parts, separated by underscores
+    parsed_book_id = book_id.split("_")
+    book_type = parsed_book_id[0].lower()
+
+    # handle book type
+    try:
+        type_int = book_type_enum[book_type]
+    except KeyError:
+        raise ValueError(
+            f"problem converting book type to int; type {book_type} not found"
+        )
+
+    if book_type == "obs":
+        # we have timestamp, tel_tube, and slot_flags
+        timestamp = int(parsed_book_id[1])
+        tel_tube = parsed_book_id[2]
+        slot_flags = parsed_book_id[3]
+        expected_len = 4
+
+        # extra variables
+        daq_node = None
+    elif book_type == "oper":
+        # we have timestamp, tel_tube, and slot_flags
+        timestamp = int(parsed_book_id[1])
+        tel_tube = parsed_book_id[2]
+        slot_flags = parsed_book_id[3]
+        expected_len = 4
+
+        # extra variables
+        daq_node = None
+    elif book_type == "smurf" or book_type == "stray":
+        # we have 5-digit time and tel_tube
+        timestamp = int(parsed_book_id[1]) * 10**5
+        tel_tube = parsed_book_id[2]
+        expected_len = 3
+
+        # extra variables
+        slot_flags = None
+        daq_node = None
+    elif book_type == "hk":
+        # we have 5-digit time and daq_node
+        timestamp = int(parsed_book_id[1]) * 10**5
+        daq_node = parsed_book_id[2]
+        expected_len = 3
+
+        # extra variables
+        tel_tube = None
+        slot_flags = None
+    else:  # book_type == "misc":
+        # we have timestamp
+        timestamp = int(parsed_book_id[1])
+        expected_len = 2
+
+        # extra variables
+        tel_tube = None
+        slot_flags = None
+        daq_node = None
+
+    if len(parsed_book_id) == expected_len:
+        # no revision info
+        revision_info = "r0"
+    elif len(parsed_book_id) == expected_len + 1:
+        # we have revision info
+        revision_info = parsed_book_id[-1]
     else:
-        try:
-            from astropy.time import Time
-            from pyuvdata import UVData
-            uv = UVData()
-            uv.read_uvh5(path, read_data=False, run_check_acceptability=False)
-            t0 = Time(np.unique(uv.time_array)[0], scale='utc', format='jd')
-            return int(np.floor(t0.gps))
-        except (IOError, ImportError, KeyError, OSError):
-            pass
+        raise ValueError(f"book_id {book_id} seems too long for type {book_type}")
+
+    if tel_tube is not None:
+        # handle telescope + tube info
+        if tel_tube.lower().startswith("sat"):
+            # This assumes the string is of the form "satN", where N is the SAT
+            # number. Note: we only accommodate up to 64 SATs.
+            tt_int = int(tel_tube[3:])
+        elif tel_tube.lower().startswith("lat"):
+            # This is a LAT observation. The tube names follow the form "iN",
+            # "cN", or "oN". We accommodate up to 64 of each type, and add the
+            # actual tube number to the final number value.
+            tube_type = tel_tube[3]
+            if tube_type == "i":
+                tt_int = 64
+            elif tube_type == "c":
+                tt_int = 128
+            elif tube_type == "o":
+                tt_int = 192
+            else:
+                raise ValueError(f"LAT tube type {tube_type} not recognized")
+
+            tube_number = int(tel_tube[4:])
+            tt_int += tube_number
+        else:
+            raise ValueError(f"could not recognize telescope type {tel_tube}")
+
+        if tt_int < 0 or tt_int > 2**8:
+            raise ValueError(
+                f"problem converting telescope tube {tel_tube} to number"
+            )
+    elif daq_node is not None:
+        # placeholder for now
+        tt_int = 1
+    else:
+        tt_int = 0
+
+    if slot_flags is not None:
+        # convert bit-encoded slot flags into an int
+        slot_int = int(slot_flags, 2)  # base-2 encoding
+    else:
+        slot_int = 0
+
+    # handle revision info
+    try:
+        rev_int = int(revision_info[1:])
+    except ValueError:
+        raise ValueError(f"problem converting revision info {revision_info} to number")
+
+    # put it all together
+    obsid = timestamp
+    obsid += 2**32 * slot_int
+    obsid += 2**40 * tt_int
+    obsid += 2**48 * type_int
+    obsid += 2**56 * rev_int
+
+    if obsid >= 2**63 or obsid < -2**63:
+        raise ValueError("obsid f{obsid} out of range")
+    return obsid
+
+
+def get_metadata_from_path(path):
+    """
+    Get the obsid, timestamp_start, and type from a path.
+
+    Parameters
+    ----------
+    path : str
+        The full path to the file. We assume it is a YAML file with a
+        "book_id" key. We then convert this value into a unique "obsid".
+
+    Returns
+    -------
+    dict or None
+        If the book_id, timestamp_start, and type are found, return
+        them (plus obsid) inside of a dict. Otherwise, return None.
+    """
+    try:
+        import yaml
+        # assumes index card is in the top-level of path
+        index_card = os.path.join(path, "M_index.yaml")
+        with open(index_card, "r") as stream:
+            file_info = yaml.safe_load(stream)
+
+        metadata_dict = {}
+        metadata_dict["book_id"] = file_info["book_id"]
+        metadata_dict["timestamp_start"] = file_info["start_time"]
+        metadata_dict["type"] = file_info["type"]
+        metadata_dict["obsid"] = _convert_book_id_to_obsid(file_info["book_id"])
+        return metadata_dict
+    except (ImportError, FileNotFoundError, KeyError):
+        pass
 
     return None
 
@@ -205,9 +393,11 @@ def gather_info_for_path(path):
     info['md5'] = get_md5_from_path(path)
     info['size'] = get_size_from_path(path)
 
-    obsid = get_obsid_from_path(path)
-    if obsid is not None:
-        info['obsid'] = obsid
+    metadata_dict = get_metadata_from_path(path)
+    if metadata_dict is not None:
+        info["obsid"] = metadata_dict["obsid"]
+        info["timestamp_start"] = metadata_dict["timestamp_start"]
+        info["type"] = metadata_dict["type"]
 
     return info
 
