@@ -268,6 +268,25 @@ def get_metadata_from_path(path):
         metadata_dict["timestamp_start"] = file_info["start_time"]
         metadata_dict["type"] = file_info["type"]
         metadata_dict["obsid"] = _convert_book_id_to_obsid(file_info["book_id"])
+        # get optional bits
+        if "stop_time" in file_info:
+            metadata_dict["timestamp_end"] = file_info["stop_time"]
+        if "observatory" in file_info:
+            metadata_dict["observatory"] = file_info["observatory"]
+        if "telescope" in file_info:
+            metadata_dict["telescope"] = file_info["telescope"]
+        if "stream_ids" in file_info:
+            metadata_dict["stream_ids"] = file_info["stream_ids"]
+        if "subtype" in file_info:
+            metadata_dict["subtype"] = file_info["subtype"]
+        if "tags" in file_info:
+            metadata_dict["tags"] = file_info["tags"]
+        if "scanification" in file_info:
+            metadata_dict["scanification"] = file_info["scanification"]
+        if "hwp_rate_hz" in file_info:
+            metadata_dict["hwp_rate_hz"] = file_info["hwp_rate_hz"]
+        if "sequencer_ref" in file_info:
+            metadata_dict["sequencer_ref"] = file_info["sequencer_ref"]
         return metadata_dict
     except (ImportError, FileNotFoundError, KeyError):
         pass

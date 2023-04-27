@@ -229,9 +229,35 @@ class File (db.Model):
                 # an observation associated with it, so we need to add one to
                 # the database. In this case, we need the obsid, as well as the
                 # starting timestamp and type.
-                timestamp_start = optional_arg(info, float, "timestamp_start")
-                type = optional_arg(info, str, "type")
-                oobj = Observation(obsid, timestamp_start, type)
+                timestamp_start = required_arg(info, float, "timestamp_start")
+                type = required_arg(info, str, "type")
+
+                # we also get optional args
+                timestamp_end = optional_arg(info, float, "timestamp_end")
+                observatory = optional_arg(info, str, "observatory")
+                telescope = optional_arg(info, str, "telescope")
+                stream_ids = optional_arg(info, str, "stream_ids")
+                subtype = optional_arg(info, str, "subtype")
+                tags = optional_arg(info, str, "tags")
+                scanification = optional_arg(info, str, "scanification")
+                hwp_rate_hz = optional_arg(info, float, "hwp_rate_hz")
+                sequencer_ref = optional_arg(info, str, "sequencer_ref")
+
+                # make a new observation
+                oobj = Observation(
+                    obsid,
+                    timestamp_start,
+                    type,
+                    timestamp_end=timestamp_end,
+                    observatory=observatory,
+                    telescope=telescope,
+                    stream_ids=stream_ids,
+                    subtype=subtype,
+                    tags=tags,
+                    scanification=scanification,
+                    hwp_rate_hz=hwp_rate_hz,
+                    sequencer_ref=sequencer_ref,
+                )
                 db.session.add(oobj)
 
         fobj = File(name, type, obsid, source_name, size, md5)

@@ -267,17 +267,48 @@ class Observation(db.Model):
             obsid=self.obsid,
             timestamp_start=self.timestamp_start,
             type=self.type,
+            timestamp_end=self.timestamp_end,
+            observatory=self.observatory,
+            telescope=self.telescope,
+            stream_ids=self.stream_ids,
+            subtype=self.subtype,
+            tags=self.tags,
+            scanification=self.scanification,
+            hwp_rate_hz=self.hwp_rate_hz,
+            sequencer_ref=self.sequencer_ref,
             session_id=self.session_id,
         )
 
     @classmethod
     def from_dict(cls, info):
-        obsid = required_arg(info, int, 'obsid')
-        timestamp_start = required_arg(info, float, 'timestamp_start')
+        obsid = required_arg(info, int, "obsid")
+        timestamp_start = required_arg(info, float, "timestamp_start")
         type = required_arg(info, str, "type")
+        timestamp_end = optional_arg(info, float, "timestamp_end")
+        observatory = optional_arg(info, str, "observatory")
+        telescope = optional_arg(info, str, "telescope")
+        stream_ids = optional_arg(info, str, "stream_ids")
+        subtype = optional_arg(info, str, "subtype")
+        tags = optional_arg(info, str, "tags")
+        scanification = optional_arg(info, str, "scanification")
+        hwp_rate_hz = optional_arg(info, float, "hwp_rate_hz")
+        sequencer_ref = optional_arg(info, str, "sequencer_ref")
         sessid = optional_arg(info, int, 'session_id')
 
-        obj = cls(obsid, timestamp_start, type)
+        obj = cls(
+            obsid,
+            timestamp_start,
+            type,
+            timestamp_end=timestamp_end,
+            observatory=observatory,
+            telescope=telescope,
+            stream_ids=stream_ids,
+            subtype=subtype,
+            tags=tags,
+            scanification=scanification,
+            hwp_rate_hz=hwp_rate_hz,
+            sequencer_ref=sequencer_ref,
+        )
         obj.session_id = sessid
         return obj
 
