@@ -11,6 +11,7 @@ ObservingSession
 Observation
 ''').split()
 
+from datetime import datetime
 from flask import flash, redirect, render_template, url_for
 
 from hera_librarian.utils import format_jd_as_calendar_date, format_jd_as_iso_date_time
@@ -136,45 +137,121 @@ class ObservingSession (db.Model):
         return cls(id, start, stop)
 
 
-class Observation (db.Model):
-    """An Observation is a span of time during which we have probably taken data.
-    Every File is associated with a single Observation.
+class Observation(db.Model):
+    """
+    An Observation is a span of time during which we have probably taken data.
 
+    Every File is associated with a single Observation. When creating an
+    Observation, columns not specified will have NULL values.
+
+    Parameters
+    ----------
+    obsid : int
+        The unique obsid associated with an observation.
+    timestamp_start : int or datetime
+        The start time of the observation. If an integer, this is interpreted as
+        a ctime. Otherwise, it is left as-is (hopefully in a format that is
+        compatible with the database).
+    type : str
+        The type of observation. Should be one of: obs, oper, smurf, hk, stray,
+        misc.
+    timestamp_end : int or datetime, optional
+        The end time of the observation. If an integer, this is interpreted as a
+        ctime. Otherwise, it is left as-is (hopefully in a format that is
+        compatible with the database).
+    observatory : str, optional
+        The observatory at which the observation was made.
+    telescope : str, optional
+        The telescope at which the observation was made.
+    stream_ids : str, optional
+        The stream IDs for the observation.
+    subtype : str, optional
+        The sub-type of the observation. Typically only used for obs and oper
+        book types.
+    tags : str, optional
+        Tags associated with the observation.
+    scanification : str, optional
+        The scanification of the observation.
+    hwp_rate_hz : float, optional
+        The rate (in Hz) at which the half-wave plate (HWP) was rotating for the
+        observation.
+    hwp_angles : str, optional
+        The angles of the HWP.
+    sequencer_ref : str, optional
+        The sequencer information.
     """
     __tablename__ = 'observation'
 
     obsid = db.Column(db.BigInteger, primary_key=True)
-    start_time_jd = NotNull(db.Float(precision='53'))
-    # XXX HACK: these should probably be NotNull. But in testing, we are creating
-    # observations with add_obs_librarian, and it doesn't know these pieces of
-    # information. Yet.
-    stop_time_jd = db.Column(db.Float(precision='53'))
-    start_lst_hr = db.Column(db.Float(precision='53'))
+    timestamp_start = db.Column(db.DateTime)
+    type = db.Column(db.String(64))
+    observatory = db.Column(db.String(64), nullable=True)
+    telescope = db.Column(db.String(64), nullable=True)
+    stream_ids = db.Column(db.String(64), nullable=True)
+    timestamp_end = db.Column(db.DateTime, nullable=True)
+    subtype = db.Column(db.String(64), nullable=True)
+    tags = db.Column(db.String(64), nullable=True)
+    scanification = db.Column(db.String(64), nullable=True)
+    hwp_rate_hz = db.Column(db.Float(precision="53"), nullable=True)
+    hwp_angles = db.Column(db.String(64), nullable=True)
+    sequencer_ref = db.Column(db.Text, nullable=True)
+
+    # foreign keys/relationships
     session_id = db.Column(db.BigInteger, db.ForeignKey(ObservingSession.id), nullable=True)
     session = db.relationship('ObservingSession', back_populates='observations')
     files = db.relationship('File', back_populates='observation')
 
-    def __init__(self, obsid, start_time_jd, stop_time_jd, start_lst_hr):
+    def __init__(
+        self,
+        obsid,
+        timestamp_start,
+        type,
+        timestamp_end=None,
+        observatory=None,
+        telescope=None,
+        stream_ids=None,
+        subtype=None,
+        tags=None,
+        scanification=None,
+        hwp_rate_hz=None,
+        hwp_angles=None,
+        sequencer_ref=None,
+    ):
         self.obsid = obsid
-        self.start_time_jd = start_time_jd
-        self.stop_time_jd = stop_time_jd
-        self.start_lst_hr = start_lst_hr
+        if isinstance(timestamp_start, int):
+            self.timestamp_start = datetime.fromtimestamp(timestamp_start)
+        else:
+            self.timestamp_start = timestamp_start
+        if isinstance(timestamp_end, int):
+            self.timestamp_end = datetime.fromtimestamp(timestamp_end)
+        else:
+            self.timestamp_end = timestamp_end
+        self.observatory = observatory
+        self.telescope = telescope
+        self.stream_ids = stream_ids
+        self.type = type
+        self.subtype = subtype
+        self.tags = tags
+        self.scanification = scanification
+        self.hwp_rate_hz = hwp_rate_hz
+        self.hwp_angles = hwp_angles
+        self.sequencer_ref = sequencer_ref
         self._validate()
 
     def _validate(self):
         """Check that this object's fields follow our invariants.
 
         """
-        if self.stop_time_jd is not None and not (self.start_time_jd < self.stop_time_jd):
+        if self.timestamp_end is not None and not (self.timestamp_start < self.timestamp_end):
             raise ValueError('observation start time must precede stop time; got %f, %f'
-                             % (self.start_time_jd, self.stop_time_jd))
+                             % (self.timestamp_start, self.timestamp_stop))
 
     @property
     def duration(self):
         """Measured in days."""
-        if self.stop_time_jd is None or self.start_time_jd is None:
+        if self.timestamp_stop is None or self.timestamp_end is None:
             return float('NaN')
-        return self.stop_time_jd - self.start_time_jd
+        return self.timestamp_end - self.timestamp_start
 
     @property
     def total_size(self):
@@ -188,21 +265,50 @@ class Observation (db.Model):
     def to_dict(self):
         return dict(
             obsid=self.obsid,
-            start_time_jd=self.start_time_jd,
-            stop_time_jd=self.stop_time_jd,
-            start_lst_hr=self.start_lst_hr,
+            timestamp_start=self.timestamp_start,
+            type=self.type,
+            timestamp_end=self.timestamp_end,
+            observatory=self.observatory,
+            telescope=self.telescope,
+            stream_ids=self.stream_ids,
+            subtype=self.subtype,
+            tags=self.tags,
+            scanification=self.scanification,
+            hwp_rate_hz=self.hwp_rate_hz,
+            sequencer_ref=self.sequencer_ref,
             session_id=self.session_id,
         )
 
     @classmethod
     def from_dict(cls, info):
-        obsid = required_arg(info, int, 'obsid')
-        start_jd = required_arg(info, float, 'start_time_jd')
-        stop_jd = optional_arg(info, float, 'stop_time_jd')
-        start_hr = optional_arg(info, float, 'start_lst_hr')
+        obsid = required_arg(info, int, "obsid")
+        timestamp_start = required_arg(info, float, "timestamp_start")
+        type = required_arg(info, str, "type")
+        timestamp_end = optional_arg(info, float, "timestamp_end")
+        observatory = optional_arg(info, str, "observatory")
+        telescope = optional_arg(info, str, "telescope")
+        stream_ids = optional_arg(info, str, "stream_ids")
+        subtype = optional_arg(info, str, "subtype")
+        tags = optional_arg(info, str, "tags")
+        scanification = optional_arg(info, str, "scanification")
+        hwp_rate_hz = optional_arg(info, float, "hwp_rate_hz")
+        sequencer_ref = optional_arg(info, str, "sequencer_ref")
         sessid = optional_arg(info, int, 'session_id')
 
-        obj = cls(obsid, start_jd, stop_jd, start_hr)
+        obj = cls(
+            obsid,
+            timestamp_start,
+            type,
+            timestamp_end=timestamp_end,
+            observatory=observatory,
+            telescope=telescope,
+            stream_ids=stream_ids,
+            subtype=subtype,
+            tags=tags,
+            scanification=scanification,
+            hwp_rate_hz=hwp_rate_hz,
+            sequencer_ref=sequencer_ref,
+        )
         obj.session_id = sessid
         return obj
 
