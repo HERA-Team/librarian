@@ -164,7 +164,8 @@ def commandline(argv):
             'note: no "host" set in config; server will not be remotely accessible', file=sys.stderr
         )
 
-    maybe_add_stores()
+    with app.app_context():
+        maybe_add_stores()
 
     if n_server_processes > 1 and server != "tornado":
         print("error: can only use multiple processes with Tornado server", file=sys.stderr)
@@ -188,7 +189,8 @@ def commandline(argv):
         http_server = HTTPServer(tornado_app)
         http_server.bind(port, address=host)
         http_server.start(n_server_processes)
-        db.engine.dispose()  # force new connection after potentially forking
+        with app.app_context():
+            db.engine.dispose()  # force new connection after potentially forking
 
     do_mandc = app.config.get("report_to_mandc", False)
     if do_mandc:
