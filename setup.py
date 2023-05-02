@@ -35,8 +35,8 @@ although those modules are not installed in a standard ``pip install``.
         "server": [
             "aipy",
             "alembic",
-            "astropy >=2.0",
-            "flask",
+            "astropy>=2.0",
+            "flask>=2.0",
             "flask_sqlalchemy",
             "hera-librarian",
             "numpy",
@@ -44,6 +44,7 @@ although those modules are not installed in a standard ``pip install``.
             "pytz",
             "pyuvdata",
             "sqlalchemy>=1.4.0",
+            "tornado",
         ]
     },
     scripts=["scripts/librarian_stream_file_or_directory.sh", "scripts/runserver.py"],
