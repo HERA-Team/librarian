@@ -42,11 +42,14 @@ def test_print_table(capsys):
     cli.print_table(dict_list)
     captured = capsys.readouterr()
     stdout = captured.out
+# the table has to have trailing spaces to be "correct"
+# fmt: off
     correct_table = """name | size
 ---- | ----
-foo  | 10
-bar  | 12
+foo  | 10  
+bar  | 12  
 """
+# fmt: on
     assert stdout == correct_table
 
     # test without column names
@@ -59,11 +62,14 @@ bar  | 12
     cli.print_table(dict_list, col_list, col_names)
     captured = capsys.readouterr()
     stdout = captured.out
+# the table has to have trailing spaces to be "correct"
+# fmt: off
     correct_table = """Name of file | Size of file
 ------------ | ------------
-foo          | 10
-bar          | 12
+foo          | 10          
+bar          | 12          
 """
+# fmt: on
     assert stdout == correct_table
 
     # test using the wrong number of column headers

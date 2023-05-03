@@ -3,7 +3,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  # - aipy
+  - aipy
   - alembic
   - astropy
   - flask

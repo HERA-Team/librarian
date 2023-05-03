@@ -23,7 +23,7 @@ communicate with a Librarian server. It also includes the server code,
 although those modules are not installed in a standard ``pip install``.
 """,
     install_requires=["astropy >=2.0"],
-    tests_require=["pytest", "pytest-datafiles", "pytest-console-scripts"],
+    tests_require=["pytest", "pytest-datafiles>=3.0", "pytest-console-scripts"],
     packages=packages,
     classifiers=[
         "Development Status :: 5 - Production/Stable",

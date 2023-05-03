@@ -169,7 +169,7 @@ def test_create_tempdir(local_store):
 @ALL_FILES
 def test_get_info_for_path(local_store, datafiles):
     # copy a datafile to store directory, so we can get its info
-    filepaths = sorted(map(str, datafiles.listdir()))
+    filepaths = sorted(map(str, datafiles.iterdir()))
     filename = os.path.basename(filepaths[0])
     local_store[0].copy_to_store(filepaths[0], filename)
 
