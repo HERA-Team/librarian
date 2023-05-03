@@ -59,7 +59,6 @@ def test_copy_to_store(tmp_path, local_store):
         print("hello world", file=f)
 
     # copy it over
-    print("str cast: ", str(tmp_path))
     local_store[0].copy_to_store(str(tmp_path), "test_directory")
 
     # check that it exists
@@ -172,8 +171,6 @@ def test_get_info_for_path(local_store, datafiles):
     # copy a datafile to store directory, so we can get its info
     filepaths = sorted(map(str, datafiles.iterdir()))
     filename = os.path.basename(filepaths[0])
-    print("filepath: ", filepaths[0])
-    print("filename: ", filename)
     local_store[0].copy_to_store(filepaths[0], filename)
 
     # get the file info and check that it's right
