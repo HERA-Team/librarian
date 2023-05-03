@@ -2,17 +2,17 @@ set -xe
 
 # get conda set up
 apt-get update; apt-get install -y gcc g++ openssh-server rsync
-mamba config --set always_yes yes --set changeps1 no
-mamba install setuptools pip
-mamba update -q conda
-mamba config --add channels conda-forge
-mamba info -a
-mamba create --name=${ENV_NAME} python=$PYTHON --quiet
-mamba env update -f ci/${ENV_NAME}.yml
-mamba init bash
+conda config --set always_yes yes --set changeps1 no
+conda install setuptools pip
+conda update -q conda
+conda config --add channels conda-forge
+conda info -a
+conda create --name=${ENV_NAME} python=$PYTHON --quiet
+conda env update -f ci/${ENV_NAME}.yml
+conda init bash
 source ~/.bashrc
-mamba activate ${ENV_NAME}
-mamba list -n ${ENV_NAME}
+conda activate ${ENV_NAME}
+conda list -n ${ENV_NAME}
 
 # install other dependencies with pip
 pip install pytest-datafiles pytest-cov pytest-console-scripts
