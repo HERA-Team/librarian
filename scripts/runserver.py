@@ -1,10 +1,10 @@
 #! /usr/bin/env python
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
 
 
 import sys
+
 try:
     from librarian_server import commandline
 except ModuleNotFoundError:

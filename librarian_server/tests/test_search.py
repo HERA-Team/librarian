@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2019 the HERA Collaboration
 # Licensed under the 2-clause BSD License
 
@@ -13,7 +12,7 @@ from librarian_server import search
 from librarian_server.webutil import ServerError
 
 
-class TestGenericSearchCompiler(object):
+class TestGenericSearchCompiler:
     """Tests for the GenericSearchCompiler object"""
 
     def test_compile(self, db_connection):

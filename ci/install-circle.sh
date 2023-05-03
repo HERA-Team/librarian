@@ -1,7 +1,7 @@
 set -xe
 
 # get conda set up
-apt-get update; apt-get install -y gcc g++ openssh-server rsync
+apt-get update; apt-get install -y curl gcc g++ gnupg openssh-server rsync
 conda config --set always_yes yes --set changeps1 no
 conda install setuptools pip
 conda update -q conda

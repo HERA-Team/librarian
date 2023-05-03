@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2019 the HERA Collaboration
 # Licensed under the 2-clause BSD License
 
@@ -8,29 +7,27 @@
 
 
 import pytest
-import os
 
 import hera_librarian
 from hera_librarian import cli
 
+
 def test_die(capsys):
     # test without specifying replacement args
+    def assertions(capsys, e):
+        result = capsys.readouterr()
+        assert e.type == SystemExit
+        assert e.value.code == 1
+        assert result.err == "error: my error\n"
+
     with pytest.raises(SystemExit) as e:
         cli.die("my error")
-    captured = capsys.readouterr()
-    assert e.type == SystemExit
-    assert e.value.code == 1
-    assert captured.err == "error: my error\n"
+    assertions(capsys, e)
 
     # test with replacement args
     with pytest.raises(SystemExit) as e:
         cli.die("my %s", "error")
-    captured = capsys.readouterr()
-    assert e.type == SystemExit
-    assert e.value.code == 1
-    assert captured.err == "error: my error\n"
-
-    return
+    assertions(capsys, e)
 
 
 def test_print_table(capsys):
@@ -70,10 +67,11 @@ bar          | 12
     assert stdout == correct_table
 
     # test using the wrong number of column headers
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Number of column headers specified must"):
         cli.print_table(dict_list, col_list, col_names[:1])
 
     return
+
 
 def test_sizeof_fmt():
     # test a few known values
@@ -131,4 +129,4 @@ def test_generate_parser():
 def test_main(script_runner):
     version = hera_librarian.__version__
     ret = script_runner.run("librarian", "-V")
-    assert ret.stdout == "librarian {}\n".format(version)
+    assert ret.stdout == f"librarian {version}\n"

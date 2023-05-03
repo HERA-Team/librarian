@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
 
@@ -13,26 +12,24 @@ This system requires Tornado.
 """
 
 
-__all__ = str('''
+__all__ = str(
+    """
 BackgroundTask
 submit_background_task
 register_background_task_reporter
 get_unfinished_task_count
-''').split()
+"""
+).split()
 
 import time
-
+from flask import render_template
 from tornado.ioloop import IOLoop
 
-
-from flask import flash, redirect, render_template, url_for
-
-from . import app, db, logger
-from .dbutil import NotNull
-from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
+from . import app, logger
+from .webutil import login_required
 
 
-class BackgroundTask(object):
+class BackgroundTask:
     """A class implementing a background task.
 
     Instances of this task are also used by the Librarian to keep track of its
@@ -46,8 +43,9 @@ class BackgroundTask(object):
     You need to submit the task to TaskManager for it to actually run!
 
     """
+
     _manager = None
-    desc = 'unset description'
+    desc = "unset description"
     submit_time = None
     start_time = None
     finish_time = None
@@ -71,7 +69,7 @@ class BackgroundTask(object):
     @property
     def runtime(self):
         if self.start_time is None:
-            return float('NaN')
+            return float("NaN")
         if self.finish_time is None:
             return time.time() - self.start_time
         return self.finish_time - self.start_time
@@ -85,13 +83,13 @@ class BackgroundTask(object):
     @property
     def time_since_completed(self):
         if self.finish_time is None:
-            return float('NaN')
+            return float("NaN")
         return time.time() - self.finish_time
 
     @property
     def outcome_str(self):
         if self.exception is None:
-            return 'success'
+            return "success"
         return str(self.exception)
 
 
@@ -100,7 +98,7 @@ MIN_TASK_LIST_LENGTH = 20  # don't purge tasks if more than these are left
 TASK_LINGER_TIME = 600  # seconds
 
 
-def _thread_wrapper(task, parent_IOLoop):
+def _thread_wrapper(task, parent_ioloop):
     task.start_time = time.time()
 
     try:
@@ -112,14 +110,14 @@ def _thread_wrapper(task, parent_IOLoop):
 
     task.finish_time = time.time()
     task.exception = exc
-    parent_IOLoop.add_callback(_wrapup_wrapper, task, retval, exc)
+    parent_ioloop.add_callback(_wrapup_wrapper, task, retval, exc)
 
 
 def _wrapup_wrapper(task, thread_retval, thread_exc):
     try:
         task.wrapup_function(thread_retval, thread_exc)
     except Exception as e:
-        logger.warn('exception in %s wrapup function: %s', task, e)
+        logger.warn("exception in %s wrapup function: %s", task, e)
         task.exception = thread_exc = e
 
     # We let the task linger in task list for a little while so that it's
@@ -128,7 +126,7 @@ def _wrapup_wrapper(task, thread_retval, thread_exc):
     the_task_manager._maybe_purge_tasks()
 
 
-class TaskManager(object):
+class TaskManager:
     tasks = None
     """This is a list of all tasks that are pending, in processing, or have exited
     recently. Eventually we purge them but it's useful to be able to see the
@@ -160,9 +158,11 @@ class TaskManager(object):
             # listed.
             return
 
-        self.tasks = [t for t in self.tasks
-                      if (t.finish_time is None or
-                          (now - t.finish_time) < TASK_LINGER_TIME)]
+        self.tasks = [
+            t
+            for t in self.tasks
+            if (t.finish_time is None or (now - t.finish_time) < TASK_LINGER_TIME)
+        ]
 
     def submit(self, task):
         """Submit a task to be run in the background.
@@ -176,7 +176,7 @@ class TaskManager(object):
         what happened to it.
 
         """
-        assert task._manager is None, 'may not submit task to multiple managers'
+        assert task._manager is None, "may not submit task to multiple managers"
 
         self._maybe_purge_tasks()
 
@@ -184,9 +184,11 @@ class TaskManager(object):
 
         if self.worker_pool is None:
             import multiprocessing.util
+
             multiprocessing.util.log_to_stderr(5)
             from multiprocessing.pool import ThreadPool
-            self.worker_pool = ThreadPool(app.config.get('n_worker_threads', 8))
+
+            self.worker_pool = ThreadPool(app.config.get("n_worker_threads", 8))
 
         task.submit_time = time.time()
         self.tasks.append(task)
@@ -196,10 +198,10 @@ class TaskManager(object):
         if self.worker_pool is None:
             return
 
-        print('Waiting for background jobs to complete ...')
+        print("Waiting for background jobs to complete ...")
         self.worker_pool.close()
         self.worker_pool.join()
-        print('   ... done.')
+        print("   ... done.")
 
 
 the_task_manager = TaskManager()
@@ -214,16 +216,19 @@ def maybe_wait_for_threads_to_finish():
 
 
 def log_background_task_status():
-    active = [t for t in the_task_manager.tasks
-              if t.start_time is not None and t.finish_time is None]
-    pending = [t for t in the_task_manager.tasks
-               if t.start_time is None]
-    finished = [t for t in the_task_manager.tasks
-                if t.finish_time is not None]
+    active = [
+        t for t in the_task_manager.tasks if t.start_time is not None and t.finish_time is None
+    ]
+    pending = [t for t in the_task_manager.tasks if t.start_time is None]
+    finished = [t for t in the_task_manager.tasks if t.finish_time is not None]
 
-    logger.info('%d background tasks: %d active, %d pending, %d finished',
-                len(the_task_manager.tasks), len(active),
-                len(pending), len(finished))
+    logger.info(
+        "%d background tasks: %d active, %d pending, %d finished",
+        len(the_task_manager.tasks),
+        len(active),
+        len(pending),
+        len(finished),
+    )
 
 
 def register_background_task_reporter():
@@ -257,22 +262,18 @@ def get_unfinished_task_count():
 
 # Web user interface
 
-@app.route('/tasks')
+
+@app.route("/tasks")
 @login_required
 def tasks():
     the_task_manager._maybe_purge_tasks()
 
-    active = [t for t in the_task_manager.tasks
-              if t.start_time is not None and t.finish_time is None]
-    pending = [t for t in the_task_manager.tasks
-               if t.start_time is None]
-    finished = [t for t in the_task_manager.tasks
-                if t.finish_time is not None]
+    active = [
+        t for t in the_task_manager.tasks if t.start_time is not None and t.finish_time is None
+    ]
+    pending = [t for t in the_task_manager.tasks if t.start_time is None]
+    finished = [t for t in the_task_manager.tasks if t.finish_time is not None]
 
     return render_template(
-        'task-listing.html',
-        title='Tasks',
-        active=active,
-        pending=pending,
-        finished=finished,
+        "task-listing.html", title="Tasks", active=active, pending=pending, finished=finished
     )

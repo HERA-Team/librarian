@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
 
@@ -11,26 +10,28 @@ that.
 """
 
 
-
-__all__ = str('''
+__all__ = str(
+    """
 BaseStore
-''').split()
+"""
+).split()
 
-import subprocess
 import os.path
+import subprocess
 import time
-import warnings
 
 from . import RPCError
 
 NUM_RSYNC_TRIES = 6
 
 
-class BaseStore(object):
-    """Note that the Librarian server code subclasses this class, so do not change
-    its structure without making sure that you're not breaking it.
+class BaseStore:
+    """A base storage class.
 
+    Note that the Librarian server code subclasses this class, so do not change
+    its structure without making sure that you're not breaking it.
     """
+
     name = None
     path_prefix = None
     ssh_host = None
@@ -47,12 +48,13 @@ class BaseStore(object):
     def _path(self, *pieces):
         for p in pieces:
             if os.path.isabs(p):
-                raise ValueError('store paths must not be absolute; got %r' % (pieces,))
+                raise ValueError(f"store paths must not be absolute; got {pieces!r}")
         return os.path.join(self.path_prefix, *pieces)
 
-    def _ssh_slurp(self, command, input=None):
-        """SSH to the store host, run a command, and return its standard output. Raise
-        an RPCError with standard error output if anything goes wrong.
+    def _ssh_slurp(self, command, input_stream=None):
+        """SSH to the store host, run a command, and return its standard output.
+
+        Raises an RPCError with standard error output if anything goes wrong.
 
         You MUST be careful about quoting! `command` is passed as an argument
         to 'bash -c', so it goes through one layer of parsing by the shell on
@@ -65,23 +67,28 @@ class BaseStore(object):
         layer of Python string literal quoting on top of that!
 
         """
-        argv = ['ssh', self.ssh_host, command]
+        argv = ["ssh", self.ssh_host, command]
 
-        if input is None:
+        if input_stream is None:
             import os
-            stdin = open(os.devnull, 'rb')
+
+            stdin = open(os.devnull, "rb")
         else:
             stdin = subprocess.PIPE
 
-        proc = subprocess.Popen(argv, shell=False, stdin=stdin,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if input is None:
+        proc = subprocess.Popen(
+            argv, shell=False, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if input_stream is None:
             stdin.close()
-        stdout, stderr = proc.communicate(input=input)
+        stdout, stderr = proc.communicate(input=input_stream)
 
         if proc.returncode != 0:
-            raise RPCError(argv, 'exit code %d; stdout:\n\n%r\n\nstderr:\n\n%r'
-                           % (proc.returncode, stdout.decode("utf-8"), stderr.decode("utf-8")))
+            raise RPCError(
+                argv,
+                "exit code %d; stdout:\n\n%r\n\nstderr:\n\n%r"
+                % (proc.returncode, stdout.decode("utf-8"), stderr.decode("utf-8")),
+            )
 
         return stdout
 
@@ -95,11 +102,16 @@ class BaseStore(object):
 
         """
         import os
-        argv = ['ssh', self.ssh_host, "librarian_stream_file_or_directory.sh '%s'" %
-                self._path(store_path)]
-        stdin = open(os.devnull, 'rb')
-        proc = subprocess.Popen(argv, shell=False, stdin=stdin,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        argv = [
+            "ssh",
+            self.ssh_host,
+            "librarian_stream_file_or_directory.sh '%s'" % self._path(store_path),
+        ]
+        stdin = open(os.devnull, "rb")
+        proc = subprocess.Popen(
+            argv, shell=False, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         stdin.close()
         return proc
 
@@ -126,10 +138,10 @@ class BaseStore(object):
         # end their names with "/", but it will error if we end a file name
         # with "/". So we have to check:
 
-        if os.path.isdir(local_path) and not local_path.endswith('/'):
-            local_suffix = '/'
+        if os.path.isdir(local_path) and not local_path.endswith("/"):
+            local_suffix = "/"
         else:
-            local_suffix = ''
+            local_suffix = ""
 
         # flags: archive mode; keep partial transfers. Have SSH work in batch
         # mode and turn off known hosts and host key checking to Just Work
@@ -139,18 +151,20 @@ class BaseStore(object):
         # Karoo to US.
 
         argv = [
-            'rsync',
-            '-aP',
-            '-e',
-            'ssh -c aes128-ctr -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no',
+            "rsync",
+            "-aP",
+            "-e",
+            "ssh -c aes128-ctr -o BatchMode=yes -o UserKnownHostsFile=/dev/null "
+            "-o StrictHostKeyChecking=no",
             local_path + local_suffix,
-            '%s:%s' % (self.ssh_host, self._path(store_path))
+            f"{self.ssh_host}:{self._path(store_path)}",
         ]
         success = False
 
-        for i in range(NUM_RSYNC_TRIES):
-            proc = subprocess.Popen(argv, shell=False, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT)
+        for _ in range(NUM_RSYNC_TRIES):
+            proc = subprocess.Popen(
+                argv, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            )
             output = proc.communicate()[0]
 
             if proc.returncode == 0:
@@ -158,7 +172,7 @@ class BaseStore(object):
                 break
 
         if not success:
-            raise RPCError(argv, 'exit code %d; output:\n\n%r' % (proc.returncode, output))
+            raise RPCError(argv, "exit code %d; output:\n\n%r" % (proc.returncode, output))
 
     def _globus_transfer(
         self,
@@ -212,7 +226,7 @@ class BaseStore(object):
             raise RPCError(
                 "globus_sdk import",
                 "The globus_sdk package must be installed for globus "
-                "functionality. Please `pip install globus_sdk` and try again."
+                "functionality. Please `pip install globus_sdk` and try again.",
             )
 
         # check that both endpoint IDs have been specified
@@ -220,7 +234,7 @@ class BaseStore(object):
             raise RPCError(
                 "globus endpoint check",
                 "Both source_endpoint_id and destination_endpoint_id must be "
-                "specified to initiate globus transfer."
+                "specified to initiate globus transfer.",
             )
 
         # make globus transfer client
@@ -231,7 +245,7 @@ class BaseStore(object):
             raise RPCError(
                 "globus authorization",
                 "globus authentication failed. Please check client_id and "
-                "authentication token and try again."
+                "authentication token and try again.",
             )
         tc = globus_sdk.TransferClient(authorizer=authorizer)
 
@@ -252,7 +266,7 @@ class BaseStore(object):
         store_path = self._path(store_path)
         if host_path is not None:
             if store_path.startswith(host_path):
-                store_path = store_path[len(host_path):]
+                store_path = store_path[len(host_path) :]
                 # trim off leading "/" if present
                 if store_path.startswith("/"):
                     store_path = store_path.lstrip("/")
@@ -279,7 +293,7 @@ class BaseStore(object):
                 error_string = ""
                 for event in events:
                     error_string.append(event["time"] + ": " + event["description"] + "\n")
-                raise RPCError("globus transfer", 'events:\n\n%r' % (error_string))
+                raise RPCError("globus transfer", "events:\n\n%r" % (error_string))
             else:  # task is "ACTIVE"
                 time.sleep(5)
 
@@ -345,7 +359,7 @@ class BaseStore(object):
                 )
             except RPCError as e:
                 # something went wrong with globus--fall back on rsync
-                print("Globus transfer failed: {}\nFalling back on rsync...".format(e))
+                print(f"Globus transfer failed: {e}\nFalling back on rsync...")
                 self._rsync_transfer(local_path, store_path)
         else:
             # use rsync from the get-go
@@ -365,7 +379,7 @@ class BaseStore(object):
         failure code.
 
         """
-        return self._ssh_slurp("chmod -R '%s' '%s'" % (modespec, self._path(store_path)))
+        return self._ssh_slurp(f"chmod -R '{modespec}' '{self._path(store_path)}'")
 
     def _move(self, source_store_path, dest_store_path, chmod_spec=None):
         """Move a path in the store.
@@ -404,13 +418,13 @@ class BaseStore(object):
         dsp = self._path(dest_store_path)
 
         if chmod_spec is not None:
-            piece = " && chmod -R '%s' '%s'" % (chmod_spec, dsp)
+            piece = f" && chmod -R '{chmod_spec}' '{dsp}'"
         else:
-            piece = ''
+            piece = ""
 
         return self._ssh_slurp(
-            "mkdir -p '%s' && chmod u+w '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s" %
-            (self._path(dest_parent), ssp, ssp, dsp, ssp, piece)
+            "mkdir -p '%s' && chmod u+w '%s' && mv -nT '%s' '%s' && test ! -e '%s'%s"
+            % (self._path(dest_parent), ssp, ssp, dsp, ssp, piece)
         )
 
     def _delete(self, store_path, chmod_before=False):
@@ -429,23 +443,22 @@ class BaseStore(object):
         if chmod_before:
             part1 = "chmod -R u+w '%s' && " % self._path(store_path)
         else:
-            part1 = ''
+            part1 = ""
         return self._ssh_slurp(part1 + "rm -r '%s'" % self._path(store_path))
 
-    def _create_tempdir(self, key='libtmp'):
+    def _create_tempdir(self, key="libtmp"):
         """Create a temporary directory in the store's root and return its "store
         path".
 
         """
         # we need to convert the output of _ssh_slurp -- a path in bytes -- to a string
-        output = self._ssh_slurp('mktemp -d -p %s %s.XXXXXX' % (self.path_prefix, key)).decode("utf-8")
+        output = self._ssh_slurp(f"mktemp -d -p {self.path_prefix} {key}.XXXXXX").decode("utf-8")
         fullpath = output.splitlines()[-1].strip()
 
         if not fullpath.startswith(self.path_prefix):
-            raise RPCError('unexpected output from mktemp on %s: %s'
-                           % (self.name, fullpath))
+            raise RPCError(f"unexpected output from mktemp on {self.name}: {fullpath}")
 
-        return fullpath[len(self.path_prefix) + 1:]
+        return fullpath[len(self.path_prefix) + 1 :]
 
     # Interrogations of the store -- these don't change anything so they don't
     # necessarily need to be paired with Librarian database modifications.
@@ -456,9 +469,10 @@ class BaseStore(object):
 
         """
         import json
+
         text = self._ssh_slurp(
-            "python -c \'import hera_librarian.utils as u; u.print_info_for_path(\"%s\")\'"
-            % (self._path(storepath))
+            "python -c 'import hera_librarian.utils as u; "
+            f'u.print_info_for_path("{self._path(storepath)}")\''
         )
         return json.loads(text)
 
@@ -473,18 +487,19 @@ class BaseStore(object):
 
         """
         import time
+
         now = time.time()
 
         # 30 second lifetime:
         if self._cached_space_info is not None and now - self._space_info_timestamp < 30:
             return self._cached_space_info
 
-        output = self._ssh_slurp('df -B1 %s' % self._path())
+        output = self._ssh_slurp("df -B1 %s" % self._path())
         bits = output.splitlines()[-1].split()
         info = {}
-        info['used'] = int(bits[2])  # measured in bytes
-        info['available'] = int(bits[3])  # measured in bytes
-        info['total'] = info['used'] + info['available']
+        info["used"] = int(bits[2])  # measured in bytes
+        info["available"] = int(bits[3])  # measured in bytes
+        info["total"] = info["used"] + info["available"]
 
         self._cached_space_info = info
         self._space_info_timestamp = now
@@ -498,7 +513,7 @@ class BaseStore(object):
         Accessing this property may trigger an SSH into the store host!
 
         """
-        return self.get_space_info()['total']
+        return self.get_space_info()["total"]
 
     @property
     def space_left(self):
@@ -510,7 +525,7 @@ class BaseStore(object):
         boolean availability flag in the server.
 
         """
-        return self.get_space_info()['available']
+        return self.get_space_info()["available"]
 
     @property
     def usage_percentage(self):
@@ -521,7 +536,7 @@ class BaseStore(object):
 
         """
         info = self.get_space_info()
-        return 100. * info['used'] / (info['total'])
+        return 100.0 * info["used"] / (info["total"])
 
     def upload_file_to_other_librarian(
         self,
@@ -587,26 +602,29 @@ class BaseStore(object):
             remote_store_path = local_store_path
 
         if (known_staging_store is None) ^ (known_staging_subdir is None):
-            raise ValueError('both known_staging_store and known_staging_subdir must be specified')
+            raise ValueError("both known_staging_store and known_staging_subdir must be specified")
 
         if known_staging_store is None:
-            pre_staged_arg = ''
+            pre_staged_arg = ""
         else:
-            pre_staged_arg = ' --pre-staged=%s:%s' % (known_staging_store, known_staging_subdir)
+            pre_staged_arg = f" --pre-staged={known_staging_store}:{known_staging_subdir}"
 
         import json
+
         rec_text = json.dumps(rec_info)
 
-        command = 'librarian upload --meta=json-stdin%s %s %s %s' % (
-            pre_staged_arg, conn_name, self._path(local_store_path), remote_store_path)
+        command = "librarian upload --meta=json-stdin{} {} {} {}".format(
+            pre_staged_arg, conn_name, self._path(local_store_path), remote_store_path
+        )
         # optional globus additions to the command
         if use_globus:
-            command += f" --use_globus --client_id={client_id} --transfer_token={transfer_token}"
+            command += f" --use_globus --client_id={client_id}"
+            command += f" --transfer_token={transfer_token}"
             if source_endpoint_id is not None:
                 command += f" --source_endpoint_id={source_endpoint_id}"
 
         # actually run the command
-        return self._ssh_slurp(command, input=rec_text.encode("utf-8"))
+        return self._ssh_slurp(command, input_stream=rec_text.encode("utf-8"))
 
     def upload_file_to_local_store(self, local_store_path, dest_store, dest_rel):
         """Fire off an rsync process on the store that will upload a given file to
@@ -621,9 +639,13 @@ class BaseStore(object):
         feature.
 
         """
-        c = ("librarian offload-helper --name '%s' --pp '%s' --host '%s' "
-             "--destrel '%s' '%s'" % (dest_store.name, dest_store.path_prefix,
-                                      dest_store.ssh_host, dest_rel, self._path(local_store_path)))
+        c = "librarian offload-helper --name '%s' --pp '%s' --host '%s' " "--destrel '%s' '%s'" % (
+            dest_store.name,
+            dest_store.path_prefix,
+            dest_store.ssh_host,
+            dest_rel,
+            self._path(local_store_path),
+        )
         return self._ssh_slurp(c)
 
     def check_stores_connections(self):
@@ -636,4 +658,4 @@ class BaseStore(object):
         envisioned use cases text will be OK.
 
         """
-        return self._ssh_slurp('librarian check-connections').decode('utf-8')
+        return self._ssh_slurp("librarian check-connections").decode("utf-8")

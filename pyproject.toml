@@ -1,2 +1,12 @@
 [build-system]
 requires = ["setuptools>=30.3.0", "wheel", "setuptools_scm"]
+
+[tool.isort]
+profile = "black"
+
+[darglint]
+docstring_style = "numpy"
+
+[tool.black]
+skip_magic_trailing_comma = true
+line_length=100

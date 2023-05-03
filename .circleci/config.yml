@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  codecov: codecov/codecov@1.0.4
+  codecov: codecov/codecov@3.2.4
 jobs:
   librarian:
     parameters:
@@ -8,7 +8,7 @@ jobs:
         type: string
     docker:
       - image: continuumio/miniconda3:latest
-      - image: circleci/postgres:11
+      - image: cimg/postgres:15.2
         environment:
           POSTGRES_USER: root
           POSTGRES_DB: librarian_test
@@ -30,9 +30,7 @@ jobs:
       - run:
           name: install hera_librarian package in base python environment
           command: |
-            pip install numpy scipy astropy h5py
-            pip install pyuvdata aipy
-            pip install .
+            pip install .[server]
       - run:
           name: run librarian tests
           # run hera_librarian tests, then librarian_server tests
@@ -62,5 +60,5 @@ workflows:
   build_and_test:
     jobs:
       - librarian:
-          name: librarian_3.7
-          python_version: "3.7"
+          name: librarian_3.8
+          python_version: "3.8"

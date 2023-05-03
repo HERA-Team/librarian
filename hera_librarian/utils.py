@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2016-2017 the HERA Team.
 # Licensed under the BSD License.
 
@@ -10,7 +9,10 @@ Librarian "files" are MIRIAD data sets that are actually directories.
 
 """
 
-__all__ = str('''
+
+import contextlib
+
+__all__ = """
 gather_info_for_path
 get_type_from_path
 get_obsid_from_path
@@ -22,14 +24,13 @@ print_info_for_path
 format_jd_as_calendar_date
 format_jd_as_iso_date_time
 format_obsid_as_calendar_date
-''').split()
+""".split()
 
 import hashlib
 import locale
+import numpy as np
 import os.path
 import re
-
-import numpy as np
 
 
 def get_type_from_path(path):
@@ -38,7 +39,7 @@ def get_type_from_path(path):
     This is just the last bit of text following the last ".", by definition.
 
     """
-    return path.split('.')[-1]
+    return path.split(".")[-1]
 
 
 def get_pol_from_path(path):
@@ -52,10 +53,8 @@ def get_pol_from_path(path):
     information for it to ingest files from us. Is that still the case?
 
     """
-    matches = re.findall(r'\.([xy][xy])\.', path)
-    if not len(matches):
-        return None
-    return matches[-1]
+    matches = re.findall(r"\.([xy][xy])\.", path)
+    return matches[-1] if len(matches) else None
 
 
 def get_obsid_from_path(path):
@@ -67,27 +66,24 @@ def get_obsid_from_path(path):
 
     """
     if os.path.isdir(path):
-        try:
+        with contextlib.suppress(RuntimeError, ImportError, IndexError, KeyError):
             import aipy
+
             uv = aipy.miriad.UV(path)
-            return uv['obsid']
-        except (RuntimeError, ImportError, IndexError, KeyError):
-            pass
+            return uv["obsid"]
     else:
-        try:
+        with contextlib.suppress(IOError, ImportError, KeyError, OSError):
             from astropy.time import Time
             from pyuvdata import UVData
+
             uv = UVData()
             uv.read_uvh5(path, read_data=False, run_check_acceptability=False)
-            t0 = Time(np.unique(uv.time_array)[0], scale='utc', format='jd')
+            t0 = Time(np.unique(uv.time_array)[0], scale="utc", format="jd")
             return int(np.floor(t0.gps))
-        except (IOError, ImportError, KeyError, OSError):
-            pass
-
     return None
 
 
-_lc_md5_pattern = re.compile('^[0-9a-f]{32}$')
+_lc_md5_pattern = re.compile("^[0-9a-f]{32}$")
 
 
 def normalize_and_validate_md5(text):
@@ -100,7 +96,7 @@ def normalize_and_validate_md5(text):
     """
     norm_text = text.strip().lower()
     if not len(_lc_md5_pattern.findall(norm_text)):
-        raise ValueError('%r does not look like an MD5 sum' % (text,))
+        raise ValueError(f"{text!r} does not look like an MD5 sum")
     return norm_text
 
 
@@ -111,15 +107,15 @@ def _md5_of_file(path):
     """
     md5 = hashlib.md5()
 
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
             md5.update(chunk)
 
     return md5.hexdigest()
 
 
 def get_md5_from_path(path):
-    """Compute the MD5 checksum of 'path', which is either a single flat file or a
+    r"""Compute the MD5 checksum of 'path', which is either a single flat file or a
     directory. The checksum is returned as a hexadecimal string.
 
     If 'path' is a flat file, the checksum is the MD5 sum of the file
@@ -130,17 +126,16 @@ def get_md5_from_path(path):
 
     The definition of the directory checksum is constructed such that the
     computation can be recomputed in a shell script. If you don't have
-    pathological file names or locale settings:
+    pathological file names or locale settings::
 
-      (cd $path && find . ! -type d -exec md5sum {} \; | sort -k 2 | md5sum)
+        (cd $path && find . ! -type d -exec md5sum {} \; | sort -k 2 | md5sum)
 
-    A more paranoid version:
+    A more paranoid version::
 
-      (cd $path && find . ! -type d -print0 |LC_ALL=C sort -z |xargs -0 -n1 md5sum |md5sum)
+        (cd $path && find . ! -type d -print0 |LC_ALL=C sort -z |xargs -0 -n1 md5sum |md5sum)
 
     For each input file, the 'md5sum' program prints the MD5 sum, two spaces,
     and then the file name. This sets the format for the outermost MD5 we do.
-
     """
     if not os.path.isdir(path):
         return _md5_of_file(path)
@@ -148,16 +143,16 @@ def get_md5_from_path(path):
     # make sure that path looks like foo/bar, not foo/bar/ or foo/bar/./. .
     # This makes it easier to munge the outputs from os.walk().
 
-    while path.endswith('/.'):
+    while path.endswith("/."):
         path = path[:-2]
 
-    if path[-1] == '/':
+    if path[-1] == "/":
         path = path[:-1]
 
     def all_files():
-        for dirname, dirs, files in os.walk(path):
+        for dirname, _dirs, files in os.walk(path):
             for f in files:
-                yield dirname + '/' + f
+                yield f"{dirname}/{f}"
 
     md5 = hashlib.md5()
     plen = len(path)
@@ -166,14 +161,14 @@ def get_md5_from_path(path):
         # NOTE: this is not threadsafe. This will *probably* never come back
         # to bite us in the ass ...
         prevlocale = locale.getlocale(locale.LC_COLLATE)
-        locale.setlocale(locale.LC_COLLATE, 'C')
+        locale.setlocale(locale.LC_COLLATE, "C")
 
         for f in sorted(all_files()):
             subhash = _md5_of_file(f).encode("utf-8")
             md5.update(subhash)  # this is the hex digest, like we want
-            md5.update('  .'.encode("utf-8"))  # compat with command-line approach
+            md5.update(b"  .")  # compat with command-line approach
             md5.update(f[plen:].encode("utf-8"))
-            md5.update('\n'.encode("utf-8"))
+            md5.update(b"\n")
     finally:
         locale.setlocale(locale.LC_COLLATE, prevlocale)
 
@@ -192,22 +187,21 @@ def get_size_from_path(path):
 
     size = 0
 
-    for dirname, dirs, files in os.walk(path):
+    for dirname, _dirs, files in os.walk(path):
         for f in files:
-            size += os.path.getsize(dirname + '/' + f)
+            size += os.path.getsize(f"{dirname}/{f}")
 
     return size
 
 
 def gather_info_for_path(path):
-    info = {}
-    info['type'] = get_type_from_path(path)
-    info['md5'] = get_md5_from_path(path)
-    info['size'] = get_size_from_path(path)
+    info = {"type": get_type_from_path(path)}
+    info["md5"] = get_md5_from_path(path)
+    info["size"] = get_size_from_path(path)
 
     obsid = get_obsid_from_path(path)
     if obsid is not None:
-        info['obsid'] = obsid
+        info["obsid"] = obsid
 
     return info
 
@@ -220,10 +214,11 @@ def print_info_for_path(path):
     """
     import json
     import sys
+
     json.dump(gather_info_for_path(path), sys.stdout)
 
 
-def format_jd_as_calendar_date(jd, scale='utc', **kwargs):
+def format_jd_as_calendar_date(jd, scale="utc", **kwargs):
     """Format a Julian Date value as a calendar date, returning the date as a
     string.
 
@@ -236,11 +231,12 @@ def format_jd_as_calendar_date(jd, scale='utc', **kwargs):
 
     """
     from astropy.time import Time
-    t = Time(jd, format='jd', scale=scale, **kwargs)
+
+    t = Time(jd, format="jd", scale=scale, **kwargs)
     return t.iso[:10]
 
 
-def format_jd_as_iso_date_time(jd, scale='utc', precision=0, **kwargs):
+def format_jd_as_iso_date_time(jd, scale="utc", precision=0, **kwargs):
     """Format a Julian Date value as an ISO 8601 date and time, returning a
     string.
 
@@ -255,7 +251,8 @@ def format_jd_as_iso_date_time(jd, scale='utc', precision=0, **kwargs):
 
     """
     from astropy.time import Time
-    t = Time(jd, format='jd', scale=scale, precision=precision, **kwargs)
+
+    t = Time(jd, format="jd", scale=scale, precision=precision, **kwargs)
     return t.iso
 
 
@@ -270,5 +267,6 @@ def format_obsid_as_calendar_date(obsid):
 
     """
     from astropy.time import Time
-    t = Time(obsid, format='gps')
+
+    t = Time(obsid, format="gps")
     return t.utc.iso[:10]

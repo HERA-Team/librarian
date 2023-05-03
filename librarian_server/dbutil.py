@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2016 the HERA Collaboration
 # Licensed under the BSD License.
 
@@ -7,20 +6,20 @@
 """
 
 
-__all__ = str('''
+__all__ = str(
+    """
 NotNull
-''').split()
+"""
+).split()
 
 from . import db
 
-
 # Useful name reexport
 
-from sqlalchemy.exc import SQLAlchemyError
 
 # Right now this module does almost nothing. Maybe that will change in the
 # future?
 
 
-def NotNull(kind, **kwargs):
+def NotNull(kind, **kwargs):  # noqa: N802
     return db.Column(kind, nullable=False, **kwargs)

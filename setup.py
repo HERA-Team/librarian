@@ -1,11 +1,7 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 The HERA Collaboration
 # Licensed under the 2-clause BSD License
 
-import os
-import re
-import codecs
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 package_name = "hera_librarian"
 
@@ -27,7 +23,7 @@ communicate with a Librarian server. It also includes the server code,
 although those modules are not installed in a standard ``pip install``.
 """,
     install_requires=["astropy >=2.0"],
-    tests_require=["pytest", "pytest-datafiles", "pytest-console-scripts"],
+    tests_require=["pytest", "pytest-datafiles>=3.0", "pytest-console-scripts"],
     packages=packages,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
@@ -39,21 +35,19 @@ although those modules are not installed in a standard ``pip install``.
         "server": [
             "aipy",
             "alembic",
-            "astropy >=2.0",
-            "flask",
-            "flask-sqlalchemy",
+            "astropy>=2.0",
+            "flask>=2.0",
+            "flask_sqlalchemy",
             "hera-librarian",
             "numpy",
             "psycopg2-binary",
             "pytz",
             "pyuvdata",
             "sqlalchemy>=1.4.0",
+            "tornado",
         ]
     },
-    scripts=[
-        "scripts/librarian_stream_file_or_directory.sh",
-        "scripts/runserver.py",
-    ],
+    scripts=["scripts/librarian_stream_file_or_directory.sh", "scripts/runserver.py"],
     entry_points={"console_scripts": ["librarian=hera_librarian.cli:main"]},
     use_scm_version=True,
     setup_requires=["setuptools_scm", "setuptools_scm_git_archive"],

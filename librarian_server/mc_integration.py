@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*-
 # Copyright 2017 the HERA Collaboration
 # Licensed under the BSD License.
 
@@ -13,31 +12,27 @@ package.
 """
 
 
-__all__ = '''
+__all__ = """
 is_file_record_invalid
 create_observation_record
 note_file_created
 note_file_upload_succeeded
 register_callbacks
-'''.split()
+""".split()
 
 import time
-
 from astropy.time import Time
-import six
-from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.engine.row import Row
+from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 
-from . import app, db, is_primary_server, logger
-from .dbutil import SQLAlchemyError
+from . import db, is_primary_server, logger
 from .webutil import ServerError
-
 
 # M&C severity classes
 FATAL, SEVERE, WARNING, INFO = range(1, 5)
 
 
-class MCManager(object):
+class MCManager:
     """A simple singleton class that checks in with M&C. Only gets created if M&C
     reporting is actually enabled.
 
@@ -48,6 +43,7 @@ class MCManager(object):
         self.git_hash = git_hash
 
         import hera_mc.mc
+
         self.mc_db = hera_mc.mc.connect_to_mc_db(None)
         self.mc_session = self.mc_db.sessionmaker()
 
@@ -72,23 +68,24 @@ class MCManager(object):
         else:
             text = str(fmt)
 
-        logger.error('M&C-related error (severity %d): %s', severity, text)
+        logger.error("M&C-related error (severity %d): %s", severity, text)
 
         try:
-            self.mc_session.add_subsystem_error(Time.now(), 'lib', severity, text)
+            self.mc_session.add_subsystem_error(Time.now(), "lib", severity, text)
         except Exception as e:
-            logger.error('could not log error to M&C: %s', e)
+            logger.error("could not log error to M&C: %s", e)
 
         try:
             self.mc_session.commit()
         except SQLAlchemyError as e:
             self.mc_session.rollback()
-            logger.error('could not commit error record to M&C: %s (rolled back)', e)
+            logger.error("could not commit error record to M&C: %s (rolled back)", e)
         except Exception as e:
-            logger.error('could not commit error record to M&C: %s', e)
+            logger.error("could not commit error record to M&C: %s", e)
 
     def check_in(self):
-        from sqlalchemy import func, outerjoin, select
+        from sqlalchemy import func
+
         from .file import File, FileInstance
         from .store import Store
 
@@ -99,36 +96,47 @@ class MCManager(object):
 
         num_files = db.session.query(func.count(File.name)).scalar() or 0
 
-        data_volume_gb = ((db.session.query(func.sum(File.size))
-                           .select_from(FileInstance)
-                           .outerjoin(File)).scalar() or 0) / 1024**3
+        data_volume_gb = (
+            (
+                db.session.query(func.sum(File.size)).select_from(FileInstance).outerjoin(File)
+            ).scalar()
+            or 0
+        ) / 1024**3
 
         free_space_gb = 0
         for store in Store.query.filter(Store.available):
-            free_space_gb += store.get_space_info()['available']  # measured in bytes
+            free_space_gb += store.get_space_info()["available"]  # measured in bytes
         free_space_gb /= 1024**3  # bytes => GiB
 
         upload_min_elapsed = (unix_now - self._last_file_upload_time) / 60
 
         from .bgtasks import get_unfinished_task_count
+
         num_processes = get_unfinished_task_count()
 
         try:
-            self.mc_session.add_lib_status(astro_now, num_files, data_volume_gb, free_space_gb,
-                                           upload_min_elapsed, num_processes, self.version_string,
-                                           self.git_hash)
+            self.mc_session.add_lib_status(
+                astro_now,
+                num_files,
+                data_volume_gb,
+                free_space_gb,
+                upload_min_elapsed,
+                num_processes,
+                self.version_string,
+                self.git_hash,
+            )
         except Exception as e:
             # If that failed it seems unlikely that we'll be able to continue,
             # but let's try.
-            self.error(SEVERE, 'could not report status to the M&C system: %s', e)
+            self.error(SEVERE, "could not report status to the M&C system: %s", e)
 
         try:
             self.mc_session.commit()
         except SQLAlchemyError as e:
             self.mc_session.rollback()
-            self.error(SEVERE, 'could not commit status to the M&C system: %s (rolled back)', e)
+            self.error(SEVERE, "could not commit status to the M&C system: %s (rolled back)", e)
         except Exception as e:
-            self.error(SEVERE, 'could not commit status to the M&C system: %s', e)
+            self.error(SEVERE, "could not commit status to the M&C system: %s", e)
 
         # Now report information on our remotes. The Librarian *server*
         # doesn't actually directly know about the other connections defined
@@ -154,7 +162,7 @@ class MCManager(object):
         # corner cases the bandwidth will get wonky, but we also have the
         # direct measurements from the pots to look at.
 
-        for conn_name, file_sizes in six.iteritems(self._remote_upload_stats):
+        for conn_name, file_sizes in self._remote_upload_stats.items():
             num_file_uploads = len(file_sizes)
             bytes_uploaded = sum(file_sizes)  # this works when the list is empty.
             bandwidth_Mbs = bytes_uploaded * 8 / (1024**2 * (unix_now - self._last_report_time))
@@ -166,6 +174,7 @@ class MCManager(object):
             # that to execute.
 
             from hera_librarian import LibrarianClient, RPCError
+
             client = LibrarianClient(conn_name)
             t0 = time.time()
 
@@ -179,15 +188,16 @@ class MCManager(object):
 
             # OK now we're ready to file our report!
 
-            self.mc_session.add_lib_remote_status(astro_now, conn_name, ping_time,
-                                                  num_file_uploads, bandwidth_Mbs)
+            self.mc_session.add_lib_remote_status(
+                astro_now, conn_name, ping_time, num_file_uploads, bandwidth_Mbs
+            )
             del file_sizes[:]
 
         try:
             self.mc_session.commit()
         except SQLAlchemyError as e:
             self.mc_session.rollback()
-            self.error(SEVERE, 'could not commit ping report to the M&C system: %s', e)
+            self.error(SEVERE, "could not commit ping report to the M&C system: %s", e)
 
         self._last_report_time = time.time()
 
@@ -205,29 +215,34 @@ class MCManager(object):
             obsid = file_obj.obsid._asdict()["obsid"]
         else:
             obsid = file_obj.obsid
-        for mc_obs in self.mc_session.get_obs(obsid=obsid):
+        for _mc_obs in self.mc_session.get_obs(obsid=obsid):
             return False  # if this executes, we got one and the file's OK
 
         # If we got here, there was no session and something bad is up!
-        self.error(SEVERE,
-                   'rejecting file %s (obsid %d): its obsid is not in M&C\'s hera_obs table',
-                   file_obj.name, file_obj.obsid)
+        self.error(
+            SEVERE,
+            "rejecting file %s (obsid %d): its obsid is not in M&C's hera_obs table",
+            file_obj.name,
+            file_obj.obsid,
+        )
         return True
 
     def create_observation_record(self, obsid):
         mc_obses = list(self.mc_session.get_obs(obsid=obsid))
 
         if len(mc_obses) != 1:
-            self.error(SEVERE,
-                       'expected one M&C record for obsid %d; got %d of them',
-                       obsid, len(mc_obses))
+            self.error(
+                SEVERE, "expected one M&C record for obsid %d; got %d of them", obsid, len(mc_obses)
+            )
             return None
 
         mc_obs = mc_obses[0]
-        from .observation import Observation
         from astropy.time import Time
+
+        from .observation import Observation
+
         start_jd = mc_obs.jd_start
-        stop_jd = Time(mc_obs.stoptime, format='gps').jd
+        stop_jd = Time(mc_obs.stoptime, format="gps").jd
         start_lst = mc_obs.lst_start_hr
         return Observation(obsid, start_jd, stop_jd, start_lst)
 
@@ -237,20 +252,28 @@ class MCManager(object):
 
         """
         try:
-            self.mc_session.add_lib_file(file_obj.name, file_obj.obsid,
-                                         file_obj.create_time_astropy,
-                                         file_obj.size / 1024**3)
+            self.mc_session.add_lib_file(
+                file_obj.name,
+                file_obj.obsid,
+                file_obj.create_time_astropy,
+                file_obj.size / 1024**3,
+            )
         except InvalidRequestError as e:
             # This could happen if the file's obsid were not registered in the
             # M&C database. Which shouldn't happen, but ...
-            self.error(SEVERE, 'couldn\'t register file %s (obsid %s) with M&C: %s',
-                       file_obj.name, file_obj.obsid, e)
+            self.error(
+                SEVERE,
+                "couldn't register file %s (obsid %s) with M&C: %s",
+                file_obj.name,
+                file_obj.obsid,
+                e,
+            )
 
         try:
             self.mc_session.commit()
         except SQLAlchemyError as e:
             self.mc_session.rollback()
-            self.error(SEVERE, 'could not commit file creation note to the M&C system: %s', e)
+            self.error(SEVERE, "could not commit file creation note to the M&C system: %s", e)
 
     def note_file_upload_succeeded(self, conn_name, file_size):
         self._last_file_upload_time = time.time()
@@ -270,14 +293,17 @@ def register_callbacks(version_string, git_hash):
         return
 
     from tornado import ioloop
-    cb = ioloop.PeriodicCallback(the_mc_manager.check_in, 15 * 60 *
-                                 1000)  # measured in milliseconds
+
+    cb = ioloop.PeriodicCallback(
+        the_mc_manager.check_in, 15 * 60 * 1000
+    )  # measured in milliseconds
     cb.start()
     return cb
 
 
 # Hooks for other subsystems to send info to M&C without having to worry about
 # whether M&C integration is actually activated.
+
 
 def is_file_record_invalid(file_obj):
     """If we're M&C-enabled, we refuse to create files with obsids that are not
@@ -298,14 +324,14 @@ def create_observation_record(obsid):
 
     """
     if not isinstance(obsid, int):
-        raise ValueError('obsid must be integer; got %r' % (obsid, ))  # in case a None slips in
+        raise ValueError(f"obsid must be integer; got {obsid!r}")  # in case a None slips in
 
     if the_mc_manager is None:
-        raise ServerError('cannot create fresh observations without M&C')
+        raise ServerError("cannot create fresh observations without M&C")
 
     rec = the_mc_manager.create_observation_record(obsid)
     if rec is None:
-        raise ServerError('expected M&C to know about obsid %s but it didn\'t', obsid)
+        raise ServerError("expected M&C to know about obsid %s but it didn't", obsid)
 
     db.session.add(rec)
     return rec
