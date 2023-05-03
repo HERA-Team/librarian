@@ -23,7 +23,7 @@ _log_level_names = {
 }
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def db_connection():
     # reuse most of the code from _initialize()
     config_path = os.environ.get("LIBRARIAN_CONFIG_PATH", "server-config.json")
