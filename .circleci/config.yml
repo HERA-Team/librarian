@@ -1,13 +1,13 @@
 version: 2.1
 orbs:
-  codecov: codecov/codecov@1.0.4
+  codecov: codecov/codecov@3.2.4
 jobs:
   librarian:
     parameters:
       python_version:
         type: string
     docker:
-      - image: continuumio/miniconda3:latest
+      - image: mambaorg/micromamba:1.4.2
       - image: cimg/postgres:15.2
         environment:
           POSTGRES_USER: root
