@@ -1,9 +1,7 @@
 name: base
 channels:
-  - defaults
   - conda-forge
 dependencies:
-  - aipy
   - alembic
   - astropy
   - flask
@@ -12,6 +10,5 @@ dependencies:
   - numpy
   - psycopg2
   - pytz
-  - pyuvdata
   - sqlalchemy
   - tornado
