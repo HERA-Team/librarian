@@ -185,24 +185,28 @@ def _convert_book_id_to_obsid(book_id):
         # handle telescope + tube info
         if tel_tube.lower().startswith("sat"):
             # This assumes the string is of the form "satN", where N is the SAT
-            # number. Note: we only accommodate up to 64 SATs.
+            # number. Note: we only accommodate up to 16 SATs.
             tt_int = int(tel_tube[3:])
         elif tel_tube.lower().startswith("lat"):
             # This is a LAT observation. The tube names follow the form "iN",
-            # "cN", or "oN". We accommodate up to 64 of each type, and add the
+            # "cN", or "oN". We accommodate up to 16 of each type, and add the
             # actual tube number to the final number value.
             tube_type = tel_tube[3]
             if tube_type == "i":
-                tt_int = 64
+                tt_int = 16
             elif tube_type == "c":
-                tt_int = 128
+                tt_int = 32
             elif tube_type == "o":
-                tt_int = 192
+                tt_int = 48
             else:
                 raise ValueError(f"LAT tube type {tube_type} not recognized")
 
             tube_number = int(tel_tube[4:])
             tt_int += tube_number
+        elif tel_tube.lower().startswith("ocs"):
+            # This is an OCS book. It also has the form "ocsN", where N is the
+            # OCS agent number. We accommodate up to 8 OCS agents.
+            tt_int = 64 + int(tel_tube[3:])
         else:
             raise ValueError(f"could not recognize telescope type {tel_tube}")
 
