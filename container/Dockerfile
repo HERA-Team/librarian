@@ -1,16 +1,19 @@
 ## -*- docker-image-name: "librarian-app" -*-
 
 # define base image that has librarian installed
-FROM continuumio/miniconda3:4.8.2 AS librarian-base
+FROM continuumio/miniconda3:latest AS librarian-base
 
-# copy app
+# copy setup file
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
-COPY . .
+COPY ci/librarian_server_conda_env.yml ci/librarian_server_conda_env.yml
 
 # update base environment
 RUN conda update conda && conda update --all
 RUN conda env update --file ci/librarian_server_conda_env.yml
+
+# copy app code
+COPY . .
 
 # install
 RUN pip install .
@@ -29,5 +32,6 @@ FROM librarian-base AS librarian-store
 # install openssh-server
 RUN apt-get update && apt-get install -y openssh-server rsync
 RUN mkdir -p /run/sshd
-EXPOSE 22
+RUN groupadd sobs -g 72653 && useradd --no-log-init -m -g 72653 -u 72653 sobs
+USER sobs
 ENTRYPOINT ["./container/store_start.sh"]

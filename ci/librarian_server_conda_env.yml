@@ -13,5 +13,7 @@ dependencies:
   - psycopg2
   - pytz
   - pyuvdata
+  - requests
+  - requests-oauthlib
   - sqlalchemy
   - tornado
