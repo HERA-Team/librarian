@@ -11,6 +11,8 @@ probably ways to work around that but things work well enough as is.
 
 import logging
 import sys
+import time
+import signal
 from pkg_resources import get_distribution, DistributionNotFound, parse_version
 
 
@@ -35,6 +37,9 @@ def _initialize():
     import os.path
     from flask import Flask
     from flask_sqlalchemy import SQLAlchemy
+
+    # we need to add this environment variable to let Flask use OAuth2 over http
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
     if "LIBRARIAN_CONFIG_PATH" not in os.environ:
         raise ValueError(
@@ -209,6 +214,32 @@ def commandline(argv):
         http_server.start(n_server_processes)
         with app.app_context():
             db.engine.dispose()  # force new connection after potentially forking
+
+        # add graceful shutdown capabilities
+        MAX_WAIT = 3  # seconds
+        def sig_handler(sig, frame):
+            io_loop = IOLoop.instance()
+
+            def stop_loop(deadline):
+                now = time.time()
+                if now < deadline:
+                    logging.info("Waiting for next tick")
+                    io_loop.add_timeout(now + 1, stop_loop, deadline)
+                else:
+                    io_loop.stop()
+                    logging.info("Shutdown finally")
+
+            def shutdown():
+                logging.info("Stopping http server")
+                http_server.stop()
+                logging.info("Will shutdown in %s seconds...", MAX_WAIT)
+                stop_loop(time.time() + MAX_WAIT)
+
+            logging.warning("Caught signal: %s", sig)
+            io_loop.add_callback_from_signal(shutdown)
+
+        signal.signal(signal.SIGTERM, sig_handler)
+        signal.signal(signal.SIGINT, sig_handler)
 
     do_mandc = app.config.get('report_to_mandc', False)
     if do_mandc:

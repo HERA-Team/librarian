@@ -71,14 +71,32 @@ class LibrarianClient(object):
     "The JSON config fragment corresponding to the desired connection."
 
     def __init__(self, conn_name, conn_config=None):
-        """If `conn_config` is not None, it should be a dict containing at least the
-        entries "authenticator" and "url" that define how to talk to the
-        target Librarian. Otherwise, the file `~/.hl_client.cfg` will be used
-        to look up a dict containing the same information.
+        """
+        A class for interacting with a Librarian server.
 
-        A minimal `conn_config` dict should contain keys "authenticator" and
-        "url", which are used to contact the Librarian's RPC API.
+        If `conn_config` is not None, it should be a dict containing at least
+        the entries "url", and then "authenticator" (if the server uses
+        authenticator-based authentication) XOR "github_username" and
+        "github_pat" (if the server uses GitHub-based authentication), which
+        define how to talk to the target Librarian. Otherwise, the file
+        `~/.hl_client.cfg` will be used to look up a dict containing the same
+        information.
 
+        A minimal `conn_config` dict should contain keys "url", and then either
+        "authenticator" OR "github_username" and "github_pat", which are used to
+        contact the Librarian's RPC API. Note that having both defined will
+        raise an error, as a server will only do authenticator- or GitHub-based
+        authentication. The user a priori should know which one the server they
+        are trying to contact uses.
+
+        Parameters
+        ----------
+        conn_name : str
+            A string defining the name of the connection to use.
+        conn_config : dict or None
+            A dictionary containing details for how to interact with the target
+            Librarian. If None, then we read from the user's ~/.hl_client.cfg
+            file.
         """
         self.conn_name = conn_name
 
@@ -95,7 +113,20 @@ class LibrarianClient(object):
         JSON reply; return the decoded version of the latter.
 
         """
-        kwargs['authenticator'] = self.config['authenticator']
+        # figure out if we're using authenticator- or GitHub-based authentication
+        if "authenticator" in self.config:
+            if "github_username" or "github_pat" in self.config:
+                raise ValueError(
+                    "both 'authenticator' and one or both of {'github_username', "
+                    "'github_pat'} were specified in the config file. This is "
+                    "not supported, please only use one or the other depending "
+                    "on which remote server you are attempting to access."
+                )
+            kwargs['authenticator'] = self.config['authenticator']
+        else:
+            kwargs["github_username"] = self.config["github_username"]
+            kwargs["github_pat"] = self.config["github_pat"]
+
         for k in list(kwargs.keys()):
             if kwargs[k] is None:
                 kwargs.pop(k)

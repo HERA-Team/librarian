@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # put ssh config files in place
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-cat /run/secrets/id_rsa_pub > ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+HOME="${VARIABLE:=/home/sobs}"
+mkdir -p $HOME/.ssh
+chmod 700 $HOME/.ssh
+cat /secrets/id_rsa_pub > $HOME/.ssh/authorized_keys
+chmod 600 $HOME/.ssh/authorized_keys
 
 # start sshd process
 echo "starting sshd process"
-/usr/sbin/sshd -D -o ListenAddress=0.0.0.0 -o PasswordAuthentication=no
+/usr/sbin/sshd -D -f /secret_keys/sshd_config
