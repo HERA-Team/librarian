@@ -218,11 +218,11 @@ class Observation(db.Model):
         sequencer_ref=None,
     ):
         self.obsid = obsid
-        if isinstance(timestamp_start, int):
+        if isinstance(timestamp_start, (int, float)):
             self.timestamp_start = datetime.fromtimestamp(timestamp_start)
         else:
             self.timestamp_start = timestamp_start
-        if isinstance(timestamp_end, int):
+        if isinstance(timestamp_end, (int, float)):
             self.timestamp_end = datetime.fromtimestamp(timestamp_end)
         else:
             self.timestamp_end = timestamp_end
