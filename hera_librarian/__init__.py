@@ -115,7 +115,7 @@ class LibrarianClient(object):
         """
         # figure out if we're using authenticator- or GitHub-based authentication
         if "authenticator" in self.config:
-            if "github_username" or "github_pat" in self.config:
+            if "github_username" in self.config or "github_pat" in self.config:
                 raise ValueError(
                     "both 'authenticator' and one or both of {'github_username', "
                     "'github_pat'} were specified in the config file. This is "
