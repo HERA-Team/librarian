@@ -195,7 +195,7 @@ def _convert_book_id_to_obsid(book_id):
             # to the final number value.
             if tel_tube.lower() == "lat":
                 # plain lat
-                tt_int = 16
+                tt_int = 32
             else:
                 tube_type = tel_tube[3]
                 if tube_type == "i":
