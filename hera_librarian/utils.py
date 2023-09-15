@@ -183,26 +183,32 @@ def _convert_book_id_to_obsid(book_id):
 
     if tel_tube is not None:
         # handle telescope + tube info
-        if tel_tube.lower().startswith("sat"):
-            # This assumes the string is of the form "satN", where N is the SAT
+        if tel_tube.lower().startswith("satp"):
+            # This assumes the string is of the form "satpN", where N is the SAT
             # number. Note: we only accommodate up to 16 SATs.
-            tt_int = int(tel_tube[3:])
+            tt_int = int(tel_tube[4:])
         elif tel_tube.lower().startswith("lat"):
-            # This is a LAT observation. The tube names follow the form "iN",
-            # "cN", or "oN". We accommodate up to 16 of each type, and add the
-            # actual tube number to the final number value.
-            tube_type = tel_tube[3]
-            if tube_type == "i":
-                tt_int = 16
-            elif tube_type == "c":
+            # This is a LAT observation. There is a plain "lat", which is
+            # distinct from "latc", "lati", or "lato". We group the plain "lat"
+            # with "latc", because the only allowed value is "latc0".  We
+            # accommodate up to 16 of each type, and add the actual tube number
+            # to the final number value.
+            if tel_tube.lower() == "lat":
+                # plain lat
                 tt_int = 32
-            elif tube_type == "o":
-                tt_int = 48
             else:
-                raise ValueError(f"LAT tube type {tube_type} not recognized")
+                tube_type = tel_tube[3]
+                if tube_type == "i":
+                    tt_int = 16
+                elif tube_type == "c":
+                    tt_int = 33  # accounting for plain "lat"
+                elif tube_type == "o":
+                    tt_int = 48
+                else:
+                    raise ValueError(f"LAT tube type {tube_type} not recognized")
 
-            tube_number = int(tel_tube[4:])
-            tt_int += tube_number
+                tube_number = int(tel_tube[4:])
+                tt_int += tube_number
         elif tel_tube.lower().startswith("ocs"):
             # This is an OCS book. It also has the form "ocsN", where N is the
             # OCS agent number. We accommodate up to 8 OCS agents.
