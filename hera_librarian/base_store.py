@@ -207,7 +207,7 @@ class BaseStore(object):
         """
         try:
             import globus_sdk
-            from globus_sdk.exc import AuthAPIError
+            from globus_sdk.services.auth.errors import AuthAPIError
         except ModuleNotFoundError:
             raise RPCError(
                 "globus_sdk import",
