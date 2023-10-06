@@ -59,7 +59,7 @@ although those modules are not installed in a standard ``pip install``.
     ],
     extras_require={
         "server": server_reqs,
-        "globus": globus_reqs
+        "globus": globus_reqs,
         "all": all_reqs,
     },
     scripts=[
