@@ -430,7 +430,7 @@ def register_instances(args, sourcename=None):
 
         # Do we already know about this instance? If so, just ignore it.
 
-        store_path = full_path[len(slashed_prefix) :]
+        store_path = full_path[len(slashed_prefix):]
         parent_dirs = os.path.dirname(store_path)
         name = os.path.basename(store_path)
 
