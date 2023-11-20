@@ -323,5 +323,5 @@ def maybe_add_stores():
     try:
         db.session.commit()
     except SQLAlchemyError:
-        db.rollback()
+        db.session.rollback()
         raise  # this only happens on startup, so just refuse to start
