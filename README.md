@@ -1,4 +1,4 @@
-# The HERA Librarian
+# The Librarian
 
 This system keeps track of all of the primary data products stored at a given
 site. There is a Flask-based server that keeps track of everything using a
