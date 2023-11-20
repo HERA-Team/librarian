@@ -12,3 +12,4 @@ eggs/
 .eggs/
 *.egg
 container/secrets
+env/*
