@@ -16,7 +16,7 @@ class CoreStore:
 
     def __init__(self, name: str):
         self.name = name
-
+    
     @property
     def available(self) -> bool:
         """
@@ -72,5 +72,20 @@ class CoreStore:
             Absolute path on the staging machine.
         store_path: str
             Absolute path on the store machine.
+        """
+        raise NotImplementedError
+
+    def to_dict(self) -> dict:
+        """
+        Converts the store information to a dictionary. If required,
+        the store should be able to re-create itself from that dictionary.
+        """
+        raise NotImplementedError
+    
+    @classmethod
+    def from_dict(cls, d: dict) -> "CoreStore":
+        """
+        Creates a store from a dictionary. The dictionary should be
+        the same as the one returned by to_dict.
         """
         raise NotImplementedError

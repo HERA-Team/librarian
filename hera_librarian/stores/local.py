@@ -48,13 +48,30 @@ class LocalStore(CoreStore):
         return stage_path
 
     def unstage(self, path: Path):
+        # TODO: Check if this path is within the staging area.
+        
         if os.path.exists(path):
             os.remove(path)
 
         return
     
     def commit(self, staging_path: Path, store_path: Path):
+        # TODO: Check if these paths are within the staging and store area.
+
         shutil.move(staging_path, store_path)
     
 
-
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "staging_path": str(self.staging_path),
+            "store_path": str(self.store_path)
+        }
+    
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            name=d["name"],
+            staging_path=Path(d["staging_path"]),
+            store_path=Path(d["store_path"])
+        )
