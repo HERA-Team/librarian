@@ -310,14 +310,17 @@ def maybe_add_stores():
 
     """
     from .dbutil import SQLAlchemyError
-    from .store import Store
+    from .storemetadata import StoreMetadata
+    from hera_librarian.stores import StoreNames
 
     for name, cfg in app.config.get('add-stores', {}).items():
-        prev = Store.query.filter(Store.name == name).first()
+        prev = StoreMetadata.query.filter(StoreMetadata.name == name).first()
         if prev is None:
-            store = Store(name, cfg['path_prefix'], cfg['ssh_host'])
-            store.http_prefix = cfg.get('http_prefix')
-            store.available = cfg.get('available', True)
+            store = StoreMetadata(
+                name=name,
+                store_type=StoreNames[cfg["type"]],
+                store_data={**cfg, "name": name},
+            )
             db.session.add(store)
 
     try:
