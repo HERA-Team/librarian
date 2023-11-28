@@ -23,7 +23,10 @@ from . import app, db, logger
 from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 from .observation import Observation
-from .store import Store
+# from .store import Store
+from .storemetadata import StoreMetadata
+
+from .deletion import DeletionPolicy
 
 
 def infer_file_obsid(parent_dirs, name, info):
@@ -452,34 +455,6 @@ class File (db.Model):
                                        **extras)
 
 
-class DeletionPolicy (object):
-    """A simple enumeration of symbolic constants for the "deletion_policy"
-    column in the FileInstance table.
-
-    """
-    DISALLOWED = 0
-    ALLOWED = 1
-
-    def __init__(self): assert False, 'instantiation of enum not allowed'
-
-    @classmethod
-    def parse_safe(cls, text):
-        if text == 'disallowed':
-            return cls.DISALLOWED
-        if text == 'allowed':
-            return cls.ALLOWED
-
-        logger.warn('unrecognized deletion policy %r; using DISALLOWED', text)
-        return cls.DISALLOWED
-
-    @classmethod
-    def textualize(cls, value):
-        if value == cls.DISALLOWED:
-            return 'disallowed'
-        if value == cls.ALLOWED:
-            return 'allowed'
-        return '???(%r)' % (value, )
-
 
 class FileInstance (db.Model):
     """A FileInstance is a copy of a File that lives on one of this Librarian's
@@ -499,13 +474,13 @@ class FileInstance (db.Model):
     """
     __tablename__ = 'file_instance'
 
-    store = db.Column(db.BigInteger, db.ForeignKey(Store.id), primary_key=True)
+    store = db.Column(db.BigInteger, db.ForeignKey(StoreMetadata.id), primary_key=True)
     parent_dirs = db.Column(db.String(128), primary_key=True)
     name = db.Column(db.String(256), db.ForeignKey(File.name), primary_key=True)
     deletion_policy = NotNull(db.Integer, default=DeletionPolicy.DISALLOWED)
 
     file = db.relationship('File', back_populates='instances')
-    store_object = db.relationship('Store', back_populates='instances')
+    store_object = db.relationship('StoreMetadata', back_populates='instances')
 
     name_index = db.Index('file_instance_name', name)
 
@@ -662,8 +637,8 @@ def set_one_file_deletion_policy(args, sourcename=None):
     deletion_policy = required_arg(args, str, 'deletion_policy')
     restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
-        from .store import Store
-        restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
+        from .storemetadata import StoreMetadata
+        restrict_to_store = StoreMetadata.from_name(restrict_to_store)  # ServerError if lookup fails
 
     file = File.query.get(file_name)
     if file is None:
@@ -709,8 +684,8 @@ def delete_file_instances(args, sourcename=None):
     mode = optional_arg(args, str, 'mode', 'standard')
     restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
-        from .store import Store
-        restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
+        from .storemetadata import StoreMetadata
+        restrict_to_store = StoreMetadata.from_name(restrict_to_store)  # ServerError if lookup fails
 
     file = File.query.get(file_name)
     if file is None:
@@ -731,8 +706,8 @@ def delete_file_instances_matching_query(args, sourcename=None):
     mode = optional_arg(args, str, 'mode', 'standard')
     restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
-        from .store import Store
-        restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
+        from .storemetadata import StoreMetadata
+        restrict_to_store = StoreMetadat.from_name(restrict_to_store)  # ServerError if lookup fails
 
     from .search import compile_search
     query = compile_search(query, query_type='files')
