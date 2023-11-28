@@ -20,7 +20,8 @@ depends_on = None
 
 
 def upgrade():
-    op.alter_column('file', 'obsid', existing_type=sa.BIGINT(), nullable=True)
+    with op.batch_alter_table("file", schema=None) as batch_op:
+        batch_op.alter_column('obsid', existing_type=sa.BIGINT(), nullable=True)
 
 
 def downgrade():
