@@ -10,10 +10,12 @@ from . import db, app, logger
 from hera_librarian.stores import Stores, CoreStore
 
 from .webutil import ServerError
-from .file import DeletionPolicy, File, FileInstance
+from .deletion import DeletionPolicy
 from .dbutil import SQLAlchemyError
 
 from enum import Enum
+from pathlib import Path
+from typing import Optional
 
 
 class MetaMode(Enum):
@@ -21,8 +23,8 @@ class MetaMode(Enum):
     Metadata inference mode.
     """
 
-    INFER
-    DIRECT
+    INFER = 0
+    DIRECT = 1
 
 
 class StoreMetadata(db.Model):
@@ -40,23 +42,23 @@ class StoreMetadata(db.Model):
     """
 
     # The store represented by this metadata.
-    store: CoreStore
+    # store: CoreStore
 
     __tablename__ = "store_metadata"
 
     # Unique ID of this store.
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     # The name of this store (as defined in the parameter file).
-    name = db.Column(db.String(255), nullable=False, unique=True)
+    name = db.Column(db.String(256), nullable=False, unique=True)
     # The type of this store. Indexes into hera_librarain.stores.Stores.
     store_type = db.Column(db.Integer, nullable=False)
     # The data required for this store.
     store_data = db.Column(db.PickleType)
     # The instances of files that are stored on this store.
-    instances = db.relationship("FileInstance", back_populates="store")
+    instances = db.relationship("FileInstance", back_populates="store_object")
 
     def __init__(self, name: str, store_type: int, store_data: dict):
-        super().__init__(self)
+        super().__init__()
 
         self.name = name
         self.store_type = store_type
@@ -77,6 +79,10 @@ class StoreMetadata(db.Model):
         Process a staged file, moving it to the store area and creating a
         FileInstance for it.
         """
+
+        # TODO: Fix this; it's a hack because we have circular imports.
+
+        from .file import File, FileInstance
 
         destination_directory = store_path.parent
         destination_name = store_path.name
