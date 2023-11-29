@@ -5,6 +5,7 @@
 
 import json
 import os.path
+from pathlib import Path
 import urllib.request, urllib.parse, urllib.error
 from pkg_resources import get_distribution, DistributionNotFound
 
@@ -182,6 +183,71 @@ class LibrarianClient(object):
                                   minimum_start_jd=minimum_start_jd,
                                   maximum_start_jd=maximum_start_jd,
                                   )
+    
+    def upload_file_transfer_manager(
+        self,
+        local_path: Path,
+        dest_path: Path,
+        deletion_policy: str='disallowed',
+        null_obsid: bool=False,
+    ) -> dict:
+        
+        deletion_policy = _normalize_deletion_policy(deletion_policy)
+
+        if dest_path.is_absolute():
+            raise Exception(f"Destination path may not be absolute; got {dest_path}")
+        
+        # Ask the librarian for a staging directory, and a list of transfer managers
+        # to try.
+
+        from .utils import get_size_from_path
+
+        info = self._do_http_post(
+            "initiate_upload",
+            upload_size=get_size_from_path(local_path),
+        )
+
+        # Pop out the metadata:
+        staging_dir = Path(info.pop("staging_dir"))
+        store_name = info.pop("store_name")
+        available_bytes_on_store = info.pop("available_bytes_on_store")
+        success = info.pop("success")
+
+        # The rest of the info is the transfer manager data.
+        from .transfers import transfer_manager_from_name, CoreTransferManager
+
+        transfer_managers: dict[str, CoreTransferManager] = {
+            name: transfer_manager_from_name(name).from_dict(data)
+            for name, data in info.items() if data.get("available", False)
+        }
+
+        # Now try all the transfer managers. If they're valid, we try to use them.
+        # If they fail, we should probably catch the exception.
+        # TODO: Catch the exception on failure.
+        for name, transfer_manager in transfer_managers.items():
+            if transfer_manager.valid:
+                transfer_manager.transfer(
+                    local_path=local_path, remote_path=staging_dir
+                )
+            else:
+                print(f"Warning: transfer manager {name} is not valid.")
+
+        # If we made it here, the file is successfully on the store!
+
+        compelte_upload_info = self._do_http_post(
+            'complete_upload',
+            store_name=store_name,
+            staging_dir=str(staging_dir),
+            dest_store_path=str(dest_path),
+            meta_mode="infer",
+            deletion_policy=deletion_policy,
+            # TODO: Figure out what to do here...
+            staging_was_known=False,
+            null_obsid=null_obsid,
+        )
+
+        return
+  
 
     def upload_file(
         self,
