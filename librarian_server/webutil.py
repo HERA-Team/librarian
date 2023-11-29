@@ -26,6 +26,7 @@ from requests_oauthlib import OAuth2Session
 
 from . import app, logger
 
+from pathlib import Path
 
 # define OAuth2 stuff
 OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
@@ -342,6 +343,11 @@ def _coerce(argtype, name, val):
         if not isinstance(val, list):
             raise ServerError('parameter "%s" should be a list, but got %r', name, val)
         return val
+    
+    if argtype is Path:
+        if not isinstance(val, (Path, str)):
+            raise ServerError('parameter "%s" should be a Path (str for serialization), but got %r (type %s)', name, val, type(val))
+        return Path(val)
 
     raise ServerError('internal bug: unexpected argument type %s', argtype)
 
