@@ -5,9 +5,10 @@ Includes the StoreMetadata class, which is a database model.
 """
 
 
-from . import db, app, logger
+from . import db
 
 from hera_librarian.stores import Stores, CoreStore
+from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
 
 from .webutil import ServerError
 from .deletion import DeletionPolicy
@@ -42,7 +43,9 @@ class StoreMetadata(db.Model):
     """
 
     # The store represented by this metadata.
-    # store: CoreStore
+    # store_manager: CoreStore
+    # The transfer managers that can be used by this store.
+    # transfer_managers: dict[str, CoreTransferManager]
 
     __tablename__ = "store_metadata"
 
@@ -56,15 +59,21 @@ class StoreMetadata(db.Model):
     store_data = db.Column(db.PickleType)
     # The instances of files that are stored on this store.
     instances = db.relationship("FileInstance", back_populates="store_object")
+    # The transfer managers that are valid for this store.
+    transfer_manager_data = db.Column(db.PickleType)
 
-    def __init__(self, name: str, store_type: int, store_data: dict):
+    def __init__(self, name: str, store_type: int, store_data: dict, transfer_manager_data: dict[str, dict]):
         super().__init__()
 
         self.name = name
         self.store_type = store_type
         self.store_data = store_data
 
-        self.store = Stores[store_type].from_dict(store_data)
+        self.store_manager: CoreStore = Stores[store_type].from_dict(store_data)
+        self.transfer_managers: dict[str, CoreTransferManager] = {
+            name: transfer_manager_from_name(name).from_dict(data)
+            for name, data in transfer_manager_data.items() if data["available"]
+        }
 
     def process_staged_file(
         self,
@@ -87,7 +96,7 @@ class StoreMetadata(db.Model):
         destination_directory = store_path.parent
         destination_name = store_path.name
 
-        if null_obsid and meta_mode != MetaModes.INFER:
+        if null_obsid and meta_mode != MetaMode.INFER:
             raise ServerError(
                 "Internal error: null_obsid only valid when meta_mode is INFER."
             )
@@ -102,7 +111,7 @@ class StoreMetadata(db.Model):
         if instance is not None:
             # TODO: Is this _actually_ something that we want to do? Is this a case
             #       that we need to guard against?
-            self.store.unstage(staged_path)
+            self.store_manager.unstage(staged_path)
             return
 
         # ...otherwise, we need to move the staged file to the store area.
@@ -116,14 +125,14 @@ class StoreMetadata(db.Model):
             # the records we need.
 
             # Files have a unique file name.
-            file_metadata = File.query.get(file_name)
+            file_metadata = File.query.get(destination_name)
 
-            if file is None:
+            if file_metadata is None:
                 # Delete the file, we have a problem!
-                this.store.unstage(staged_path)
+                self.store_manager.unstage(staged_path)
 
                 raise ServerError(
-                    f"Cannot complete upload of {self.name} to {self.store.name} with "
+                    f"Cannot complete upload of {self.name} to {self.store_manager.name} with "
                     f"path {store_path}: proper metadata were not uploaded in initiate_upload "
                     "call."
                 )
@@ -136,7 +145,7 @@ class StoreMetadata(db.Model):
 
             if not file_metadata.md5 == staged_md5:
                 raise ServerError(
-                    f"Cannot complete upload of {self.name} to {self.store.name} with "
+                    f"Cannot complete upload of {self.name} to {self.store_manager.name} with "
                     f"path {store_path}: md5sum of staged file does not match that of "
                     f"file metadata ({staged_md5}/{file_metadata.md5})."
                 )
@@ -147,14 +156,14 @@ class StoreMetadata(db.Model):
 
             if source_name is None:
                 raise ServerError(
-                    f"Cannot complete upload of {self.name} to {self.store.name} with "
+                    f"Cannot complete upload of {self.name} to {self.store_manager.name} with "
                     f"path {store_path}: source_name must be provided when meta_mode is "
                     "INFER."
                 )
 
             # This creates the File instance in the database, too.
             file_metadata = File.get_inferring_info(
-                store=self.store,
+                store=self.store_manager,
                 store_path=store_path,
                 source_name=source_name,
                 null_obsid=null_obsid,
@@ -167,7 +176,7 @@ class StoreMetadata(db.Model):
 
         # TODO: Permissions mode changes (from app.config).
 
-        self.store.commit(staged_path, store_path)
+        self.store_manager.commit(staged_path, store_path)
 
         file_instance = FileInstance(
             store=self,
