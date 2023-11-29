@@ -1,3 +1,4 @@
+from . import logger
 
 class DeletionPolicy (object):
     """A simple enumeration of symbolic constants for the "deletion_policy"
