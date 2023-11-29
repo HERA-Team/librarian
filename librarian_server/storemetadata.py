@@ -29,6 +29,15 @@ class MetaMode(Enum):
     INFER = 0
     DIRECT = 1
 
+    @classmethod
+    def from_str(cls, string: str) -> "MetaMode":
+        if string.lower() == "infer":
+            return cls.INFER
+        elif string.lower() == "direct":
+            return cls.DIRECT
+        else:
+            raise ValueError(f"Invalid MetaMode string {string}.")
+
 
 class StoreMetadata(db.Model):
     """
@@ -82,7 +91,7 @@ class StoreMetadata(db.Model):
 
         self.transfer_managers: dict[str, CoreTransferManager] = {
             name: transfer_manager_from_name(name).from_dict(data)
-            for name, data in self.transfer_manager_data.items() if data["available"]
+            for name, data in self.transfer_manager_data.items() if data.get("available", False)
         }
 
     def process_staged_file(
@@ -103,8 +112,14 @@ class StoreMetadata(db.Model):
 
         from .file import File, FileInstance
 
-        destination_directory = store_path.parent
-        destination_name = store_path.name
+        # TODO: Undo this coercion.
+        staged_path = Path(staged_path)
+        store_path = Path(store_path)
+
+        staging_directory = str(staged_path.parent)
+        staging_name = str(staged_path.name)
+        store_directory = str(store_path.parent)
+        store_name = str(store_path.name)
 
         if null_obsid and meta_mode != MetaMode.INFER:
             raise ServerError(
@@ -115,7 +130,7 @@ class StoreMetadata(db.Model):
         # the staged file...
 
         instance = FileInstance.query.get(
-            (self.id, destination_directory, destination_name)
+            (self.id, store_directory, store_name)
         )
 
         if instance is not None:
@@ -135,7 +150,7 @@ class StoreMetadata(db.Model):
             # the records we need.
 
             # Files have a unique file name.
-            file_metadata = File.query.get(destination_name)
+            file_metadata = File.query.get(store_name)
 
             if file_metadata is None:
                 # Delete the file, we have a problem!
@@ -174,7 +189,7 @@ class StoreMetadata(db.Model):
             # This creates the File instance in the database, too.
             file_metadata = File.get_inferring_info(
                 store=self.store_manager,
-                store_path=store_path,
+                store_path=staged_path,
                 source_name=source_name,
                 null_obsid=null_obsid,
             )
@@ -186,12 +201,12 @@ class StoreMetadata(db.Model):
 
         # TODO: Permissions mode changes (from app.config).
 
-        self.store_manager.commit(staged_path, store_path)
+        self.store_manager.commit(staging_name, store_name)
 
         file_instance = FileInstance(
-            store=self,
-            parent_dirs=destination_directory,
-            file_name=destination_name,
+            store_obj=self,
+            parent_dirs=store_directory,
+            name=store_name,
             deletion_policy=deletion_policy,
         )
 
@@ -209,7 +224,7 @@ class StoreMetadata(db.Model):
         return file_instance
 
     @classmethod
-    def from_name(cls, name):
+    def from_name(cls, name) -> "StoreMetadata":
         stores = cls.query.filter_by(name=name).all()
 
         if len(stores) == 0:
