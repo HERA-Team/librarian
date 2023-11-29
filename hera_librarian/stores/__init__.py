@@ -2,6 +2,7 @@
 All valid stores.
 """
 
+from .pathinfo import PathInfo
 from .core import CoreStore
 from .local import LocalStore
 
