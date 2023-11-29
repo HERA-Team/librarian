@@ -202,13 +202,13 @@ class File (db.Model):
 
         if info is None:
             try:
-                info = store.get_info_for_path(store_path)
+                info = store.path_info(store_path)
             except Exception as e:
                 raise ServerError('cannot register %s:%s: %s', store.name, store_path, e)
 
         size = required_arg(info, int, 'size')
         md5 = required_arg(info, str, 'md5')
-        type = required_arg(info, str, 'type')
+        type = required_arg(info, str, 'filetype')
 
         from .observation import Observation
 
@@ -541,7 +541,7 @@ class FileEvent (db.Model):
     """
     __tablename__ = 'file_event'
 
-    id = db.Column(db.BigInteger, primary_key=True)
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     name = db.Column(db.String(256), db.ForeignKey(File.name))
     time = NotNull(db.DateTime)
     type = db.Column(db.String(64))
@@ -558,6 +558,20 @@ class FileEvent (db.Model):
         self.time = datetime.datetime.utcnow().replace(microsecond=0)
         self.type = type
         self.payload = json.dumps(payload_struct)
+        # ID explicitly non NULL, so we need to set it to a unique ID.
+        if not self.id:
+            self.id = self.get_new_id()
+
+    def get_new_id(self):
+        """Gets a 'new' ID for first instantiation."""
+        # TODO: Use acutal database ops here lol
+        list_of_ids = [store.id for store in FileEvent.query.all()]
+
+        if len(list_of_ids) == 0:
+            return 1
+        else:
+            return max(list_of_ids) + 1
+
 
     @property
     def payload_json(self):
