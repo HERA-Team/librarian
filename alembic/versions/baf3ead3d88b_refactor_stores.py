@@ -24,6 +24,7 @@ def upgrade():
                 sa.Column('name', sa.String(length=256), nullable=False),
                 sa.Column('store_type', sa.Integer(), nullable=False),
                 sa.Column('store_data', sa.PickleType(), nullable=True),
+                sa.Column('transfer_manager_data', sa.PickleType(), nullable=True),
                 sa.PrimaryKeyConstraint('id'),
                 sa.UniqueConstraint('name')
     )
