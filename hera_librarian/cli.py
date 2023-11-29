@@ -1037,6 +1037,15 @@ def upload(args):
             transfer_token=args.transfer_token,
             source_endpoint_id=args.source_endpoint_id,
         )
+    except KeyError:
+        from pathlib import Path
+
+        client.upload_file_transfer_manager(
+            local_path=Path(args.local_path),
+            dest_path=Path(args.dest_store_path),
+            deletion_policy=args.deletion,
+            null_obsid=args.null_obsid,
+        )
     except RPCError as e:
         die("upload failed: {}".format(e))
 
