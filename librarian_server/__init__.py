@@ -320,6 +320,7 @@ def maybe_add_stores():
                 name=name,
                 store_type=StoreNames[cfg["type"]],
                 store_data={**cfg, "name": name},
+                transfer_manager_data=cfg["transfer"]
             )
             db.session.add(store)
 
