@@ -329,3 +329,8 @@ def maybe_add_stores():
     except SQLAlchemyError:
         db.session.rollback()
         raise  # this only happens on startup, so just refuse to start
+
+
+# Import routes
+
+from .api.upload import *

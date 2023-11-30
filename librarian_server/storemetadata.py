@@ -87,10 +87,10 @@ class StoreMetadata(db.Model):
     def __init_on_load__(self):
         # Because the ORM calls __new__ not __init__, we need to do this
         # business of creating the objects from database pickles here.
-        self.store_manager: CoreStore = Stores[self.store_type].from_dict(self.store_data)
+        self.store_manager: CoreStore = Stores[self.store_type](**self.store_data)
 
         self.transfer_managers: dict[str, CoreTransferManager] = {
-            name: transfer_manager_from_name(name).from_dict(data)
+            name: transfer_manager_from_name(name)(**data)
             for name, data in self.transfer_manager_data.items() if data.get("available", False)
         }
 

@@ -206,13 +206,13 @@ class File (db.Model):
             except Exception as e:
                 raise ServerError('cannot register %s:%s: %s', store.name, store_path, e)
 
-        size = required_arg(info, int, 'size')
-        md5 = required_arg(info, str, 'md5')
-        type = required_arg(info, str, 'filetype')
+        size = info.size
+        md5 = info.md5
+        type = info.filetype
 
         from .observation import Observation
 
-        obsid = optional_arg(info, int, 'obsid')
+        obsid = info.obsid
 
         if null_obsid:
             if obsid is not None:
