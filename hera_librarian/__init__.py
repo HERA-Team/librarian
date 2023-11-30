@@ -176,18 +176,25 @@ class LibrarianClient(object):
         full_endpoint = self.config["url"] + "api/v2/" + endpoint
 
         # Do not do authentication yet.
-        data = None if request_model is None else dict(request_model)
+        data = None if request_model is None else request_model.model_dump_json()
 
         r = requests.post(
-            full_endpoint, data=data
+            full_endpoint, json=data
         )
 
         # Decode the response.
-
+        if r.status_code != 200:
+            raise Exception(
+                f"HTTP request to {full_endpoint} failed with status code {r.status_code}. "
+                f"Content: {r.content}"
+            )
+        
         # TODO: Error handling!
 
         if response_model is not None:
-            return response_model(**r.json())
+            # Note that the pydantic model wants the full bytes content
+            # not the deserialized r.json()
+            return response_model.model_validate_json(r.content)
         else:
             return None
 
@@ -251,12 +258,9 @@ class LibrarianClient(object):
             response_model=UploadInitiationResponse,
         )
 
-        from .transfers import transfer_manager_from_name, CoreTransferManager
+        from .transfers import CoreTransferManager
 
-        transfer_managers: dict[str, CoreTransferManager] = {
-            name: transfer_manager_from_name(name)(**data)
-            for name, data in response.transfer_providers if data.get("available", False)
-        }
+        transfer_managers = response.transfer_providers
 
         # Now try all the transfer managers. If they're valid, we try to use them.
         # If they fail, we should probably catch the exception.
@@ -286,7 +290,8 @@ class LibrarianClient(object):
 
         request = UploadCompletionRequest(
             store_name=response.store_name,
-            staging_location=response.staging_dir,
+            staging_name=response.staging_name,
+            staging_location=response.staging_location,
             destination_location=dest_path,
             transfer_provider_name=used_transfer_manager_name,
             transfer_provider=used_transfer_manager,
