@@ -26,6 +26,7 @@ server_reqs = [
     "requests-oauth2",
     "sqlalchemy>=1.4.0",
     "tornado",
+    "pydantic",
 ]
 
 globus_reqs = [
