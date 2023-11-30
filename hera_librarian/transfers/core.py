@@ -2,10 +2,9 @@
 Core transfer manager (prototype)
 """
 
-class CoreTransferManager:
-    def __init__(self):
-        pass
+from pydantic import BaseModel
 
+class CoreTransferManager(BaseModel):
     def transfer(self, local_path: str, remote_path: str):
         """
         Transfer a file from the local machine to the store.
@@ -24,18 +23,5 @@ class CoreTransferManager:
         """
         Whether or not this transfer manager is valid for the
         current system we are running on.
-        """
-        raise NotImplementedError
-
-    def to_dict(self):
-        """
-        Convert this transfer manager to a dictionary, for storage in the databsae.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        """
-        Create a transfer manager from a dictionary.
         """
         raise NotImplementedError

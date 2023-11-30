@@ -18,12 +18,6 @@ class LocalStore(CoreStore):
     staging_path: Path
     store_path: Path
 
-    def __init__(self, name: str, staging_path: Path, store_path: Path):
-        super().__init__(name=name)
-
-        self.staging_path = staging_path
-        self.store_path = store_path
-
     @property
     def available(self) -> bool:
         # Look, if we don't have a filesystem we have tons of problems.
@@ -82,22 +76,7 @@ class LocalStore(CoreStore):
             self._resolved_path_staging(staging_path),
             self._resolved_path_store(store_path),
         )
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "staging_path": str(self.staging_path),
-            "store_path": str(self.store_path),
-        }
-
-    @classmethod
-    def from_dict(cls, d):
-        return cls(
-            name=d["name"],
-            staging_path=Path(d["staging_path"]),
-            store_path=Path(d["store_path"]),
-        )
-
+    
     def path_info(self, path: Path) -> PathInfo:
         # Promote path to object if required
         path = Path(path)

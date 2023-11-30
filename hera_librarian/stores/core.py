@@ -4,9 +4,10 @@ Core store (prototype).
 
 from .pathinfo import PathInfo
 from pathlib import Path
+from pydantic import BaseModel
 
 
-class CoreStore:
+class CoreStore(BaseModel):
     """
     Prototype for store management. Should never be used directly
     (other than for type hints!). All derived classes must
@@ -17,9 +18,6 @@ class CoreStore:
     """
 
     name: str
-
-    def __init__(self, name: str):
-        self.name = name
 
     @property
     def available(self) -> bool:
