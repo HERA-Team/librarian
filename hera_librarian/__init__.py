@@ -8,6 +8,9 @@ import os.path
 from pathlib import Path
 import urllib.request, urllib.parse, urllib.error
 from pkg_resources import get_distribution, DistributionNotFound
+import requests
+from typing import Optional
+from pydantic import BaseModel
 
 __all__ = str('''
 all_connections
@@ -150,6 +153,43 @@ class LibrarianClient(object):
                            reply_json.get('message', '<no error message provided>'))
 
         return reply_json
+    
+    def do_pydantic_http_post(self, endpoint: str, request_model: Optional[BaseModel] = None, response_model: Optional[BaseModel] = None):
+        """
+        Do a POST operation, passing a JSON version of the request and expecting a
+        JSON reply; return the decoded version of the latter.
+
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to post to.
+        request_model : pydantic.BaseModel, optional
+            The request model to send. If None, we don't ask for anything.
+        response_model : pydantic.BaseModel, optional
+            The response model to expect. If None, we don't return anything.
+
+        Returns
+        -------
+        response_model
+            The decoded response model.
+        """
+        full_endpoint = self.config["url"] + "api/v2/" + endpoint
+
+        # Do not do authentication yet.
+        data = None if request_model is None else dict(request_model)
+
+        r = requests.post(
+            full_endpoint, data=data
+        )
+
+        # Decode the response.
+
+        # TODO: Error handling!
+
+        if response_model is not None:
+            return response_model(**r.json())
+        else:
+            return None
 
     def ping(self, **kwargs):
         return self._do_http_post('ping', **kwargs)
@@ -201,49 +241,65 @@ class LibrarianClient(object):
         # to try.
 
         from .utils import get_size_from_path
+        from .models.uploads import UploadInitiationRequest, UploadInitiationResponse, UploadCompletionRequest
 
-        info = self._do_http_post(
-            "initiate_upload",
-            upload_size=get_size_from_path(local_path),
+        response: UploadInitiationResponse = self.do_pydantic_http_post(
+            endpoint="upload/stage",
+            request_model=UploadInitiationRequest(
+                upload_size=get_size_from_path(local_path),
+            ),
+            response_model=UploadInitiationResponse,
         )
 
-        # Pop out the metadata:
-        staging_dir = Path(info.pop("staging_dir"))
-        store_name = info.pop("store_name")
-        available_bytes_on_store = info.pop("available_bytes_on_store")
-        success = info.pop("success")
-
-        # The rest of the info is the transfer manager data.
         from .transfers import transfer_manager_from_name, CoreTransferManager
 
         transfer_managers: dict[str, CoreTransferManager] = {
-            name: transfer_manager_from_name(name).from_dict(data)
-            for name, data in info.items() if data.get("available", False)
+            name: transfer_manager_from_name(name)(**data)
+            for name, data in response.transfer_providers if data.get("available", False)
         }
 
         # Now try all the transfer managers. If they're valid, we try to use them.
         # If they fail, we should probably catch the exception.
         # TODO: Catch the exception on failure.
+        used_transfer_manager: Optional[CoreTransferManager] = None
+        used_transfer_manager_name: Optional[str] = None
+
+        # TODO: Should probably have some manual ordering here.
         for name, transfer_manager in transfer_managers.items():
             if transfer_manager.valid:
                 transfer_manager.transfer(
-                    local_path=local_path, remote_path=staging_dir
+                    local_path=local_path, remote_path=response.staging_location
                 )
+
+                # We used this.
+                used_transfer_manager = transfer_manager
+                used_transfer_manager_name = name
+                
+                break
             else:
                 print(f"Warning: transfer manager {name} is not valid.")
 
+        if used_transfer_manager is None:
+            raise Exception("No valid transfer managers found.")
+
         # If we made it here, the file is successfully on the store!
 
-        compelte_upload_info = self._do_http_post(
-            'complete_upload',
-            store_name=store_name,
-            staging_dir=str(staging_dir),
-            dest_store_path=str(dest_path),
+        request = UploadCompletionRequest(
+            store_name=response.store_name,
+            staging_location=response.staging_dir,
+            destination_location=dest_path,
+            transfer_provider_name=used_transfer_manager_name,
+            transfer_provider=used_transfer_manager,
             meta_mode="infer",
             deletion_policy=deletion_policy,
-            # TODO: Figure out what to do here...
-            staging_was_known=False,
+            # TODO: Figure out what source name actually does.
+            source_name="",
             null_obsid=null_obsid,
+        )
+
+        self.do_pydantic_http_post(
+            endpoint="upload/commit",
+            request_model=request,
         )
 
         return
