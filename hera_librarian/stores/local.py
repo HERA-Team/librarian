@@ -49,7 +49,7 @@ class LocalStore(CoreStore):
 
         return complete_path
 
-    def stage(self, file_size: int) -> Path:
+    def stage(self, file_size: int) -> tuple[Path]:
         if file_size > self.free_space:
             raise ValueError("Not enough free space on store")
 
@@ -59,9 +59,10 @@ class LocalStore(CoreStore):
         stage_path = Path(f"{uuid.uuid4()}.tmp")
 
         # Create the empty file.
-        (self.staging_path / stage_path).touch()
+        resolved_path = self._resolved_path_staging(stage_path)
+        resolved_path.touch()
 
-        return stage_path
+        return stage_path, resolved_path
 
     def unstage(self, path: Path):
         complete_path = self._resolved_path_staging(path)

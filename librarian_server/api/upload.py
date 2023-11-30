@@ -16,16 +16,16 @@ from hera_librarian.models.stores import StoreRequest
 from pathlib import Path
 from typing import Optional
 
-@app.route('/api/v2/uploads/stores', methods=["POST", "GET"])
+@app.route('/api/v2/upload/stores', methods=["POST", "GET"], endpoint="stores_endpoint")
 @pydantic_api
-def probe_stores(request=None):
+def view_stores(request=None):
     """
     Probes the stores for their metadata and returns it.
     """
 
     return StoreRequest(stores=[store for store in StoreMetadata.query.all()])
 
-@app.route('/api/v2/upload/stage', methods=["POST", "GET"])
+@app.route('/api/v2/upload/stage', methods=["POST", "GET"], endpoint="stage_endpoint")
 @pydantic_api(recieve_model=UploadInitiationRequest)
 def stage(request: UploadInitiationRequest):
     """
@@ -56,11 +56,15 @@ def stage(request: UploadInitiationRequest):
     
     # Now generate the response; tell client to use this store.
 
+    # Stage the file
+    file_name, file_location = use_store.store_manager.stage(request.upload_size)
+
     response = UploadInitiationResponse(
         available_bytes_on_store=use_store.store_manager.free_space,
         store_name=use_store.name,
-        staging_location=use_store.store_manager.stage(request.upload_size),
-        transfer_providers=use_store.transfer_providers
+        staging_location=file_location,
+        staging_name=file_name,
+        transfer_providers=use_store.transfer_managers
     )
 
     # TODO: Original code here had "create records" stuff.
@@ -68,7 +72,7 @@ def stage(request: UploadInitiationRequest):
     return response
 
             
-@app.route("/api/v2/upload/commit", methods=["POST", "GET"])
+@app.route("/api/v2/upload/commit", methods=["POST", "GET"], endpoint="commit_endpoint")
 @pydantic_api(recieve_model=UploadCompletionRequest)
 def commit(request: UploadCompletionRequest):
     """
@@ -87,7 +91,7 @@ def commit(request: UploadCompletionRequest):
     )
 
     # Now that the file has been processed, we can unstage the file.
-    store.store_manager.unstage(request.staging_location)
+    store.store_manager.unstage(request.staging_name)
 
     return {"success": True}
 

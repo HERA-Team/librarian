@@ -36,7 +36,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
-    def stage(self, file_size: int) -> Path:
+    def stage(self, file_size: int) -> tuple[Path]:
         """
         Creates space in the staging area for a file of size file_size.
 
@@ -47,8 +47,10 @@ class CoreStore(BaseModel):
 
         Returns
         -------
-        str
-            Relative path on the staging store. To get
+        Path
+            Relative path on the staging store.
+        Path
+            Absolute path on the staging store. Use this to upload files to the store.
         """
 
         raise NotImplementedError
@@ -59,7 +61,7 @@ class CoreStore(BaseModel):
 
         Parameters
         ----------
-        path: str
+        Path
             Relative path to the staging store.
         """
         raise NotImplementedError
