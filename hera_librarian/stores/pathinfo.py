@@ -5,6 +5,8 @@ Path info object.
 from pathlib import Path
 from pydantic import BaseModel
 
+from typing import Optional
+
 class PathInfo(BaseModel):
     """
     Path information for a file. It is the responsibility of the
@@ -19,3 +21,4 @@ class PathInfo(BaseModel):
     "MD5 sum of the file at the path"
     size: int
     "Size in bytes of the file at the path"
+    obsid: Optional[int] = None
