@@ -195,8 +195,8 @@ class StoreMetadata(db.Model):
         # in the instance database.
 
         # TODO: Permissions mode changes (from app.config).
-
-        self.store_manager.commit(staging_name, store_name)
+        resolved_store_path = self.store_manager.store(store_path)
+        self.store_manager.commit(staging_path=staged_path, store_path=resolved_store_path)
 
         file_instance = FileInstance(
             store_obj=self,
