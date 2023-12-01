@@ -60,18 +60,18 @@ class StoreMetadata(db.Model):
 
     __tablename__ = "store_metadata"
 
-    # Unique ID of this store.
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    # The name of this store (as defined in the parameter file).
+    "Unique ID of this store."
     name = db.Column(db.String(256), nullable=False, unique=True)
-    # The type of this store. Indexes into hera_librarain.stores.Stores.
+    "The name of this store (as defined in the parameter file)."
     store_type = db.Column(db.Integer, nullable=False)
-    # The data required for this store.
+    "The type of this store. Indexes into hera_librarain.stores.Stores."
     store_data = db.Column(db.PickleType)
-    # The instances of files that are stored on this store.
+    "The data required for this store."
     instances = db.relationship("FileInstance", back_populates="store_object")
-    # The transfer managers that are valid for this store.
+    "The instances of files that are stored on this store."
     transfer_manager_data = db.Column(db.PickleType)
+    "The transfer managers that are valid for this store."
 
     def __init__(self, name: str, store_type: int, store_data: dict, transfer_manager_data: dict[str, dict]):
         super().__init__()
