@@ -27,6 +27,7 @@ server_reqs = [
     "sqlalchemy>=1.4.0",
     "tornado",
     "pydantic",
+    "checksumdir",
 ]
 
 globus_reqs = [
