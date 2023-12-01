@@ -109,12 +109,7 @@ class StoreMetadata(db.Model):
         """
 
         # TODO: Fix this; it's a hack because we have circular imports.
-
         from .file import File, FileInstance
-
-        # TODO: Undo this coercion.
-        staged_path = Path(staged_path)
-        store_path = Path(store_path)
 
         staging_directory = str(staged_path.parent)
         staging_name = str(staged_path.name)
