@@ -48,6 +48,8 @@ class UploadInitiationResponse(BaseModel):
     # will come out as a CoreTransferManager!)
     transfer_providers: dict[str, Union[LocalTransferManager, CoreTransferManager]]
     "The available transfer providers for the client to communicate with the store."
+    transfer_id: int
+    "The ID of the transfer. This is used to identify the transfer when completing it."
 
 
 class UploadCompletionRequest(BaseModel):
@@ -82,3 +84,6 @@ class UploadCompletionRequest(BaseModel):
 
     null_obsid: bool = False
     "Whether the file has an observation ID."
+
+    transfer_id: int
+    "The transfer ID of the transfer that was used to upload the file."

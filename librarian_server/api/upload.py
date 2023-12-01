@@ -6,6 +6,7 @@ stores.
 from .. import app, db
 from ..webutil import ServerError, json_api, required_arg, optional_arg
 from ..orm.storemetadata import StoreMetadata, MetaMode
+from ..orm.transfer import TransferStatus, IncomingTransfer
 from ..file import DeletionPolicy
 
 from .util import pydantic_api
@@ -19,6 +20,7 @@ from hera_librarian.models.stores import StoreRequest
 
 from pathlib import Path
 from typing import Optional
+import datetime
 
 
 @app.route("/api/v2/upload/stores", methods=["POST", "GET"], endpoint="stores_endpoint")
@@ -45,6 +47,14 @@ def stage(request: UploadInitiationRequest):
     if request.upload_size < 0:
         raise ServerError("Upload size must be positive.")
 
+    # Now we can write to the database.
+    transfer = IncomingTransfer.new_transfer(
+        uploader=request.uploader, transfer_size=request.upload_size
+    )
+
+    db.session.add(transfer)
+    db.session.commit()
+
     # TODO: Original code had known_staging_store stuff here.
 
     use_store: Optional[StoreMetadata] = None
@@ -60,12 +70,17 @@ def stage(request: UploadInitiationRequest):
     if use_store is None:
         raise ServerError("No stores available.")
 
-    # Now generate the response; tell client to use this store.
+    # Now generate the response; tell client to use this store, and keep a record.
 
     # Stage the file
     file_name, file_location = use_store.store_manager.stage(
         file_size=request.upload_size, file_name=request.upload_name
     )
+
+    transfer.store_id = use_store.id
+    transfer.staging_path = file_name
+
+    db.session.commit()
 
     response = UploadInitiationResponse(
         available_bytes_on_store=use_store.store_manager.free_space,
@@ -89,6 +104,16 @@ def commit(request: UploadCompletionRequest):
 
     store: StoreMetadata = StoreMetadata.from_name(request.store_name)
 
+    # Go grab the transfer from the database.
+    transfer = IncomingTransfer.query.filter_by(id=request.transfer_id).first()
+    transfer.status = TransferStatus.STAGED
+    transfer.transfer_manager_name = request.transfer_manager_name
+    transfer.store_path = request.destination_location
+
+    db.session.commit()
+
+    # TODO: Could potentially check that they haven't messed with the tranfser data here.
+
     store.process_staged_file(
         staged_path=request.staging_location,
         store_path=request.destination_location,
@@ -100,5 +125,11 @@ def commit(request: UploadCompletionRequest):
 
     # Now that the file has been processed, we can unstage the file.
     store.store_manager.unstage(request.staging_name)
+
+    # Clean up the database!
+    transfer.status = TransferStatus.COMPLETED
+    transfer.end_time = datetime.datetime.now()
+
+    db.session.commit()
 
     return {"success": True}
