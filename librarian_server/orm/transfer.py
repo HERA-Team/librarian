@@ -42,7 +42,8 @@ class IncomingTransfer(db.Model):
 
     __tablename__ = "incoming_transfers"
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    # NOTE: SQLite does not allow autoincrement PKs that are BigIntegers.
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, unique=True)
     "The unique ID of this interaction. Can be used to look up the interaction by the client."
     status = db.Column(db.Enum(TransferStatus), nullable=False)
     "Current status of the transfer"

@@ -23,7 +23,12 @@ table_name = "incoming_transfers"
 def upgrade():
     op.create_table(
         table_name,
-        sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+        sa.Column(
+            "id",
+            sa.Integer(),
+            primary_key=True,
+            autoincrement=True,
+        ),
         sa.Column(
             "status",
             sa.Enum(
@@ -45,7 +50,7 @@ def upgrade():
         sa.Column("end_time", sa.DateTime),
         sa.Column("staging_path", sa.String(256)),
         sa.Column("store_path", sa.String(256)),
-        sa.Column("transfer_data", sa.PickleType)
+        sa.Column("transfer_data", sa.PickleType),
     )
 
 

@@ -308,6 +308,7 @@ class LibrarianClient(object):
             null_obsid=null_obsid,
             # TODO: Figure out how to get this programattically.
             uploader="TEST_USER",
+            transfer_id=response.transfer_id,
         )
 
         self.do_pydantic_http_post(

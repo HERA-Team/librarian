@@ -78,7 +78,8 @@ def stage(request: UploadInitiationRequest):
     )
 
     transfer.store_id = use_store.id
-    transfer.staging_path = file_name
+    # SQLAlchemy cannot handle path objects; serialize to string.
+    transfer.staging_path = str(file_name)
 
     db.session.commit()
 
@@ -90,6 +91,7 @@ def stage(request: UploadInitiationRequest):
         upload_name=request.upload_name,
         destination_location=request.destination_location,
         transfer_providers=use_store.transfer_managers,
+        transfer_id=transfer.id,
     )
 
     return response
@@ -107,8 +109,9 @@ def commit(request: UploadCompletionRequest):
     # Go grab the transfer from the database.
     transfer = IncomingTransfer.query.filter_by(id=request.transfer_id).first()
     transfer.status = TransferStatus.STAGED
-    transfer.transfer_manager_name = request.transfer_manager_name
-    transfer.store_path = request.destination_location
+    transfer.transfer_manager_name = request.transfer_provider_name
+    # DB cannot handle path objects; serialize to string.
+    transfer.store_path = str(request.destination_location)
 
     db.session.commit()
 
