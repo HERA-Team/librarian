@@ -24,7 +24,7 @@ from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 from .observation import Observation
 # from .store import Store
-from .storemetadata import StoreMetadata
+from .orm.storemetadata import StoreMetadata
 
 from .deletion import DeletionPolicy
 
@@ -651,7 +651,7 @@ def set_one_file_deletion_policy(args, sourcename=None):
     deletion_policy = required_arg(args, str, 'deletion_policy')
     restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
-        from .storemetadata import StoreMetadata
+        from .orm.storemetadata import StoreMetadata
         restrict_to_store = StoreMetadata.from_name(restrict_to_store)  # ServerError if lookup fails
 
     file = File.query.get(file_name)
@@ -698,7 +698,7 @@ def delete_file_instances(args, sourcename=None):
     mode = optional_arg(args, str, 'mode', 'standard')
     restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
-        from .storemetadata import StoreMetadata
+        from .orm.storemetadata import StoreMetadata
         restrict_to_store = StoreMetadata.from_name(restrict_to_store)  # ServerError if lookup fails
 
     file = File.query.get(file_name)
@@ -720,7 +720,7 @@ def delete_file_instances_matching_query(args, sourcename=None):
     mode = optional_arg(args, str, 'mode', 'standard')
     restrict_to_store = optional_arg(args, str, 'restrict_to_store')
     if restrict_to_store is not None:
-        from .storemetadata import StoreMetadata
+        from .orm.storemetadata import StoreMetadata
         restrict_to_store = StoreMetadat.from_name(restrict_to_store)  # ServerError if lookup fails
 
     from .search import compile_search

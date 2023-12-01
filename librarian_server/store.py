@@ -35,7 +35,7 @@ from . import app, db, logger
 from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
-from .storemetadata import StoreMetadata
+from .orm.storemetadata import StoreMetadata
 from hera_librarian.stores import CoreStore
 
 class Store:

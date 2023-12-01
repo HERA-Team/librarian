@@ -305,7 +305,7 @@ def maybe_add_stores():
 
     """
     from .dbutil import SQLAlchemyError
-    from .storemetadata import StoreMetadata
+    from .orm.storemetadata import StoreMetadata
     from hera_librarian.stores import StoreNames
 
     for name, cfg in app.config.get('add-stores', {}).items():

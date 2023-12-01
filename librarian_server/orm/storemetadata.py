@@ -5,14 +5,14 @@ Includes the StoreMetadata class, which is a database model.
 """
 
 
-from . import db
+from .. import db
 
 from hera_librarian.stores import Stores, CoreStore
 from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
 
-from .webutil import ServerError
-from .deletion import DeletionPolicy
-from .dbutil import SQLAlchemyError
+from ..webutil import ServerError
+from ..deletion import DeletionPolicy
+from ..dbutil import SQLAlchemyError
 
 from enum import Enum
 from pathlib import Path
@@ -109,10 +109,8 @@ class StoreMetadata(db.Model):
         """
 
         # TODO: Fix this; it's a hack because we have circular imports.
-        from .file import File, FileInstance
+        from ..file import File, FileInstance
 
-        staging_directory = str(staged_path.parent)
-        staging_name = str(staged_path.name)
         store_directory = str(store_path.parent)
         store_name = str(store_path.name)
 

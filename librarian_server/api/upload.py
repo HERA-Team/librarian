@@ -5,7 +5,7 @@ stores.
 
 from .. import app, db
 from ..webutil import ServerError, json_api, required_arg, optional_arg
-from ..storemetadata import StoreMetadata, MetaMode
+from ..orm.storemetadata import StoreMetadata, MetaMode
 from ..file import DeletionPolicy
 
 from .util import pydantic_api
