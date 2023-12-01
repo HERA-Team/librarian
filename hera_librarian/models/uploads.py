@@ -35,6 +35,8 @@ class UploadInitiationResponse(BaseModel):
     "Number of bytes available on the store, for information."
     store_name: str
     "Name of the store that will be used."
+    staging_name: Path
+    "The name of the staging area. E.g. on a POSIX filesystem this will be the name of the staging directory."
     staging_location: Path
     "Absolute path to the staging location on the store. This includes your upload name."
     upload_name: Path
@@ -57,9 +59,11 @@ class UploadCompletionRequest(BaseModel):
 
     store_name: str
     "The store that the file was uploaded to."
+    staging_name: Path
+    "Name of the staging area."
     staging_location: Path
     "Staging location where the file was uploaded."
-    staging_name: Path
+    upload_name: Path
     "Name of the file in the staging location."
     destination_location: Path
     "Final (relative) location of the file on the store."
