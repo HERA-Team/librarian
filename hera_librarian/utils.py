@@ -359,42 +359,13 @@ def get_md5_from_path(path):
     and then the file name. This sets the format for the outermost MD5 we do.
 
     """
-    if not os.path.isdir(path):
-        return _md5_of_file(path)
+    #TODO Fix this
+    from pathlib import Path
+    from checksumdir import dirhash
 
-    # make sure that path looks like foo/bar, not foo/bar/ or foo/bar/./. .
-    # This makes it easier to munge the outputs from os.walk().
+    path = Path(path).resolve()
 
-    while path.endswith('/.'):
-        path = path[:-2]
-
-    if path[-1] == '/':
-        path = path[:-1]
-
-    def all_files():
-        for dirname, dirs, files in os.walk(path):
-            for f in files:
-                yield dirname + '/' + f
-
-    md5 = hashlib.md5()
-    plen = len(path)
-
-    try:
-        # NOTE: this is not threadsafe. This will *probably* never come back
-        # to bite us in the ass ...
-        prevlocale = locale.getlocale(locale.LC_COLLATE)
-        locale.setlocale(locale.LC_COLLATE, 'C')
-
-        for f in sorted(all_files()):
-            subhash = _md5_of_file(f).encode("utf-8")
-            md5.update(subhash)  # this is the hex digest, like we want
-            md5.update('  .'.encode("utf-8"))  # compat with command-line approach
-            md5.update(f[plen:].encode("utf-8"))
-            md5.update('\n'.encode("utf-8"))
-    finally:
-        locale.setlocale(locale.LC_COLLATE, prevlocale)
-
-    return md5.hexdigest()
+    return dirhash(path, "md5")
 
 
 def get_size_from_path(path):
@@ -404,6 +375,10 @@ def get_size_from_path(path):
     contains.
 
     """
+    from pathlib import Path
+
+    path = Path(path).resolve()
+
     if not os.path.isdir(path):
         return os.path.getsize(path)
 
