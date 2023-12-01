@@ -60,8 +60,6 @@ def create_records(info, sourcename):
         obj = Observation.from_dict(subinfo)
         db.session.merge(obj)
 
-    from .mc_integration import is_file_record_invalid, note_file_created
-
     for subinfo in info.get('files', {}).values():
         obj = File.from_dict(sourcename, subinfo)
 
@@ -79,10 +77,6 @@ def create_records(info, sourcename):
         # going to upload a file *to*, which is how this code path gets
         # activated. But let's be thorough.
 
-        if is_file_record_invalid(obj):
-            raise ServerError('new file %s (obsid %s) rejected by M&C; see M&C error logs for the reason',
-                              obj.name, obj.obsid)
-
         try:
             db.session.query(File).filter_by(name=obj.name).one()
         except NoResultFound:
@@ -91,8 +85,7 @@ def create_records(info, sourcename):
                 db.session.flush()
             except IntegrityError:
                 db.session.rollback()
-            else:
-                note_file_created(obj)
+
 
     try:
         db.session.commit()

@@ -241,11 +241,6 @@ def commandline(argv):
         signal.signal(signal.SIGTERM, sig_handler)
         signal.signal(signal.SIGINT, sig_handler)
 
-    do_mandc = app.config.get('report_to_mandc', False)
-    if do_mandc:
-        from . import mc_integration
-        mc_integration.register_callbacks(version_string, git_hash)
-
     if server == 'tornado':
         # Set up periodic report on background task status; also reminds us
         # that the server is alive.
