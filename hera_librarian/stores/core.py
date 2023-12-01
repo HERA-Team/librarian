@@ -36,7 +36,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
-    def stage(self, file_size: int) -> tuple[Path]:
+    def stage(self, file_size: int, file_name: Path) -> tuple[Path]:
         """
         Creates space in the staging area for a file of size file_size.
 
@@ -44,13 +44,16 @@ class CoreStore(BaseModel):
         ----------
         file_size: int
             Size of the file to be staged in bytes.
+        file_name: Path
+            Name of the file to be staged.
 
         Returns
         -------
         Path
-            Relative path on the staging store.
+            Relative path on the staging store. Does not include file_name.
         Path
             Absolute path on the staging store. Use this to upload files to the store.
+            Includes file_name.
         """
 
         raise NotImplementedError
@@ -70,6 +73,8 @@ class CoreStore(BaseModel):
         """
         Commit a file from the staging area to the store.
 
+        Use staging_path from stage()'s file_name and store_path from store().
+
         Parameters
         ----------
         staging_path: str
@@ -78,19 +83,15 @@ class CoreStore(BaseModel):
             Absolute path on the store machine.
         """
         raise NotImplementedError
+    
+    def store(self, path: Path) -> Path:
+        """
+        Get an absolute path for a deposit with name path.
 
-    def to_dict(self) -> dict:
-        """
-        Converts the store information to a dictionary. If required,
-        the store should be able to re-create itself from that dictionary.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "CoreStore":
-        """
-        Creates a store from a dictionary. The dictionary should be
-        the same as the one returned by to_dict.
+        Parameters
+        ----------
+        path : Path
+            Relative filename on the store.
         """
         raise NotImplementedError
 
