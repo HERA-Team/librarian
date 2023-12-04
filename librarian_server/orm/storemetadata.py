@@ -67,8 +67,6 @@ class StoreMetadata(db.Model):
     "The type of this store. Indexes into hera_librarain.stores.Stores."
     store_data = db.Column(db.PickleType)
     "The data required for this store."
-    instances = db.relationship("FileInstance", back_populates="store_object")
-    "The instances of files that are stored on this store."
     transfer_manager_data = db.Column(db.PickleType)
     "The transfer managers that are valid for this store."
 
