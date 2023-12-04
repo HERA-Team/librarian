@@ -304,7 +304,6 @@ def maybe_add_stores():
     know about.
 
     """
-    from .dbutil import SQLAlchemyError
     from .orm.storemetadata import StoreMetadata
     from hera_librarian.stores import StoreNames
 

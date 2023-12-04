@@ -28,7 +28,6 @@ import time
 from flask import Response, flash, redirect, render_template, request, url_for
 
 from . import app, db, is_primary_server, logger
-from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 
 

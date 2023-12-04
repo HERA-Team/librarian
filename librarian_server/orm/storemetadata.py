@@ -12,7 +12,6 @@ from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_
 
 from ..webutil import ServerError
 from ..deletion import DeletionPolicy
-from ..dbutil import SQLAlchemyError
 
 from enum import Enum
 from pathlib import Path

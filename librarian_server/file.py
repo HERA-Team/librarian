@@ -20,7 +20,6 @@ import re
 from flask import flash, redirect, render_template, url_for
 
 from . import app, db, logger
-from .dbutil import NotNull, SQLAlchemyError
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
 from .observation import Observation
 # from .store import Store
