@@ -1,29 +1,22 @@
 from . import logger
+from enum import Enum
 
-class DeletionPolicy (object):
-    """A simple enumeration of symbolic constants for the "deletion_policy"
-    column in the FileInstance table.
-
+class DeletionPolicy(Enum):
     """
+    Enumeration for whether or not a file can be deleted from a store.
+
+    Always defaults to 'DISALLOWED' when parsing.
+    """ 
+    
     DISALLOWED = 0
     ALLOWED = 1
 
-    def __init__(self): assert False, 'instantiation of enum not allowed'
-
     @classmethod
-    def parse_safe(cls, text):
-        if text == 'disallowed':
+    def from_str(cls, text: str) -> "DeletionPolicy":
+        if text == "disallowed":
             return cls.DISALLOWED
-        if text == 'allowed':
+        elif text == "allowed":
             return cls.ALLOWED
-
-        logger.warn('unrecognized deletion policy %r; using DISALLOWED', text)
-        return cls.DISALLOWED
-
-    @classmethod
-    def textualize(cls, value):
-        if value == cls.DISALLOWED:
-            return 'disallowed'
-        if value == cls.ALLOWED:
-            return 'allowed'
-        return '???(%r)' % (value, )
+        else:
+            logger.warn('Unrecognized deletion policy %r; using DISALLOWED', text)
+            return cls.DISALLOWED
