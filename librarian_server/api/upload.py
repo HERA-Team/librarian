@@ -7,6 +7,8 @@ from .. import app, db
 from ..webutil import ServerError, json_api, required_arg, optional_arg
 from ..orm.storemetadata import StoreMetadata, MetaMode
 from ..orm.transfer import TransferStatus, IncomingTransfer
+from ..orm.file import File
+from ..orm.instance import Instance
 from ..file import DeletionPolicy
 
 from .util import pydantic_api
@@ -46,6 +48,10 @@ def stage(request: UploadInitiationRequest):
     # Figure out which store to use.
     if request.upload_size < 0:
         raise ServerError("Upload size must be positive.")
+    
+    # Check that the upload is not already on the librarian.
+    if File.file_exists(request.destination_location):
+        raise ServerError(f"File {request.destination_location} already exists on librarian.")
 
     # Now we can write to the database.
     transfer = IncomingTransfer.new_transfer(
@@ -133,6 +139,26 @@ def commit(request: UploadCompletionRequest):
     transfer.status = TransferStatus.COMPLETED
     transfer.end_time = datetime.datetime.now()
 
+    # Now create the File in the database.
+    file = File.new_file(
+        filename=request.destination_location,
+        size=transfer.transfer_size,
+        checksum=transfer.checksum,
+        uploader=transfer.uploader,
+        source=transfer.uploader,
+    )
+    
+    # And the file instance associated with this.
+    instance = Instance.new_instance(
+        file=file,
+        store=store,
+        deletion_policy=DeletionPolicy.parse_safe(request.deletion_policy),
+    )
+
+    db.session.add(file)
+    db.session.add(instance)
+
+    # Commit our change to the transfer, file, and instance simultaneously. 
     db.session.commit()
 
     return {"success": True}
