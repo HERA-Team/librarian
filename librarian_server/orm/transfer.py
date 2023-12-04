@@ -84,5 +84,3 @@ class IncomingTransfer(db.Model):
             transfer_size=transfer_size,
             start_time=datetime.datetime.utcnow(),
         )
-
-        return
