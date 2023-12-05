@@ -247,13 +247,14 @@ class LibrarianClient(object):
         # Ask the librarian for a staging directory, and a list of transfer managers
         # to try.
 
-        from .utils import get_size_from_path
+        from .utils import get_size_from_path, get_md5_from_path
         from .models.uploads import UploadInitiationRequest, UploadInitiationResponse, UploadCompletionRequest
 
         response: UploadInitiationResponse = self.do_pydantic_http_post(
             endpoint="upload/stage",
             request_model=UploadInitiationRequest(
                 upload_size=get_size_from_path(local_path),
+                upload_checksum=get_md5_from_path(local_path),
                 upload_name=dest_path.name,
                 destination_location=dest_path,
                 # TODO: Figure out a programatic way of getting this.

@@ -17,10 +17,12 @@ class UploadInitiationRequest(BaseModel):
 
     upload_size: int
     "Size of the upload in bytes."
+    upload_checksum: str
+    "Checksum of the upload."
     upload_name: Path
     "Name of the upload. You will be furnished a staging location absolute path with this included."
     destination_location: Path
-    "The final location of the file on the store. Is usually the same as upload_name."
+    "The final location of the file on the store. Is usually the same as upload_name, but could include extra paths (e.g. unique_id/{upload_name})"
     uploader: str
     "Name of the uploader (previously source_name)."
 
