@@ -9,92 +9,95 @@ Revises:
 Create Date: 2016-12-06 09:33:05.772135
 
 """
-from alembic import op
-import sqlalchemy as sa
-
 revision = '71df5b41ae41'
 down_revision = None
 branch_labels = None
 depends_on = None
 
+from alembic import op
+from sqlalchemy import (
+    Column, DateTime, BigInteger, String, Integer, PrimaryKeyConstraint, ForeignKey,
+    Enum, PickleType, ForeignKeyConstraint
+)
+
+import enum 
+
+class DeletionPolicy(enum.Enum):
+    """
+    Enumeration for whether or not a file can be deleted from a store.
+
+    Always defaults to 'DISALLOWED' when parsing.
+    """ 
+    
+    DISALLOWED = 0
+    ALLOWED = 1
+
+
+class TransferStatus(enum.Enum):
+    """
+    The status of a transfer.
+    """
+
+    INITIATED = 0
+    "Transfer has been initiated, but client has not yet started moving data"
+    ONGOING = 1
+    "Client is currently (asynchronously) moving data to us. This is not possible with all transfer managers."
+    STAGED = 2
+    "Transfer has been staged, server is ready to complete the transfer."
+    COMPLETED = 3
+    "Transfer is completed"
+    FAILED = 4
+    "Transfer has been confirmed to have failed."
+    CANCELLED = 5
+    "Transfer has been cancelled by the client."
+
 
 def upgrade():
-    # This is the schema used by the first Librarian deployments.
-    op.create_table('observing_session',
-                    sa.Column('id', sa.BigInteger(), nullable=False),
-                    sa.Column('start_time_jd', sa.Float(precision='53'), nullable=False),
-                    sa.Column('stop_time_jd', sa.Float(precision='53'), nullable=False),
-                    sa.PrimaryKeyConstraint('id')
-                    )
-
-    op.create_table('standing_order',
-                    sa.Column('id', sa.Integer(), nullable=False),
-                    sa.Column('name', sa.String(length=64), nullable=False),
-                    sa.Column('search', sa.Text(), nullable=False),
-                    sa.Column('conn_name', sa.String(length=64), nullable=False),
-                    sa.PrimaryKeyConstraint('id'),
-                    sa.UniqueConstraint('name')
-                    )
-
-    op.create_table('store',
-                    sa.Column('id', sa.BigInteger(), nullable=False),
-                    sa.Column('name', sa.String(length=256), nullable=False),
-                    sa.Column('ssh_host', sa.String(length=256), nullable=False),
-                    sa.Column('path_prefix', sa.String(length=256), nullable=False),
-                    sa.Column('http_prefix', sa.String(length=256), nullable=True),
-                    sa.Column('available', sa.Boolean(), nullable=False),
-                    sa.PrimaryKeyConstraint('id'),
-                    sa.UniqueConstraint('name')
-                    )
-
-    op.create_table('observation',
-                    sa.Column('obsid', sa.BigInteger(), nullable=False),
-                    sa.Column('start_time_jd', sa.Float(precision='53'), nullable=False),
-                    sa.Column('stop_time_jd', sa.Float(precision='53'), nullable=True),
-                    sa.Column('start_lst_hr', sa.Float(precision='53'), nullable=True),
-                    sa.Column('session_id', sa.BigInteger(), nullable=True),
-                    sa.ForeignKeyConstraint(['session_id'], ['observing_session.id'], ),
-                    sa.PrimaryKeyConstraint('obsid')
-                    )
-
-    op.create_table('file',
-                    sa.Column('name', sa.String(length=256), nullable=False),
-                    sa.Column('type', sa.String(length=32), nullable=False),
-                    sa.Column('create_time', sa.DateTime(), nullable=False),
-                    sa.Column('obsid', sa.BigInteger(), nullable=False),
-                    sa.Column('size', sa.BigInteger(), nullable=False),
-                    sa.Column('md5', sa.String(length=32), nullable=False),
-                    sa.Column('source', sa.String(length=64), nullable=False),
-                    sa.ForeignKeyConstraint(['obsid'], ['observation.obsid'], ),
-                    sa.PrimaryKeyConstraint('name')
-                    )
-
-    op.create_table('file_event',
-                    sa.Column('id', sa.BigInteger(), nullable=False),
-                    sa.Column('name', sa.String(length=256), nullable=True),
-                    sa.Column('time', sa.DateTime(), nullable=False),
-                    sa.Column('type', sa.String(length=64), nullable=True),
-                    sa.Column('payload', sa.Text(), nullable=True),
-                    sa.ForeignKeyConstraint(['name'], ['file.name'], ),
-                    sa.PrimaryKeyConstraint('id')
-                    )
-
-    op.create_table('file_instance',
-                    sa.Column('store', sa.BigInteger(), nullable=False),
-                    sa.Column('parent_dirs', sa.String(length=128), nullable=False),
-                    sa.Column('name', sa.String(length=256), nullable=False),
-                    sa.ForeignKeyConstraint(['name'], ['file.name'], ),
-                    sa.ForeignKeyConstraint(['store'], ['store.id'], ),
-                    sa.PrimaryKeyConstraint('store', 'parent_dirs', 'name')
-                    )
-
+    op.create_table(
+        "files",
+        Column("name", String(256), primary_key=True, unique=True, nullable=False),
+        Column("create_time", DateTime, nullable=False),
+        Column("size", BigInteger, nullable=False),
+        Column("checksum", String(256), nullable=False),
+        Column("uploader", String(256), nullable=False),
+        Column("source", String(256), nullable=False),
+        PrimaryKeyConstraint("name"),
+    )
+    op.create_table(
+        "instances",
+        Column("id", Integer, primary_key=True, autoincrement=True, unique=True, nullable=False),
+        Column("path", String(256), nullable=False),
+        Column("deletion_policy", Enum(DeletionPolicy), nullable=False),
+        Column("created_time", DateTime, nullable=False),
+        Column("file_name", String(256), ForeignKey("files.name")),
+        Column("store_id", Integer, ForeignKey("store_metadata.id")),
+    )
+    op.create_table(
+        "store_metadata",
+        Column("id", Integer, primary_key=True, autoincrement=True),
+        Column("name", String(256), nullable=False, unique=True),
+        Column("store_type", String(256), nullable=False),
+        Column("store_data", PickleType),
+        Column("transfer_manager_data", PickleType),
+    )
+    op.create_table(
+        "incoming_transfers",
+        Column("id", Integer, primary_key=True, autoincrement=True, unique=True, nullable=False),
+        Column("status", Enum(TransferStatus), nullable=False),
+        Column("uploader", String(256), nullable=False),
+        Column("transfer_size", BigInteger, nullable=False),
+        Column("transfer_checksum", String(256), nullable=False),
+        Column("store_id", Integer, ForeignKey("store_metadata.id")),
+        Column("transfer_manager_name", String(256)),
+        Column("start_time", DateTime, nullable=False),
+        Column("end_time", DateTime),
+        Column("staging_path", String(256)),
+        Column("store_path", String(256)),
+        Column("transfer_data", PickleType),
+    )
 
 def downgrade():
-    raise Exception('I refuse to drop all of the Librarian tables!')
-    # op.drop_table('file_instance')
-    # op.drop_table('file_event')
-    # op.drop_table('file')
-    # op.drop_table('observation')
-    # op.drop_table('store')
-    # op.drop_table('standing_order')
-    # op.drop_table('observing_session')
+    op.drop_table("incoming_transfers")
+    op.drop_table("instances")
+    op.drop_table("files")
+    op.drop_table("store_metadata")
