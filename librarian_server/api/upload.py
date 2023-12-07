@@ -4,11 +4,9 @@ stores.
 """
 
 from ..webutil import ServerError
-from ..orm.storemetadata import StoreMetadata, MetaMode
+from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import TransferStatus, IncomingTransfer
 from ..orm.file import File
-from ..orm.instance import Instance
-from ..deletion import DeletionPolicy
 from ..database import session, query
 from ..logger import log
 
@@ -22,7 +20,6 @@ from hera_librarian.models.stores import StoreRequest
 
 from pathlib import Path
 from typing import Optional
-import datetime
 
 from fastapi import APIRouter, Response, status
 
@@ -35,7 +32,7 @@ def view_stores():
     Probes the stores for their metadata and returns it.
     """
 
-    return StoreRequest(stores=[store for store in db.query(StoreMetadata).all()])
+    return StoreRequest(stores=[store for store in query(StoreMetadata).all()])
 
 
 @router.post("/stage", response_model=UploadInitiationResponse | UploadFailedResponse)
