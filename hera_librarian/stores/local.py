@@ -74,7 +74,12 @@ class LocalStore(CoreStore):
         complete_path = self._resolved_path_staging(path)
 
         if os.path.exists(complete_path):
-            os.rmdir(complete_path)
+            try:
+                os.rmdir(complete_path)
+            except OSError:
+                # Directory is not empty. Delete it and all its contents. Unfortunately we can't log this..
+                shutil.rmtree(complete_path)
+            
 
         return
 

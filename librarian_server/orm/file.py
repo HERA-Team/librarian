@@ -4,13 +4,15 @@ the database. They contain, notably, a unique filename (that may actually
 be a path, e.g. abcd/efgh/ijkl.txt).
 """
 
-from .. import db
+from .. import database as db
 
 from pathlib import Path
 from datetime import datetime
 
+from .instance import Instance
 
-class File(db.Model):
+
+class File(db.Base):
     """
     A file object referring to a unique instance of something entered
     into the librarian system. These are almost always the Simons Observatory
@@ -41,8 +43,9 @@ class File(db.Model):
     "The name of the initial uploader of this file. That did not necessarily happen on this librarian!"
     source = db.Column(db.String(256))
     "The source of this file. Could be same as uploader, but could also be another librarian."
-    instances = db.relationship("Instance", back_propagates="file")
+    instances = db.relationship("Instance", back_populates="file")
 
+    @classmethod
     def file_exists(self, filename: Path) -> bool:
         """
         Checks whether the file exists already in the database.
@@ -58,7 +61,7 @@ class File(db.Model):
             True if it exists already.
         """
 
-        existing_file = File.query.filter_by(name=str(filename)).first()
+        existing_file = db.query(File, name=str(filename)).first()
 
         return existing_file is not None
 

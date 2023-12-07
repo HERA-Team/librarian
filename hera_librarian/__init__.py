@@ -179,15 +179,19 @@ class LibrarianClient(object):
         data = None if request_model is None else request_model.model_dump_json()
 
         r = requests.post(
-            full_endpoint, json=data
+            full_endpoint, data=data, headers={"Content-Type": "application/json"}
         )
 
         # Decode the response.
-        if r.status_code != 200:
-            raise Exception(
-                f"HTTP request to {full_endpoint} failed with status code {r.status_code}. "
-                f"Content: {r.content}"
-            )
+        if r.status_code not in [200, 201]:
+            print(f"HTTP request to {full_endpoint} failed with status code {r.status_code}.")
+            if "reason" in r.json():
+                print(f"The server responded with the following reason: {r.json()['reason']}")
+                if "suggested_remedy" in r.json():
+                    print(f"The server suggested the following suggestion: {r.json()['suggested_remedy']}")
+            else:
+                print(f"The server responded with the following information: {r.json()}")
+            exit(1)
         
         # TODO: Error handling!
 

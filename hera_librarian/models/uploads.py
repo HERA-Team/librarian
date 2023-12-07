@@ -27,6 +27,16 @@ class UploadInitiationRequest(BaseModel):
     "Name of the uploader (previously source_name)."
 
 
+class UploadFailedResponse(BaseModel):
+    """
+    Model for response when the upload failed.
+    """
+
+    reason: str
+    "Reason for failure."
+    suggested_remedy: str = "Please try again later."
+
+
 class UploadInitiationResponse(BaseModel):
     """
     Model for the response to initiating an upload. Gives the

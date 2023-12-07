@@ -3,20 +3,20 @@ Contains API endpoints for uploading data to the Librarian and its
 stores.
 """
 
-from .. import app, db
-from ..webutil import ServerError, json_api, required_arg, optional_arg
+from ..webutil import ServerError
 from ..orm.storemetadata import StoreMetadata, MetaMode
 from ..orm.transfer import TransferStatus, IncomingTransfer
 from ..orm.file import File
 from ..orm.instance import Instance
-from ..file import DeletionPolicy
-
-from .util import pydantic_api
+from ..deletion import DeletionPolicy
+from ..database import session, query
+from ..logger import log
 
 from hera_librarian.models.uploads import (
     UploadInitiationRequest,
     UploadInitiationResponse,
     UploadCompletionRequest,
+    UploadFailedResponse,
 )
 from hera_librarian.models.stores import StoreRequest
 
@@ -24,48 +24,99 @@ from pathlib import Path
 from typing import Optional
 import datetime
 
+from fastapi import APIRouter, Response, status
 
-@app.route("/api/v2/upload/stores", methods=["POST", "GET"], endpoint="stores_endpoint")
-@pydantic_api
-def view_stores(request=None):
+router = APIRouter(prefix="/api/v2/upload")
+
+
+@router.post("/stores")
+def view_stores():
     """
     Probes the stores for their metadata and returns it.
     """
 
-    return StoreRequest(stores=[store for store in StoreMetadata.query.all()])
+    return StoreRequest(stores=[store for store in db.query(StoreMetadata).all()])
 
 
-@app.route("/api/v2/upload/stage", methods=["POST", "GET"], endpoint="stage_endpoint")
-@pydantic_api(recieve_model=UploadInitiationRequest)
-def stage(request: UploadInitiationRequest):
+@router.post("/stage", response_model=UploadInitiationResponse | UploadFailedResponse)
+def stage(request: UploadInitiationRequest, response: Response):
     """
     Initiates an upload to a store.
 
     Stages a file, and returns information about the transfer
     providers that can be used by the client to upload the file.
+
+    Possible response codes:
+
+    400 - Bad request. Upload size is negative.
+    409 - Conflict. File already exists on librarian.
+    413 - Request entity too large. No stores available for upload.
+    201 - Created staging area.
     """
+
+    log.debug(f"Received upload initiation request: {request}")
 
     # Figure out which store to use.
     if request.upload_size < 0:
-        raise ServerError("Upload size must be positive.")
-    
+        log.debug(f"Upload size is negative. Returning error.")
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return UploadFailedResponse(
+            reason="Upload size must be positive.",
+            suggested_remedy="Check you are trying to upload a valid file.",
+        )
+
     # Check that the upload is not already on the librarian.
     if File.file_exists(request.destination_location):
-        raise ServerError(f"File {request.destination_location} already exists on librarian.")
+        log.debug(
+            f"File {request.destination_location} already exists on librarian. Returning error."
+        )
+        response.status_code = status.HTTP_409_CONFLICT
+        return UploadFailedResponse(
+            reason="File already exists on librarian.",
+            suggested_remedy="Check that you are not trying to upload a file that already exists on the librarian, and if it does not choose a unique filename that does not already exist.",
+        )
+
+    # First, try to see if this is someone trying to re-start an existing transfer!
+    existing_transfer = (
+        session.query(IncomingTransfer)
+        .filter(
+            (IncomingTransfer.transfer_checksum == request.upload_checksum)
+            & (IncomingTransfer.status != TransferStatus.FAILED)
+            & (IncomingTransfer.status != TransferStatus.COMPLETED)
+            & (IncomingTransfer.status != TransferStatus.CANCELLED)
+        )
+        .all()
+    )
+
+    if len(existing_transfer) != 0:
+        log.info(
+            f"Found {len(existing_transfer)} existing transfers with checksum {request.upload_checksum}. Failing existing transfer."
+        )
+
+        for transfer in existing_transfer:
+            # Unstage the files.
+            store = StoreMetadata.from_id(transfer.store_id)
+            store.store_manager.unstage(Path(transfer.staging_path))
+
+            transfer.status = TransferStatus.FAILED
+
+        session.commit()
 
     # Now we can write to the database.
     transfer = IncomingTransfer.new_transfer(
-        uploader=request.uploader, transfer_size=request.upload_size
+        uploader=request.uploader,
+        transfer_size=request.upload_size,
+        transfer_checksum=request.upload_checksum,
     )
 
-    db.session.add(transfer)
-    db.session.commit()
+    session.add(transfer)
+    session.commit()
 
     # TODO: Original code had known_staging_store stuff here.
 
     use_store: Optional[StoreMetadata] = None
 
-    for store in StoreMetadata.query.all():
+    for store in query(StoreMetadata).all():
         if not store.store_manager.available:
             continue
 
@@ -74,7 +125,14 @@ def stage(request: UploadInitiationRequest):
             break
 
     if use_store is None:
-        raise ServerError("No stores available.")
+        log.debug(
+            f"No stores available for upload, they are all full!. Returning error."
+        )
+        response.status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+        return UploadFailedResponse(
+            reason="No stores available for upload. Your upload is too large.",
+            suggested_remedy="Try again later, or try to upload a smaller file. Contact the administrator of this librarian instance.",
+        )
 
     # Now generate the response; tell client to use this store, and keep a record.
 
@@ -87,9 +145,11 @@ def stage(request: UploadInitiationRequest):
     # SQLAlchemy cannot handle path objects; serialize to string.
     transfer.staging_path = str(file_name)
 
-    db.session.commit()
+    session.commit()
 
-    response = UploadInitiationResponse(
+    response.status_code = status.HTTP_201_CREATED
+
+    model_response = UploadInitiationResponse(
         available_bytes_on_store=use_store.store_manager.free_space,
         store_name=use_store.name,
         staging_name=file_name,
@@ -100,65 +160,61 @@ def stage(request: UploadInitiationRequest):
         transfer_id=transfer.id,
     )
 
-    return response
+    log.debug(f"Returning upload initiation response: {model_response}")
+
+    return model_response
 
 
-@app.route("/api/v2/upload/commit", methods=["POST", "GET"], endpoint="commit_endpoint")
-@pydantic_api(recieve_model=UploadCompletionRequest)
-def commit(request: UploadCompletionRequest):
+@router.post("/commit")
+def commit(request: UploadCompletionRequest, response: Response):
     """
     Commits a file to a store, called once it has been uploaded.
+
+    Possible response codes:
+    409 - Conflict. File already exists on store.
+    500 - Internal server error. Database communication issue.
+    200 - OK. Upload succeeded.
     """
+
+    log.debug(f"Received upload completion request: {request}")
 
     store: StoreMetadata = StoreMetadata.from_name(request.store_name)
 
     # Go grab the transfer from the database.
-    transfer = IncomingTransfer.query.filter_by(id=request.transfer_id).first()
+    transfer = query(IncomingTransfer, id=request.transfer_id).first()
     transfer.status = TransferStatus.STAGED
     transfer.transfer_manager_name = request.transfer_provider_name
     # DB cannot handle path objects; serialize to string.
     transfer.store_path = str(request.destination_location)
 
-    db.session.commit()
+    session.commit()
 
-    # TODO: Could potentially check that they haven't messed with the tranfser data here.
+    try:
+        store.ingest_staged_file(
+            request=request,
+            transfer=transfer,
+        )
+    except FileExistsError:
+        log.debug(
+            f"File {request.destination_location} already exists on store. Returning error."
+        )
+        response.status_code = status.HTTP_409_CONFLICT
+        return UploadFailedResponse(
+            reason="File already exists on store.",
+            suggested_remedy="Check that you are not trying to upload a file that already exists on the store, and if it does not choose a unique filename that does not already exist.",
+        )
+    except ServerError as e:
+        log.debug(
+            "Extremely bad internal server error. Likley a database communication issue."
+        )
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return UploadFailedResponse(
+            reason="Internal server error.",
+            suggested_remedy="Contact the administrator of this librarian instance.",
+        )
 
-    store.process_staged_file(
-        staged_path=request.staging_location,
-        store_path=request.destination_location,
-        meta_mode=MetaMode.from_str(request.meta_mode),
-        deletion_policy=DeletionPolicy.parse_safe(request.deletion_policy),
-        source_name=request.uploader,
-        null_obsid=request.null_obsid,
-    )
+    log.debug(f"Returning upload completion response. Upload succeeded.")
 
-    # Now that the file has been processed, we can unstage the file.
-    store.store_manager.unstage(request.staging_name)
+    response.status_code = status.HTTP_200_OK
 
-    # Clean up the database!
-    transfer.status = TransferStatus.COMPLETED
-    transfer.end_time = datetime.datetime.now()
-
-    # Now create the File in the database.
-    file = File.new_file(
-        filename=request.destination_location,
-        size=transfer.transfer_size,
-        checksum=transfer.checksum,
-        uploader=transfer.uploader,
-        source=transfer.uploader,
-    )
-    
-    # And the file instance associated with this.
-    instance = Instance.new_instance(
-        file=file,
-        store=store,
-        deletion_policy=DeletionPolicy.parse_safe(request.deletion_policy),
-    )
-
-    db.session.add(file)
-    db.session.add(instance)
-
-    # Commit our change to the transfer, file, and instance simultaneously. 
-    db.session.commit()
-
-    return {"success": True}
+    return response

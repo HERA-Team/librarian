@@ -3,7 +3,7 @@ ORM for incoming and outgoing transfers.
 """
 
 
-from .. import db
+from .. import database as db
 
 from enum import Enum
 import datetime
@@ -28,7 +28,7 @@ class TransferStatus(Enum):
     "Transfer has been cancelled by the client."
 
 
-class IncomingTransfer(db.Model):
+class IncomingTransfer(db.Base):
     """
     An incoming transfer to this librarian. Created once an upload is initialized,
     and then is deleted once we have successfully moved the incoming file to the store
@@ -51,8 +51,10 @@ class IncomingTransfer(db.Model):
     "The name of the uploader."
     transfer_size = db.Column(db.BigInteger, nullable=False)
     "The expected transfer size in bytes."
+    transfer_checksum = db.Column(db.String(256), nullable=False)
+    "The checksum of the transfer."
     
-    store_id = db.Column(db.Integer)
+    store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
     "The ID of the store that this interaction is with."
     transfer_manager_name = db.Column(db.String(256))
     "Name of the transfer manager that the client is using/used to upload the file."
@@ -71,7 +73,7 @@ class IncomingTransfer(db.Model):
     "Serialized transfer data, likely from the transfer manager. For instance, this could include the Globus data."
 
     @classmethod
-    def new_transfer(self, uploader: str, transfer_size: int) -> "IncomingTransfer":
+    def new_transfer(self, uploader: str, transfer_size: int, transfer_checksum: str) -> "IncomingTransfer":
         """
         Create a new transfer!
 
@@ -82,5 +84,6 @@ class IncomingTransfer(db.Model):
             status=TransferStatus.INITIATED,
             uploader=uploader,
             transfer_size=transfer_size,
+            transfer_checksum=transfer_checksum,
             start_time=datetime.datetime.utcnow(),
         )

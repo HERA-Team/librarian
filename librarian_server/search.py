@@ -512,9 +512,9 @@ class StandingOrder(db.Model):
     __tablename__ = 'standing_order'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = NotNull(db.String(64), unique=True)
-    search = NotNull(db.Text)
-    conn_name = NotNull(db.String(64))
+    name = db.Column(db.String(64), unique=True, nullable=False)
+    search = db.Column(db.Text, nullable=False)
+    conn_name = db.Column(db.String(64), nullable=False)
 
     def __init__(self, name, search, conn_name):
         self.name = name

@@ -18,15 +18,18 @@ from logging.config import fileConfig
 config = context.config
 fileConfig(config.config_file_name)
 
-from librarian_server import app, db
-target_metadata = db.metadata
+from librarian_server import app, engine
 
+from librarian_server.settings import server_settings
+from librarian_server.database import Base, engine
+
+target_metadata = Base.metadata
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode -- all we need is a URL.
 
     """
-    url = app.config['SQLALCHEMY_DATABASE_URI']
+    url = server_settings.sqlalchemy_database_uri
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -44,16 +47,16 @@ def run_migrations_online():
     connection.
 
     """
-    with app.app_context():
-        with db.engine.connect() as connection:
-            context.configure(
-                connection=connection,
-                target_metadata=target_metadata,
-                render_as_batch=True,
-            )
 
-            with context.begin_transaction():
-                context.run_migrations()
+    with engine.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():

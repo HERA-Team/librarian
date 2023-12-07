@@ -63,6 +63,16 @@ def upgrade():
         Column("source", String(256), nullable=False),
         PrimaryKeyConstraint("name"),
     )
+
+    op.create_table(
+        "store_metadata",
+        Column("id", Integer, primary_key=True, autoincrement=True),
+        Column("name", String(256), nullable=False, unique=True),
+        Column("store_type", Integer, nullable=False),
+        Column("store_data", PickleType),
+        Column("transfer_manager_data", PickleType),
+    )
+
     op.create_table(
         "instances",
         Column("id", Integer, primary_key=True, autoincrement=True, unique=True, nullable=False),
@@ -72,14 +82,7 @@ def upgrade():
         Column("file_name", String(256), ForeignKey("files.name")),
         Column("store_id", Integer, ForeignKey("store_metadata.id")),
     )
-    op.create_table(
-        "store_metadata",
-        Column("id", Integer, primary_key=True, autoincrement=True),
-        Column("name", String(256), nullable=False, unique=True),
-        Column("store_type", String(256), nullable=False),
-        Column("store_data", PickleType),
-        Column("transfer_manager_data", PickleType),
-    )
+    
     op.create_table(
         "incoming_transfers",
         Column("id", Integer, primary_key=True, autoincrement=True, unique=True, nullable=False),
