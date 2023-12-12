@@ -10,16 +10,14 @@ This module should be invoked as a separate process.
 
 import time
 
-from .bad import bad
-from .poll import poll
+from .check_integrity import CheckIntegrity
 from .core import SafeScheduler
 
 
 def background():
     scheduler = SafeScheduler()
     # Set scheduling...
-    scheduler.every(5).seconds.do(poll)
-    scheduler.every(10).seconds.do(bad)
+    scheduler.every(1).minutes.do(CheckIntegrity(name="check_integrity", store_name="local_store", age_in_days=7))
 
     # ...and run it.
     while True:

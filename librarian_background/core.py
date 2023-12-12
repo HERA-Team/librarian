@@ -10,6 +10,8 @@ import datetime
 
 from schedule import Scheduler
 
+from .task import Task
+
 logger = logging.getLogger('schedule')
 
 

@@ -2,5 +2,15 @@
 A simple example job that dies.
 """
 
-def bad():
-    raise Exception("I'm a bad job!")
+from .task import Task
+
+class Bad(Task):
+    """
+    A simple background task that polls for new files.
+    """
+
+    name: str = "bad"
+
+    def on_call(self):
+        raise Exception
+        return
