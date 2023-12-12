@@ -1,5 +1,8 @@
 """
-Runs the librarian server.
+Runs the librarian server. This is really just an _example_ for how to run
+the server; you can run the librarian_server module with any ASGI
+server framework (e.g. guivcorn if you needed more threads), and
+you can even run the librarian_background module as a separate instance.
 """
 
 from librarian_server.settings import server_settings
@@ -9,41 +12,61 @@ from librarian_server.orm import StoreMetadata
 
 from librarian_server.logger import log
 
-# Perform pre-startup tasks!
-log.debug("Adding store metadata to database.")
+from librarian_background import background
 
-stores_added = 0
+# Do this in if __name__ == "__main__" so we can spawn threads on MacOS...
 
-for store_config in server_settings.add_stores:
-    if session.query(StoreMetadata).filter(StoreMetadata.name == store_config.store_name).first():
-        log.debug(f"Store {store_config.store_name} already exists in database.")
-        continue
+if __name__ == "__main__":
+    # Perform pre-startup tasks!
+    log.debug("Adding store metadata to database.")
 
-    log.debug(f"Adding store {store_config.store_name} to database.")
+    stores_added = 0
 
-    store = StoreMetadata(
-        name=store_config.store_name,
-        store_type=store_config.store_type,
-        store_data={**store_config.store_data, "name": store_config.store_name},
-        transfer_manager_data=store_config.transfer_manager_data,
+    for store_config in server_settings.add_stores:
+        if session.query(StoreMetadata).filter(StoreMetadata.name == store_config.store_name).first():
+            log.debug(f"Store {store_config.store_name} already exists in database.")
+            continue
+
+        log.debug(f"Adding store {store_config.store_name} to database.")
+
+        store = StoreMetadata(
+            name=store_config.store_name,
+            store_type=store_config.store_type,
+            store_data={**store_config.store_data, "name": store_config.store_name},
+            transfer_manager_data=store_config.transfer_manager_data,
+        )
+
+        session.add(store)
+
+        stores_added += 1
+
+    log.debug(f"Added {stores_added} store to the database. Committing.")
+
+    if stores_added > 0:
+        session.commit()
+
+    # Now we can start the background process thread.
+    log.info("Starting background process.")
+
+
+    from multiprocessing import Process
+
+    background_process = Process(target=background)
+    background_process.start()
+
+    # Now we can actually start the server.
+    log.info("Creating uvicorn instance.")
+
+    import uvicorn
+
+    uvicorn.run(
+        "librarian_server:app",
+        port=server_settings.port,
+        log_level=server_settings.log_level.lower(),
     )
 
-    session.add(store)
+    log.info("Server shut down.")
 
-    stores_added += 1
-
-log.debug(f"Added {stores_added} store to the database. Committing.")
-
-if stores_added > 0:
-    session.commit()
-
-# Now we can actually start the server.
-log.info("Creating uvicorn instance.")
-
-import uvicorn
-
-uvicorn.run(
-    "librarian_server:app",
-    port=server_settings.port,
-    log_level=server_settings.log_level.lower(),
-)
+    log.info("Waiting for background process to finish.")
+    background_process.terminate()
+    log.info("Background process finished.")

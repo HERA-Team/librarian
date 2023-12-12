@@ -65,7 +65,6 @@ although those modules are not installed in a standard ``pip install``.
         "all": all_reqs,
     },
     scripts=[
-        "scripts/librarian_stream_file_or_directory.sh",
         "scripts/runserver.py",
     ],
     entry_points={"console_scripts": ["librarian=hera_librarian.cli:main"]},
