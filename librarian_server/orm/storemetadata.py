@@ -179,7 +179,7 @@ class StoreMetadata(db.Base):
         # And the file instance associated with this.
 
         instance = Instance.new_instance(
-            path=request.destination_location,
+            path=resolved_store_path,
             file=file,
             store=self,
             deletion_policy=deletion_policy,
