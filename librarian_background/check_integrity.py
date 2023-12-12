@@ -59,14 +59,16 @@ class CheckIntegrity(Task):
                 continue
 
             # Compare checksum to database
-            if path_info.md5 == file.md5:
+            expected_checksum = file.file.checksum
+
+            if path_info.md5 == expected_checksum:
                 # File is fine.
                 logger.info(f"File {file.path} on store {store.name} has been validated.")
                 continue
             else:
                 # File is not fine. Log it.
                 all_files_fine = False
-                logger.error(f"File {file.path} on store {store.name} has an incorrect checksum. Expected {file.md5}, got {path_info.md5}.")
+                logger.error(f"File {file.path} on store {store.name} has an incorrect checksum. Expected {expected_checksum}, got {path_info.md5}.")
 
         if all_files_fine:
             logger.info(f"All files uploaded since {start_time} on store {store.name} have been validated.")
