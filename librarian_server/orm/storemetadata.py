@@ -248,3 +248,9 @@ class StoreMetadata(db.Base):
             raise ServerError(f"Multiple stores with ID {id} exist")
 
         return stores[0]
+
+    def __repr__(self) -> str:
+        return (
+            f"<StoreMetadata {self.name} (type: {self.store_type}) "
+            f"(id: {self.id}) (ingestable: {self.ingestable})>"
+        )
