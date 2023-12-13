@@ -19,6 +19,8 @@ class StoreSettings(BaseModel):
 
     store_name: str
     "Name of the store."
+    ingestable: bool
+    "Whether this store is ingestable. If not, it is only used for cloning."
     store_type: int
     "Type of the store."
     store_data: dict

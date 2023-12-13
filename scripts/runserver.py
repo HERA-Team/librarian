@@ -32,6 +32,7 @@ if __name__ == "__main__":
         store = StoreMetadata(
             name=store_config.store_name,
             store_type=store_config.store_type,
+            ingestable=store_config.ingestable,
             store_data={**store_config.store_data, "name": store_config.store_name},
             transfer_manager_data=store_config.transfer_manager_data,
         )

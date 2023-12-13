@@ -44,7 +44,7 @@ class MetaMode(Enum):
             return cls.DIRECT
         else:
             raise ValueError(f"Invalid MetaMode string {string}.")
-        
+
 
 class StoreMetadata(db.Base):
     """
@@ -80,10 +80,18 @@ class StoreMetadata(db.Base):
     transfer_manager_data = db.Column(db.PickleType)
     "The transfer managers that are valid for this store."
 
-    def __init__(self, name: str, store_type: int, store_data: dict, transfer_manager_data: dict[str, dict]):
+    def __init__(
+        self,
+        name: str,
+        ingestable: bool,
+        store_type: int,
+        store_data: dict,
+        transfer_manager_data: dict[str, dict],
+    ):
         super().__init__()
 
         self.name = name
+        self.ingestable = ingestable
         self.store_type = store_type
         self.store_data = store_data
         self.transfer_manager_data = transfer_manager_data
@@ -98,7 +106,8 @@ class StoreMetadata(db.Base):
 
         self.transfer_managers: dict[str, CoreTransferManager] = {
             name: transfer_manager_from_name(name)(**data)
-            for name, data in self.transfer_manager_data.items() if data.get("available", False)
+            for name, data in self.transfer_manager_data.items()
+            if data.get("available", False)
         }
 
     def ingest_staged_file(
@@ -126,7 +135,7 @@ class StoreMetadata(db.Base):
         ServerError
             If the file does not match the expected size or checksum, or if the file already exists on the store.
         """
-    
+
         # We do not have any custom metadata any more. So MetaMode is no longer required...
 
         staged_path = request.staging_location
@@ -137,7 +146,10 @@ class StoreMetadata(db.Base):
         # First up, check that we got what we expected!
         info = self.store_manager.path_info(staged_path)
 
-        if info.size != transfer.transfer_size or info.md5 != transfer.transfer_checksum:
+        if (
+            info.size != transfer.transfer_size
+            or info.md5 != transfer.transfer_checksum
+        ):
             # We have a problem! The file is not what we expected. Delete it quickly!
             self.store_manager.unstage(staged_path)
 
@@ -161,9 +173,7 @@ class StoreMetadata(db.Base):
             transfer.status = TransferStatus.FAILED
             db.session.commit()
 
-            raise FileExistsError(
-                f"File {store_path} already exists on store."
-            )
+            raise FileExistsError(f"File {store_path} already exists on store.")
 
         # Clean up the database!
         transfer.status = TransferStatus.COMPLETED
@@ -177,7 +187,7 @@ class StoreMetadata(db.Base):
             uploader=transfer.uploader,
             source=transfer.uploader,
         )
-        
+
         # And the file instance associated with this.
 
         instance = Instance.new_instance(
@@ -190,13 +200,15 @@ class StoreMetadata(db.Base):
         db.session.add(file)
         db.session.add(instance)
 
-        # Commit our change to the transfer, file, and instance simultaneously. 
+        # Commit our change to the transfer, file, and instance simultaneously.
 
         try:
             db.session.commit()
 
             # We're good to go and move the file to where it needs to be.
-            self.store_manager.commit(staging_path=staged_path, store_path=resolved_store_path)
+            self.store_manager.commit(
+                staging_path=staged_path, store_path=resolved_store_path
+            )
             self.store_manager.unstage(request.staging_name)
         except SQLAlchemyError as e:
             # Need to rollback everything. The upload failed...
@@ -214,7 +226,6 @@ class StoreMetadata(db.Base):
                 )
 
         return instance
-
 
     @classmethod
     def from_name(cls, name) -> "StoreMetadata":
