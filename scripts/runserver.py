@@ -48,7 +48,6 @@ if __name__ == "__main__":
     # Now we can start the background process thread.
     log.info("Starting background process.")
 
-
     from multiprocessing import Process
 
     background_process = Process(target=background)
