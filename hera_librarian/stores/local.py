@@ -6,6 +6,7 @@ all commands on the machine local to the librarian server.
 from .core import CoreStore
 from .pathinfo import PathInfo
 from ..utils import get_md5_from_path, get_size_from_path, get_type_from_path
+from ..transfers.core import CoreTransferManager
 
 from pathlib import Path
 
@@ -115,3 +116,18 @@ class LocalStore(CoreStore):
             md5=get_md5_from_path(path),
             size=get_size_from_path(path),
         )
+
+    def transfer_out(
+        self, store_path: Path, destination_path: Path, using: CoreTransferManager
+    ) -> bool:
+        # First, check if the file exists on the store.
+        resolved_store_path = self._resolved_path_store(store_path)
+
+        if not resolved_store_path.exists():
+            raise FileNotFoundError(f"File {store_path} does not exist on store.")
+        
+        if using.valid:
+            # We can transfer it out!
+            return using.transfer(resolved_store_path, destination_path)
+        
+        return False

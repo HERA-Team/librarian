@@ -9,26 +9,35 @@ Revises:
 Create Date: 2016-12-06 09:33:05.772135
 
 """
-revision = '71df5b41ae41'
+revision = "71df5b41ae41"
 down_revision = None
 branch_labels = None
 depends_on = None
 
 from alembic import op
 from sqlalchemy import (
-    Column, DateTime, BigInteger, String, Integer, PrimaryKeyConstraint, ForeignKey,
-    Enum, PickleType, ForeignKeyConstraint
+    Column,
+    DateTime,
+    BigInteger,
+    String,
+    Integer,
+    PrimaryKeyConstraint,
+    ForeignKey,
+    Enum,
+    PickleType,
+    Boolean,
 )
 
-import enum 
+import enum
+
 
 class DeletionPolicy(enum.Enum):
     """
     Enumeration for whether or not a file can be deleted from a store.
 
     Always defaults to 'DISALLOWED' when parsing.
-    """ 
-    
+    """
+
     DISALLOWED = 0
     ALLOWED = 1
 
@@ -68,6 +77,7 @@ def upgrade():
         "store_metadata",
         Column("id", Integer, primary_key=True, autoincrement=True),
         Column("name", String(256), nullable=False, unique=True),
+        Column("ingestable", Boolean, nullable=False, default=True),
         Column("store_type", Integer, nullable=False),
         Column("store_data", PickleType),
         Column("transfer_manager_data", PickleType),
@@ -75,17 +85,31 @@ def upgrade():
 
     op.create_table(
         "instances",
-        Column("id", Integer, primary_key=True, autoincrement=True, unique=True, nullable=False),
+        Column(
+            "id",
+            Integer,
+            primary_key=True,
+            autoincrement=True,
+            unique=True,
+            nullable=False,
+        ),
         Column("path", String(256), nullable=False),
         Column("deletion_policy", Enum(DeletionPolicy), nullable=False),
         Column("created_time", DateTime, nullable=False),
         Column("file_name", String(256), ForeignKey("files.name")),
         Column("store_id", Integer, ForeignKey("store_metadata.id")),
     )
-    
+
     op.create_table(
         "incoming_transfers",
-        Column("id", Integer, primary_key=True, autoincrement=True, unique=True, nullable=False),
+        Column(
+            "id",
+            Integer,
+            primary_key=True,
+            autoincrement=True,
+            unique=True,
+            nullable=False,
+        ),
         Column("status", Enum(TransferStatus), nullable=False),
         Column("uploader", String(256), nullable=False),
         Column("transfer_size", BigInteger, nullable=False),
@@ -98,6 +122,7 @@ def upgrade():
         Column("store_path", String(256)),
         Column("transfer_data", PickleType),
     )
+
 
 def downgrade():
     op.drop_table("incoming_transfers")

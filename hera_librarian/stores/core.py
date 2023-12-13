@@ -6,6 +6,8 @@ from .pathinfo import PathInfo
 from pathlib import Path
 from pydantic import BaseModel
 
+from ..transfers.core import CoreTransferManager
+
 
 class CoreStore(BaseModel):
     """
@@ -83,7 +85,7 @@ class CoreStore(BaseModel):
             Absolute path on the store machine.
         """
         raise NotImplementedError
-    
+
     def store(self, path: Path) -> Path:
         """
         Get an absolute path for a deposit with name path.
@@ -108,5 +110,27 @@ class CoreStore(BaseModel):
         -------
         PathInfo
             Filled PathInfo object.
+        """
+        raise NotImplementedError
+
+    def transfer_out(
+        self, store_path: Path, destination_path: Path, using: CoreTransferManager
+    ) -> bool:
+        """
+        Transfer a file from the store to a destination.
+
+        Parameters
+        ----------
+        store_path : Path
+            Path to the file in the store to transfer.
+        destination_path : Path
+            Destination path to transfer the file to.
+        using : CoreTransferManager
+            The transfer manager to use for the transfer.
+
+        Returns
+        -------
+        bool
+            True if the transfer is successful, False otherwise.
         """
         raise NotImplementedError

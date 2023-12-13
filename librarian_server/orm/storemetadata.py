@@ -44,7 +44,7 @@ class MetaMode(Enum):
             return cls.DIRECT
         else:
             raise ValueError(f"Invalid MetaMode string {string}.")
-
+        
 
 class StoreMetadata(db.Base):
     """
@@ -71,6 +71,8 @@ class StoreMetadata(db.Base):
     "Unique ID of this store."
     name = db.Column(db.String(256), nullable=False, unique=True)
     "The name of this store (as defined in the parameter file)."
+    ingestable = db.Column(db.Boolean, nullable=False, default=True)
+    "Whether this store accepts ingest requests or is just for cloning other stores."
     store_type = db.Column(db.Integer, nullable=False)
     "The type of this store. Indexes into hera_librarain.stores.Stores."
     store_data = db.Column(db.PickleType)

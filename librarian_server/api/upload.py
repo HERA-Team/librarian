@@ -113,7 +113,7 @@ def stage(request: UploadInitiationRequest, response: Response):
 
     use_store: Optional[StoreMetadata] = None
 
-    for store in query(StoreMetadata).all():
+    for store in query(StoreMetadata, ingestable=True).all():
         if not store.store_manager.available:
             continue
 
