@@ -28,24 +28,6 @@ from .transfer import TransferStatus, IncomingTransfer
 import datetime
 
 
-class MetaMode(Enum):
-    """
-    Metadata inference mode.
-    """
-
-    INFER = 0
-    DIRECT = 1
-
-    @classmethod
-    def from_str(cls, string: str) -> "MetaMode":
-        if string.lower() == "infer":
-            return cls.INFER
-        elif string.lower() == "direct":
-            return cls.DIRECT
-        else:
-            raise ValueError(f"Invalid MetaMode string {string}.")
-
-
 class StoreMetadata(db.Base):
     """
     A store is an abstracted concept of a storage location for files.
