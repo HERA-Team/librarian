@@ -87,3 +87,42 @@ class IncomingTransfer(db.Base):
             transfer_checksum=transfer_checksum,
             start_time=datetime.datetime.utcnow(),
         )
+
+
+class OutgoingTransfer(db.Base):
+    """
+    An outgoing transfer from this librarian. Created once an upload to another librarian
+    is initiated. 
+    """
+
+    __tablename__ = "outgoing_transfers"
+
+    # NOTE: SQLite does not allow autoincrement PKs that are BigIntegers.
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, unique=True)
+    "The unique ID of this interaction. Can be used to look up the interaction by the client."
+    status = db.Column(db.Enum(TransferStatus), nullable=False)
+    "Current status of the transfer"
+    destination = db.Column(db.String(256), nullable=False)
+    "The name of the destination librarian."
+    transfer_size = db.Column(db.BigInteger, nullable=False)
+    "The expected transfer size in bytes."
+    transfer_checksum = db.Column(db.String(256), nullable=False)
+    "The checksum of the transfer."
+
+    start_time = db.Column(db.DateTime, nullable=False)
+    "The time at which this interaction was started."
+    end_time = db.Column(db.DateTime)
+    "The time at which this interaction was ended."
+
+    instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"), nullable=False)
+    "The ID of the instance that this transfer is copying."
+    instance = db.relationship("Instance", primaryjoin="Instance.id == OutgoingTransfer.instance_id")
+    "The instance that is being copied."
+
+    remote_store_id = db.Column(db.Integer, nullable=False)
+    "The ID of the store that this interaction is going to."
+    transfer_manager_name = db.Column(db.String(256))
+    "Name of the transfer manager that the client is using/used to upload the file."
+    
+    transfer_data = db.Column(db.PickleType)
+    "Serialized transfer manager data, likely from the transfer manager. For instance, this could include the Globus data."
