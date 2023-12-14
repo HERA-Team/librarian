@@ -6,7 +6,7 @@ from .pathinfo import PathInfo
 from pathlib import Path
 from pydantic import BaseModel
 
-from ..transfers.core import CoreTransferManager
+from hera_librarian.transfers.core import CoreTransferManager
 
 
 class CoreStore(BaseModel):

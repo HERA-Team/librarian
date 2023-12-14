@@ -4,7 +4,6 @@ Models for uploads.
 
 from pydantic import BaseModel, field_validator, SerializeAsAny
 
-from ..stores import CoreStore
 from ..transfers import CoreTransferManager, LocalTransferManager
 
 from pathlib import Path

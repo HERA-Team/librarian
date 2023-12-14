@@ -5,8 +5,8 @@ all commands on the machine local to the librarian server.
 
 from .core import CoreStore
 from .pathinfo import PathInfo
-from ..utils import get_md5_from_path, get_size_from_path, get_type_from_path
-from ..transfers.core import CoreTransferManager
+from hera_librarian.utils import get_md5_from_path, get_size_from_path, get_type_from_path
+from hera_librarian.transfers.core import CoreTransferManager
 
 from pathlib import Path
 

@@ -16,7 +16,6 @@ from hera_librarian.models.uploads import (
     UploadCompletionRequest,
     UploadFailedResponse,
 )
-from hera_librarian.models.stores import StoreRequest
 
 from pathlib import Path
 from typing import Optional
@@ -24,15 +23,6 @@ from typing import Optional
 from fastapi import APIRouter, Response, status
 
 router = APIRouter(prefix="/api/v2/upload")
-
-
-@router.post("/stores")
-def view_stores():
-    """
-    Probes the stores for their metadata and returns it.
-    """
-
-    return StoreRequest(stores=[store for store in query(StoreMetadata).all()])
 
 
 @router.post("/stage", response_model=UploadInitiationResponse | UploadFailedResponse)

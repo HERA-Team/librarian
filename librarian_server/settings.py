@@ -6,7 +6,7 @@ deserialized from the available librarian config path.
 from pydantic import BaseModel, field_validator, ValidationError
 from pydantic_settings import BaseSettings
 
-from hera_librarian.stores import StoreNames
+from .stores import StoreNames
 
 from pathlib import Path
 import os

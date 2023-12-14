@@ -7,7 +7,7 @@ Includes the StoreMetadata class, which is a database model.
 
 from .. import database as db
 
-from hera_librarian.stores import Stores, CoreStore
+from ..stores import Stores, CoreStore
 from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
 from hera_librarian.models.uploads import UploadCompletionRequest
 
