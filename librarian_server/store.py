@@ -45,7 +45,7 @@ class Store(db.Model, BaseStore):
     """
     __tablename__ = 'store'
 
-    id = db.Column(db.BigInteger, primary_key=True)
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     name = NotNull(db.String(256), unique=True)
     ssh_host = NotNull(db.String(256))
     path_prefix = NotNull(db.String(256))
@@ -57,6 +57,19 @@ class Store(db.Model, BaseStore):
         db.Model.__init__(self)
         BaseStore.__init__(self, name, path_prefix, ssh_host)
         self.available = True
+        
+        # ID explicitly non NULL, so we need to set it to a unique ID.
+        if not self.id:
+            self.id = self.get_new_id()
+
+    def get_new_id(self):
+        """Gets a 'new' ID for first instantiation."""
+        list_of_ids = [store.id for store in Store.query.all()]
+
+        if len(list_of_ids) == 0:
+            return 1
+        else:
+            return max(list_of_ids) + 1
 
     @classmethod
     def get_by_name(cls, name):
