@@ -123,6 +123,57 @@ def upgrade():
         Column("transfer_data", PickleType),
     )
 
+    op.create_table(
+        "outgoing_transfers",
+        Column(
+            "id",
+            Integer(),
+            primary_key=True,
+            autoincrement=True,
+            unique=True,
+            nullable=False,
+        ),
+        Column("status", Enum(TransferStatus), nullable=False),
+        Column("destination", String(256), nullable=False),
+        Column("transfer_size", BigInteger, nullable=False),
+        Column("transfer_checksum", String(256), nullable=False),
+        Column("start_time", DateTime, nullable=False),
+        Column("end_time", DateTime),
+        Column("instance_id", Integer, ForeignKey("instances.id"), nullable=False),
+        Column("remote_store_id", Integer, nullable=False),
+        Column("transfer_manager_name", String(256)),
+        Column("transfer_data", PickleType),
+    )
+
+    op.create_table(
+        "clone_transfers",
+        Column(
+            "id",
+            Integer,
+            primary_key=True,
+            autoincrement=True,
+            unique=True,
+            nullable=False,
+        ),
+        Column("status", Enum(TransferStatus), nullable=False),
+        Column("start_time", DateTime, nullable=False),
+        Column("end_time", DateTime),
+        Column(
+            "source_store_id", Integer, ForeignKey("store_metadata.id"), nullable=False
+        ),
+        Column(
+            "destination_store_id",
+            Integer,
+            ForeignKey("store_metadata.id"),
+            nullable=False,
+        ),
+        Column("transfer_manager_name", String(256)),
+        Column(
+            "source_instance_id", Integer, ForeignKey("instances.id"), nullable=False
+        ),
+        Column("destination_instance_id", Integer, ForeignKey("instances.id")),
+    )
+
 
 def downgrade():
     op.drop_table("incoming_transfers")

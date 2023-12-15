@@ -53,7 +53,7 @@ class IncomingTransfer(db.Base):
     "The expected transfer size in bytes."
     transfer_checksum = db.Column(db.String(256), nullable=False)
     "The checksum of the transfer."
-    
+
     store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
     "The ID of the store that this interaction is with."
     transfer_manager_name = db.Column(db.String(256))
@@ -73,7 +73,9 @@ class IncomingTransfer(db.Base):
     "Serialized transfer data, likely from the transfer manager. For instance, this could include the Globus data."
 
     @classmethod
-    def new_transfer(self, uploader: str, transfer_size: int, transfer_checksum: str) -> "IncomingTransfer":
+    def new_transfer(
+        self, uploader: str, transfer_size: int, transfer_checksum: str
+    ) -> "IncomingTransfer":
         """
         Create a new transfer!
 
@@ -92,7 +94,7 @@ class IncomingTransfer(db.Base):
 class OutgoingTransfer(db.Base):
     """
     An outgoing transfer from this librarian. Created once an upload to another librarian
-    is initiated. 
+    is initiated.
     """
 
     __tablename__ = "outgoing_transfers"
@@ -116,13 +118,87 @@ class OutgoingTransfer(db.Base):
 
     instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"), nullable=False)
     "The ID of the instance that this transfer is copying."
-    instance = db.relationship("Instance", primaryjoin="Instance.id == OutgoingTransfer.instance_id")
+    instance = db.relationship(
+        "Instance", primaryjoin="Instance.id == OutgoingTransfer.instance_id"
+    )
     "The instance that is being copied."
 
     remote_store_id = db.Column(db.Integer, nullable=False)
     "The ID of the store that this interaction is going to."
     transfer_manager_name = db.Column(db.String(256))
     "Name of the transfer manager that the client is using/used to upload the file."
-    
+
     transfer_data = db.Column(db.PickleType)
     "Serialized transfer manager data, likely from the transfer manager. For instance, this could include the Globus data."
+
+
+class CloneTransfer(db.Base):
+    """
+    A record of a clone transfer. This is a local transfer between two stores.
+
+    TODO: Integrate this into a SneakerNet implementation.
+    """
+
+    __tablename__ = "clone_transfers"
+
+    # NOTE: SQLite does not allow autoincrement PKs that are BigIntegers.
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, unique=True)
+    "The unique ID of this interaction. Can be used to look up the interaction by the client."
+    status = db.Column(db.Enum(TransferStatus), nullable=False)
+    "Current status of the transfer"
+    start_time = db.Column(db.DateTime, nullable=False)
+    "The time at which this interaction was started."
+    end_time = db.Column(db.DateTime)
+    "The time at which this interaction was ended."
+
+    source_store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
+    "The ID of the source store that this interaction is with."
+    destination_store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
+    "The ID of the destination store that this interaction is with."
+
+    transfer_manager_name = db.Column(db.String(256))
+    "Name of the transfer manager that the client is using/used to upload the file."
+
+    source_instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"), nullable=False)
+    "The ID of the instance that this transfer is copying."
+    destination_instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"))
+    "The ID of the instance that this transfer is copying to."
+
+    source_instance = db.relationship(
+        "Instance", primaryjoin="Instance.id == CloneTransfer.source_instance_id"
+    )
+    "The instance that is being copied."
+    destination_instance = db.relationship(
+        "Instance", primaryjoin="Instance.id == CloneTransfer.destination_instance_id"
+    )
+    "The instance that is being copied to."
+
+    @classmethod
+    def new_transfer(
+        self, source_store_id: int, destination_store_id: int, source_instance_id: int
+    ) -> "CloneTransfer":
+        """
+        Create a new transfer!
+
+        Transfers start out with a status of INITIATED.
+        """
+
+        return CloneTransfer(
+            status=TransferStatus.INITIATED,
+            source_store_id=source_store_id,
+            destination_store_id=destination_store_id,
+            source_instance_id=source_instance_id,
+            start_time=datetime.datetime.utcnow(),
+        )
+
+    def fail_transfer(self):
+        """
+        Fail the transfer and commit to the database.
+        """
+
+        self.status = TransferStatus.FAILED
+        self.end_time = datetime.datetime.utcnow()
+
+        db.session.commit()
+
+        return

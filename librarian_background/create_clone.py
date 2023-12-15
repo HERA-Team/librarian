@@ -13,7 +13,7 @@ from schedule import CancelJob
 from pathlib import Path
 
 from librarian_server.database import session, query
-from librarian_server.orm import StoreMetadata, Instance
+from librarian_server.orm import StoreMetadata, Instance, CloneTransfer, TransferStatus
 
 
 logger = logging.getLogger("schedule")
@@ -91,6 +91,17 @@ class CreateClone(Task):
                 )
                 continue
 
+            transfer = CloneTransfer.new_transfer(
+                source_store_id=store_from.id,
+                destination_store_id=store_to.id,
+                source_instance_id=instance.id,
+            )
+
+            session.add(transfer)
+            session.commit()
+
+            # TODO: Check if there is an already existing transfer! Maybe it is running asynchronously? Maybe we need to check the status?            
+
             # Now we can clone the file to the clone_to store.
             try:
                 staging_name, staged_path = store_to.store_manager.stage(
@@ -100,6 +111,9 @@ class CreateClone(Task):
                 logger.error(
                     f"File {instance.file.name} is too large to fit on store {store_to}. Skipping."
                 )
+
+                transfer.fail_transfer()
+
                 continue
 
             success = False
@@ -116,18 +130,32 @@ class CreateClone(Task):
                         logger.debug(
                             f"Failed to transfer file {instance.path} to store {store_to} using transfer manager {transfer_manager}."
                         )
+
+                        transfer.fail_transfer()
+
                         continue
                 except FileNotFoundError as e:
                     logger.error(
                         f"File {instance.path} does not exist on store {store_from}. Skipping."
                     )
+
+                    transfer.fail_transfer()
+
                     continue
 
             if not success:
                 logger.error(
                     f"Failed to transfer file {instance.path} to store {store_to}. Skipping."
                 )
+
+                transfer.fail_transfer()
+
                 continue
+
+            transfer.transfer_manager_name = tm_name
+            transfer.status = TransferStatus.STAGED
+
+            session.commit()
 
             # Now we can commit the file to the store.
             try:
@@ -139,6 +167,9 @@ class CreateClone(Task):
                     f"File {instance.path} already exists on store {store_to}. Skipping."
                 )
                 store_to.store_manager.unstage(staging_name)
+
+                transfer.fail_transfer()
+
                 continue
 
             store_to.store_manager.unstage(staging_name)
@@ -152,6 +183,14 @@ class CreateClone(Task):
             )
 
             session.add(new_instance)
+
+            # Need to commit to get a valid id.
+            session.commit()
+
+            transfer.destination_instance_id = new_instance.id
+            transfer.status = TransferStatus.COMPLETED
+            transfer.end_time = datetime.datetime.now()
+
             session.commit()
             successful_clones += 1
 
