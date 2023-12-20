@@ -202,8 +202,16 @@ class LibrarianClient(object):
         else:
             return None
 
-    def ping(self, **kwargs):
-        return self._do_http_post('ping', **kwargs)
+    def ping(self):
+        from .models.ping import PingRequest, PingResponse
+
+        response: PingResponse = self.do_pydantic_http_post(
+            endpoint="ping",
+            request_model=PingRequest(),
+            response_model=PingResponse,
+        )
+
+        return response
 
     def probe_stores(self, **kwargs):
         return self._do_http_post('probe_stores', **kwargs)
