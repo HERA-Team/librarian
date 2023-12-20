@@ -20,6 +20,7 @@ app = FastAPI()
 
 log.debug("Adding API router.")
 
-from .api import upload_router
+from .api import upload_router, ping_router
 
 app.include_router(upload_router)
+app.include_router(ping_router)
