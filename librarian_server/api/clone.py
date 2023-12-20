@@ -29,7 +29,10 @@ from ..logger import log
 from hera_librarian.models.clone import (
     CloneInitiationRequest,
     CloneInitiationResponse,
+    CloneOngoingRequest,
+    CloneOngoingResponse,
     CloneCompleteRequest,
+    CloneCompleteResponse,
     CloneFailedResponse,
 )
 
@@ -38,7 +41,7 @@ from fastapi import APIRouter, Response, status
 router = APIRouter(prefix="/api/v2/clone")
 
 
-@router.post("/stage", response_model=CloneInitiationResponse)
+@router.post("/stage", response_model=CloneInitiationResponse | CloneFailedResponse)
 def stage(request: CloneInitiationRequest, response: Response):
     """
     Recieved from a remote librarian to initiate a clone.
@@ -52,7 +55,7 @@ def stage(request: CloneInitiationRequest, response: Response):
         -> Make sure that the logic is correctly computing the size.
     406 - Not acceptable. You have already initiated or staged this transfer.
         -> You should fail your outgoing transfer. We failed ours.
-    409 - Conflict. File already exists on librarian. 
+    409 - Conflict. File already exists on librarian.
         -> You have a logic error, you should never have tried to upload this.
     413 - Request entity too large. No stores available for upload.
         -> There's a disk problem. Check the disk.
@@ -72,6 +75,8 @@ def stage(request: CloneInitiationRequest, response: Response):
         return CloneFailedResponse(
             reason="Upload size must be positive.",
             suggested_remedy="Check you are trying to upload a valid file.",
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=-1,
         )
 
     # Check that the upload is not already on the librarian.
@@ -88,18 +93,24 @@ def stage(request: CloneInitiationRequest, response: Response):
                 "Error in sharing logic. Your librarain should "
                 "never have tried to copy this. Check the background task ordering."
             ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=-1,
         )
-    
+
     # Check for an existing transfer. If we find one with a status of ONGOING, that is
     # again a logic error. They should not have tried to send us that again! It's already
     # on its way.
 
-    existing_transfer = query(IncomingTransfer).filter(
-        (IncomingTransfer.transfer_checksum == request.upload_checksum)
-        & (IncomingTransfer.status != TransferStatus.FAILED)
-        & (IncomingTransfer.status != TransferStatus.COMPLETED)
-        & (IncomingTransfer.status != TransferStatus.CANCELLED)
-    ).all()
+    existing_transfer = (
+        query(IncomingTransfer)
+        .filter(
+            (IncomingTransfer.transfer_checksum == request.upload_checksum)
+            & (IncomingTransfer.status != TransferStatus.FAILED)
+            & (IncomingTransfer.status != TransferStatus.COMPLETED)
+            & (IncomingTransfer.status != TransferStatus.CANCELLED)
+        )
+        .all()
+    )
 
     if len(existing_transfer) != 0:
         log.info(
@@ -120,6 +131,8 @@ def stage(request: CloneInitiationRequest, response: Response):
                         "Error in sharing logic. Your librarain is trying to send us a copy of "
                         "a file with an ONGOING transfer. Check the background task ordering."
                     ),
+                    source_transfer_id=request.source_transfer_id,
+                    destination_transfer_id=transfer.id,
                 )
 
             # Alternative is status' of STAGED and INITIATED. Unlike with uploads, this is a
@@ -146,10 +159,12 @@ def stage(request: CloneInitiationRequest, response: Response):
                     "Your librarian tried to upload a file again that we thought was already "
                     "coming to us. You should fail your outgoing transfer, we have failed ours."
                 ),
+                source_transfer_id=request.source_transfer_id,
+                destination_transfer_id=transfer.id,
             )
-        
+
     # No existing transfer.
-        
+
     transfer = IncomingTransfer.new_transfer(
         uploader=request.uploader,
         transfer_size=request.upload_size,
@@ -159,8 +174,8 @@ def stage(request: CloneInitiationRequest, response: Response):
     session.add(transfer)
     session.commit()
 
-    use_store : Optional[StoreMetadata] = None
-    
+    use_store: Optional[StoreMetadata] = None
+
     for store in query(StoreMetadata, ingestable=True).all():
         if not store.store_manager.available:
             continue
@@ -177,8 +192,10 @@ def stage(request: CloneInitiationRequest, response: Response):
         return CloneFailedResponse(
             reason="No stores available for upload. Your upload is too large.",
             suggested_remedy="Check that the disk is not full.",
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=transfer.id,
         )
-    
+
     # We have a store! Create the staging area.
 
     file_name, file_location = use_store.store_manager.stage(
@@ -191,7 +208,7 @@ def stage(request: CloneInitiationRequest, response: Response):
     session.commit()
 
     response.status_code = status.HTTP_201_CREATED
-    
+
     model_response = CloneInitiationResponse(
         available_bytes_on_store=use_store.store_manager.free_space,
         store_name=use_store.name,
@@ -199,11 +216,131 @@ def stage(request: CloneInitiationRequest, response: Response):
         staging_location=file_location,
         upload_name=request.upload_name,
         destination_location=request.destination_location,
-        transfer_id=transfer.id,
+        source_transfer_id=request.source_transfer_id,
+        destination_transfer_id=transfer.id,
         transfer_providers=use_store.trasnfer_managers,
-        transfer_id=transfer.id,
     )
 
     log.debug(f"Returning clone initiation response: {model_response}")
 
     return model_response
+
+
+@router.post("/ongoing", response_model=CloneOngoingResponse | CloneFailedResponse)
+def ongoing(request: CloneOngoingRequest, response: Response):
+    """
+    Called when the remote librarian has started the transfer. We should
+    update the status of the transfer to ONGOING.
+
+    Possible response codes:
+
+    200 - OK. Transfer status updated.
+    404 - Not found. Could not find transfer.
+    406 - Not acceptable. Transfer is not in INITIATED status.
+    """
+
+    log.debug(f"Received clone ongoing request: {request}")
+
+    transfer = query(IncomingTransfer, id=request.destination_transfer_id).first()
+
+    if transfer is None:
+        log.debug(
+            f"Could not find transfer with ID {request.destination_transfer_id}. Returning error."
+        )
+
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return CloneFailedResponse(
+            reason="Could not find transfer.",
+            suggested_remedy=(
+                "Your librarian is trying to tell us that a transfer is ongoing, but we cannot "
+                "find the transfer. Check the background task ordering."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
+    if transfer.status != TransferStatus.INITIATED:
+        log.debug(
+            f"Transfer with ID {request.transfer_id} has status {transfer.status}."
+            f"Trying to set it to ONGOING. Returning error."
+        )
+
+        response.status_code = status.HTTP_406_NOT_ACCEPTABLE
+        return CloneFailedResponse(
+            reason="Transfer is not in INITIATED status.",
+            suggested_remedy=(
+                "Your librarian is trying to tell us that a transfer is ongoing, but the transfer "
+                "is not in INITIATED status. Check the background task ordering."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
+    transfer.status = TransferStatus.ONGOING
+    session.commit()
+
+    response.status_code = status.HTTP_200_OK
+    return CloneOngoingResponse(
+        source_transfer_id=request.source_transfer_id,
+        destination_transfer_id=request.destination_transfer_id,
+    )
+
+
+@router.post("/complete", response_model=CloneCompleteResponse | CloneFailedResponse)
+def complete(request: CloneCompleteRequest, response: Response):
+    """
+    The callback from librarian B to librarian A that it has completed the
+    transfer. Used to update anything in our OutgiongTransfers that needs it.
+
+    Possible response codes:
+
+    200 - OK. Transfer status updated.
+    404 - Not found. Could not find transfer.
+    406 - Not acceptable. Transfer is not in STAGED status.
+    """
+
+    log.debug(f"Received clone complete request: {request}")
+
+    transfer = query(OutgoingTransfer, id=request.source_transfer_id).first()
+
+    if transfer is None:
+        log.debug(
+            f"Could not find transfer with ID {request.source_transfer_id}. Returning error."
+        )
+
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return CloneFailedResponse(
+            reason="Could not find transfer.",
+            suggested_remedy=(
+                "We are trying to update the status of a transfer, but we cannot find the transfer. "
+                "Check the background task ordering."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
+    if transfer.status != TransferStatus.ONGOING:
+        log.debug(
+            f"Transfer with ID {request.source_transfer_id} has status {transfer.status}."
+            f"Trying to set it from ONGOING to COMPLETED. Returning error."
+        )
+
+        response.status_code = status.HTTP_406_NOT_ACCEPTABLE
+        return CloneFailedResponse(
+            reason="Transfer is not in ONGOING status.",
+            suggested_remedy=(
+                "We are trying to update the status of a transfer, but the transfer is not in ONGOING "
+                "status. Check the background task ordering. We should have already updated this status."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
+    transfer.status = TransferStatus.COMPLETED
+    session.commit()
+
+    response.status_code = status.HTTP_200_OK
+    return CloneCompleteResponse(
+        source_transfer_id=request.source_transfer_id,
+        destination_transfer_id=request.destination_transfer_id,
+    )

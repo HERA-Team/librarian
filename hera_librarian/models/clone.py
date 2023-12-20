@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from hera_librarian.transfers.local import LocalTransferManager, CoreTransferManager
 
 
-
 class CloneInitiationRequest(BaseModel):
     """
     In a librarian A -> librarian B transfer, this is the request
@@ -28,12 +27,8 @@ class CloneInitiationRequest(BaseModel):
     uploader: str
     "Name of the uploader (previously source_name)."
 
-    file_id: int
-    "Local file ID (on librarian A)"
-    source_store_name: str
-    "Name of the store that the file is on (on librarian A)"
-    source_store_id: int
-    "Local store ID (on librarian A)"
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
 
     pass
 
@@ -62,9 +57,37 @@ class CloneInitiationResponse(BaseModel):
     # will come out as a CoreTransferManager!)
     transfer_providers: dict[str, Union[LocalTransferManager, CoreTransferManager]]
     "The available transfer providers for the client to communicate with the store."
-    transfer_id: int
-    "The ID of the transfer. This is used to identify the transfer when completing it."
+    source_transfer_id: int
+    "OutgoingTransfer ID"
+    destination_transfer_id: int
+    "IncomingTransfer ID"
     pass
+
+
+class CloneOngoingRequest(BaseModel):
+    """
+    In a librarian A -> librarian B transfer, this is the request
+    from librarian A to tell librarian B that the transfer is ongoing.
+
+    Librarian B should use this to update the progress of the transfer.
+    """
+
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
+    destination_transfer_id: int
+    "The ID of the transfer. Note that this is the IncomingTransfer ID."
+
+
+class CloneOngoingResponse(BaseModel):
+    """
+    In a librarian A -> librarian B transfer, this is the response
+    from librarian B to librarian A after CloneOngoingRequest is accepted.
+    """
+
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
+    destination_transfer_id: int
+    "The ID of the transfer. Note that this is the IncomingTransfer ID."
 
 
 class CloneCompleteRequest(BaseModel):
@@ -74,7 +97,28 @@ class CloneCompleteRequest(BaseModel):
     completed the transfer, and that it is ok to set the transfer
     status to completed.
     """
+
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
+    destination_transfer_id: int
+    "The ID of the transfer. Note that this is the IncomingTransfer ID."
+
     pass
+
+class CloneCompleteResponse(BaseModel):
+    """
+    In a librarian A -> librarian B transfer, this is the response
+    that librarian B sends to librarian A in response to a CloneCompleteRequest,
+    if it was successful.
+    """
+
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
+    destination_transfer_id: int
+    "The ID of the transfer. Note that this is the IncomingTransfer ID."
+
+    pass
+
 
 class CloneFailedResponse(BaseModel):
     """
@@ -84,5 +128,10 @@ class CloneFailedResponse(BaseModel):
     reason: str
     "Reason for failure."
     suggested_remedy: str = "Please try again later."
+    "Suggested remedy for failure."
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
+    destination_transfer_id: int
+    "The ID of the transfer. Note that this is the IncomingTransfer ID."
 
     pass
