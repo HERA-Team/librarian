@@ -99,8 +99,6 @@ def stage(request: UploadInitiationRequest, response: Response):
     session.add(transfer)
     session.commit()
 
-    # TODO: Original code had known_staging_store stuff here.
-
     use_store: Optional[StoreMetadata] = None
 
     for store in query(StoreMetadata, ingestable=True).all():
