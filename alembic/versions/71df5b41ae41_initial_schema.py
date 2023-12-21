@@ -98,6 +98,7 @@ def upgrade():
         Column("created_time", DateTime, nullable=False),
         Column("file_name", String(256), ForeignKey("files.name")),
         Column("store_id", Integer, ForeignKey("store_metadata.id")),
+        Column("available", Boolean, nullable=False),
     )
 
     op.create_table(
@@ -140,7 +141,7 @@ def upgrade():
         Column("start_time", DateTime, nullable=False),
         Column("end_time", DateTime),
         Column("instance_id", Integer, ForeignKey("instances.id"), nullable=False),
-        Column("remote_store_id", Integer, nullable=False),
+        Column("remote_transfer_id", Integer),
         Column("transfer_manager_name", String(256)),
         Column("transfer_data", PickleType),
     )
@@ -172,6 +173,16 @@ def upgrade():
             "source_instance_id", Integer, ForeignKey("instances.id"), nullable=False
         ),
         Column("destination_instance_id", Integer, ForeignKey("instances.id")),
+    )
+
+    op.create_table(
+        "remote_instances",
+        Column("id", Integer(), primary_key=True, autoincrement=True, unique=True),
+        Column("file_name", String(256), ForeignKey("files.name"), nullable=False),
+        Column("store_id", Integer(), nullable=False),
+        Column("librarian_id", Integer(), ForeignKey("librarians.id"), nullable=False),
+        Column("copy_time", DateTime(), nullable=False),
+        Column("sender", String(256), nullable=False),
     )
 
 

@@ -4,6 +4,11 @@ ORM for incoming and outgoing transfers.
 
 
 from .. import database as db
+from ..logger import log
+
+from .librarian import Librarian
+
+from hera_librarian.models.clone import CloneFailRequest, CloneFailResponse
 
 from enum import Enum
 import datetime
@@ -123,13 +128,85 @@ class OutgoingTransfer(db.Base):
     )
     "The instance that is being copied."
 
-    remote_store_id = db.Column(db.Integer, nullable=False)
-    "The ID of the store that this interaction is going to."
+    remote_transfer_id = db.Column(db.Integer)
+    "The ID of the corresponding IncomingTransfer on the remote librarian."
     transfer_manager_name = db.Column(db.String(256))
     "Name of the transfer manager that the client is using/used to upload the file."
 
     transfer_data = db.Column(db.PickleType)
     "Serialized transfer manager data, likely from the transfer manager. For instance, this could include the Globus data."
+
+    @classmethod
+    def new_transfer(
+        self, destination: str, instance: "Instance", file: "File"
+    ) -> "OutgoingTransfer":
+        """
+        Create a new transfer!
+
+        Transfers start out with a status of INITIATED.
+        """
+
+        return OutgoingTransfer(
+            status=TransferStatus.INITIATED,
+            destination=destination,
+            transfer_size=file.size,
+            transfer_checksum=file.checksum,
+            instance_id=instance.id,
+            start_time=datetime.datetime.utcnow(),
+        )
+    
+
+    def fail_transfer(self):
+        """
+        Fail the transfer and commit to the database.
+        """
+
+        self.status = TransferStatus.FAILED
+        self.end_time = datetime.datetime.utcnow()
+        db.session.commit()
+
+        if self.remote_transfer_id is None:
+            # No remote transfer ID, so we can't do anything.
+            return
+
+        # Now here's the interesting part - we need to communicate to the
+        # remote librarian that the transfer failed!
+
+        librarian: Librarian = db.query(Librarian, name=self.destination).first()
+
+        if not librarian:
+            # Librarian doesn't exist. We can't do anything.
+            log.error(
+                "Remote librarian does not exist when trying to fail transfer. "
+                "This state should be entirely unreachable."
+            )
+            return
+        
+        client = librarian.client()
+
+        request = CloneFailRequest(
+            source_transfer_id=self.id,
+            destination_transfer_id=self.remote_transfer_id,
+            reason="Transfer failed on source librarian.",
+        )
+
+        try:
+            response = client.do_pydantic_http_post(
+                path="/api/v2/clone/fail",
+                request_model=request,
+                response_model=CloneFailResponse
+            )
+
+            if not response.succeeded:
+                raise Exception("Remote librarian refused or failed to set transfer status to FAILED.")
+        except Exception as e:
+            log.error(
+                f"Failed to communicate to remote librarian that transfer {self.id} "
+                f"failed with exception {e}. It is likely that there is a stale transfer "
+                f"on remote librarian {self.destination} with id {self.remote_transfer_id}."
+            )
+
+        return
 
 
 class CloneTransfer(db.Base):

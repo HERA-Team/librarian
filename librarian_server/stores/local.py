@@ -116,6 +116,11 @@ class LocalStore(CoreStore):
             md5=get_md5_from_path(path),
             size=get_size_from_path(path),
         )
+    
+    def can_transfer(
+        self, using: CoreTransferManager
+    ):
+        return using.valid
 
     def transfer_out(
         self, store_path: Path, destination_path: Path, using: CoreTransferManager

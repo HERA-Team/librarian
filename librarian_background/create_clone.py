@@ -19,9 +19,9 @@ from librarian_server.orm import StoreMetadata, Instance, CloneTransfer, Transfe
 logger = logging.getLogger("schedule")
 
 
-class CreateClone(Task):
+class CreateLocalClone(Task):
     """
-    A background task that checks the integrity of a given store.
+    A background task that creates a local clone instance.
     """
 
     clone_from: str
@@ -118,6 +118,8 @@ class CreateClone(Task):
 
             success = False
 
+            # TODO: Isn't this logic faulty? We should simply try all the transfer managers until
+            #       one works, right?
             for tm_name, transfer_manager in store_to.transfer_managers.items():
                 try:
                     success = store_from.store_manager.transfer_out(
@@ -175,6 +177,8 @@ class CreateClone(Task):
             store_to.store_manager.unstage(staging_name)
 
             # Everything is good! We can create a new instance.
+            # TODO: Fix this - the instance.path is not the correct path; that's the path on the
+            #       OLD store not our new store...
             new_instance = Instance.new_instance(
                 path=instance.path,
                 file=instance.file,

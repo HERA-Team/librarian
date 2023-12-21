@@ -1,9 +1,7 @@
 """
 ORM for the 'instances' table, describing locations of files on stores.
-
-Note that this does not include instances on other librarians.
-
-# TODO: Track those other instances in a separate table.
+Also includes the ORM for the 'remote_instances' table, describing
+what files have instances on remote librarians that we are aware about.
 """
 
 from .. import database as db
@@ -11,6 +9,8 @@ from ..deletion import DeletionPolicy
 
 from datetime import datetime
 from pathlib import Path
+
+from settings import server_settings
 
 
 class Instance(db.Base):
@@ -38,6 +38,8 @@ class Instance(db.Base):
     "Whether or not this file can be deleted from the store."
     created_time = db.Column(db.DateTime, nullable=False)
     "The time at which this file was placed on the store."
+    available = db.Column(db.Boolean, nullable=False)
+    "Whether or not this file is available on our librarian."
 
     @classmethod
     def new_instance(
@@ -69,4 +71,62 @@ class Instance(db.Base):
                 store=store,
                 deletion_policy=deletion_policy,
                 created_time=datetime.utcnow(),
+                available=True
+            )
+
+
+class RemoteInstance(db.Base):
+    """
+    Remote instances of files, i.e. instances of files on remote librarians
+    that we know about.
+    """
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True, unique=True)
+    "The unique ID of this instance."
+    file_name = db.Column(db.String(256), db.ForeignKey("files.name"), nullable=False)
+    "Name of the file this instance references."
+    file = db.relationship("File", back_populates="remote_instances", primaryjoin="RemoteInstance.file_name == File.name")
+    "The file that object is an instance of."
+    store_id = db.Column(db.Integer, nullable=False)
+    "The store ID on the remote librarian."
+    librarian_id = db.Column(db.Integer, db.ForeignKey("librarians.id"), nullable=False)
+    "ID of the librarian this instance is on."
+    librarian = db.relationship("Librarian", primaryjoin="RemoteInstance.librarian_id == Librarian.id")
+    "The librarian that this object is on."
+    copy_time = db.Column(db.DateTime, nullable=False)
+    "The time at which this file was confirmed as being fully copied to the remote librarian."
+    sender = db.Column(db.String(256), nullable=False)
+    "The name of the librarian that sent this file to the remote librarian."
+
+
+    @classmethod
+    def new_instance(
+            self, file: "File", store_id: int, librarian: "Librarian"
+        ) -> "RemoteInstance":
+            """
+            Create a new remote instance object for a clone that was
+            created by us.
+
+            Parameters
+            ----------
+            file : File
+                The file that this instance is of.
+            store_id : int
+                The store ID on the remote librarian.
+            librarian : Librarian
+                The librarian that this instance is on.
+
+            Returns
+            -------
+            RemoteInstance
+                The new instance.
+            """
+
+            return RemoteInstance(
+                file=file,
+                store_id=store_id,
+                librarian=librarian,
+                copy_time=datetime.utcnow(),
+                # TODO: This should somehow be our name? Not just the displayed site name.
+                sender=server_settings.displayed_site_name,
             )

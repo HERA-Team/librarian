@@ -112,6 +112,24 @@ class CoreStore(BaseModel):
             Filled PathInfo object.
         """
         raise NotImplementedError
+    
+    def can_transfer(
+            self, using: CoreTransferManager
+        ) -> bool:
+        """
+        Determines if a transfer can be performed using the specified TransferManager.
+
+        Parameters
+        ----------
+        using : CoreTransferManager
+            The transfer manager to check.
+
+        Returns
+        -------
+        bool
+            True if the transfer can be performed, False otherwise.
+        """
+        raise NotImplementedError
 
     def transfer_out(
         self, store_path: Path, destination_path: Path, using: CoreTransferManager

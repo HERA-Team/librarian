@@ -44,6 +44,9 @@ class File(db.Base):
     source = db.Column(db.String(256))
     "The source of this file. Could be same as uploader, but could also be another librarian."
     instances = db.relationship("Instance", back_populates="file")
+    "All local instances of this file."
+    remote_instances = db.relationship("RemoteInstance", back_populates="file")
+    "All remote instances of this file."
 
     @classmethod
     def file_exists(self, filename: Path) -> bool:

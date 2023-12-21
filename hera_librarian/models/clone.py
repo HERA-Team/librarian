@@ -61,7 +61,6 @@ class CloneInitiationResponse(BaseModel):
     "OutgoingTransfer ID"
     destination_transfer_id: int
     "IncomingTransfer ID"
-    pass
 
 
 class CloneOngoingRequest(BaseModel):
@@ -103,8 +102,6 @@ class CloneCompleteRequest(BaseModel):
     destination_transfer_id: int
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
 
-    pass
-
 class CloneCompleteResponse(BaseModel):
     """
     In a librarian A -> librarian B transfer, this is the response
@@ -117,12 +114,11 @@ class CloneCompleteResponse(BaseModel):
     destination_transfer_id: int
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
 
-    pass
 
 
 class CloneFailedResponse(BaseModel):
     """
-    Model for response when the clone failed.
+    (Generic) model for response when the clone failed.
     """
 
     reason: str
@@ -134,4 +130,33 @@ class CloneFailedResponse(BaseModel):
     destination_transfer_id: int
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
 
-    pass
+
+
+class CloneFailRequest(BaseModel):
+    """
+    In a librarian A -> librarian B transfer, this is the request
+    that librarian A sends to librarian B to indicate that it has
+    failed the transfer, and that it is ok to set the transfer
+    status to failed.
+    """
+
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
+    destination_transfer_id: int
+    "The ID of the transfer. Note that this is the IncomingTransfer ID."
+    reason: str
+    "Reason for failure."
+
+
+class CloneFailResponse(BaseModel):
+    """
+    Response from the destination librarian to the source librarian
+    indicating whether or not it was successful in failing the transfer.
+    """
+
+    source_transfer_id: int
+    "The ID of the transfer. Note that this is the OutgoingTransfer ID."
+    destination_transfer_id: int
+    "The ID of the transfer. Note that this is the IncomingTransfer ID."
+    success: bool
+    "Whether or not the transfer was successfully failed."

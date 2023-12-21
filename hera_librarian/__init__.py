@@ -66,6 +66,16 @@ def _normalize_deletion_policy(deletion_policy):
         raise Exception('unrecognized deletion policy %r' % (deletion_policy,))
     return deletion_policy
 
+class LibrarianHTTPError(Exception):
+    def __init__(self, url, status_code, reason, suggested_remedy):
+        super(LibrarianHTTPError, self).__init__(
+            f"HTTP request to {url} failed with status code {status_code} and reason {reason}."
+        )
+        self.url = url
+        self.status_code = status_code
+        self.reason = reason
+        self.suggested_remedy = suggested_remedy
+
 
 class LibrarianClient(object):
     conn_name = None
@@ -184,17 +194,13 @@ class LibrarianClient(object):
 
         # Decode the response.
         if r.status_code not in [200, 201]:
-            print(f"HTTP request to {full_endpoint} failed with status code {r.status_code}.")
-            if "reason" in r.json():
-                print(f"The server responded with the following reason: {r.json()['reason']}")
-                if "suggested_remedy" in r.json():
-                    print(f"The server suggested the following suggestion: {r.json()['suggested_remedy']}")
-            else:
-                print(f"The server responded with the following information: {r.json()}")
-            exit(1)
+            raise LibrarianHTTPError(
+                full_endpoint,
+                r.status_code,
+                r.json().get("reason", "<no reason provided>"),
+                r.json().get("suggested_remedy", "<no suggested remedy provided>"),
+            )
         
-        # TODO: Error handling!
-
         if response_model is not None:
             # Note that the pydantic model wants the full bytes content
             # not the deserialized r.json()
@@ -203,6 +209,24 @@ class LibrarianClient(object):
             return None
 
     def ping(self):
+        """
+        Ping the remote librarian to see if it exists.
+
+        Returns
+        -------
+
+        PingResponse
+            The response from the remote librarian.
+
+        Raises
+        ------
+
+        LibrarianHTTPError
+            If the remote librarian is unreachable.
+
+        pydantic.ValidationError
+            If the remote librarian returns an invalid response.
+        """
         from .models.ping import PingRequest, PingResponse
 
         response: PingResponse = self.do_pydantic_http_post(

@@ -34,6 +34,8 @@ from hera_librarian.models.clone import (
     CloneCompleteRequest,
     CloneCompleteResponse,
     CloneFailedResponse,
+    CloneFailResponse,
+    CloneFailRequest,
 )
 
 from fastapi import APIRouter, Response, status
@@ -209,6 +211,9 @@ def stage(request: CloneInitiationRequest, response: Response):
 
     response.status_code = status.HTTP_201_CREATED
 
+    # TODO: Figure out what to do when we have lots of incoming transfers
+    # where sum(sizes) for all those transfers > store_manager.free_space.
+
     model_response = CloneInitiationResponse(
         available_bytes_on_store=use_store.store_manager.free_space,
         store_name=use_store.name,
@@ -343,4 +348,37 @@ def complete(request: CloneCompleteRequest, response: Response):
     return CloneCompleteResponse(
         source_transfer_id=request.source_transfer_id,
         destination_transfer_id=request.destination_transfer_id,
+    )
+
+
+@router.post("/fail", response_model=CloneFailResponse | CloneFailedResponse)
+def fail(request: CloneFailRequest, response: Response):
+    """
+    Endpoint to send to if you would like to fail a specific IncomingTransfer.
+    """
+
+    log.debug(f"Received clone fail request: {request}")
+
+    transfer = query(IncomingTransfer, id=request.destination_transfer_id).first()
+
+    if transfer is None:
+        log.debug(
+            f"Could not find transfer with ID {request.destination_transfer_id}. Returning error."
+        )
+
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return CloneFailedResponse(
+            reason=f"Could not find transfer with ID {request.destination_transfer_id}.",
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
+    transfer.status = TransferStatus.FAILED
+    session.commit()
+
+    response.status_code = status.HTTP_200_OK
+    return CloneFailResponse(
+        source_transfer_id=request.source_transfer_id,
+        destination_transfer_id=request.destination_transfer_id,
+        reason=request.reason,
     )
