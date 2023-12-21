@@ -168,6 +168,7 @@ def stage(request: CloneInitiationRequest, response: Response):
     # No existing transfer.
 
     transfer = IncomingTransfer.new_transfer(
+        source=request.source,
         uploader=request.uploader,
         transfer_size=request.upload_size,
         transfer_checksum=request.upload_checksum,

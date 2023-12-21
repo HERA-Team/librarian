@@ -25,7 +25,9 @@ class CloneInitiationRequest(BaseModel):
     destination_location: Path
     "The final location of the file on the store. Is usually the same as upload_name, but could include extra paths (e.g. unique_id/{upload_name})"
     uploader: str
-    "Name of the uploader (previously source_name)."
+    "Name of the uploader (previously source_name). The person who initially uploaded this to any store."
+    source: str
+    "The librarian or person who is sending you this specific instance. For clones this is the source librarian name."
 
     source_transfer_id: int
     "The ID of the transfer. Note that this is the OutgoingTransfer ID."

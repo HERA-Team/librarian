@@ -54,6 +54,8 @@ class IncomingTransfer(db.Base):
     "Current status of the transfer"
     uploader = db.Column(db.String(256), nullable=False)
     "The name of the uploader."
+    source = db.Column(db.String(256), nullable=False)
+    "The source of this file. Could be same as uploader, but could also be another librarian."
     transfer_size = db.Column(db.BigInteger, nullable=False)
     "The expected transfer size in bytes."
     transfer_checksum = db.Column(db.String(256), nullable=False)
@@ -61,6 +63,8 @@ class IncomingTransfer(db.Base):
 
     store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
     "The ID of the store that this interaction is with."
+    store = db.relationship("StoreMetadata", primaryjoin="IncomingTransfer.store_id == StoreMetadata.id")
+    "The store that this object is on or going to."
     transfer_manager_name = db.Column(db.String(256))
     "Name of the transfer manager that the client is using/used to upload the file."
 
@@ -79,7 +83,7 @@ class IncomingTransfer(db.Base):
 
     @classmethod
     def new_transfer(
-        self, uploader: str, transfer_size: int, transfer_checksum: str
+        self, uploader: str, source: str, transfer_size: int, transfer_checksum: str
     ) -> "IncomingTransfer":
         """
         Create a new transfer!
@@ -90,6 +94,7 @@ class IncomingTransfer(db.Base):
         return IncomingTransfer(
             status=TransferStatus.INITIATED,
             uploader=uploader,
+            source=source,
             transfer_size=transfer_size,
             transfer_checksum=transfer_checksum,
             start_time=datetime.datetime.utcnow(),

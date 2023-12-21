@@ -21,6 +21,7 @@ from librarian_server.orm import (
     File,
     Librarian,
 )
+from librarian_server.settings import server_settings
 
 from hera_librarian.models.clone import (
     CloneInitiationRequest,
@@ -141,6 +142,9 @@ class SendClone(Task):
                 upload_name=file.name,
                 destination_location=file.name,
                 source_transfer_id=transfer.id,
+                uploader=file.uploader,
+                # TODO better identifier for this...
+                source=server_settings.displayed_site_name
             )
 
             try:

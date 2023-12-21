@@ -91,6 +91,7 @@ def stage(request: UploadInitiationRequest, response: Response):
 
     # Now we can write to the database.
     transfer = IncomingTransfer.new_transfer(
+        source=request.uploader,
         uploader=request.uploader,
         transfer_size=request.upload_size,
         transfer_checksum=request.upload_checksum,

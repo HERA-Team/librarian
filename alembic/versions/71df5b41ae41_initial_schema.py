@@ -113,6 +113,7 @@ def upgrade():
         ),
         Column("status", Enum(TransferStatus), nullable=False),
         Column("uploader", String(256), nullable=False),
+        Column("source", String(256), nullable=False),
         Column("transfer_size", BigInteger, nullable=False),
         Column("transfer_checksum", String(256), nullable=False),
         Column("store_id", Integer, ForeignKey("store_metadata.id")),
