@@ -1,3 +1,5 @@
+#!python3
+
 """
 Runs the librarian server. This is really just an _example_ for how to run
 the server; you can run the librarian_server module with any ASGI
@@ -14,10 +16,22 @@ from librarian_server.logger import log
 
 from librarian_background import background
 
+from pathlib import Path
+
+import subprocess
+
 # Do this in if __name__ == "__main__" so we can spawn threads on MacOS...
 
 if __name__ == "__main__":
     # Perform pre-startup tasks!
+    log.debug("Creating the database.")
+    return_value = subprocess.call("cd $ALEMBIC_CONFIG_PATH; $ALEMBIC_PATH upgrade head", shell=True)
+    if return_value != 0:
+        log.debug("Error creating the database. Exiting.")
+        exit(0)
+    else:
+        log.debug("Successfully created the database.")
+
     log.debug("Adding store metadata to database.")
 
     stores_added = 0

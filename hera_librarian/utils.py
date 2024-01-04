@@ -361,11 +361,15 @@ def get_md5_from_path(path):
     """
     #TODO Fix this
     from pathlib import Path
-    from checksumdir import dirhash
+    from checksumdir import dirhash, _filehash, HASH_FUNCS
 
     path = Path(path).resolve()
 
-    return dirhash(path, "md5")
+    if path.is_dir():
+        return dirhash(path, "md5")
+    else:
+        # Just a single file. That's fine!
+        return _filehash(path, HASH_FUNCS["md5"])
 
 
 def get_size_from_path(path):

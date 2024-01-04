@@ -6,11 +6,10 @@ what files have instances on remote librarians that we are aware about.
 
 from .. import database as db
 from ..deletion import DeletionPolicy
+from ..settings import server_settings
 
 from datetime import datetime
 from pathlib import Path
-
-from settings import server_settings
 
 
 class Instance(db.Base):
@@ -80,6 +79,8 @@ class RemoteInstance(db.Base):
     Remote instances of files, i.e. instances of files on remote librarians
     that we know about.
     """
+
+    __tablename__ = "remote_instances"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True, unique=True)
     "The unique ID of this instance."

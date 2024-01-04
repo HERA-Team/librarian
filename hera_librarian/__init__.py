@@ -127,6 +127,7 @@ class LibrarianClient(object):
         JSON reply; return the decoded version of the latter.
 
         """
+        # TODO: This is an awful way to do this configuration...
         # figure out if we're using authenticator- or GitHub-based authentication
         if "authenticator" in self.config:
             if "github_username" in self.config or "github_pat" in self.config:
@@ -194,6 +195,11 @@ class LibrarianClient(object):
 
         # Decode the response.
         if r.status_code not in [200, 201]:
+            try:
+                json = r.json()
+            except requests.exceptions.JSONDecodeError:
+                json = {}
+            
             raise LibrarianHTTPError(
                 full_endpoint,
                 r.status_code,

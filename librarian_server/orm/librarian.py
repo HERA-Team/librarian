@@ -9,13 +9,15 @@ from .. import database as db
 from hera_librarian import LibrarianClient, LibrarianHTTPError
 from pydantic import ValidationError
 
-class Librarian(db.Model):
+class Librarian(db.Base):
     """
     A librarian that we are connected to. This should be pinged every now and then
     to confirm its availability. We will then ask for a response to see if that
     librarian knows about US; they must be able to 'call us back' for
     asynchronous transfers.
     """
+
+    __tablename__ = "librarians"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     "Unique ID of this librarian (relative to us)."

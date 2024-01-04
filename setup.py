@@ -65,7 +65,7 @@ although those modules are not installed in a standard ``pip install``.
         "all": all_reqs,
     },
     scripts=[
-        "scripts/runserver.py",
+        "scripts/librarian-server-start",
     ],
     entry_points={"console_scripts": ["librarian=hera_librarian.cli:main"]},
     use_scm_version=True,
