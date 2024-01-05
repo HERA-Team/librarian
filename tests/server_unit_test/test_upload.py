@@ -92,3 +92,12 @@ def test_valid_stage(client, server, orm):
         .status
         == orm.TransferStatus.INITIATED
     )
+
+    # Now we can check what happens when we try to upload the same file.
+    response = client.post("/api/v2/upload/stage", content=request.model_dump_json())
+
+    assert response.status_code == 201
+
+    decoded_new_response = UploadInitiationResponse.model_validate_json(response.content)
+
+    assert decoded_new_response.transfer_id != decoded_response.transfer_id

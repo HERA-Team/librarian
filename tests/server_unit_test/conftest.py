@@ -1,21 +1,19 @@
 """
-Fixtures for integration testing of the servers and client.
+Unit testing conftest. Contains fixtures for the librarian server.
+We can't just import app and session from our main __init__.py file
+because they contain state that depends on configuraiton variables...
+Ugh.
 """
 
 import pytest
 import os
-import random
-import subprocess
-import json
-import shutil
-import sys
-import socket
-
-from xprocess import ProcessStarter
-from socket import gethostname
 from pathlib import Path
 from pydantic import BaseModel
-from hera_librarian import LibrarianClient
+import json
+import random
+from socket import gethostname
+import socket
+from subprocess import run
 
 
 class Server(BaseModel):
@@ -36,7 +34,7 @@ def server_setup(tmp_path_factory) -> Server:
     Sets up a server.
     """
 
-    librarian_config_path = str(Path("./integrationtest/mock_config.json").resolve())
+    librarian_config_path = str(Path("./tests/mock_config.json").resolve())
 
     server_id_and_port = random.randint(1000, 20000)
 
@@ -94,82 +92,81 @@ def server_setup(tmp_path_factory) -> Server:
 
 
 @pytest.fixture(scope="session")
-def start_server(xprocess, tmp_path_factory, request):
+def server(tmp_path_factory):
     """
     Starts a single server with pytest-xprocess.
     """
 
     setup = server_setup(tmp_path_factory)
 
-    class Starter(ProcessStarter):
-        pattern = "Uvicorn running on"
-        args = [sys.executable, shutil.which("librarian-server-start")]
-        timeout = 10
-        env = {
-            "LIBRARIAN_CONFIG_PATH": setup.LIBRARIAN_CONFIG_PATH,
-            "SQLALCHEMY_DATABASE_URI": setup.SQLALCHEMY_DATABASE_URI,
-            "PORT": setup.PORT,
-            "ADD_STORES": setup.ADD_STORES,
-            "VIRTUAL_ENV": os.environ.get("VIRTUAL_ENV", None),
-            "ALEMBIC_CONFIG_PATH": str(Path(__file__).parent.parent),
-            "ALEMBIC_PATH": shutil.which("alembic"),
-        }
+    env_vars = {
+        "LIBRARIAN_CONFIG_PATH": None,
+        "SQLALCHEMY_DATABASE_URI": None,
+        "PORT": None,
+        "ADD_STORES": None,
+    }
 
-    xprocess.ensure("server", Starter)
+    for env_var in list(env_vars.keys()):
+        env_vars[env_var] = os.environ.get(env_var, None)
+        os.environ[env_var] = getattr(setup, env_var)
 
-    setup.process = "server"
-    yield setup
+    # Before starting, create the DB schema
+    run(["alembic", "upgrade", "head"])
 
-    # Hack because capsys cannot be used in session scope
-    # https://github.com/pytest-dev/pytest/issues/2704
-    capmanager = request.config.pluginmanager.getplugin("capturemanager")
+    from librarian_server import app, session
+    from librarian_server.settings import StoreSettings
 
-    with capmanager.global_and_fixture_disabled():
-        print("\n")
-        print(
-            "\033[1m"
-            + "Server log: "
-            + "\033[0m"
-            + str(xprocess.getinfo("server").logpath)
+    # Need to add our stores...
+    from librarian_server.orm import StoreMetadata
+
+    for store_config in json.loads(setup.ADD_STORES):
+        store_config = StoreSettings(**store_config)
+        store = StoreMetadata(
+            name=store_config.store_name,
+            store_type=store_config.store_type,
+            ingestable=store_config.ingestable,
+            store_data={**store_config.store_data, "name": store_config.store_name},
+            transfer_manager_data=store_config.transfer_manager_data,
         )
-        print("\033[1m" + "Database: " + "\033[0m" + str(setup.database))
 
-    xprocess.getinfo("server").terminate()
+        session.add(store)
+
+    session.commit()
+
+    yield app, session, setup
+
+    for env_var in list(env_vars.keys()):
+        if env_vars[env_var] is None:
+            del os.environ[env_var]
+        else:
+            os.environ[env_var] = env_vars[env_var]
 
 
-@pytest.fixture
-def librarian_client(start_server) -> LibrarianClient:
+@pytest.fixture(scope="session")
+def client(server):
     """
-    Returns a LibrarianClient connected to the server.
+    Returns a test client for the server.
     """
 
-    client = LibrarianClient(
-        conn_name="test",
-        conn_config={
-            "url": f"http://localhost:{start_server.id}/",
-            "authenticator": None,
-        },
-    )
+    app, session, setup = server
+
+    from fastapi.testclient import TestClient
+
+    client = TestClient(app)
 
     yield client
 
     del client
 
 
-@pytest.fixture
-def garbage_file(tmp_path) -> Path:
+@pytest.fixture(scope="session")
+def orm(server):
     """
-    Returns a file filled with garbage at the path.
+    Returns the ORM for this server. You have to use this
+    instead of directly importing because of the dependence
+    on the global settings variable.
     """
 
-    data = random.randbytes(1024)
+    from librarian_server import orm
 
-    path = tmp_path / "garbage_file.txt"
-
-    with open(path, "wb") as handle:
-        handle.write(data)
-
-    yield path
-
-    # Delete the file for good measure.
-    path.unlink()
+    yield orm

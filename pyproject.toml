@@ -3,6 +3,6 @@ requires = ["setuptools>=30.3.0", "wheel", "setuptools_scm"]
 
 [tool.pytest.ini_options]
 testpaths = [
-    "integrationtest",
-    "librarian_server/tests",
+    "tests/integration_test",
+    "tests/server_unit_test",
 ]

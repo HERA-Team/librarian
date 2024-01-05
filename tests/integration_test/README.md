@@ -17,5 +17,5 @@ These tests use the following libraries and features that are crucial:
 It must be ran from the main directory in the repository with:
 
 ```
-python3 -m pytest integrationtest
+python3 -m pytest integration_test
 ```
