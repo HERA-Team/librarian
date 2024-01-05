@@ -13,6 +13,7 @@ import json
 import random
 from socket import gethostname
 import socket
+from subprocess import run
 
 
 class Server(BaseModel):
@@ -109,7 +110,28 @@ def server(tmp_path_factory):
         env_vars[env_var] = os.environ.get(env_var, None)
         os.environ[env_var] = getattr(setup, env_var)
 
+    # Before starting, create the DB schema
+    run(["alembic", "upgrade", "head"])
+
     from librarian_server import app, session
+    from librarian_server.settings import StoreSettings
+
+    # Need to add our stores...
+    from librarian_server.orm import StoreMetadata
+
+    for store_config in json.loads(setup.ADD_STORES):
+        store_config = StoreSettings(**store_config)
+        store = StoreMetadata(
+            name=store_config.store_name,
+            store_type=store_config.store_type,
+            ingestable=store_config.ingestable,
+            store_data={**store_config.store_data, "name": store_config.store_name},
+            transfer_manager_data=store_config.transfer_manager_data,
+        )
+
+        session.add(store)
+
+    session.commit()
 
     yield app, session, setup
 
@@ -135,3 +157,16 @@ def client(server):
     yield client
 
     del client
+
+
+@pytest.fixture(scope="session")
+def orm(server):
+    """
+    Returns the ORM for this server. You have to use this
+    instead of directly importing because of the dependence
+    on the global settings variable.
+    """
+
+    from librarian_server import orm
+
+    yield orm
