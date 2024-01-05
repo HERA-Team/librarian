@@ -14,7 +14,11 @@ class LocalTransferManager(CoreTransferManager):
 
     def transfer(self, local_path: Path, remote_path: Path):
         # TODO: Verify that the location we are trying to copy to exists.
-        return shutil.copytree(local_path, remote_path)
+        if local_path.is_dir():
+            return shutil.copytree(local_path, remote_path)
+        else:
+            # Copy2 copies more metadata.
+            return shutil.copy2(local_path, remote_path)
 
     @property
     def valid(self) -> bool:
