@@ -6,8 +6,7 @@ from .settings import server_settings
 from .logger import log
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Enum, DateTime, BigInteger, PickleType
 

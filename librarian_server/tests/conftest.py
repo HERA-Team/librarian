@@ -1,68 +1,137 @@
-# -*- mode: python; coding: utf-8 -*-
-# Copyright 2019 The HERA Collaboration
-# Licensed under the 2-clause BSD license
-
-"""Setup testing environment.
-
+"""
+Unit testing conftest. Contains fixtures for the librarian server.
+We can't just import app and session from our main __init__.py file
+because they contain state that depends on configuraiton variables...
+Ugh.
 """
 
-
-
 import pytest
-import json
 import os
-import logging
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from pathlib import Path
+from pydantic import BaseModel
+import json
+import random
+from socket import gethostname
+import socket
 
 
-_log_level_names = {
-    'debug': logging.DEBUG,
-    'info': logging.INFO,
-    'warning': logging.WARNING,
-    'error': logging.ERROR,
-}
+class Server(BaseModel):
+    id: int
+    base_path: Path
+    staging_directory: Path
+    store_directory: Path
+    database: Path
+    LIBRARIAN_CONFIG_PATH: str
+    SQLALCHEMY_DATABASE_URI: str
+    PORT: str
+    ADD_STORES: str
+    process: str | None = None
 
 
-@pytest.fixture(scope="module")
-def db_connection():
-    # reuse most of the code from _initialize()
-    config_path = os.environ.get('LIBRARIAN_CONFIG_PATH', 'server-config.json')
-    with open(config_path) as f:
-        config = json.load(f)
+def server_setup(tmp_path_factory) -> Server:
+    """
+    Sets up a server.
+    """
 
-    if 'SECRET_KEY' not in config:
-        print('cannot start server: must define the Flask "secret key" as the item '
-              '"SECRET_KEY" in "server-config.json"', file=sys.stderr)
-        sys.exit(1)
+    librarian_config_path = str(Path("./integrationtest/mock_config.json").resolve())
 
-    # TODO: configurable logging parameters will likely be helpful. We use UTC
-    # for timestamps using standard ISO-8601 formatting. The Python docs claim
-    # that 8601 is the default format but this does not appear to be true.
-    loglevel_cfg = config.get('log_level', 'info')
-    loglevel = _log_level_names.get(loglevel_cfg)
-    warn_loglevel = (loglevel is None)
-    if warn_loglevel:
-        loglevel = logging.INFO
+    server_id_and_port = random.randint(1000, 20000)
 
-    logging.basicConfig(
-        level=loglevel,
-        format='%(asctime)s %(levelname)s: %(message)s',
-        datefmt='%Y-%m-%dT%H:%M:%SZ'
+    # Check if the port is available. If not, increment until it is.
+    while (
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect_ex(
+            (gethostname(), server_id_and_port)
+        )
+        == 0
+    ):
+        server_id_and_port += 1
+
+    tmp_path = tmp_path_factory.mktemp(f"server_{server_id_and_port}")
+
+    database = tmp_path / f"database_{server_id_and_port}.sqlite"
+
+    # Create the other server settings
+    staging_directory = tmp_path / f"staging_{server_id_and_port}"
+    staging_directory.mkdir()
+
+    store_directory = tmp_path / f"store_{server_id_and_port}"
+    store_directory.mkdir()
+
+    store_config = [
+        {
+            "store_name": "test_store",
+            "store_type": "local",
+            "ingestable": True,
+            "store_data": {
+                "staging_path": str(staging_directory),
+                "store_path": str(store_directory),
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostname": gethostname(),
+                }
+            },
+        }
+    ]
+
+    add_stores = json.dumps(store_config)
+
+    return Server(
+        id=server_id_and_port,
+        base_path=tmp_path,
+        staging_directory=staging_directory,
+        store_directory=store_directory,
+        database=database,
+        LIBRARIAN_CONFIG_PATH=librarian_config_path,
+        SQLALCHEMY_DATABASE_URI=f"sqlite:///{database}",
+        PORT=str(server_id_and_port),
+        ADD_STORES=add_stores,
     )
-    import time
-    logging.getLogger('').handlers[0].formatter.converter = time.gmtime
-    logger = logging.getLogger('librarian')
 
-    if warn_loglevel:
-        logger.warn('unrecognized value %r for "log_level" config item', loglevel_cfg)
 
-    pardir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__))))
-    tf = os.path.join(os.path.dirname(pardir), 'templates')
-    app = Flask('librarian', template_folder=tf)
-    app.config.update(config)
-    app.config["TESTING"] = True
-    app.testing = True
-    db = SQLAlchemy(app)
-    return logger, app, db
+@pytest.fixture(scope="session")
+def server(tmp_path_factory):
+    """
+    Starts a single server with pytest-xprocess.
+    """
 
+    setup = server_setup(tmp_path_factory)
+
+    env_vars = {
+        "LIBRARIAN_CONFIG_PATH": None,
+        "SQLALCHEMY_DATABASE_URI": None,
+        "PORT": None,
+        "ADD_STORES": None,
+    }
+
+    for env_var in list(env_vars.keys()):
+        env_vars[env_var] = os.environ.get(env_var, None)
+        os.environ[env_var] = getattr(setup, env_var)
+
+    from librarian_server import app, session
+
+    yield app, session, setup
+
+    for env_var in list(env_vars.keys()):
+        if env_vars[env_var] is None:
+            del os.environ[env_var]
+        else:
+            os.environ[env_var] = env_vars[env_var]
+
+
+@pytest.fixture(scope="session")
+def client(server):
+    """
+    Returns a test client for the server.
+    """
+
+    app, session, setup = server
+
+    from fastapi.testclient import TestClient
+
+    client = TestClient(app)
+
+    yield client
+
+    del client
