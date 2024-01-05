@@ -9,12 +9,13 @@ import subprocess
 import json
 import shutil
 import sys
+import socket
 
 from xprocess import ProcessStarter
 from socket import gethostname
 from pathlib import Path
 from pydantic import BaseModel
-from hera_librarian import LibrarianClient  
+from hera_librarian import LibrarianClient
 
 
 class Server(BaseModel):
@@ -38,6 +39,16 @@ def server_setup(tmp_path_factory) -> Server:
     librarian_config_path = str(Path("./integrationtest/mock_config.json").resolve())
 
     server_id_and_port = random.randint(1000, 20000)
+
+    # Check if the port is available. If not, increment until it is.
+    while (
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect_ex(
+            (gethostname(), server_id_and_port)
+        )
+        == 0
+    ):
+        server_id_and_port += 1
+
     tmp_path = tmp_path_factory.mktemp(f"server_{server_id_and_port}")
 
     database = tmp_path / f"database_{server_id_and_port}.sqlite"
@@ -49,21 +60,23 @@ def server_setup(tmp_path_factory) -> Server:
     store_directory = tmp_path / f"store_{server_id_and_port}"
     store_directory.mkdir()
 
-    store_config = [{
-        "store_name": "test_store",
-        "store_type": "local",
-        "ingestable": True,
-        "store_data": {
-            "staging_path": str(staging_directory),
-            "store_path": str(store_directory),
-        },
-        "transfer_manager_data": {
-            "local": {
-                "available": "true",
-                "hostname": gethostname(),
-            }
+    store_config = [
+        {
+            "store_name": "test_store",
+            "store_type": "local",
+            "ingestable": True,
+            "store_data": {
+                "staging_path": str(staging_directory),
+                "store_path": str(store_directory),
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostname": gethostname(),
+                }
+            },
         }
-    }]
+    ]
 
     add_stores = json.dumps(store_config)
 
@@ -99,7 +112,7 @@ def start_server(xprocess, tmp_path_factory, request):
             "ADD_STORES": setup.ADD_STORES,
             "VIRTUAL_ENV": os.environ.get("VIRTUAL_ENV", None),
             "ALEMBIC_CONFIG_PATH": str(Path(__file__).parent.parent),
-            "ALEMBIC_PATH": shutil.which("alembic")
+            "ALEMBIC_PATH": shutil.which("alembic"),
         }
 
     xprocess.ensure("server", Starter)
@@ -107,11 +120,22 @@ def start_server(xprocess, tmp_path_factory, request):
     setup.process = "server"
     yield setup
 
-    if request.session.testsfailed:
-        print("Tests failed, data may be available at", xprocess.getinfo("server").logpath)
-        print("Tests failed, database may be available at", setup.database)
+    # Hack because capsys cannot be used in session scope
+    # https://github.com/pytest-dev/pytest/issues/2704
+    capmanager = request.config.pluginmanager.getplugin("capturemanager")
+
+    with capmanager.global_and_fixture_disabled():
+        print("\n")
+        print(
+            "\033[1m"
+            + "Server log: "
+            + "\033[0m"
+            + str(xprocess.getinfo("server").logpath)
+        )
+        print("\033[1m" + "Database: " + "\033[0m" + str(setup.database))
 
     xprocess.getinfo("server").terminate()
+
 
 @pytest.fixture
 def librarian_client(start_server) -> LibrarianClient:
@@ -123,8 +147,8 @@ def librarian_client(start_server) -> LibrarianClient:
         conn_name="test",
         conn_config={
             "url": f"http://localhost:{start_server.id}/",
-            "authenticator": None
-        }
+            "authenticator": None,
+        },
     )
 
     yield client
@@ -149,4 +173,3 @@ def garbage_file(tmp_path) -> Path:
 
     # Delete the file for good measure.
     path.unlink()
-
