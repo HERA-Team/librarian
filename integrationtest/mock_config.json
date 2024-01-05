@@ -3,6 +3,5 @@
     "sqlalchemy_track_modifications": false,
     "log_level": "DEBUG",
     "displayed_site_name": "Test",
-    "displayed_site_description": "Test librarian server.",
-    "add_stores": []
+    "displayed_site_description": "Test librarian server."
 }
