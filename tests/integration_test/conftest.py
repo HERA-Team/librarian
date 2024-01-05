@@ -17,6 +17,9 @@ from pathlib import Path
 from pydantic import BaseModel
 from hera_librarian import LibrarianClient
 
+DATABASE_PATH = None
+SERVER_LOG_PATH = None
+
 
 class Server(BaseModel):
     id: int
@@ -120,21 +123,17 @@ def start_server(xprocess, tmp_path_factory, request):
     setup.process = "server"
     yield setup
 
-    # Hack because capsys cannot be used in session scope
-    # https://github.com/pytest-dev/pytest/issues/2704
-    capmanager = request.config.pluginmanager.getplugin("capturemanager")
-
-    with capmanager.global_and_fixture_disabled():
-        print("\n")
-        print(
-            "\033[1m"
-            + "Server log: "
-            + "\033[0m"
-            + str(xprocess.getinfo("server").logpath)
-        )
-        print("\033[1m" + "Database: " + "\033[0m" + str(setup.database))
+    global DATABASE_PATH, SERVER_LOG_PATH
+    DATABASE_PATH = str(setup.database)
+    SERVER_LOG_PATH = str(xprocess.getinfo("server").logpath)
 
     xprocess.getinfo("server").terminate()
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    terminalreporter.section("integration test temporary files")
+    terminalreporter.write_line("\033[1m" + "Server log: " + "\033[0m" + SERVER_LOG_PATH)
+    terminalreporter.write_line("\033[1m" + "Database: " + "\033[0m" + DATABASE_PATH)
 
 
 @pytest.fixture

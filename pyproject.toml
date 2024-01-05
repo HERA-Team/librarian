@@ -6,3 +6,13 @@ testpaths = [
     "tests/integration_test",
     "tests/server_unit_test",
 ]
+
+[tool.coverage.run]
+source = [
+    "librarian_server",
+    "librarian_background",
+    "hera_librarian",
+]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover"]
