@@ -17,5 +17,8 @@ These tests use the following libraries and features that are crucial:
 It must be ran from the main directory in the repository with:
 
 ```
-python3 -m pytest integration_test
+python3 -m pytest tests/integration_test
 ```
+
+Note that it is not possible to garner code coverage for the librarian
+server for this test, unfortunately. You must use the unit test.
