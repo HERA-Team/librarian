@@ -115,6 +115,11 @@ def stage(request: UploadInitiationRequest, response: Response):
             f"No stores available for upload, they are all full!. Returning error."
         )
         response.status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+
+        # Fail the transfer
+        transfer.status = TransferStatus.FAILED
+        session.commit()
+
         return UploadFailedResponse(
             reason="No stores available for upload. Your upload is too large.",
             suggested_remedy="Try again later, or try to upload a smaller file. Contact the administrator of this librarian instance.",
