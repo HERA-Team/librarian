@@ -2,6 +2,10 @@
 Tests the endpoints in librarian_server/api/upload.py.
 """
 
+from fastapi.applications import FastAPI
+from fastapi.testclient import TestClient
+from pathlib import Path
+from sqlalchemy.orm.session import Session
 from hera_librarian.models.uploads import (
     UploadInitiationRequest,
     UploadInitiationResponse,
@@ -13,8 +17,11 @@ from hashlib import md5
 
 import shutil
 
+from .conftest import Server
+from typing import Any
 
-def test_negative_upload_size(client):
+
+def test_negative_upload_size(client: TestClient):
     """
     Tests that a negative upload size results in an error.
     """
@@ -36,7 +43,9 @@ def test_negative_upload_size(client):
     }
 
 
-def test_extreme_upload_size(client, server, orm):
+def test_extreme_upload_size(
+    client: TestClient, server: tuple[FastAPI, Session, Server], orm: Any
+):
     """
     Tests that an upload size that is too large results in an error.
     """
@@ -64,7 +73,9 @@ def test_extreme_upload_size(client, server, orm):
     )
 
 
-def test_valid_stage(client, server, orm):
+def test_valid_stage(
+    client: TestClient, server: tuple[FastAPI, Session, Server], orm: Any
+):
     """
     Tests that a valid stage works.
     """
@@ -139,7 +150,13 @@ def helper_generate_transfer(
     return decoded_response
 
 
-def test_full_upload(client, server, orm, garbage_file, garbage_filename):
+def test_full_upload(
+    client: TestClient,
+    server: tuple[FastAPI, Session, Server],
+    orm: Any,
+    garbage_file: Path,
+    garbage_filename: Path,
+):
     """
     Tests that a full upload works.
     """
@@ -170,3 +187,21 @@ def test_full_upload(client, server, orm, garbage_file, garbage_filename):
     )
 
     assert response.status_code == 200
+
+    # Check we got this thing in the database.
+    _, session, _ = server
+    incoming_transfer = (
+        session.query(orm.IncomingTransfer)
+        .filter_by(id=stage_response.transfer_id)
+        .first()
+    )
+
+    assert incoming_transfer.status == orm.TransferStatus.COMPLETED
+
+    # Find the file in the store.
+    instance = (
+        session.query(orm.Instance).filter_by(file_name=str(garbage_filename)).first()
+    )
+
+    # Check the file is where it should be.
+    assert Path(instance.path).exists()
