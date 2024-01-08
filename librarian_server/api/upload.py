@@ -189,6 +189,17 @@ def commit(request: UploadCompletionRequest, response: Response):
             request=request,
             transfer=transfer,
         )
+    except FileNotFoundError:
+        log.debug(
+            f"File {request.staging_location} not found in staging area. Returning error"
+        )
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return UploadFailedResponse(
+            reason="File not found in staging area.",
+            suggested_remedy="Try to transfer the file again by creating a new transfer, "
+            "this one was failed. If the problem persists, "
+            "contact the administrator of this librarian instance.",
+        )
     except FileExistsError:
         log.debug(
             f"File {request.destination_location} already exists on store. Returning error."

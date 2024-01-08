@@ -130,7 +130,16 @@ class StoreMetadata(db.Base):
         uploader = request.uploader
 
         # First up, check that we got what we expected!
-        info = self.store_manager.path_info(staged_path)
+        try:
+            info = self.store_manager.path_info(staged_path)
+        except FileNotFoundError:
+            transfer.status = TransferStatus.FAILED
+            db.session.commit()
+
+            raise FileNotFoundError(
+                f"File {staged_path} not found in staging area. "
+                "It is likely there was a problem with the file upload. "
+            )
 
         if (
             info.size != transfer.transfer_size
