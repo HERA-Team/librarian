@@ -60,7 +60,10 @@ def stage(request: UploadInitiationRequest, response: Response):
         response.status_code = status.HTTP_409_CONFLICT
         return UploadFailedResponse(
             reason="File already exists on librarian.",
-            suggested_remedy="Check that you are not trying to upload a file that already exists on the librarian, and if it does not choose a unique filename that does not already exist.",
+            suggested_remedy=(
+                "Check that you are not trying to upload a file that already exists on the librarian, "
+                "and if it does not choose a unique filename that does not already exist."
+            ),
         )
 
     # First, try to see if this is someone trying to re-start an existing transfer!
@@ -82,8 +85,13 @@ def stage(request: UploadInitiationRequest, response: Response):
 
         for transfer in existing_transfer:
             # Unstage the files.
-            store = StoreMetadata.from_id(transfer.store_id)
-            store.store_manager.unstage(Path(transfer.staging_path))
+            try:
+                store = StoreMetadata.from_id(transfer.store_id)
+                store.store_manager.unstage(Path(transfer.staging_path))
+            except ServerError:
+                # Store with ID does not exist (usually store_id is None as transfer never got there.)
+                # That's ok, if there's no store ID, nobody actually staged the file.
+                pass
 
             transfer.status = TransferStatus.FAILED
 
