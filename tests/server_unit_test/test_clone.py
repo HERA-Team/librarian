@@ -118,3 +118,20 @@ def test_valid_stage_and_fail(client, server, orm):
         .status
         == orm.TransferStatus.FAILED
     )
+
+
+def test_try_to_fail_non_existent_transfer(client, server, orm):
+    """
+    Tests that trying to fail a transfer that doesn't exist results in an error.
+    """
+    request = CloneFailRequest(
+        source_transfer_id=-100000,
+        destination_transfer_id=-10000,
+        reason="test",
+    )
+
+    response = client.post("/api/v2/clone/fail", content=request.model_dump_json())
+
+    assert response.status_code == 404
+
+    decoded_response = CloneFailedResponse.model_validate_json(response.content)
