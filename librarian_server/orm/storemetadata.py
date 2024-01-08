@@ -127,7 +127,6 @@ class StoreMetadata(db.Base):
         staged_path = request.staging_location
         store_path = request.destination_location
         deletion_policy = DeletionPolicy.from_str(request.deletion_policy)
-        uploader = request.uploader
 
         # First up, check that we got what we expected!
         try:
