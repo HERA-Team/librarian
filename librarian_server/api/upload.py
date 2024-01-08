@@ -162,6 +162,7 @@ def commit(request: UploadCompletionRequest, response: Response):
     Commits a file to a store, called once it has been uploaded.
 
     Possible response codes:
+    406 - Not acceptable. File does not have a valid checksum or size.
     409 - Conflict. File already exists on store.
     500 - Internal server error. Database communication issue.
     200 - OK. Upload succeeded.
@@ -181,6 +182,9 @@ def commit(request: UploadCompletionRequest, response: Response):
     session.commit()
 
     try:
+        # This function handles failing the transfer in the case where
+        # that needs to happen. All we need to do is return the appropriate
+        # HTTP response code and data.
         store.ingest_staged_file(
             request=request,
             transfer=transfer,
@@ -192,7 +196,22 @@ def commit(request: UploadCompletionRequest, response: Response):
         response.status_code = status.HTTP_409_CONFLICT
         return UploadFailedResponse(
             reason="File already exists on store.",
-            suggested_remedy="Check that you are not trying to upload a file that already exists on the store, and if it does not choose a unique filename that does not already exist.",
+            suggested_remedy=(
+                "Check that you are not trying to upload a file that "
+                "already exists on the store, and if it does not choose a "
+                "unique filename that does not already exist."
+            ),
+        )
+    except ValueError:
+        log.debug(
+            f"File {request.edestination_location} does not have a valid "
+            "checksum or size. Returning error."
+        )
+        response.status_code = status.HTTP_406_NOT_ACCEPTABLE
+        return UploadFailedResponse(
+            reason="File does not have a valid checksum or size.",
+            suggested_remedy="Try to transfer the file again. If the problem persists, "
+            "contact the administrator of this librarian instance.",
         )
     except ServerError as e:
         log.debug(

@@ -170,3 +170,31 @@ def orm(server):
     from librarian_server import orm
 
     yield orm
+
+
+@pytest.fixture
+def garbage_file(tmp_path) -> Path:
+    """
+    Returns a file filled with garbage at the path.
+    """
+
+    data = random.randbytes(1024)
+
+    path = tmp_path / "garbage_file.txt"
+
+    with open(path, "wb") as handle:
+        handle.write(data)
+
+    yield path
+
+    # Delete the file for good measure.
+    path.unlink()
+
+
+@pytest.fixture
+def garbage_filename() -> Path:
+    """
+    Returns a random valid filename.
+    """
+
+    yield Path(f"garbage_file_{random.randint(0, 1000000)}.txt")

@@ -1,4 +1,4 @@
-from . import logger
+from .logger import log
 from enum import Enum
 
 class DeletionPolicy(Enum):
@@ -13,10 +13,11 @@ class DeletionPolicy(Enum):
 
     @classmethod
     def from_str(cls, text: str) -> "DeletionPolicy":
+        text = text.lower()
         if text == "disallowed":
             return cls.DISALLOWED
         elif text == "allowed":
             return cls.ALLOWED
         else:
-            logger.warn('Unrecognized deletion policy %r; using DISALLOWED', text)
+            log.warn(f"Unrecognized deletion policy {text}; using DISALLOWED")
             return cls.DISALLOWED

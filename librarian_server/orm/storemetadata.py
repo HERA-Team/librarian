@@ -114,8 +114,12 @@ class StoreMetadata(db.Base):
 
         Raises
         ------
+        FileExistsError
+            If the file already exists on the store.
+        ValueError
+            If the file does not match the expected size or checksum.
         ServerError
-            If the file does not match the expected size or checksum, or if the file already exists on the store.
+            If there is an unhandled database exception.        
         """
 
         # We do not have any custom metadata any more. So MetaMode is no longer required...
@@ -138,7 +142,7 @@ class StoreMetadata(db.Base):
             transfer.status = TransferStatus.FAILED
             db.session.commit()
 
-            raise ServerError(
+            raise ValueError(
                 f"File {staged_path} does not match expected size/checksum; "
                 f"expected {transfer.transfer_size}/{transfer.transfer_checksum}, "
                 f"got {info.size}/{info.md5}."
