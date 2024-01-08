@@ -132,8 +132,8 @@ def start_server(xprocess, tmp_path_factory, request):
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     terminalreporter.section("integration test temporary files")
-    terminalreporter.write_line("\033[1m" + "Server log: " + "\033[0m" + SERVER_LOG_PATH)
-    terminalreporter.write_line("\033[1m" + "Database: " + "\033[0m" + DATABASE_PATH)
+    terminalreporter.write_line("\033[1m" + "Server log: " + "\033[0m" + str(SERVER_LOG_PATH))
+    terminalreporter.write_line("\033[1m" + "Database: " + "\033[0m" + str(DATABASE_PATH))
 
 
 @pytest.fixture
