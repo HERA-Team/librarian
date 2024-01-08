@@ -215,7 +215,7 @@ def commit(request: UploadCompletionRequest, response: Response):
         )
     except ValueError:
         log.debug(
-            f"File {request.edestination_location} does not have a valid "
+            f"File {request.destination_location} does not have a valid "
             "checksum or size. Returning error."
         )
         response.status_code = status.HTTP_406_NOT_ACCEPTABLE

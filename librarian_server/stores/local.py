@@ -77,6 +77,9 @@ class LocalStore(CoreStore):
         if os.path.exists(complete_path):
             try:
                 os.rmdir(complete_path)
+            except NotADirectoryError:
+                # It's not a directory. Delete it.
+                os.remove(complete_path)
             except OSError:
                 # Directory is not empty. Delete it and all its contents. Unfortunately we can't log this..
                 shutil.rmtree(complete_path)

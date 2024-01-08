@@ -212,7 +212,6 @@ def test_commit_no_file_uploaded(client, server, orm, garbage_file, garbage_file
     Tests that we can handle the case where we did not upload the file.
     """
 
-
     stage_response = helper_generate_transfer(
             client, server, orm, garbage_file, garbage_filename
         )
@@ -252,3 +251,51 @@ def test_commit_no_file_uploaded(client, server, orm, garbage_file, garbage_file
     )
 
     assert incoming_transfer.status == orm.TransferStatus.FAILED
+
+
+def test_commit_wrong_file_uploaded(client, server, orm, garbage_file, garbage_filename):
+    """
+    Tests that we can handle the case where we did not upload the file.
+    """
+
+    stage_response = helper_generate_transfer(
+            client, server, orm, garbage_file, garbage_filename
+        )
+    
+    # Delete the file that stage_response puts there and replace with garbage.
+    with open(stage_response.staging_location, "w") as handle:
+        handle.write("hello world")
+
+    # Now we can actually test the commit endpoint.
+
+    request = UploadCompletionRequest(
+        store_name=stage_response.store_name,
+        staging_name=stage_response.staging_name,
+        staging_location=stage_response.staging_location,
+        upload_name=stage_response.upload_name,
+        destination_location=stage_response.destination_location,
+        transfer_provider_name=list(stage_response.transfer_providers.keys())[0],
+        transfer_provider=list(stage_response.transfer_providers.values())[0],
+        meta_mode="infer",
+        deletion_policy="DISALLOWED",
+        uploader="test",
+        transfer_id=stage_response.transfer_id,
+    )
+
+    response = client.post(
+        "/api/v2/upload/commit",
+        content=request.model_dump_json(),
+    )
+
+    assert response.status_code == 406
+
+    # Check we got this thing in the database.
+    _, session, _ = server
+    incoming_transfer = (
+        session.query(orm.IncomingTransfer)
+        .filter_by(id=stage_response.transfer_id)
+        .first()
+    )
+
+    assert incoming_transfer.status == orm.TransferStatus.FAILED
+
