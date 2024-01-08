@@ -42,7 +42,6 @@ from fastapi import APIRouter, Response, status
 
 router = APIRouter(prefix="/api/v2/clone")
 
-
 @router.post("/stage", response_model=CloneInitiationResponse | CloneFailedResponse)
 def stage(request: CloneInitiationRequest, response: Response):
     """

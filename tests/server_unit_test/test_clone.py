@@ -20,19 +20,42 @@ def test_stage_negative_clone(client):
     """
 
     request = CloneInitiationRequest(
-        destination_location="test.txt",
+        destination_location="test_stage_negative_clone.txt",
         upload_size=-1,
         upload_checksum="",
         uploader="test",
-        upload_name="test.txt",
+        upload_name="test_stage_negative_clone.txt",
         source="test_librarian",
         source_transfer_id=-1,
     )
 
-    response = client.post("/api/v2/upload/stage", content=request.model_dump_json())
+    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
 
     assert response.status_code == 400
-    assert response.json() == {
-        "reason": "Upload size must be positive.",
-        "suggested_remedy": "Check you are trying to upload a valid file.",
-    }
+
+    decoded_response = CloneFailedResponse.model_validate_json(response.content)
+
+
+def test_extreme_clone_size(
+    client, server, orm
+):
+    """
+    Tests that an upload size that is too large results in an error.
+    """
+
+    request = CloneInitiationRequest(
+        destination_location="test_extreme_clone_size.txt",
+        upload_size=1000000000000000000,
+        upload_checksum="",
+        uploader="test",
+        upload_name="test_extreme_clone_size.txt",
+        source="test_librarian",
+        source_transfer_id=-1,
+    )
+
+    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+
+    assert response.status_code == 413
+
+    # Check we can decode the response
+    decoded_response = CloneFailedResponse.model_validate_json(response.content)

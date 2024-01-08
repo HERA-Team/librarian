@@ -7,3 +7,4 @@ these endpoints with pydantic models.
 
 from .upload import router as upload_router
 from .ping import router as ping_router
+from .clone import router as clone_router
