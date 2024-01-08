@@ -19,6 +19,8 @@ The following flow occurs when cloning data from librarian A to librarian B:
 """
 
 from typing import Optional
+from pathlib import Path
+
 from ..webutil import ServerError
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import TransferStatus, IncomingTransfer, OutgoingTransfer
@@ -146,8 +148,12 @@ def stage(request: CloneInitiationRequest, response: Response):
             )
 
             # Unstage the files.
-            store = StoreMetadata.from_id(transfer.store_id)
-            store.store_manager.unstage(transfer.staging_path)
+            try:
+                store = StoreMetadata.from_id(transfer.store_id)
+                store.store_manager.unstage(Path(transfer.staging_path))
+            except ServerError:
+                # No store was yet assigned, do not need to delete.
+                pass
 
             transfer.status = TransferStatus.FAILED
             session.commit()
@@ -190,6 +196,10 @@ def stage(request: CloneInitiationRequest, response: Response):
         log.debug(
             f"No stores available for upload, they are all full!. Returning error."
         )
+
+        transfer.status = TransferStatus.FAILED
+        session.commit()
+
         response.status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
         return CloneFailedResponse(
             reason="No stores available for upload. Your upload is too large.",
@@ -223,7 +233,7 @@ def stage(request: CloneInitiationRequest, response: Response):
         destination_location=request.destination_location,
         source_transfer_id=request.source_transfer_id,
         destination_transfer_id=transfer.id,
-        transfer_providers=use_store.trasnfer_managers,
+        transfer_providers=use_store.transfer_managers,
     )
 
     log.debug(f"Returning clone initiation response: {model_response}")
@@ -380,5 +390,5 @@ def fail(request: CloneFailRequest, response: Response):
     return CloneFailResponse(
         source_transfer_id=request.source_transfer_id,
         destination_transfer_id=request.destination_transfer_id,
-        reason=request.reason,
+        success=True,
     )

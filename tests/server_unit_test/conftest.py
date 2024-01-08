@@ -5,15 +5,18 @@ because they contain state that depends on configuraiton variables...
 Ugh.
 """
 
-import pytest
-import os
-from pathlib import Path
-from pydantic import BaseModel
 import json
+import os
 import random
-from socket import gethostname
 import socket
+from pathlib import Path
+from socket import gethostname
 from subprocess import run
+
+import pytest
+from pydantic import BaseModel
+
+DATABASE_PATH = None
 
 
 class Server(BaseModel):
@@ -114,10 +117,9 @@ def server(tmp_path_factory):
     run(["alembic", "upgrade", "head"])
 
     from librarian_server import app, session
-    from librarian_server.settings import StoreSettings
-
     # Need to add our stores...
     from librarian_server.orm import StoreMetadata
+    from librarian_server.settings import StoreSettings
 
     for store_config in json.loads(setup.ADD_STORES):
         store_config = StoreSettings(**store_config)
@@ -134,6 +136,9 @@ def server(tmp_path_factory):
     session.commit()
 
     yield app, session, setup
+
+    global DATABASE_PATH
+    DATABASE_PATH = str(setup.database)
 
     for env_var in list(env_vars.keys()):
         if env_vars[env_var] is None:
@@ -198,3 +203,10 @@ def garbage_filename() -> Path:
     """
 
     yield Path(f"garbage_file_{random.randint(0, 1000000)}.txt")
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    terminalreporter.section("server unit test temporary files")
+    terminalreporter.write_line(
+        "\033[1m" + "Database: " + "\033[0m" + str(DATABASE_PATH)
+    )
