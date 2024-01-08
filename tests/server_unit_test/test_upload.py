@@ -206,6 +206,24 @@ def test_full_upload(
     # Check the file is where it should be.
     assert Path(instance.path).exists()
 
+    # Now highjack this test to see what happens if we try to upload again!
+
+    with open(garbage_file, "rb") as handle:
+        data = handle.read()
+
+    response = client.post(
+        "/api/v2/upload/stage",
+        content=UploadInitiationRequest(
+            destination_location=str(garbage_filename),
+            upload_size=len(data),
+            upload_checksum=md5(data).hexdigest(),
+            uploader="test",
+            upload_name=str(garbage_filename),
+        ).model_dump_json(),
+    )
+
+    assert response.status_code == 409
+
 
 def test_commit_no_file_uploaded(client, server, orm, garbage_file, garbage_filename):
     """
