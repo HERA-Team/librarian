@@ -20,6 +20,7 @@ from hera_librarian import LibrarianClient
 DATABASE_PATH = None
 SERVER_LOG_PATH = None
 
+SECONDARY_DATABASE_PATH = None
 
 class Server(BaseModel):
     id: int
@@ -97,7 +98,7 @@ def server_setup(tmp_path_factory) -> Server:
 
 
 @pytest.fixture(scope="session")
-def start_server(xprocess, tmp_path_factory, request):
+def server(xprocess, tmp_path_factory, request):
     """
     Starts a single server with pytest-xprocess.
     """
@@ -137,7 +138,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 
 
 @pytest.fixture
-def librarian_client(start_server) -> LibrarianClient:
+def librarian_client(server) -> LibrarianClient:
     """
     Returns a LibrarianClient connected to the server.
     """
@@ -145,7 +146,7 @@ def librarian_client(start_server) -> LibrarianClient:
     client = LibrarianClient(
         conn_name="test",
         conn_config={
-            "url": f"http://localhost:{start_server.id}/",
+            "url": f"http://localhost:{server.id}/",
             "authenticator": None,
         },
     )

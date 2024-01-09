@@ -6,25 +6,25 @@ import requests
 from hera_librarian import LibrarianClient
 
 
-def test_server(start_server):
+def test_server(server):
     """
     Tests that the server fixture is working.
     """
-    assert start_server
+    assert server
     
 
-def test_simple_ping(start_server):
+def test_simple_ping(server):
     """
     Tests that the server is up at all.
     """
 
-    response = requests.get(f"http://localhost:{start_server.id}/")
+    response = requests.get(f"http://localhost:{server.id}/")
 
     # Just check we got something (even if its a 404)
     assert response.status_code
     
 
-def test_ping_server(start_server):
+def test_ping_server(server):
     """
     Tests that we can ping the server.
     """
@@ -32,7 +32,7 @@ def test_ping_server(start_server):
     client = LibrarianClient(
         conn_name="test",
         conn_config={
-            "url": f"http://localhost:{start_server.id}/",
+            "url": f"http://localhost:{server.id}/",
             "authenticator": None
         }
     )

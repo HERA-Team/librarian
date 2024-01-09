@@ -5,7 +5,7 @@ Tests that you can successfully upload files to the server.
 from pathlib import Path
 import sqlite3
 
-def test_upload_simple(librarian_client, garbage_file, start_server):
+def test_upload_simple(librarian_client, garbage_file, server):
     # Perform the upload
     librarian_client.upload_file(
         garbage_file,
@@ -14,10 +14,10 @@ def test_upload_simple(librarian_client, garbage_file, start_server):
     )
 
     # Check we got it!
-    # TODO: Implement that check within the librarian client.
+    # TODO: Implement that check within the librarian client (i.e. the ability to search db)
 
     # Check we got it (by manually verifying)
-    conn = sqlite3.connect(start_server.database)
+    conn = sqlite3.connect(server.database)
     c = conn.cursor()
     res = c.execute("SELECT path FROM instances WHERE file_name='test_file'")
     real_file_path = Path(res.fetchone()[0])
@@ -33,7 +33,7 @@ def test_upload_simple(librarian_client, garbage_file, start_server):
     assert real_file_contents == garbage_file_contents
 
 
-def test_upload_file_to_unique_directory(librarian_client, garbage_file, start_server):
+def test_upload_file_to_unique_directory(librarian_client, garbage_file, server):
     librarian_client.upload_file(
         garbage_file,
         Path("test_directory/test_file"),
@@ -41,7 +41,7 @@ def test_upload_file_to_unique_directory(librarian_client, garbage_file, start_s
     )
 
     # Check we got it (by manually verifying)
-    conn = sqlite3.connect(start_server.database)
+    conn = sqlite3.connect(server.database)
     c = conn.cursor()
     res = c.execute("SELECT path FROM instances WHERE file_name='test_directory/test_file'")
     real_file_path = Path(res.fetchone()[0])
