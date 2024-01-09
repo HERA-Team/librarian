@@ -276,7 +276,7 @@ def ongoing(request: CloneOngoingRequest, response: Response):
 
     if transfer.status != TransferStatus.INITIATED:
         log.debug(
-            f"Transfer with ID {request.transfer_id} has status {transfer.status}."
+            f"Transfer with ID {request.source_transfer_id} has status {transfer.status}."
             f"Trying to set it to ONGOING. Returning error."
         )
 
