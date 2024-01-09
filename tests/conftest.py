@@ -2,14 +2,17 @@
 Shared fixtures amongst all tests.
 """
 
+import hashlib
 import json
 import os
 import random
 from pathlib import Path
+import shutil
 from subprocess import run
 
 import pytest
 
+from hera_librarian.utils import get_md5_from_path, get_size_from_path
 from .server import Server, server_setup
 
 
@@ -143,3 +146,41 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     terminalreporter.write_line(
         "\033[1m" + "Database: " + "\033[0m" + str(DATABASE_PATH)
     )
+
+
+@pytest.fixture(scope="package")
+def test_server_with_file(test_server, test_orm):
+    """
+    Test server with a valid file and instance in the store.
+    """
+
+    store = test_server[1].query(test_orm.StoreMetadata).first()
+
+    data = random.randbytes(1024)
+
+    file = test_orm.File.new_file(
+        filename="example_file.txt",
+        size=len(data),
+        checksum=hashlib.md5(data).hexdigest(),
+        uploader="test",
+        source="test",
+    )
+
+    # Create the file in the store
+    path = store.store_manager._resolved_path_store(Path(file.name))
+
+    with open(path, "wb") as handle:
+        handle.write(data)
+
+    instance = test_orm.Instance.new_instance(
+        path=path,
+        file=file,
+        store=store,
+        deletion_policy="ALLOWED",
+    )
+
+    test_server[1].add_all([file, instance])
+
+    test_server[1].commit()
+
+    yield test_server
