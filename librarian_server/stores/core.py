@@ -2,6 +2,8 @@
 Core store (prototype).
 """
 
+import abc
+
 from .pathinfo import PathInfo
 from pathlib import Path
 from pydantic import BaseModel
@@ -9,11 +11,13 @@ from pydantic import BaseModel
 from hera_librarian.transfers.core import CoreTransferManager
 
 
-class CoreStore(BaseModel):
+class CoreStore(BaseModel, abc.ABC):
     """
     Prototype for store management. Should never be used directly
-    (other than for type hints!). All derived classes must
-    implement all of the functions defined in this prototype.
+    (other than for type hints, and obviously cannot due to being an ABC!).
+    All derived classes must implement all of the functions defined in 
+    this abstract base class. We use ABC not prototypes as Pydantic is not
+    compatible with prototypes.
 
     All functions should be executed 'on' the store. That may involve
     connecting to remote machines!
@@ -21,6 +25,7 @@ class CoreStore(BaseModel):
 
     name: str
 
+    @abc.abstractproperty
     @property
     def available(self) -> bool:
         """
@@ -28,6 +33,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
+    @abc.abstractproperty
     @property
     def free_space(self) -> int:
         """
@@ -38,6 +44,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def stage(self, file_size: int, file_name: Path) -> tuple[Path]:
         """
         Creates space in the staging area for a file of size file_size.
@@ -60,6 +67,7 @@ class CoreStore(BaseModel):
 
         raise NotImplementedError
 
+    @abc.abstractmethod
     def unstage(self, path: Path):
         """
         Remove a file from the staging area.
@@ -71,6 +79,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def commit(self, staging_path: Path, store_path: Path):
         """
         Commit a file from the staging area to the store.
@@ -86,6 +95,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def store(self, path: Path) -> Path:
         """
         Get an absolute path for a deposit with name path.
@@ -97,6 +107,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def path_info(self, path: Path) -> PathInfo:
         """
         Get information about a file or directory at a path.
@@ -112,7 +123,8 @@ class CoreStore(BaseModel):
             Filled PathInfo object.
         """
         raise NotImplementedError
-    
+
+    @abc.abstractmethod    
     def can_transfer(
             self, using: CoreTransferManager
         ) -> bool:
@@ -131,6 +143,7 @@ class CoreStore(BaseModel):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def transfer_out(
         self, store_path: Path, destination_path: Path, using: CoreTransferManager
     ) -> bool:

@@ -2,9 +2,10 @@
 A pydantic model that implements callable so that it can be executed as a task.
 """
 
+import abc
 from pydantic import BaseModel
 
-class Task(BaseModel):
+class Task(BaseModel, abc.ABC):
     """
     A task is a pydantic model that allows you to implement very complex
     behaviour to be executed, but can be easily added to the scheduler.
@@ -19,6 +20,7 @@ class Task(BaseModel):
     reschedule_on_failure: bool = True
     "Whether or not to reschedule the task if it fails."
 
+    @abc.abstractmethod
     def on_call(self):
         """
         This function is called when the task is executed.
@@ -26,6 +28,7 @@ class Task(BaseModel):
 
         raise NotImplementedError("on_call() not implemented.")
 
+    @abc.abstractmethod
     def __call__(self):
         """
         Calls the function with the given keyword arguments.
