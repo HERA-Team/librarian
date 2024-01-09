@@ -5,9 +5,9 @@ Tests the ping API endpoint.
 from hera_librarian.models.ping import PingRequest, PingResponse
 
 
-def test_ping(client):
+def test_ping(test_client):
     request = PingRequest()
-    response = client.post(
+    response = test_client.post(
         "/api/v2/ping",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),

@@ -2,22 +2,23 @@
 Unit tests for endpoints in librarian_server/api/clone.py.
 """
 
-from hashlib import md5
 import shutil
+from hashlib import md5
+
 from hera_librarian.models.clone import (
+    CloneCompleteRequest,
+    CloneCompleteResponse,
+    CloneFailedResponse,
+    CloneFailRequest,
+    CloneFailResponse,
     CloneInitiationRequest,
     CloneInitiationResponse,
     CloneOngoingRequest,
     CloneOngoingResponse,
-    CloneCompleteRequest,
-    CloneCompleteResponse,
-    CloneFailedResponse,
-    CloneFailResponse,
-    CloneFailRequest,
 )
 
 
-def test_stage_negative_clone(client):
+def test_stage_negative_clone(test_client):
     """
     Tests that a negative upload size results in an error.
     """
@@ -32,14 +33,16 @@ def test_stage_negative_clone(client):
         source_transfer_id=-1,
     )
 
-    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 400
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
 
-def test_extreme_clone_size(client, server, orm):
+def test_extreme_clone_size(test_client, test_server, test_orm):
     """
     Tests that an upload size that is too large results in an error.
     """
@@ -54,7 +57,9 @@ def test_extreme_clone_size(client, server, orm):
         source_transfer_id=-1,
     )
 
-    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 413
 
@@ -62,7 +67,7 @@ def test_extreme_clone_size(client, server, orm):
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
 
-def test_valid_stage_and_fail(client, server, orm):
+def test_valid_stage_and_fail(test_client, test_server, test_orm):
     request = CloneInitiationRequest(
         destination_location="test_valid_stage_clone.txt",
         upload_size=100,
@@ -73,7 +78,9 @@ def test_valid_stage_and_fail(client, server, orm):
         source_transfer_id=-1,
     )
 
-    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 201
 
@@ -81,19 +88,21 @@ def test_valid_stage_and_fail(client, server, orm):
 
     # Check we got this thing in the database.
 
-    _, session, _ = server
+    _, session, _ = test_server
 
     assert (
-        session.query(orm.IncomingTransfer)
+        session.query(test_orm.IncomingTransfer)
         .filter_by(id=decoded_response.destination_transfer_id)
         .first()
         .status
-        == orm.TransferStatus.INITIATED
+        == test_orm.TransferStatus.INITIATED
     )
 
     # Now see what happens if we try to clone again.
 
-    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 406
 
@@ -107,22 +116,22 @@ def test_valid_stage_and_fail(client, server, orm):
         reason="test",
     )
 
-    response = client.post("/api/v2/clone/fail", content=request.model_dump_json())
+    response = test_client.post("/api/v2/clone/fail", content=request.model_dump_json())
 
     assert response.status_code == 200
 
     decoded_response = CloneFailResponse.model_validate_json(response.content)
 
     assert (
-        session.query(orm.IncomingTransfer)
+        session.query(test_orm.IncomingTransfer)
         .filter_by(id=decoded_response.destination_transfer_id)
         .first()
         .status
-        == orm.TransferStatus.FAILED
+        == test_orm.TransferStatus.FAILED
     )
 
 
-def test_try_to_fail_non_existent_transfer(client, server, orm):
+def test_try_to_fail_non_existent_transfer(test_client, test_server, test_orm):
     """
     Tests that trying to fail a transfer that doesn't exist results in an error.
     """
@@ -132,14 +141,14 @@ def test_try_to_fail_non_existent_transfer(client, server, orm):
         reason="test",
     )
 
-    response = client.post("/api/v2/clone/fail", content=request.model_dump_json())
+    response = test_client.post("/api/v2/clone/fail", content=request.model_dump_json())
 
     assert response.status_code == 404
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
 
-def test_ongoing_transfer_nonexistent(client, server, orm):
+def test_ongoing_transfer_nonexistent(test_client, test_server, test_orm):
     """
     Tests that we get a 404 when trying to set status of a fake transfer.
     """
@@ -149,7 +158,9 @@ def test_ongoing_transfer_nonexistent(client, server, orm):
         destination_transfer_id=-10000,
     )
 
-    response = client.post("/api/v2/clone/ongoing", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/ongoing", content=request.model_dump_json()
+    )
 
     assert response.status_code == 404
 
@@ -158,7 +169,9 @@ def test_ongoing_transfer_nonexistent(client, server, orm):
     return
 
 
-def test_ongoing_transfer(client, server, orm, garbage_file, garbage_filename):
+def test_ongoing_transfer(
+    test_client, test_server, test_orm, garbage_file, garbage_filename
+):
     """
     Tests that we can set a transfer to actively ongoing.
 
@@ -180,7 +193,9 @@ def test_ongoing_transfer(client, server, orm, garbage_file, garbage_filename):
         source_transfer_id=-1,
     )
 
-    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 201
 
@@ -193,31 +208,39 @@ def test_ongoing_transfer(client, server, orm, garbage_file, garbage_filename):
         destination_transfer_id=decoded_response.destination_transfer_id,
     )
 
-    response = client.post("/api/v2/clone/ongoing", content=request_ongoing.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/ongoing", content=request_ongoing.model_dump_json()
+    )
 
     assert response.status_code == 200
 
-    decoded_response_ongoing = CloneOngoingResponse.model_validate_json(response.content)
+    decoded_response_ongoing = CloneOngoingResponse.model_validate_json(
+        response.content
+    )
 
     # Check it's in the database with correct status
 
-    _, session, _ = server
+    _, session, _ = test_server
 
     assert (
-        session.query(orm.IncomingTransfer)
+        session.query(test_orm.IncomingTransfer)
         .filter_by(id=decoded_response.destination_transfer_id)
         .first()
         .status
-        == orm.TransferStatus.ONGOING
+        == test_orm.TransferStatus.ONGOING
     )
 
     # If we try to upload again with the same source and destination, it should fail.
 
-    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 425
 
-    decoded_response_ongoing_fail = CloneFailedResponse.model_validate_json(response.content)
+    decoded_response_ongoing_fail = CloneFailedResponse.model_validate_json(
+        response.content
+    )
 
     # Let's fail the transfer
 
@@ -227,7 +250,9 @@ def test_ongoing_transfer(client, server, orm, garbage_file, garbage_filename):
         reason="test",
     )
 
-    response = client.post("/api/v2/clone/fail", content=request_fail.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/fail", content=request_fail.model_dump_json()
+    )
 
     assert response.status_code == 200
 
@@ -235,18 +260,18 @@ def test_ongoing_transfer(client, server, orm, garbage_file, garbage_filename):
 
 
 def test_incoming_transfer_endpoints(
-    client, server, orm, garbage_file, garbage_filename
+    test_client, test_server, test_orm, garbage_file, garbage_filename
 ):
     """
     Tests the inbound transfer endpoints (we are playing as the server
     that is having stuff sent to it, not the client that is sending)
     """
 
-    _, session, _ = server
+    _, session, _ = test_server
 
     # First we need to create fake files and instances.
 
-    file = orm.File.new_file(
+    file = test_orm.File.new_file(
         filename=garbage_filename,
         size=100,
         checksum="abcd",
@@ -254,23 +279,21 @@ def test_incoming_transfer_endpoints(
         source="test",
     )
 
-    store = session.query(orm.StoreMetadata).first()
+    store = session.query(test_orm.StoreMetadata).first()
 
-    instance = orm.Instance.new_instance(
+    instance = test_orm.Instance.new_instance(
         path=garbage_file,
         file=file,
         store=store,
         deletion_policy="DISALLOWED",
     )
 
-    # Add first to get IDs 
+    # Add first to get IDs
     session.add_all([file, instance])
     session.commit()
 
-    transfer = orm.OutgoingTransfer.new_transfer(
-        destination="test2",
-        instance=instance,
-        file=file
+    transfer = test_orm.OutgoingTransfer.new_transfer(
+        destination="test2", instance=instance, file=file
     )
 
     session.add(transfer)
@@ -285,17 +308,21 @@ def test_incoming_transfer_endpoints(
         destination_transfer_id=transfer.id,
     )
 
-    response = client.post("/api/v2/clone/complete", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/complete", content=request.model_dump_json()
+    )
 
     assert response.status_code == 406
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
     # Now try again but set the transfer to be ongoing
-    transfer.status = orm.TransferStatus.ONGOING
+    transfer.status = test_orm.TransferStatus.ONGOING
     session.commit()
 
-    response = client.post("/api/v2/clone/complete", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/complete", content=request.model_dump_json()
+    )
 
     assert response.status_code == 200
 
@@ -303,10 +330,10 @@ def test_incoming_transfer_endpoints(
 
     # Check it's in the database with correct status
 
-    assert transfer.status == orm.TransferStatus.COMPLETED
+    assert transfer.status == test_orm.TransferStatus.COMPLETED
 
 
-def test_complete_no_transfer(client, server, orm):
+def test_complete_no_transfer(test_client, test_server, test_orm):
     """
     Test the case where we try to complete a non-existent transfer.
     """
@@ -316,29 +343,31 @@ def test_complete_no_transfer(client, server, orm):
         destination_transfer_id=-1,
     )
 
-    response = client.post("/api/v2/clone/complete", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/complete", content=request.model_dump_json()
+    )
 
     assert response.status_code == 404
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
 
-def test_set_ongoing_with_different_status(client, server, orm):
+def test_set_ongoing_with_different_status(test_client, test_server, test_orm):
     """
     Test the case when we try to set a transfer to ongoing when it's already
     completed (or has some other status).
     """
 
-    _, session, _ = server
+    _, session, _ = test_server
 
-    transfer = orm.IncomingTransfer.new_transfer(
+    transfer = test_orm.IncomingTransfer.new_transfer(
         uploader="test",
         source="test",
         transfer_size=100,
         transfer_checksum="",
     )
 
-    transfer.status = orm.TransferStatus.COMPLETED
+    transfer.status = test_orm.TransferStatus.COMPLETED
 
     session.add(transfer)
     session.commit()
@@ -348,19 +377,21 @@ def test_set_ongoing_with_different_status(client, server, orm):
         destination_transfer_id=transfer.id,
     )
 
-    response = client.post("/api/v2/clone/ongoing", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/ongoing", content=request.model_dump_json()
+    )
 
     assert response.status_code == 406
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
 
-def test_clone_file_exists(client, server, orm, garbage_filename):
+def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename):
     """
     Test what happens if we try to upload a file that already exists.
     """
 
-    file = orm.File.new_file(
+    file = test_orm.File.new_file(
         filename=garbage_filename,
         size=100,
         checksum="abcd",
@@ -368,7 +399,7 @@ def test_clone_file_exists(client, server, orm, garbage_filename):
         source="test",
     )
 
-    _, session, _ = server
+    _, session, _ = test_server
     session.add(file)
     session.commit()
 
@@ -382,7 +413,9 @@ def test_clone_file_exists(client, server, orm, garbage_filename):
         source_transfer_id=-1,
     )
 
-    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+    response = test_client.post(
+        "/api/v2/clone/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 409
 
