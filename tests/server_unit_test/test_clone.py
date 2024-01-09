@@ -354,3 +354,37 @@ def test_set_ongoing_with_different_status(client, server, orm):
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
+
+def test_clone_file_exists(client, server, orm, garbage_filename):
+    """
+    Test what happens if we try to upload a file that already exists.
+    """
+
+    file = orm.File.new_file(
+        filename=garbage_filename,
+        size=100,
+        checksum="abcd",
+        uploader="test",
+        source="test",
+    )
+
+    _, session, _ = server
+    session.add(file)
+    session.commit()
+
+    request = CloneInitiationRequest(
+        destination_location=garbage_filename,
+        upload_size=100,
+        upload_checksum="abcd",
+        uploader="test",
+        upload_name=garbage_filename,
+        source="test_librarian",
+        source_transfer_id=-1,
+    )
+
+    response = client.post("/api/v2/clone/stage", content=request.model_dump_json())
+
+    assert response.status_code == 409
+
+    # Check we can decode the response
+    decoded_response = CloneFailedResponse.model_validate_json(response.content)
