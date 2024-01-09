@@ -12,6 +12,7 @@ from hera_librarian.models.uploads import (
     UploadCompletionRequest,
     UploadFailedResponse,
 )
+from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
 from hashlib import md5
 
@@ -382,3 +383,69 @@ def test_commit_file_exists(client, server, orm, garbage_file, garbage_filename)
     assert incoming_transfer.status == orm.TransferStatus.FAILED
 
     assert not Path(stage_response.staging_location).exists()
+
+
+def test_directory_upload(client, server, orm, tmp_path):
+    """
+    Tests we can upload a directory.
+    """
+
+    path = Path(tmp_path)
+
+    (path / "test.txt").write_text("hello world")
+    (path / "test2.txt").write_text("hello world")
+
+    request = UploadInitiationRequest(
+        destination_location="test_directory",
+        upload_size=get_size_from_path(path),
+        upload_checksum=get_md5_from_path(path),
+        uploader="test",
+        upload_name="test",
+    )
+
+    response = client.post("/api/v2/upload/stage", content=request.model_dump_json())
+
+    assert response.status_code == 201
+
+    decoded_response = UploadInitiationResponse.model_validate_json(response.content)
+
+    # Need to actually copy the data to where it needs to be.
+
+    decoded_response.transfer_providers["local"].transfer(
+        path, decoded_response.staging_location
+    )
+
+    # Now we can actually test the commit endpoint.
+
+    request = UploadCompletionRequest(
+        store_name=decoded_response.store_name,
+        staging_name=decoded_response.staging_name,
+        staging_location=decoded_response.staging_location,
+        upload_name=decoded_response.upload_name,
+        destination_location=decoded_response.destination_location,
+        transfer_provider_name=list(decoded_response.transfer_providers.keys())[0],
+        transfer_provider=list(decoded_response.transfer_providers.values())[0],
+        meta_mode="infer",
+        deletion_policy="DISALLOWED",
+        uploader="test",
+        transfer_id=decoded_response.transfer_id,
+    )
+
+    response = client.post(
+        "/api/v2/upload/commit",
+        content=request.model_dump_json(),
+    )
+
+    assert response.status_code == 200
+
+    # Check we got this thing in the database.
+
+    _, session, _ = server
+
+    incoming_transfer = (
+        session.query(orm.IncomingTransfer)
+        .filter_by(id=decoded_response.transfer_id)
+        .first()
+    )
+
+    assert incoming_transfer.status == orm.TransferStatus.COMPLETED
