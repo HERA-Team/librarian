@@ -28,7 +28,6 @@ class Task(BaseModel, abc.ABC):
 
         raise NotImplementedError("on_call() not implemented.")
 
-    @abc.abstractmethod
     def __call__(self):
         """
         Calls the function with the given keyword arguments.
