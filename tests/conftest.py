@@ -148,8 +148,8 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     )
 
 
-@pytest.fixture(scope="package")
-def test_server_with_file(test_server, test_orm):
+@pytest.fixture(scope="function")
+def test_server_with_valid_file(test_server, test_orm):
     """
     Test server with a valid file and instance in the store.
     """
@@ -184,3 +184,59 @@ def test_server_with_file(test_server, test_orm):
     test_server[1].commit()
 
     yield test_server
+
+    # Now delete those items from the database.
+
+    test_server[1].delete(instance)
+    test_server[1].delete(file)
+
+    test_server[1].commit()
+
+    path.unlink()
+
+
+@pytest.fixture(scope="function")
+def test_server_with_invalid_file(test_server, test_orm):
+    """
+    Test server with a invalid file and instance in the store.
+    """
+
+    store = test_server[1].query(test_orm.StoreMetadata).first()
+
+    data = random.randbytes(1024)
+
+    file = test_orm.File.new_file(
+        filename="example_file.txt",
+        size=len(data),
+        checksum="not_the_checksum",
+        uploader="test",
+        source="test",
+    )
+
+    # Create the file in the store
+    path = store.store_manager._resolved_path_store(Path(file.name))
+
+    with open(path, "wb") as handle:
+        handle.write(data)
+
+    instance = test_orm.Instance.new_instance(
+        path=path,
+        file=file,
+        store=store,
+        deletion_policy="ALLOWED",
+    )
+
+    test_server[1].add_all([file, instance])
+
+    test_server[1].commit()
+
+    yield test_server
+
+    # Now delete those items from the database.
+
+    test_server[1].delete(instance)
+    test_server[1].delete(file)
+    
+    test_server[1].commit()
+
+    path.unlink()

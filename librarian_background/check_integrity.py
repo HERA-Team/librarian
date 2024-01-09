@@ -93,4 +93,4 @@ class CheckIntegrity(Task):
                 f"Some files uploaded since {start_time} on store {store.name} have not been validated. Please check the logs."
             )
 
-        return
+        return all_files_fine
