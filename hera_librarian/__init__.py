@@ -116,6 +116,10 @@ class LibrarianClient(object):
 
         if conn_config is not None:
             self.config = conn_config
+
+            if "url" in self.config:
+                if not "/" == self.config["url"][-1]:
+                    self.config["url"] += "/"
         else:
             config = get_client_config()
             self.config = config['connections'].get(conn_name)

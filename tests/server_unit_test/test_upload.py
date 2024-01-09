@@ -426,7 +426,8 @@ def test_directory_upload(client, server, orm, tmp_path):
         transfer_provider_name=list(decoded_response.transfer_providers.keys())[0],
         transfer_provider=list(decoded_response.transfer_providers.values())[0],
         meta_mode="infer",
-        deletion_policy="DISALLOWED",
+        # Also use this as a chance to test a code path in DeletionPolicy
+        deletion_policy="random",
         uploader="test",
         transfer_id=decoded_response.transfer_id,
     )

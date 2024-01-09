@@ -19,5 +19,5 @@ class DeletionPolicy(Enum):
         elif text == "allowed":
             return cls.ALLOWED
         else:
-            log.warn(f"Unrecognized deletion policy {text}; using DISALLOWED")
+            log.warning(f"Unrecognized deletion policy {text}; using DISALLOWED")
             return cls.DISALLOWED
