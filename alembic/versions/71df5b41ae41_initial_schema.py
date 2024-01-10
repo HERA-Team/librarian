@@ -193,7 +193,7 @@ def upgrade():
         Column("url", String(256), nullable=False),
         Column("port", Integer(), nullable=False),
         # Securely store authenticator using a password hashing function
-        Column("authenticator_hash", String(256), nullable=False),
+        Column("authenticator", String(256), nullable=False),
         Column("last_seen", DateTime(), nullable=False),
         Column("last_heard", DateTime(), nullable=False)
     )

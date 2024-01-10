@@ -7,6 +7,7 @@ to see if they have completed.
 
 import logging
 import datetime
+from pathlib import Path
 from typing import Optional
 
 from .task import Task
@@ -35,7 +36,7 @@ class RecieveClone(Task):
     Recieves incoming files from other librarians.
     """
 
-    deletion_policy: DeletionPolicy = DeletionPolicy.NEVER
+    deletion_policy: DeletionPolicy = DeletionPolicy.DISALLOWED
 
     def on_call(self):
         """
@@ -44,8 +45,10 @@ class RecieveClone(Task):
 
         # Find incoming transfers that are ONGOING
         ongoing_transfers: list[IncomingTransfer] = query(
-            IncomingTransfer, IncomingTransfer.status == TransferStatus.ONGOING
+            IncomingTransfer, status=TransferStatus.ONGOING
         ).all()
+                
+        all_transfers_succeeded = True
 
         if len(ongoing_transfers) == 0:
             logger.info("No ongoing transfers to process.")
@@ -55,11 +58,29 @@ class RecieveClone(Task):
 
             store: StoreMetadata = transfer.store
 
-            path_info = store.path_info(transfer.staging_path)
+            if store is None:
+                logger.error(
+                    f"Transfer {transfer.id} has no store associated with it. Skipping for now."
+                )
+
+                all_transfers_succeeded = False
+
+                continue
+
+            try:
+                path_info = store.store_manager.path_info(Path(transfer.staging_path))
+            except TypeError:
+                logger.error(
+                    f"Transfer {transfer.id} has no staging path associated with it. Skipping for now."
+                )
+
+                all_transfers_succeeded = False
+
+                continue
 
             # TODO: Make this check more robust?
             if (
-                path_info.checksum == transfer.transfer_checksum
+                path_info.md5 == transfer.transfer_checksum
                 and path_info.size == transfer.transfer_size
             ):
                 # The transfer has completed. Create an instance for this file.
@@ -71,20 +92,23 @@ class RecieveClone(Task):
                 # TODO: Check where that store path is coming from!
                 try:
                     store.store_manager.commit(
-                        transfer.staging_path, transfer.store_path
+                        Path(transfer.staging_path), Path(transfer.store_path)
                     )
                 except Exception as e:
                     logger.error(
                         f"Failed to move file {transfer.staging_path} to store "
                         f"{store.name} at {transfer.store_path}. Exception: {e}. Skipping for now."
                     )
+
+                    all_transfers_succeeded = False
+
                     continue
 
                 # Create a new File object
                 file = File.new_file(
-                    name=transfer.upload_name,
-                    checksum=transfer.upload_checksum,
-                    size=transfer.upload_size,
+                    filename=transfer.upload_name,
+                    checksum=transfer.transfer_checksum,
+                    size=transfer.transfer_size,
                     uploader=transfer.uploader,
                     source=transfer.source,
                 )
@@ -109,7 +133,7 @@ class RecieveClone(Task):
 
                 # Callback to the source librarian.
                 librarian: Optional[Librarian] = query(
-                    Librarian, Librarian.name == transfer.source
+                    Librarian, name=transfer.source
                 ).first()
 
                 if librarian:
@@ -139,7 +163,10 @@ class RecieveClone(Task):
                     )
 
                 # Can now delete the file
-                store.store_manager.unstage(transfer.staging_path)
+                store.store_manager.unstage(Path(transfer.staging_path))
             else:
                 logger.info(f"Transfer {transfer.id} has not yet completed. Skipping.")
                 continue
+
+        
+        return all_transfers_succeeded
