@@ -16,4 +16,4 @@ jobs:
 
             - run: pip install -e ".[dev]"
 
-            - run: pytest --cov --cov-report=html --cov-report=xml
+            - run: pytest --cov
