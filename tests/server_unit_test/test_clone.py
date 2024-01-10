@@ -332,6 +332,11 @@ def test_incoming_transfer_endpoints(
 
     assert transfer.status == test_orm.TransferStatus.COMPLETED
 
+    # Clean up that garbage
+    session.delete(instance)
+    session.delete(file)
+    session.commit()
+
 
 def test_complete_no_transfer(test_client, test_server, test_orm):
     """
@@ -421,3 +426,7 @@ def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename)
 
     # Check we can decode the response
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
+
+    # Clean up that garbage
+    session.delete(file)
+    session.commit()
