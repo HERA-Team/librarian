@@ -1,16 +1,6 @@
 name: Tests
 
-on:
-    push:
-        branches:
-            - main
-            - master
-            - librarianv2
-    pull_request:
-        branches:
-            - main
-            - master
-            - librarianv2
+on: [push, pull_request]
 
 jobs:
     test:
