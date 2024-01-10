@@ -83,8 +83,18 @@ class LocalStore(CoreStore):
             except OSError:
                 # Directory is not empty. Delete it and all its contents. Unfortunately we can't log this..
                 shutil.rmtree(complete_path)
-            
 
+        # Check if the parent is still in the staging area. We don't want
+        # to leave random dregs around!
+                
+        if os.path.exists(complete_path.parent):
+            try:
+                resolved_path = self._resolved_path_staging(complete_path.parent)
+                resolved_path.rmdir()
+            except ValueError:
+                # The parent is not in the staging area. We can't delete it.
+                pass
+            
         return
 
     def commit(self, staging_path: Path, store_path: Path):
