@@ -3,7 +3,6 @@ Tests the CreateClone background service.
 """
 
 
-
 def test_create_local_clone_with_valid(
     test_client, test_server_with_valid_file, test_orm
 ):
@@ -29,6 +28,7 @@ def test_create_local_clone_with_valid(
 
     assert clone_task()
 
+
 def test_create_local_clone_with_invalid(
     test_client, test_server_with_invalid_file, test_orm
 ):
@@ -51,7 +51,7 @@ def test_create_local_clone_with_invalid(
         clone_to=to_store.name,
         age_in_days=1,
     )
-    
+
     assert clone_task() == False
 
 
@@ -77,5 +77,5 @@ def test_create_local_clone_with_missing(
         clone_to=to_store.name,
         age_in_days=1,
     )
-    
+
     assert clone_task() == False

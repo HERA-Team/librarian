@@ -3,14 +3,13 @@
 """
 
 import json
-import random
-import socket
 import os
+import random
 import shutil
+import socket
 import sys
-
-from subprocess import run
 from pathlib import Path
+from subprocess import run
 
 from pydantic import BaseModel
 
@@ -131,7 +130,6 @@ def run_background_tasks(server: Server) -> int:
     """
 
     return run(
-        [sys.executable, shutil.which("librarian-background-only"), "--once"], env=server.env,
+        [sys.executable, shutil.which("librarian-background-only"), "--once"],
+        env=server.env,
     ).returncode
-    
-

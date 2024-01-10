@@ -6,13 +6,14 @@ import hashlib
 import json
 import os
 import random
-from pathlib import Path
 import shutil
+from pathlib import Path
 from subprocess import run
 
 import pytest
 
 from hera_librarian.utils import get_md5_from_path, get_size_from_path
+
 from .server import Server, server_setup
 
 
@@ -236,7 +237,7 @@ def test_server_with_invalid_file(test_server, test_orm):
 
     test_server[1].delete(instance)
     test_server[1].delete(file)
-    
+
     test_server[1].commit()
 
     path.unlink()
@@ -284,5 +285,5 @@ def test_server_with_missing_file(test_server, test_orm):
 
     test_server[1].delete(instance)
     test_server[1].delete(file)
-    
+
     test_server[1].commit()

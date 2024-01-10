@@ -19,7 +19,7 @@ from xprocess import ProcessStarter
 
 from hera_librarian import LibrarianClient
 
-from ..server import Server, server_setup, run_background_tasks
+from ..server import Server, run_background_tasks, server_setup
 
 DATABASE_PATH = None
 SERVER_LOG_PATH = None

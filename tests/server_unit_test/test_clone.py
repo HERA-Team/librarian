@@ -5,17 +5,14 @@ Unit tests for endpoints in librarian_server/api/clone.py.
 import shutil
 from hashlib import md5
 
-from hera_librarian.models.clone import (
-    CloneCompleteRequest,
-    CloneCompleteResponse,
-    CloneFailedResponse,
-    CloneFailRequest,
-    CloneFailResponse,
-    CloneInitiationRequest,
-    CloneInitiationResponse,
-    CloneOngoingRequest,
-    CloneOngoingResponse,
-)
+from hera_librarian.models.clone import (CloneCompleteRequest,
+                                         CloneCompleteResponse,
+                                         CloneFailedResponse, CloneFailRequest,
+                                         CloneFailResponse,
+                                         CloneInitiationRequest,
+                                         CloneInitiationResponse,
+                                         CloneOngoingRequest,
+                                         CloneOngoingResponse)
 
 
 def test_stage_negative_clone(test_client):

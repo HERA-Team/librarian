@@ -2,6 +2,7 @@
 Tests the CheckIntegrity background task.
 """
 
+
 def test_check_integrity(test_client, test_server_with_valid_file, test_orm):
     """
     Check the integrity of our test database.
@@ -41,8 +42,9 @@ def test_check_integrity_invalid_store(test_client, test_server, test_orm):
     Check we get a CancelJob when we don't have a valid server.
     """
 
-    from librarian_background.check_integrity import CheckIntegrity
     from schedule import CancelJob
+
+    from librarian_background.check_integrity import CheckIntegrity
 
     integrity_task = CheckIntegrity(
         name="Integrity check", store_name="invalid_store", age_in_days=1
