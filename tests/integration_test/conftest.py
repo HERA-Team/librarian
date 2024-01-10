@@ -39,8 +39,6 @@ def server(xprocess, tmp_path_factory, request):
         timeout = 10
         env = setup.env
 
-    raise Exception([sys.executable, shutil.which("librarian-server-start")])
-
     xprocess.ensure("server", Starter)
 
     setup.process = "server"
