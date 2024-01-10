@@ -75,6 +75,7 @@ class CreateLocalClone(Task):
 
         successful_clones = 0
         unnecessary_clones = 0
+        all_transfers_successful = True
 
         for instance in instances:
             # Check if there is a matching instance already on our clone_to store.
@@ -114,6 +115,8 @@ class CreateLocalClone(Task):
 
                 transfer.fail_transfer()
 
+                all_transfers_successful = False
+
                 continue
 
             success = False
@@ -143,6 +146,8 @@ class CreateLocalClone(Task):
 
                     transfer.fail_transfer()
 
+                    all_transfers_successful = False
+
                     continue
 
             if not success:
@@ -151,6 +156,8 @@ class CreateLocalClone(Task):
                 )
 
                 transfer.fail_transfer()
+
+                all_transfers_successful = False
 
                 continue
 
@@ -161,6 +168,22 @@ class CreateLocalClone(Task):
 
             # Now we can commit the file to the store.
             try:
+                path_info = store_to.store_manager.path_info(staged_path)
+
+                if path_info.md5 != instance.file.checksum:
+                    logger.error(
+                        f"File {instance.path} on store {store_to} has an incorrect checksum. "
+                        f"Expected {instance.file.checksum}, got {path_info.md5}."
+                    )
+
+                    transfer.fail_transfer()
+
+                    store_to.store_manager.unstage(staged_path)
+
+                    all_transfers_successful = False
+
+                    continue
+
                 store_to.store_manager.commit(
                     staging_path=staged_path, store_path=Path(instance.file.name)
                 )
@@ -171,6 +194,8 @@ class CreateLocalClone(Task):
                 store_to.store_manager.unstage(staging_name)
 
                 transfer.fail_transfer()
+
+                all_transfers_successful = False
 
                 continue
 
@@ -205,4 +230,4 @@ class CreateLocalClone(Task):
             f"{successful_clones + unnecessary_clones}/{len(instances)}."
         )
 
-        return
+        return all_transfers_successful

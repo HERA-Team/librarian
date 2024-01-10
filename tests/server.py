@@ -52,6 +52,12 @@ def server_setup(tmp_path_factory) -> Server:
     store_directory = tmp_path / f"store_{server_id_and_port}"
     store_directory.mkdir()
 
+    staging_directory_clone = tmp_path / f"staging_clone_{server_id_and_port}"
+    staging_directory_clone.mkdir()
+
+    store_directory_clone = tmp_path / f"store_clone_{server_id_and_port}"
+    store_directory_clone.mkdir()
+
     store_config = [
         {
             "store_name": "test_store",
@@ -67,7 +73,22 @@ def server_setup(tmp_path_factory) -> Server:
                     "hostname": socket.gethostname(),
                 }
             },
-        }
+        },
+        {
+            "store_name": "test_store_clone",
+            "store_type": "local",
+            "ingestable": False,
+            "store_data": {
+                "staging_path": str(staging_directory_clone),
+                "store_path": str(store_directory_clone),
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostname": socket.gethostname(),
+                }
+            },
+        },
     ]
 
     add_stores = json.dumps(store_config)
