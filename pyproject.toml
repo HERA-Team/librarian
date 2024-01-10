@@ -1,5 +1,69 @@
 [build-system]
-requires = ["setuptools>=30.3.0", "wheel", "setuptools_scm"]
+requires = ["setuptools>=64.0.0"]
+
+[tool.setuptools.packages.find]
+exclude=["*tests*"]
+include=["hera_librarian", "librarian_server", "librarian_background", "librarian_server_scripts"]
+
+[project]
+name="hera_librarian"
+requires-python = ">=3.10"
+version = "2.0.0a"
+dependencies = [
+    "alembic",
+    "astropy",
+    "fastapi",
+    "sqlalchemy",
+    "httpx",
+    "uvicorn",
+    "pydantic",
+    "pydantic-settings",
+    "pyyaml",
+    "requests",
+    "schedule",
+    "checksumdir",
+]
+authors = [
+    {name = "HERA Team", email = "hera@lists.berkeley.edu"},
+    {name = "Simons Observatory"},
+    {name = "Paul La Plante"},
+    {name = "Josh Borrow"},
+]
+maintainers = [
+    {name = "Simons Observatory"},
+    {name = "Josh Borrow", email = "borrowj@sas.upenn.edu"},
+    {name = "Paul La Plante"},
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+description="The client and server for the Simons Observatory librarian"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "pytest",
+    "coverage",
+    "pytest-cov",
+    "pytest-xprocess",
+]
+
+[project.scripts]
+librarian-server-start = "librarian_server_scripts.librarian_server_start:main"
+librarian-background-only = "librarian_server_scripts.librarian_background_only:main"
+librarian = "hera_librarian.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/simonsobs/librarian"
+Legacy = "https://github.com/HERA-Team/librarian/"
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -17,3 +81,4 @@ source = [
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover"]
+

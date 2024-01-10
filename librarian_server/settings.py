@@ -59,6 +59,9 @@ class ServerSettings(BaseSettings):
 
     add_stores: list[StoreSettings]
 
+    alembic_config_path: str = "."
+    alembic_path: str = "alembic"
+
     @classmethod
     def from_file(cls, config_path: Path | str) -> "ServerSettings":
         """

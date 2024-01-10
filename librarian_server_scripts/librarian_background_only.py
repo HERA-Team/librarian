@@ -13,7 +13,7 @@ import argparse as ap
 
 # Do this in if __name__ == "__main__" so we can spawn threads on MacOS...
 
-if __name__ == "__main__":
+def main():
     parser = ap.ArgumentParser(
         description="Runs the background tasks from librarian server. Does not actually run a web server instance."
     )

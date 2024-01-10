@@ -22,13 +22,11 @@ import subprocess
 
 # Do this in if __name__ == "__main__" so we can spawn threads on MacOS...
 
-if __name__ == "__main__":
-    import os
+def main():
     log.info("Librarian-server-start settings: " + str(server_settings))
-    log.debug("Environment variable $ADD_STORES:" + os.environ.get("ADD_STORES"))
     # Perform pre-startup tasks!
     log.debug("Creating the database.")
-    return_value = subprocess.call("cd $ALEMBIC_CONFIG_PATH; $ALEMBIC_PATH upgrade head", shell=True)
+    return_value = subprocess.call(f"cd {server_settings.alembic_config_path}; {server_settings.alembic_path} upgrade head", shell=True)
     if return_value != 0:
         log.debug("Error creating or updating the database. Exiting.")
         exit(0)
