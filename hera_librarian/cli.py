@@ -1023,19 +1023,13 @@ def upload(args):
     client = LibrarianClient(args.conn_name)
 
     try:
+        from pathlib import Path
+
         client.upload_file(
-            args.local_path,
-            args.dest_store_path,
-            meta_mode,
-            rec_info,
+            local_path=Path(args.local_path),
+            dest_path=Path(args.dest_store_path),
             deletion_policy=args.deletion,
-            known_staging_store=known_staging_store,
-            known_staging_subdir=known_staging_subdir,
             null_obsid=args.null_obsid,
-            use_globus=args.use_globus,
-            client_id=args.client_id,
-            transfer_token=args.transfer_token,
-            source_endpoint_id=args.source_endpoint_id,
         )
     except RPCError as e:
         die("upload failed: {}".format(e))

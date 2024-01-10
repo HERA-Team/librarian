@@ -5,8 +5,12 @@
 
 import json
 import os.path
+from pathlib import Path
 import urllib.request, urllib.parse, urllib.error
 from pkg_resources import get_distribution, DistributionNotFound
+import requests
+from typing import Optional
+from pydantic import BaseModel
 
 __all__ = str('''
 all_connections
@@ -62,6 +66,16 @@ def _normalize_deletion_policy(deletion_policy):
         raise Exception('unrecognized deletion policy %r' % (deletion_policy,))
     return deletion_policy
 
+class LibrarianHTTPError(Exception):
+    def __init__(self, url, status_code, reason, suggested_remedy):
+        super(LibrarianHTTPError, self).__init__(
+            f"HTTP request to {url} failed with status code {status_code} and reason {reason}."
+        )
+        self.url = url
+        self.status_code = status_code
+        self.reason = reason
+        self.suggested_remedy = suggested_remedy
+
 
 class LibrarianClient(object):
     conn_name = None
@@ -102,6 +116,10 @@ class LibrarianClient(object):
 
         if conn_config is not None:
             self.config = conn_config
+
+            if "url" in self.config:
+                if not "/" == self.config["url"][-1]:
+                    self.config["url"] += "/"
         else:
             config = get_client_config()
             self.config = config['connections'].get(conn_name)
@@ -113,6 +131,7 @@ class LibrarianClient(object):
         JSON reply; return the decoded version of the latter.
 
         """
+        # TODO: This is an awful way to do this configuration...
         # figure out if we're using authenticator- or GitHub-based authentication
         if "authenticator" in self.config:
             if "github_username" in self.config or "github_pat" in self.config:
@@ -149,9 +168,84 @@ class LibrarianClient(object):
                            reply_json.get('message', '<no error message provided>'))
 
         return reply_json
+    
+    def do_pydantic_http_post(self, endpoint: str, request_model: Optional[BaseModel] = None, response_model: Optional[BaseModel] = None):
+        """
+        Do a POST operation, passing a JSON version of the request and expecting a
+        JSON reply; return the decoded version of the latter.
 
-    def ping(self, **kwargs):
-        return self._do_http_post('ping', **kwargs)
+        Parameters
+        ----------
+        endpoint : str
+            The endpoint to post to.
+        request_model : pydantic.BaseModel, optional
+            The request model to send. If None, we don't ask for anything.
+        response_model : pydantic.BaseModel, optional
+            The response model to expect. If None, we don't return anything.
+
+        Returns
+        -------
+        response_model
+            The decoded response model.
+        """
+        full_endpoint = self.config["url"] + "api/v2/" + endpoint
+
+        # Do not do authentication yet.
+        data = None if request_model is None else request_model.model_dump_json()
+
+        r = requests.post(
+            full_endpoint, data=data, headers={"Content-Type": "application/json"}
+        )
+
+        # Decode the response.
+        if r.status_code not in [200, 201]:
+            try:
+                json = r.json()
+            except requests.exceptions.JSONDecodeError:
+                json = {}
+            
+            raise LibrarianHTTPError(
+                full_endpoint,
+                r.status_code,
+                r.json().get("reason", "<no reason provided>"),
+                r.json().get("suggested_remedy", "<no suggested remedy provided>"),
+            )
+        
+        if response_model is not None:
+            # Note that the pydantic model wants the full bytes content
+            # not the deserialized r.json()
+            return response_model.model_validate_json(r.content)
+        else:
+            return None
+
+    def ping(self):
+        """
+        Ping the remote librarian to see if it exists.
+
+        Returns
+        -------
+
+        PingResponse
+            The response from the remote librarian.
+
+        Raises
+        ------
+
+        LibrarianHTTPError
+            If the remote librarian is unreachable.
+
+        pydantic.ValidationError
+            If the remote librarian returns an invalid response.
+        """
+        from .models.ping import PingRequest, PingResponse
+
+        response: PingResponse = self.do_pydantic_http_post(
+            endpoint="ping",
+            request_model=PingRequest(),
+            response_model=PingResponse,
+        )
+
+        return response
 
     def probe_stores(self, **kwargs):
         return self._do_http_post('probe_stores', **kwargs)
@@ -182,195 +276,95 @@ class LibrarianClient(object):
                                   minimum_start_jd=minimum_start_jd,
                                   maximum_start_jd=maximum_start_jd,
                                   )
-
+    
     def upload_file(
         self,
-        local_path,
-        dest_store_path,
-        meta_mode,
-        rec_info={},
-        deletion_policy='disallowed',
-        known_staging_store=None,
-        known_staging_subdir=None,
-        null_obsid=False,
-        use_globus=False,
-        client_id=None,
-        transfer_token=None,
-        source_endpoint_id=None,
-    ):
-        """Upload the file located at `local_path` to the Librarian.
-
-        We suggest a destination "store path" (something like
-        "2345678/mydata.uv"), but the Librarian has to tell us which store to
-        actually put the file on.
-
-        The Librarian needs to contextual metadata to organize the new file
-        appropriately (obsid, etc). This can be obtain in several ways:
-
-        * If `meta_mode` is "direct", the appropriate information is stored in
-          the the `rec_info` dict. That dict's contents have been provided to
-          us from a different (probably local) Librarian; see
-          `librarian_server.misc:gather_records`.
-        * If `meta_mode` is "infer", the destination Librarian will attempt to
-          infer metadata from the file itself. It can only do this for certain
-          kinds of files, and there are certain kinds of value-added data that
-          cannot be inferred. This mode should therefore be avoided when
-          possible.
-
-        The caller can also specify whether the file instance that it creates is
-        allowed to be deleted:
-
-        * If `deletion_policy` is "disallowed", the default, it is not.
-        * If `deletion_policy` is "allowed", it is.
-
-        (In the future we might add more options.)
-
-        If `meta_mode` is "infer' and `null_obsid` is True, the new file is
-        expected and required to have a null `obsid` field, and it will be
-        ingested into the Librarian as such. This mode is used for maintenance
-        files that are not associated with a particular observation or
-        observing session. It is an error to set `null_obsid` to True for
-        other values of `meta_mode`.
-
-        This function invokes an rsync that is potentially trying to copy
-        gigabytes of data across oceans. It may take a looong time to return
-        and will not infrequently raise an exception.
-
-        The rsync lands in a "staging directory" on one of the destination
-        hosts, before it is moved to its final destination. If
-        `known_staging_store` and `known_staging_subdir` are specified, the
-        destination Librarian will use these values instead of creating a
-        temporary directory on whichever of its stores has the most free
-        space. This can be used to "ingest" data that were previously copied
-        over using some scheme unknown to the Librarian.
-
-        Parameters
-        ----------
-        local_path : str
-            The path to the file to be uploaded.
-        dest_store_path : str
-            The destination store path for the file.
-        meta_mode : str
-            Must be one of: "direct", "infer". If "direct", the relevant
-            metadata must be provided by `rec_info`.
-        rec_info : dict
-            Dictionary of information of the record being transferred.
-        deletion_policy : str
-            Must be one of: "disallowed", "allowed".
-        known_staging_store : str, optional
-            If known, the store on the destination where the file will be
-            transferred to. If specified, `known_staging_subdir` must also be
-            specified.
-        known_staging_subdir : str, optional
-            If known, the directory on the destination where the file will be
-            transferred to. If specified, `known_staging_store` must also be
-            specified.
-        null_obsid : bool
-            Indicates whether the file has no observation id (obsid) associated
-            with it.
-        use_globus : bool
-            Indicates whether to try to use globus to transfer files instead of
-            the default rsync.
-        client_id : str, optional
-            The globus client ID to use for the transfer.
-        transfer_token : str, optional
-            The globus transfer token to use for the transfer.
-        source_endpoint_id : str, optional
-            The globus endpoint ID of the source store. May be omitted, in which
-            case we assume it is a "personal" (as opposed to public)
-            client. When using globus, at least one of the source_endpoint_id or
-            destination_endpoint_id must be provided.
-        host_path : str, optional
-            The `host_path` of the globus store. When using shared endpoints,
-            this is the root directory presented to the client. Note that this
-            may be different from the `path_prefix` for a given store.
-
-        Returns
-        -------
-        dict
-            The decoded reply JSON of the HTTP request.
-
-        Raises
-        ------
-        Exception
-            Raised if `dest_store_path` is an absolute path. Also raised if
-            `meta_mode` is "infer" and `null_obsid` is True.
-        """
-        if os.path.isabs(dest_store_path):
-            raise Exception('destination path may not be absolute; got %r' % (dest_store_path,))
-
+        local_path: Path,
+        dest_path: Path,
+        deletion_policy: str='disallowed',
+        null_obsid: bool=False,
+    ) -> dict:
+        
         deletion_policy = _normalize_deletion_policy(deletion_policy)
 
-        if null_obsid and meta_mode != 'infer':
-            raise Exception('null_obsid may only be True when meta_mode is "infer"')
+        if dest_path.is_absolute():
+            raise Exception(f"Destination path may not be absolute; got {dest_path}")
+        
+        # Ask the librarian for a staging directory, and a list of transfer managers
+        # to try.
 
-        # In the first stage, we tell the Librarian how much data we're going to upload,
-        # send it the database records, and get told the staging directory.
+        from .utils import get_size_from_path, get_md5_from_path
+        from .models.uploads import UploadInitiationRequest, UploadInitiationResponse, UploadCompletionRequest
 
-        from . import utils
-        kwargs = {
-            'upload_size': utils.get_size_from_path(local_path),
-            'known_staging_store': known_staging_store,
-            'known_staging_subdir': known_staging_subdir,
-        }
-        kwargs.update(rec_info)
-        info = self._do_http_post('initiate_upload', **kwargs)
-
-        from .base_store import BaseStore
-        store = BaseStore(info['name'], info['path_prefix'], info['ssh_host'])
-        staging_dir = info['staging_dir']
-
-        if use_globus:
-            if source_endpoint_id is None:
-                try:
-                    import globus_sdk
-                    # assume we're running a local personal client
-                    # if we're not, local_ep.endpoint_id will return None
-                    local_ep = globus_sdk.LocalGlobusConnectPersonal()
-                    source_endpoint_id = local_ep.endpoint_id
-                except ModuleNotFoundError:
-                    source_endpoint_id = None
-            # get the relevant destination info from config file
-            destination_endpoint_id = self.config.get("globus_endpoint_id", None)
-            host_path = self.config.get("globus_host_path", None)
-        else:
-            source_endpoint_id = None
-            destination_endpoint_id = None
-            host_path = None
-
-        # Now, (try to) actually copy the data. This runs an SCP, potentially
-        # across the globe, that in the real world will occasionally stall or
-        # die or whatever.
-
-        staged_path = os.path.join(staging_dir, os.path.basename(dest_store_path))
-        store.copy_to_store(
-            local_path,
-            staged_path,
-            use_globus,
-            client_id,
-            transfer_token,
-            source_endpoint_id,
-            destination_endpoint_id,
-            host_path,
+        response: UploadInitiationResponse = self.do_pydantic_http_post(
+            endpoint="upload/stage",
+            request_model=UploadInitiationRequest(
+                upload_size=get_size_from_path(local_path),
+                upload_checksum=get_md5_from_path(local_path),
+                upload_name=dest_path.name,
+                destination_location=dest_path,
+                # TODO: Figure out a programatic way of getting this.
+                uploader="TEST_USER",
+            ),
+            response_model=UploadInitiationResponse,
         )
 
-        # If we made it here, though, the upload succeeded and we can tell
-        # that Librarian that the data are ready to go. It will verify the
-        # upload and ingest it. This call is when the server's FileInstance
-        # record is created, so it's where the deletion_policy option comes
-        # into play.
+        from .transfers import CoreTransferManager
 
-        return self._do_http_post(
-            'complete_upload',
-            store_name=store.name,
-            staging_dir=staging_dir,
-            dest_store_path=dest_store_path,
-            meta_mode=meta_mode,
+        transfer_managers = response.transfer_providers
+
+        # Now try all the transfer managers. If they're valid, we try to use them.
+        # If they fail, we should probably catch the exception.
+        # TODO: Catch the exception on failure.
+        used_transfer_manager: Optional[CoreTransferManager] = None
+        used_transfer_manager_name: Optional[str] = None
+
+        # TODO: Should probably have some manual ordering here.
+        for name, transfer_manager in transfer_managers.items():
+            if transfer_manager.valid:
+                transfer_manager.transfer(
+                    local_path=local_path, remote_path=response.staging_location
+                )
+
+                # We used this.
+                used_transfer_manager = transfer_manager
+                used_transfer_manager_name = name
+                
+                break
+            else:
+                print(f"Warning: transfer manager {name} is not valid.")
+
+        if used_transfer_manager is None:
+            raise Exception("No valid transfer managers found.")
+
+        # If we made it here, the file is successfully on the store!
+
+        request = UploadCompletionRequest(
+            store_name=response.store_name,
+            staging_name=response.staging_name,
+            staging_location=response.staging_location,
+            upload_name=response.upload_name,
+            destination_location=dest_path,
+            transfer_provider_name=used_transfer_manager_name,
+            transfer_provider=used_transfer_manager,
+            meta_mode="infer",
             deletion_policy=deletion_policy,
-            staging_was_known=(known_staging_store is not None),
+            # TODO: Figure out what source name actually does.
+            # INFO: Source name is the person/librarian that uploaded this.
+            source_name="",
             null_obsid=null_obsid,
+            # TODO: Figure out how to get this programattically.
+            uploader="TEST_USER",
+            transfer_id=response.transfer_id,
         )
 
+        self.do_pydantic_http_post(
+            endpoint="upload/commit",
+            request_model=request,
+        )
+
+        return
+  
     def register_instances(self, store_name, file_info):
         return self._do_http_post(
             'register_instances',
@@ -487,4 +481,4 @@ class LibrarianClient(object):
         return self._do_http_post('gather_file_record', file_name=file_name)
 
     def create_file_record(self, rec_info):
-        return self._do_http_post('create_file_record', **rec_info)
+        return self._do_http_post('create_file_record', **rec_info)# 

@@ -12,4 +12,5 @@ eggs/
 .eggs/
 *.egg
 container/secrets
-env/*
+env*/*
+*.DS_Store*

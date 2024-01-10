@@ -17,15 +17,16 @@ login
 logout
 ''').split()
 
-from flask import Response, flash, redirect, render_template, request, session, url_for
-import json
-import os
-import sys
-import requests
-from requests_oauthlib import OAuth2Session
+# from flask import Response, flash, redirect, render_template, request, session, url_for
+# import json
+# import os
+# import sys
+# import requests
+# from requests_oauthlib import OAuth2Session
 
-from . import app, logger
+# from . import app, logger
 
+from pathlib import Path
 
 # define OAuth2 stuff
 OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
@@ -342,6 +343,11 @@ def _coerce(argtype, name, val):
         if not isinstance(val, list):
             raise ServerError('parameter "%s" should be a list, but got %r', name, val)
         return val
+    
+    if argtype is Path:
+        if not isinstance(val, (Path, str)):
+            raise ServerError('parameter "%s" should be a Path (str for serialization), but got %r (type %s)', name, val, type(val))
+        return Path(val)
 
     raise ServerError('internal bug: unexpected argument type %s', argtype)
 
@@ -386,7 +392,7 @@ def login_required(f):
     return decorated_function
 
 
-@app.route('/login', methods=['GET', 'POST'])
+# @app.route('/login', methods=['GET', 'POST'])
 def login():
     if len(request.form):
         reqdata = request.form  # POST
@@ -420,7 +426,7 @@ def login():
         return redirect(next)
 
 
-@app.route("/callback", methods=["GET"])
+# @app.route("/callback", methods=["GET"])
 def callback():
     github = OAuth2Session(app.config["oauth2_client_id"], state=session["oauth_state"])
     token = github.fetch_token(
@@ -442,7 +448,7 @@ def callback():
     return redirect(url_for("index"))
 
 
-@app.route('/logout')
+# @app.route('/logout')
 def logout():
     session.pop('sourcename', None)
     session.pop("oauth_token", None)
@@ -451,85 +457,85 @@ def logout():
 
 # Streaming of data through the tornado asynchronous API
 
-from tornado import gen, iostream, web
+# from tornado import gen, iostream, web
 
 
-class StreamFile (web.RequestHandler):
-    uri_prefix = '/stream/'
+# class StreamFile (web.RequestHandler):
+#     uri_prefix = '/stream/'
 
-    @gen.coroutine
-    def get(self):
-        if not self.request.uri.startswith(self.uri_prefix):
-            self.clear()
-            self.set_status(500)
-            self.finish('internal server error: bad URI prefix')
-            return
+#     @gen.coroutine
+#     def get(self):
+#         if not self.request.uri.startswith(self.uri_prefix):
+#             self.clear()
+#             self.set_status(500)
+#             self.finish('internal server error: bad URI prefix')
+#             return
 
-        file_name = self.request.uri[len(self.uri_prefix):]
+#         file_name = self.request.uri[len(self.uri_prefix):]
 
-        # Find an instance
+#         # Find an instance
 
-        from .file import FileInstance
-        inst = FileInstance.query.filter(FileInstance.name == file_name).first()
-        if inst is None:
-            self.clear()
-            self.set_status(404)
-            self.finish('no file named "%s" available at this Librarian' % file_name)
-            return
+#         from .file import FileInstance
+#         inst = FileInstance.query.filter(FileInstance.name == file_name).first()
+#         if inst is None:
+#             self.clear()
+#             self.set_status(404)
+#             self.finish('no file named "%s" available at this Librarian' % file_name)
+#             return
 
-        # Get an SSH-based process that will stream data to us.
+#         # Get an SSH-based process that will stream data to us.
 
-        proc = inst.store_object._stream_path(inst.store_path)
+#         proc = inst.store_object._stream_path(inst.store_path)
 
-        # And now forward all of the data to the caller. We sniff the first batch
-        # to set the right Content-Type.
+#         # And now forward all of the data to the caller. We sniff the first batch
+#         # to set the right Content-Type.
 
-        first = True
+#         first = True
 
-        try:
-            stream = iostream.PipeIOStream(os.dup(proc.stdout.fileno()))
+#         try:
+#             stream = iostream.PipeIOStream(os.dup(proc.stdout.fileno()))
 
-            while True:
-                try:
-                    data = yield stream.read_bytes(4096, partial=True)
-                except iostream.StreamClosedError as e:
-                    break
+#             while True:
+#                 try:
+#                     data = yield stream.read_bytes(4096, partial=True)
+#                 except iostream.StreamClosedError as e:
+#                     break
 
-                if first:
-                    ctype = 'text/plain'
-                    if data.startswith(b'\x89PNG\x0d\x0a\x1a\x0a'):
-                        ctype = 'image/png'
-                    elif len(data) > 260 and data[257:].startswith(b'ustar'):
-                        ctype = 'application/tar'
-                        # Bonus: we auto-tar directories, so it's helpful to
-                        # tweak the filename to reflect that fact. Github
-                        # issue #19. We also try to have an ASCII-only name,
-                        # although probably other things will break if the
-                        # name isn't ASCII anyway.
-                        ret_name = file_name
-                        if not ret_name.endswith('.tar'):
-                            ret_name += '.tar'
-                        ret_name = ret_name.encode('ascii', 'replace').replace('?', '_')
-                        self.set_header('Content-disposition', 'attachment; filename=' + ret_name)
+#                 if first:
+#                     ctype = 'text/plain'
+#                     if data.startswith(b'\x89PNG\x0d\x0a\x1a\x0a'):
+#                         ctype = 'image/png'
+#                     elif len(data) > 260 and data[257:].startswith(b'ustar'):
+#                         ctype = 'application/tar'
+#                         # Bonus: we auto-tar directories, so it's helpful to
+#                         # tweak the filename to reflect that fact. Github
+#                         # issue #19. We also try to have an ASCII-only name,
+#                         # although probably other things will break if the
+#                         # name isn't ASCII anyway.
+#                         ret_name = file_name
+#                         if not ret_name.endswith('.tar'):
+#                             ret_name += '.tar'
+#                         ret_name = ret_name.encode('ascii', 'replace').replace('?', '_')
+#                         self.set_header('Content-disposition', 'attachment; filename=' + ret_name)
 
-                    self.set_header('Content-Type', ctype)
-                    first = False
+#                     self.set_header('Content-Type', ctype)
+#                     first = False
 
-                self.write(data)
+#                 self.write(data)
 
-            stream.close()
-            proc.wait()
+#             stream.close()
+#             proc.wait()
 
-            if proc.returncode != 0:
-                try:
-                    msg = proc.stderr.read()
-                except Exception as e:
-                    msg = '(could not fetch error output)'
-                raise Exception('streaming proxy exited with error code %d: %s' %
-                                (proc.returncode, msg))
-        except Exception as e:
-            self.clear()
-            self.set_status(503)
-            self.write(str(e))
-        finally:
-            self.finish()
+#             if proc.returncode != 0:
+#                 try:
+#                     msg = proc.stderr.read()
+#                 except Exception as e:
+#                     msg = '(could not fetch error output)'
+#                 raise Exception('streaming proxy exited with error code %d: %s' %
+#                                 (proc.returncode, msg))
+#         except Exception as e:
+#             self.clear()
+#             self.set_status(503)
+#             self.write(str(e))
+#         finally:
+#             self.finish()
