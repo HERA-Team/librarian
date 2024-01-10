@@ -15,7 +15,7 @@ from .create_clone import CreateLocalClone
 from .core import SafeScheduler
 
 
-def background():
+def background(run_once: bool = False):
     scheduler = SafeScheduler()
     # Set scheduling...
     scheduler.every(12).hours.do(CheckIntegrity(name="check_integrity", store_name="local_store", age_in_days=7))
@@ -25,7 +25,7 @@ def background():
     scheduler.run_all()
 
     # ...begin scheduling operations.
-    while True:
+    while not run_once:
         try:
             scheduler.run_pending()
             time.sleep(1)

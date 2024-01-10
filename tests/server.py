@@ -5,6 +5,11 @@
 import json
 import random
 import socket
+import os
+import shutil
+import sys
+
+from subprocess import run
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -21,6 +26,18 @@ class Server(BaseModel):
     PORT: str
     ADD_STORES: str
     process: str | None = None
+
+    @property
+    def env(self) -> dict[str, str]:
+        return {
+            "LIBRARIAN_CONFIG_PATH": self.LIBRARIAN_CONFIG_PATH,
+            "SQLALCHEMY_DATABASE_URI": self.SQLALCHEMY_DATABASE_URI,
+            "PORT": self.PORT,
+            "ADD_STORES": self.ADD_STORES,
+            "VIRTUAL_ENV": os.environ.get("VIRTUAL_ENV", None),
+            "ALEMBIC_CONFIG_PATH": str(Path(__file__).parent.parent),
+            "ALEMBIC_PATH": shutil.which("alembic"),
+        }
 
 
 def server_setup(tmp_path_factory) -> Server:
@@ -104,3 +121,17 @@ def server_setup(tmp_path_factory) -> Server:
         PORT=str(server_id_and_port),
         ADD_STORES=add_stores,
     )
+
+
+def run_background_tasks(server: Server) -> int:
+    """
+    Runs all the background tasks for the given server setup.
+
+    You must have already added all the stores, etc. that are required.
+    """
+
+    return run(
+        [sys.executable, shutil.which("librarian-background-only"), "--once"], env=server.env,
+    ).returncode
+    
+

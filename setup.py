@@ -66,6 +66,7 @@ although those modules are not installed in a standard ``pip install``.
     },
     scripts=[
         "scripts/librarian-server-start",
+        "scripts/librarian-background-only"
     ],
     entry_points={"console_scripts": ["librarian=hera_librarian.cli:main"]},
     use_scm_version=True,
