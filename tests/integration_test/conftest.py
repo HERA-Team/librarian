@@ -39,6 +39,10 @@ def server(xprocess, tmp_path_factory, request):
         timeout = 10
         env = setup.env
 
+    for label, key in setup.env.items():
+        if key is None:
+            raise ValueError(f"Environment variable {label} is None.")
+    
     xprocess.ensure("server", Starter)
 
     setup.process = "server"
