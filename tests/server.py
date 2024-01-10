@@ -33,7 +33,6 @@ class Server(BaseModel):
             "SQLALCHEMY_DATABASE_URI": self.SQLALCHEMY_DATABASE_URI,
             "PORT": self.PORT,
             "ADD_STORES": self.ADD_STORES,
-            "VIRTUAL_ENV": os.environ.get("VIRTUAL_ENV", None),
             "ALEMBIC_CONFIG_PATH": str(Path(__file__).parent.parent),
             "ALEMBIC_PATH": shutil.which("alembic"),
         }
