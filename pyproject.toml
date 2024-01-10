@@ -26,6 +26,7 @@ dependencies = [
 authors = [
     {name = "HERA Team", email = "hera@lists.berkeley.edu"},
     {name = "Simons Observatory"},
+    {name = "Peter Williams"},
     {name = "Paul La Plante"},
     {name = "Josh Borrow"},
 ]
