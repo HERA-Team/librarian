@@ -18,8 +18,6 @@ from logging.config import fileConfig
 config = context.config
 fileConfig(config.config_file_name)
 
-from librarian_server import app, engine
-
 from librarian_server.settings import server_settings
 from librarian_server.database import Base, engine
 
@@ -37,9 +35,8 @@ def run_migrations_offline():
         render_as_batch=True,
     )
 
-    with app.app_context():
-        with context.begin_transaction():
-            context.run_migrations()
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 def run_migrations_online():

@@ -75,7 +75,7 @@ def main():
     import uvicorn
 
     uvicorn.run(
-        "librarian_server:app",
+        "librarian_server:main",
         port=server_settings.port,
         log_level=server_settings.log_level.lower(),
     )
