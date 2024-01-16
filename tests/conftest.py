@@ -76,11 +76,10 @@ def test_server(tmp_path_factory):
     import importlib
 
     import librarian_server
+    import librarian_server.database
 
-    importlib.reload(librarian_server)
-
-    app = librarian_server.app
-    session = librarian_server.session
+    app = librarian_server.main()
+    session = librarian_server.database.session
 
     # Need to add our stores...
     from librarian_server.orm import StoreMetadata
