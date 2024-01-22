@@ -10,9 +10,9 @@ from .. import database as db
 from ..stores import Stores, CoreStore
 from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
 from hera_librarian.models.uploads import UploadCompletionRequest
+from hera_librarian.deletion import DeletionPolicy
 
 from ..webutil import ServerError
-from ..deletion import DeletionPolicy
 
 from enum import Enum
 from pathlib import Path

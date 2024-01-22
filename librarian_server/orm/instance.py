@@ -4,8 +4,9 @@ Also includes the ORM for the 'remote_instances' table, describing
 what files have instances on remote librarians that we are aware about.
 """
 
+from hera_librarian.deletion import DeletionPolicy
+
 from .. import database as db
-from ..deletion import DeletionPolicy
 from ..settings import server_settings
 
 from datetime import datetime

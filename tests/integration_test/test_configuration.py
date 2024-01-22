@@ -25,14 +25,9 @@ def test_simple_ping(server):
     assert response.status_code
 
 
-def test_ping_server(server):
+def test_ping_server(librarian_client):
     """
     Tests that we can ping the server.
     """
 
-    client = LibrarianClient(
-        conn_name="test",
-        conn_config={"url": f"http://localhost:{server.id}/", "authenticator": None},
-    )
-
-    assert client.ping()
+    assert librarian_client.ping()

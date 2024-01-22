@@ -1,13 +1,13 @@
-from .logger import log
 from enum import Enum
+
 
 class DeletionPolicy(Enum):
     """
     Enumeration for whether or not a file can be deleted from a store.
 
     Always defaults to 'DISALLOWED' when parsing.
-    """ 
-    
+    """
+
     DISALLOWED = 0
     ALLOWED = 1
 
@@ -19,5 +19,4 @@ class DeletionPolicy(Enum):
         elif text == "allowed":
             return cls.ALLOWED
         else:
-            log.warning(f"Unrecognized deletion policy {text}; using DISALLOWED")
             return cls.DISALLOWED

@@ -77,11 +77,9 @@ def librarian_client(server) -> LibrarianClient:
     """
 
     client = LibrarianClient(
-        conn_name="test",
-        conn_config={
-            "url": f"http://localhost:{server.id}/",
-            "authenticator": None,
-        },
+        host="http://localhost",
+        port=server.id,
+        user="test-A"
     )
 
     yield client
