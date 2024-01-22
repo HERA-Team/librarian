@@ -64,7 +64,11 @@ class File(db.Base):
             True if it exists already.
         """
 
-        existing_file = db.query(File, name=str(filename)).first()
+        session = db.get_session()
+
+        existing_file = session.get(File, str(filename))
+
+        session.close()
 
         return existing_file is not None
 

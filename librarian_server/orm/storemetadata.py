@@ -18,7 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy.orm import reconstructor
+from sqlalchemy.orm import reconstructor, Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from .file import File
@@ -96,6 +96,7 @@ class StoreMetadata(db.Base):
         self,
         request: UploadCompletionRequest,
         transfer: IncomingTransfer,
+        session: "Session",
     ) -> Instance:
         """
         Ingests a file into the store. Creates a new File and associated file Instance.
@@ -133,7 +134,7 @@ class StoreMetadata(db.Base):
             info = self.store_manager.path_info(staged_path)
         except FileNotFoundError:
             transfer.status = TransferStatus.FAILED
-            db.session.commit()
+            session.commit()
 
             raise FileNotFoundError(
                 f"File {staged_path} not found in staging area. "
@@ -148,7 +149,7 @@ class StoreMetadata(db.Base):
             self.store_manager.unstage(staged_path)
 
             transfer.status = TransferStatus.FAILED
-            db.session.commit()
+            session.commit()
 
             raise ValueError(
                 f"File {staged_path} does not match expected size/checksum; "
@@ -165,7 +166,7 @@ class StoreMetadata(db.Base):
             self.store_manager.unstage(staged_path)
 
             transfer.status = TransferStatus.FAILED
-            db.session.commit()
+            session.commit()
 
             raise FileExistsError(f"File {store_path} already exists on store.")
 
@@ -191,13 +192,13 @@ class StoreMetadata(db.Base):
             deletion_policy=deletion_policy,
         )
 
-        db.session.add(file)
-        db.session.add(instance)
+        session.add(file)
+        session.add(instance)
 
         # Commit our change to the transfer, file, and instance simultaneously.
 
         try:
-            db.session.commit()
+            session.commit()
 
             # We're good to go and move the file to where it needs to be.
             self.store_manager.commit(
@@ -208,11 +209,11 @@ class StoreMetadata(db.Base):
             # Need to rollback everything. The upload failed...
             self.store_manager.unstage(request.staging_name)
 
-            db.session.rollback()
+            session.rollback()
 
             try:
                 transfer.status = TransferStatus.FAILED
-                db.session.commit()
+                session.commit()
             except SQLAlchemyError as e:
                 # We can't even set the transfer status... We are in big trouble!
                 raise ServerError(
@@ -220,28 +221,6 @@ class StoreMetadata(db.Base):
                 )
 
         return instance
-
-    @classmethod
-    def from_name(cls, name) -> "StoreMetadata":
-        stores = db.query(cls, name=name).all()
-
-        if len(stores) == 0:
-            raise ServerError(f"Store {name} does not exist")
-        elif len(stores) > 1:
-            raise ServerError(f"Multiple stores with name {name} exist")
-
-        return stores[0]
-
-    @classmethod
-    def from_id(cls, id) -> "StoreMetadata":
-        stores = db.query(cls, id=id).all()
-
-        if len(stores) == 0:
-            raise ServerError(f"Store with ID {id} does not exist")
-        elif len(stores) > 1:
-            raise ServerError(f"Multiple stores with ID {id} exist")
-
-        return stores[0]
 
     def __repr__(self) -> str:
         return (

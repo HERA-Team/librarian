@@ -9,8 +9,10 @@ import datetime
 
 from schedule import CancelJob
 
-from librarian_server.database import session, query
 from librarian_server.orm import StoreMetadata, Instance
+from librarian_server.database import get_session
+
+from sqlalchemy.orm import Session
 
 
 logger = logging.getLogger("schedule")
@@ -26,9 +28,9 @@ class CheckIntegrity(Task):
     age_in_days: int
     "Age in days of the files to check. I.e. only check files younger than this (we assume older files are fine as they've been checked before)"
 
-    def get_store(self) -> StoreMetadata:
+    def get_store(self, session: Session) -> StoreMetadata:
         possible_metadata = (
-            query(StoreMetadata).filter(StoreMetadata.name == self.store_name).first()
+            session.query(StoreMetadata).filter_by(name=self.store_name).first()
         )
 
         if not possible_metadata:
@@ -37,8 +39,15 @@ class CheckIntegrity(Task):
         return possible_metadata
 
     def on_call(self):
+        with get_session() as session:
+            return self.core(session=session)
+
+    def core(self, session: Session):
+        """
+        Frame this out with the session so that it is automatically closed.
+        """
         try:
-            store = self.get_store()
+            store = self.get_store(session=session)
         except ValueError:
             # Store doesn't exist. Cancel this job.
             logger.error(
@@ -51,9 +60,8 @@ class CheckIntegrity(Task):
 
         # Now we can query the database for all files that were uploaded in the past age_in_days days.
         files = (
-            query(Instance)
-            .filter(Instance.store == store)
-            .filter(Instance.created_time > start_time)
+            session.query(Instance)
+            .filter(Instance.store == store and Instance.created_time > start_time)
             .all()
         )
 

@@ -85,15 +85,16 @@ def test_valid_stage_and_fail(test_client, test_server, test_orm):
 
     # Check we got this thing in the database.
 
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
-    assert (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=decoded_response.destination_transfer_id)
-        .first()
-        .status
-        == test_orm.TransferStatus.INITIATED
-    )
+    with get_session() as session:
+        assert (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=decoded_response.destination_transfer_id)
+            .first()
+            .status
+            == test_orm.TransferStatus.INITIATED
+        )
 
     # Now see what happens if we try to clone again.
 
@@ -119,13 +120,14 @@ def test_valid_stage_and_fail(test_client, test_server, test_orm):
 
     decoded_response = CloneFailResponse.model_validate_json(response.content)
 
-    assert (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=decoded_response.destination_transfer_id)
-        .first()
-        .status
-        == test_orm.TransferStatus.FAILED
-    )
+    with get_session() as session:
+        assert (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=decoded_response.destination_transfer_id)
+            .first()
+            .status
+            == test_orm.TransferStatus.FAILED
+        )
 
 
 def test_try_to_fail_non_existent_transfer(test_client, test_server, test_orm):
@@ -217,15 +219,16 @@ def test_ongoing_transfer(
 
     # Check it's in the database with correct status
 
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
-    assert (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=decoded_response.destination_transfer_id)
-        .first()
-        .status
-        == test_orm.TransferStatus.ONGOING
-    )
+    with get_session() as session:
+        assert (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=decoded_response.destination_transfer_id)
+            .first()
+            .status
+            == test_orm.TransferStatus.ONGOING
+        )
 
     # If we try to upload again with the same source and destination, it should fail.
 
@@ -264,45 +267,49 @@ def test_incoming_transfer_endpoints(
     that is having stuff sent to it, not the client that is sending)
     """
 
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
     # First we need to create fake files and instances.
 
-    file = test_orm.File.new_file(
-        filename=garbage_filename,
-        size=100,
-        checksum="abcd",
-        uploader="test",
-        source="test",
-    )
+    with get_session() as session:
+        file = test_orm.File.new_file(
+            filename=garbage_filename,
+            size=100,
+            checksum="abcd",
+            uploader="test",
+            source="test",
+        )
 
-    store = session.query(test_orm.StoreMetadata).first()
+        store = session.query(test_orm.StoreMetadata).first()
 
-    instance = test_orm.Instance.new_instance(
-        path=garbage_file,
-        file=file,
-        store=store,
-        deletion_policy="DISALLOWED",
-    )
+        instance = test_orm.Instance.new_instance(
+            path=garbage_file,
+            file=file,
+            store=store,
+            deletion_policy="DISALLOWED",
+        )
 
-    # Add first to get IDs
-    session.add_all([file, instance])
-    session.commit()
+        # Add first to get IDs
+        session.add_all([file, instance])
+        session.commit()
 
-    transfer = test_orm.OutgoingTransfer.new_transfer(
-        destination="test2", instance=instance, file=file
-    )
+        transfer = test_orm.OutgoingTransfer.new_transfer(
+            destination="test2", instance=instance, file=file
+        )
 
-    session.add(transfer)
-    session.commit()
+        session.add(transfer)
+        session.commit()
+
+        transfer_id = transfer.id
+        instance_id = instance.id
 
     # We will first test the failure case where we have not set the transfer to be ongoing
 
     # Now call the endpoint
 
     request = CloneCompleteRequest(
-        source_transfer_id=transfer.id,
-        destination_transfer_id=transfer.id,
+        source_transfer_id=transfer_id,
+        destination_transfer_id=transfer_id,
     )
 
     response = test_client.post(
@@ -314,8 +321,11 @@ def test_incoming_transfer_endpoints(
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
     # Now try again but set the transfer to be ongoing
-    transfer.status = test_orm.TransferStatus.ONGOING
-    session.commit()
+    with get_session() as session:
+        transfer = session.get(test_orm.OutgoingTransfer, transfer_id)
+
+        transfer.status = test_orm.TransferStatus.ONGOING
+        session.commit()
 
     response = test_client.post(
         "/api/v2/clone/complete", content=request.model_dump_json()
@@ -327,12 +337,19 @@ def test_incoming_transfer_endpoints(
 
     # Check it's in the database with correct status
 
-    assert transfer.status == test_orm.TransferStatus.COMPLETED
 
     # Clean up that garbage
-    session.delete(instance)
-    session.delete(file)
-    session.commit()
+    with get_session() as session:
+        transfer = session.get(test_orm.OutgoingTransfer, transfer_id)
+
+        assert transfer.status == test_orm.TransferStatus.COMPLETED
+
+        instance = session.get(test_orm.Instance, instance_id)
+        file = session.get(test_orm.File, str(garbage_filename))
+
+        session.delete(instance)
+        session.delete(file)
+        session.commit()
 
 
 def test_complete_no_transfer(test_client, test_server, test_orm):
@@ -360,23 +377,27 @@ def test_set_ongoing_with_different_status(test_client, test_server, test_orm):
     completed (or has some other status).
     """
 
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
-    transfer = test_orm.IncomingTransfer.new_transfer(
-        uploader="test",
-        source="test",
-        transfer_size=100,
-        transfer_checksum="",
-    )
+    with get_session() as session:
+        transfer = test_orm.IncomingTransfer.new_transfer(
+            uploader="test",
+            source="test",
+            upload_name="test",
+            transfer_size=100,
+            transfer_checksum="",
+        )
 
-    transfer.status = test_orm.TransferStatus.COMPLETED
+        transfer.status = test_orm.TransferStatus.COMPLETED
 
-    session.add(transfer)
-    session.commit()
+        session.add(transfer)
+        session.commit()
+
+        transfer_id = transfer.id
 
     request = CloneOngoingRequest(
-        source_transfer_id=transfer.id,
-        destination_transfer_id=transfer.id,
+        source_transfer_id=transfer_id,
+        destination_transfer_id=transfer_id,
     )
 
     response = test_client.post(
@@ -401,9 +422,11 @@ def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename)
         source="test",
     )
 
-    _, session, _ = test_server
-    session.add(file)
-    session.commit()
+    _, get_session, _ = test_server
+    
+    with get_session() as session:
+        session.add(file)
+        session.commit()
 
     request = CloneInitiationRequest(
         destination_location=garbage_filename,
@@ -425,5 +448,8 @@ def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename)
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
     # Clean up that garbage
-    session.delete(file)
-    session.commit()
+    with get_session() as session:
+        file = session.get(test_orm.File, str(garbage_filename))
+
+        session.delete(file)
+        session.commit()

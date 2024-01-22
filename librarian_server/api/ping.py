@@ -2,8 +2,6 @@
 Contains endpoints for pinging and requesting a ping back.
 """
 
-from ..webutil import ServerError
-from ..database import session, query
 from ..logger import log
 from ..settings import server_settings
 

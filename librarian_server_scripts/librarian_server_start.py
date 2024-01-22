@@ -9,7 +9,7 @@ you can even run the librarian_background module as a separate instance.
 
 from librarian_server.settings import server_settings
 
-from librarian_server.database import session, engine
+from librarian_server.database import get_session
 from librarian_server.orm import StoreMetadata
 
 from librarian_server.logger import log
@@ -22,11 +22,15 @@ import subprocess
 
 # Do this in if __name__ == "__main__" so we can spawn threads on MacOS...
 
+
 def main():
     log.info("Librarian-server-start settings: " + str(server_settings))
     # Perform pre-startup tasks!
     log.debug("Creating the database.")
-    return_value = subprocess.call(f"cd {server_settings.alembic_config_path}; {server_settings.alembic_path} upgrade head", shell=True)
+    return_value = subprocess.call(
+        f"cd {server_settings.alembic_config_path}; {server_settings.alembic_path} upgrade head",
+        shell=True,
+    )
     if return_value != 0:
         log.debug("Error creating or updating the database. Exiting.")
         exit(0)
@@ -37,29 +41,36 @@ def main():
 
     stores_added = 0
 
-    for store_config in server_settings.add_stores:
-        if session.query(StoreMetadata).filter(StoreMetadata.name == store_config.store_name).first():
-            log.debug(f"Store {store_config.store_name} already exists in database.")
-            continue
+    with get_session() as session:
+        for store_config in server_settings.add_stores:
+            if (
+                session.query(StoreMetadata)
+                .filter(StoreMetadata.name == store_config.store_name)
+                .first()
+            ):
+                log.debug(
+                    f"Store {store_config.store_name} already exists in database."
+                )
+                continue
 
-        log.debug(f"Adding store {store_config.store_name} to database.")
+            log.debug(f"Adding store {store_config.store_name} to database.")
 
-        store = StoreMetadata(
-            name=store_config.store_name,
-            store_type=store_config.store_type,
-            ingestable=store_config.ingestable,
-            store_data={**store_config.store_data, "name": store_config.store_name},
-            transfer_manager_data=store_config.transfer_manager_data,
-        )
+            store = StoreMetadata(
+                name=store_config.store_name,
+                store_type=store_config.store_type,
+                ingestable=store_config.ingestable,
+                store_data={**store_config.store_data, "name": store_config.store_name},
+                transfer_manager_data=store_config.transfer_manager_data,
+            )
 
-        session.add(store)
+            session.add(store)
 
-        stores_added += 1
+            stores_added += 1
 
-    log.debug(f"Added {stores_added} store to the database. Committing.")
+        log.debug(f"Added {stores_added} store to the database. Committing.")
 
-    if stores_added > 0:
-        session.commit()
+        if stores_added > 0:
+            session.commit()
 
     # Now we can start the background process thread.
     log.info("Starting background process.")

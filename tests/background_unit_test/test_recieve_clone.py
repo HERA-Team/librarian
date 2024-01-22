@@ -26,7 +26,10 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
     from librarian_background.recieve_clone import RecieveClone
 
     # Get a store to use
-    _, session, _ = test_server
+    _, get_session, _ = test_server
+
+    session = get_session()
+
     store = session.query(test_orm.StoreMetadata).filter_by(ingestable=True).first()
 
     # Create the fake incoming transfer
@@ -38,6 +41,7 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
     incoming_transfer = test_orm.IncomingTransfer.new_transfer(
         uploader="test_fake_librarian",
         source="test_user",
+        upload_name=garbage_file.name,
         transfer_size=info.size,
         transfer_checksum=info.md5,
     )
@@ -51,6 +55,10 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
     session.add(incoming_transfer)
     session.commit()
 
+    incoming_transfer_id = incoming_transfer.id
+
+    session.close()
+
     clone_task = RecieveClone(
         name="Recieve clone",
     )
@@ -60,11 +68,9 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
     # Now check in the DB to see if we marked the status as correct and moved the file to
     # the right place.
 
-    incoming_transfer = (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=incoming_transfer.id)
-        .first()
-    )
+    session = get_session()
+
+    incoming_transfer = session.get(test_orm.IncomingTransfer, incoming_transfer_id)
 
     assert incoming_transfer.status == test_orm.TransferStatus.COMPLETED
 
@@ -75,3 +81,5 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
     # Check the file is in the store.
 
     assert store.store_manager.path_info(Path(incoming_transfer.store_path)).md5 == info.md5
+
+    session.close()

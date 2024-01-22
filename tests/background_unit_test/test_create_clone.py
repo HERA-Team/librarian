@@ -13,16 +13,18 @@ def test_create_local_clone_with_valid(
     from librarian_background.create_clone import CreateLocalClone
 
     # Get a store to check
-    _, session, _ = test_server_with_valid_file
-    stores = session.query(test_orm.StoreMetadata).all()
+    _, get_session, _ = test_server_with_valid_file
 
-    from_store = [store for store in stores if store.ingestable][0]
-    to_store = [store for store in stores if not store.ingestable][0]
+    with get_session() as session:
+        stores = session.query(test_orm.StoreMetadata).all()
+
+        from_store = [store.name for store in stores if store.ingestable][0]
+        to_store = [store.name for store in stores if not store.ingestable][0]
 
     clone_task = CreateLocalClone(
         name="Local clone",
-        clone_from=from_store.name,
-        clone_to=to_store.name,
+        clone_from=from_store,
+        clone_to=to_store,
         age_in_days=1,
     )
 
@@ -39,16 +41,18 @@ def test_create_local_clone_with_invalid(
     from librarian_background.create_clone import CreateLocalClone
 
     # Get a store to check
-    _, session, _ = test_server_with_invalid_file
-    stores = session.query(test_orm.StoreMetadata).all()
+    _, get_session, _ = test_server_with_invalid_file
 
-    from_store = [store for store in stores if store.ingestable][0]
-    to_store = [store for store in stores if not store.ingestable][0]
+    with get_session() as session:
+        stores = session.query(test_orm.StoreMetadata).all()
+
+        from_store = [store.name for store in stores if store.ingestable][0]
+        to_store = [store.name for store in stores if not store.ingestable][0]
 
     clone_task = CreateLocalClone(
         name="Local clone",
-        clone_from=from_store.name,
-        clone_to=to_store.name,
+        clone_from=from_store,
+        clone_to=to_store,
         age_in_days=1,
     )
 
@@ -65,16 +69,18 @@ def test_create_local_clone_with_missing(
     from librarian_background.create_clone import CreateLocalClone
 
     # Get a store to check
-    _, session, _ = test_server_with_missing_file
-    stores = session.query(test_orm.StoreMetadata).all()
+    _, get_session, _ = test_server_with_missing_file
 
-    from_store = [store for store in stores if store.ingestable][0]
-    to_store = [store for store in stores if not store.ingestable][0]
+    with get_session() as session:
+        stores = session.query(test_orm.StoreMetadata).all()
+
+        from_store = [store.name for store in stores if store.ingestable][0]
+        to_store = [store.name for store in stores if not store.ingestable][0]
 
     clone_task = CreateLocalClone(
         name="Local clone",
-        clone_from=from_store.name,
-        clone_to=to_store.name,
+        clone_from=from_store,
+        clone_to=to_store,
         age_in_days=1,
     )
 

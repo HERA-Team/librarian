@@ -13,6 +13,14 @@ from hera_librarian.models.clone import CloneFailRequest, CloneFailResponse
 from enum import Enum
 import datetime
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .file import File
+    from .instance import Instance
+
+    from sqlalchemy.orm import Session
+
 
 class TransferStatus(Enum):
     """
@@ -54,6 +62,8 @@ class IncomingTransfer(db.Base):
     "Current status of the transfer"
     uploader = db.Column(db.String(256), nullable=False)
     "The name of the uploader."
+    upload_name = db.Column(db.String(256), nullable=False)
+    "The name of the file that is being uploaded."
     source = db.Column(db.String(256), nullable=False)
     "The source of this file. Could be same as uploader, but could also be another librarian."
     transfer_size = db.Column(db.BigInteger, nullable=False)
@@ -83,7 +93,7 @@ class IncomingTransfer(db.Base):
 
     @classmethod
     def new_transfer(
-        self, uploader: str, source: str, transfer_size: int, transfer_checksum: str
+        self, uploader: str, upload_name: str, source: str, transfer_size: int, transfer_checksum: str
     ) -> "IncomingTransfer":
         """
         Create a new transfer!
@@ -94,6 +104,7 @@ class IncomingTransfer(db.Base):
         return IncomingTransfer(
             status=TransferStatus.INITIATED,
             uploader=uploader,
+            upload_name=upload_name,
             source=source,
             transfer_size=transfer_size,
             transfer_checksum=transfer_checksum,
@@ -161,14 +172,14 @@ class OutgoingTransfer(db.Base):
         )
     
 
-    def fail_transfer(self):
+    def fail_transfer(self, session: "Session"):
         """
         Fail the transfer and commit to the database.
         """
 
         self.status = TransferStatus.FAILED
         self.end_time = datetime.datetime.utcnow()
-        db.session.commit()
+        session.commit()
 
         if self.remote_transfer_id is None:
             # No remote transfer ID, so we can't do anything.
@@ -177,7 +188,7 @@ class OutgoingTransfer(db.Base):
         # Now here's the interesting part - we need to communicate to the
         # remote librarian that the transfer failed!
 
-        librarian: Librarian = db.query(Librarian, name=self.destination).first()
+        librarian: Librarian = session.query(Librarian).filter_by(name=self.destination).first()
 
         if not librarian:
             # Librarian doesn't exist. We can't do anything.
@@ -273,7 +284,7 @@ class CloneTransfer(db.Base):
             start_time=datetime.datetime.utcnow(),
         )
 
-    def fail_transfer(self):
+    def fail_transfer(self, session: "Session"):
         """
         Fail the transfer and commit to the database.
         """
@@ -281,6 +292,6 @@ class CloneTransfer(db.Base):
         self.status = TransferStatus.FAILED
         self.end_time = datetime.datetime.utcnow()
 
-        db.session.commit()
+        session.commit()
 
         return

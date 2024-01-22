@@ -79,36 +79,35 @@ def test_server(tmp_path_factory):
     import librarian_server.database
 
     app = librarian_server.main()
-    session = librarian_server.database.session
+    get_session = librarian_server.database.get_session
 
     # Need to add our stores...
     from librarian_server.orm import StoreMetadata
     from librarian_server.settings import StoreSettings
 
-    for store_config in json.loads(setup.ADD_STORES):
-        store_config = StoreSettings(**store_config)
+    with get_session() as session:
+        for store_config in json.loads(setup.ADD_STORES):
+            store_config = StoreSettings(**store_config)
 
-        store = StoreMetadata(
-            name=store_config.store_name,
-            store_type=store_config.store_type,
-            ingestable=store_config.ingestable,
-            store_data={**store_config.store_data, "name": store_config.store_name},
-            transfer_manager_data=store_config.transfer_manager_data,
-        )
+            store = StoreMetadata(
+                name=store_config.store_name,
+                store_type=store_config.store_type,
+                ingestable=store_config.ingestable,
+                store_data={**store_config.store_data, "name": store_config.store_name},
+                transfer_manager_data=store_config.transfer_manager_data,
+            )
 
-        session.add(store)
+            session.add(store)
 
-    session.commit()
+        session.commit()
 
-    yield app, session, setup
+    yield app, get_session, setup
 
     for env_var in list(env_vars.keys()):
         if env_vars[env_var] is None:
             del os.environ[env_var]
         else:
             os.environ[env_var] = env_vars[env_var]
-
-    session.close()
 
 
 @pytest.fixture(scope="package")
@@ -154,7 +153,9 @@ def test_server_with_valid_file(test_server, test_orm):
     Test server with a valid file and instance in the store.
     """
 
-    store = test_server[1].query(test_orm.StoreMetadata).first()
+    session = test_server[1]()
+
+    store = session.query(test_orm.StoreMetadata).first()
 
     data = random.randbytes(1024)
 
@@ -179,18 +180,27 @@ def test_server_with_valid_file(test_server, test_orm):
         deletion_policy="ALLOWED",
     )
 
-    test_server[1].add_all([file, instance])
+    session.add_all([file, instance])
+    session.commit()
 
-    test_server[1].commit()
+    instance_id = instance.id
+
+    session.close()
 
     yield test_server
 
     # Now delete those items from the database.
 
-    test_server[1].delete(instance)
-    test_server[1].delete(file)
+    session = test_server[1]()
 
-    test_server[1].commit()
+    instance = session.get(test_orm.Instance, instance_id)
+    file = session.get(test_orm.File, "example_file.txt")
+
+    session.delete(instance)
+    session.delete(file)
+
+    session.commit()
+    session.close()
 
     path.unlink()
 
@@ -201,7 +211,9 @@ def test_server_with_invalid_file(test_server, test_orm):
     Test server with a invalid file and instance in the store.
     """
 
-    store = test_server[1].query(test_orm.StoreMetadata).first()
+    session = test_server[1]()
+
+    store = session.query(test_orm.StoreMetadata).first()
 
     data = random.randbytes(1024)
 
@@ -226,18 +238,28 @@ def test_server_with_invalid_file(test_server, test_orm):
         deletion_policy="ALLOWED",
     )
 
-    test_server[1].add_all([file, instance])
+    session.add_all([file, instance])
 
-    test_server[1].commit()
+    session.commit()
+
+    instance_id = instance.id
+
+    session.close()
 
     yield test_server
 
     # Now delete those items from the database.
 
-    test_server[1].delete(instance)
-    test_server[1].delete(file)
+    session = test_server[1]()
 
-    test_server[1].commit()
+    instance = session.get(test_orm.Instance, instance_id)
+    file = session.get(test_orm.File, "example_file.txt")
+
+    session.delete(instance)
+    session.delete(file)
+
+    session.commit()
+    session.close()
 
     path.unlink()
 
@@ -248,7 +270,9 @@ def test_server_with_missing_file(test_server, test_orm):
     Test server with a missing file and instance in the store.
     """
 
-    store = test_server[1].query(test_orm.StoreMetadata).first()
+    session = test_server[1]()
+
+    store = session.query(test_orm.StoreMetadata).first()
 
     data = random.randbytes(1024)
 
@@ -274,15 +298,25 @@ def test_server_with_missing_file(test_server, test_orm):
         deletion_policy="ALLOWED",
     )
 
-    test_server[1].add_all([file, instance])
+    session.add_all([file, instance])
 
-    test_server[1].commit()
+    session.commit()
+
+    instance_id = instance.id
+
+    session.close()
 
     yield test_server
 
     # Now delete those items from the database.
 
-    test_server[1].delete(instance)
-    test_server[1].delete(file)
+    session = test_server[1]()
 
-    test_server[1].commit()
+    instance = session.get(test_orm.Instance, instance_id)
+    file = session.get(test_orm.File, "example_file.txt")
+
+    session.delete(instance)
+    session.delete(file)
+
+    session.commit()
+    session.close()
