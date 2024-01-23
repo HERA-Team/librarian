@@ -11,12 +11,15 @@ def test_check_integrity(test_client, test_server_with_valid_file, test_orm):
     from librarian_background.check_integrity import CheckIntegrity
 
     # Get a store to check
-    _, session, _ = test_server_with_valid_file
-    store = session.query(test_orm.StoreMetadata).first()
+    _, get_session, _ = test_server_with_valid_file
+
+    with get_session() as session:
+        store = session.query(test_orm.StoreMetadata).first().name
 
     integrity_task = CheckIntegrity(
-        name="Integrity check", store_name=store.name, age_in_days=1
+        name="Integrity check", store_name=store, age_in_days=1
     )
+
     assert integrity_task()
 
 
@@ -28,11 +31,13 @@ def test_check_integrity_failure(test_client, test_server_with_invalid_file, tes
     from librarian_background.check_integrity import CheckIntegrity
 
     # Get a store to check
-    _, session, _ = test_server_with_invalid_file
-    store = session.query(test_orm.StoreMetadata).first()
+    _, get_session, _ = test_server_with_invalid_file
+
+    with get_session() as session:
+        store = session.query(test_orm.StoreMetadata).first().name
 
     integrity_task = CheckIntegrity(
-        name="Integrity check", store_name=store.name, age_in_days=1
+        name="Integrity check", store_name=store, age_in_days=1
     )
     assert integrity_task() == False
 
@@ -62,10 +67,12 @@ def test_check_integrity_missing_store(
     from librarian_background.check_integrity import CheckIntegrity
 
     # Get a store to check
-    _, session, _ = test_server_with_missing_file
-    store = session.query(test_orm.StoreMetadata).first()
+    _, get_session, _ = test_server_with_missing_file
+
+    with get_session() as session:
+        store = session.query(test_orm.StoreMetadata).first().name
 
     integrity_task = CheckIntegrity(
-        name="Integrity check", store_name=store.name, age_in_days=1
+        name="Integrity check", store_name=store, age_in_days=1
     )
     assert integrity_task() == False

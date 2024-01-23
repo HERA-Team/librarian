@@ -12,7 +12,7 @@ import datetime
 from schedule import CancelJob
 from pathlib import Path
 
-from librarian_server.database import session, query
+from librarian_server.database import get_session()
 from librarian_server.orm import (
     StoreMetadata,
     Instance,
@@ -29,6 +29,13 @@ from hera_librarian.models.clone import (
     CloneOngoingRequest,
     CloneOngoingResponse
 )
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from hera_librarian import LibrarianClient
+
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger("schedule")
 
@@ -49,13 +56,17 @@ class SendClone(Task):
     "Name of the store to prefer when sending files. If None, we will use whatever store is available for sending that file."
 
     def on_call(self):
+        with get_session() as session:
+            return self.core(session=session)
+
+    def core(self, session: Session):
         """
         Creates uploads to the remote librarian as specified.
         """
         # Before even attempting to do anything, get the information about the librarian and create
         # a client connection to it.
-        librarian: Optional[Librarian] = query(
-            Librarian, Librarian.name == self.destination_librarian
+        librarian: Optional[Librarian] = session.query(
+            Librarian).filter_by(name=self.destination_librarian
         ).first()
 
         if librarian is None:
@@ -79,10 +90,10 @@ class SendClone(Task):
         age_in_days = datetime.timedelta(days=self.age_in_days)
         oldest_file_age = current_time - age_in_days
 
-        files_without_remote_instances: list[File] = query(
-            File,
-            File.create_time > oldest_file_age,
-            File.remote_instances.any(librarian_name=self.destination_librarian),
+        files_without_remote_instances: list[File] = session.query(
+            File).filter(
+            File.create_time > oldest_file_age and
+            File.remote_instances.any(librarian_name=self.destination_librarian)
         ).all()
 
         logger.info(
@@ -90,8 +101,8 @@ class SendClone(Task):
         )
 
         if self.store_preference is not None:
-            use_store: StoreMetadata = query(
-                StoreMetadata, StoreMetadata.name == self.store_preference
+            use_store: StoreMetadata = session.query(
+                StoreMetadata).filter_by(name = self.store_preference
             ).first()
 
             if use_store is None:
@@ -159,7 +170,7 @@ class SendClone(Task):
                 )
 
                 # Mark the transfer as failed.
-                transfer.fail_transfer()
+                transfer.fail_transfer(session=session)
                 continue
 
             
@@ -192,7 +203,7 @@ class SendClone(Task):
                     f"Failed to transfer file {instance.path} to remote store. Skipping."
                 )
 
-                transfer.fail_transfer()
+                transfer.fail_transfer(session=session)
                 continue
 
             # Great! We can now mark the transfer as ONGOING in the background.

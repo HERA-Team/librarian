@@ -45,7 +45,7 @@ def test_negative_upload_size(test_client: TestClient):
 
 
 def test_extreme_upload_size(
-    test_client: TestClient, test_server: tuple[FastAPI, Session, Server], test_orm: Any
+    test_client: TestClient, test_server: tuple[FastAPI, callable, Server], test_orm: Any
 ):
     """
     Tests that an upload size that is too large results in an error.
@@ -69,16 +69,17 @@ def test_extreme_upload_size(
     assert response.status_code == 413
 
     # Check we put the stuff in the database!
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
-    assert (
-        session.query(test_orm.IncomingTransfer).first().status
-        == test_orm.TransferStatus.FAILED
-    )
+    with get_session() as session:
+        assert (
+            session.query(test_orm.IncomingTransfer).first().status
+            == test_orm.TransferStatus.FAILED
+        )
 
 
 def test_valid_stage(
-    test_client: TestClient, test_server: tuple[FastAPI, Session, Server], test_orm: Any
+    test_client: TestClient, test_server: tuple[FastAPI, callable, Server], test_orm: Any
 ):
     """
     Tests that a valid stage works.
@@ -104,15 +105,16 @@ def test_valid_stage(
 
     # Check we got this thing in the database.
 
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
-    assert (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=decoded_response.transfer_id)
-        .first()
-        .status
-        == test_orm.TransferStatus.INITIATED
-    )
+    with get_session() as session:
+        assert (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=decoded_response.transfer_id)
+            .first()
+            .status
+            == test_orm.TransferStatus.INITIATED
+        )
 
     # Now we can check what happens when we try to upload the same file.
     response = test_client.post(
@@ -160,7 +162,7 @@ def helper_generate_transfer(
 
 def test_full_upload(
     test_client: TestClient,
-    test_server: tuple[FastAPI, Session, Server],
+    test_server: tuple[FastAPI, callable, Server],
     test_orm: Any,
     garbage_file: Path,
     garbage_filename: Path,
@@ -197,24 +199,26 @@ def test_full_upload(
     assert response.status_code == 200
 
     # Check we got this thing in the database.
-    _, session, _ = test_server
-    incoming_transfer = (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=stage_response.transfer_id)
-        .first()
-    )
+    _, get_session, _ = test_server
 
-    assert incoming_transfer.status == test_orm.TransferStatus.COMPLETED
+    with get_session() as session:
+        incoming_transfer = (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=stage_response.transfer_id)
+            .first()
+        )
 
-    # Find the file in the store.
-    instance = (
-        session.query(test_orm.Instance)
-        .filter_by(file_name=str(garbage_filename))
-        .first()
-    )
+        assert incoming_transfer.status == test_orm.TransferStatus.COMPLETED
 
-    # Check the file is where it should be.
-    assert Path(instance.path).exists()
+        # Find the file in the store.
+        instance = (
+            session.query(test_orm.Instance)
+            .filter_by(file_name=str(garbage_filename))
+            .first()
+        )
+
+        # Check the file is where it should be.
+        assert Path(instance.path).exists()
 
     # Now highjack this test to see what happens if we try to upload again!
 
@@ -273,14 +277,16 @@ def test_commit_no_file_uploaded(
     assert response.status_code == 404
 
     # Check we got this thing in the database.
-    _, session, _ = test_server
-    incoming_transfer = (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=stage_response.transfer_id)
-        .first()
-    )
+    _, get_session, _ = test_server
 
-    assert incoming_transfer.status == test_orm.TransferStatus.FAILED
+    with get_session() as session:
+        incoming_transfer = (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=stage_response.transfer_id)
+            .first()
+        )
+
+        assert incoming_transfer.status == test_orm.TransferStatus.FAILED
 
 
 def test_commit_wrong_file_uploaded(
@@ -322,14 +328,16 @@ def test_commit_wrong_file_uploaded(
     assert response.status_code == 406
 
     # Check we got this thing in the database.
-    _, session, _ = test_server
-    incoming_transfer = (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=stage_response.transfer_id)
-        .first()
-    )
+    _, get_session, _ = test_server
 
-    assert incoming_transfer.status == test_orm.TransferStatus.FAILED
+    with get_session() as session:
+        incoming_transfer = (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=stage_response.transfer_id)
+            .first()
+        )
+
+        assert incoming_transfer.status == test_orm.TransferStatus.FAILED
 
     # Check we deleted the file
     assert not Path(stage_response.staging_location).exists()
@@ -346,21 +354,22 @@ def test_commit_file_exists(
         test_client, test_server, test_orm, garbage_file, garbage_filename
     )
 
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
-    store_metadata = (
-        session.query(test_orm.StoreMetadata)
-        .filter_by(name=stage_response.store_name)
-        .first()
-    )
+    with get_session() as session:
+        store_metadata = (
+            session.query(test_orm.StoreMetadata)
+            .filter_by(name=stage_response.store_name)
+            .first()
+        )
 
-    # Copy the file to the store area manually.
-    shutil.copy2(
-        garbage_file,
-        store_metadata.store_manager._resolved_path_store(
-            stage_response.destination_location
-        ),
-    )
+        # Copy the file to the store area manually.
+        shutil.copy2(
+            garbage_file,
+            store_metadata.store_manager._resolved_path_store(
+                stage_response.destination_location
+            ),
+        )
 
     # Now we can actually test the commit endpoint.
 
@@ -387,13 +396,14 @@ def test_commit_file_exists(
 
     # Check we got this thing in the database.
 
-    incoming_transfer = (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=stage_response.transfer_id)
-        .first()
-    )
+    with get_session() as session:
+        incoming_transfer = (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=stage_response.transfer_id)
+            .first()
+        )
 
-    assert incoming_transfer.status == test_orm.TransferStatus.FAILED
+        assert incoming_transfer.status == test_orm.TransferStatus.FAILED
 
     assert not Path(stage_response.staging_location).exists()
 
@@ -456,12 +466,13 @@ def test_directory_upload(test_client, test_server, test_orm, tmp_path):
 
     # Check we got this thing in the database.
 
-    _, session, _ = test_server
+    _, get_session, _ = test_server
 
-    incoming_transfer = (
-        session.query(test_orm.IncomingTransfer)
-        .filter_by(id=decoded_response.transfer_id)
-        .first()
-    )
+    with get_session() as session:
+        incoming_transfer = (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(id=decoded_response.transfer_id)
+            .first()
+        )
 
-    assert incoming_transfer.status == test_orm.TransferStatus.COMPLETED
+        assert incoming_transfer.status == test_orm.TransferStatus.COMPLETED

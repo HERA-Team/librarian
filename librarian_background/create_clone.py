@@ -12,8 +12,10 @@ import datetime
 from schedule import CancelJob
 from pathlib import Path
 
-from librarian_server.database import session, query
 from librarian_server.orm import StoreMetadata, Instance, CloneTransfer, TransferStatus
+from librarian_server.database import get_session
+
+from sqlalchemy.orm import Session
 
 
 logger = logging.getLogger("schedule")
@@ -33,19 +35,23 @@ class CreateLocalClone(Task):
 
     # TODO: In the future, we could implement a _rolling_ n day clone here, i.e. only keep the last n days of files on the clone_to store.
 
-    def get_store(self, name: str) -> StoreMetadata:
+    def get_store(self, name: str, session: Session) -> StoreMetadata:
         possible_metadata = (
-            query(StoreMetadata).filter(StoreMetadata.name == name).first()
+            session.query(StoreMetadata).filter_by(name=name).first()
         )
 
         if not possible_metadata:
             raise ValueError(f"Store {name} does not exist.")
 
         return possible_metadata
-
+    
     def on_call(self):
+        with get_session() as session:
+            return self.core(session=session)
+
+    def core(self, session: Session):
         try:
-            store_from = self.get_store(self.clone_from)
+            store_from = self.get_store(self.clone_from, session)
         except ValueError:
             # Store doesn't exist. Cancel this job.
             logger.error(
@@ -54,7 +60,7 @@ class CreateLocalClone(Task):
             return CancelJob
 
         try:
-            store_to = self.get_store(self.clone_to)
+            store_to = self.get_store(self.clone_to, session)
         except ValueError:
             # Store doesn't exist. Cancel this job.
             logger.error(
@@ -67,7 +73,7 @@ class CreateLocalClone(Task):
 
         # Now we can query the database for all files that were uploaded in the past age_in_days days.
         instances: list[Instance] = (
-            query(Instance)
+            session.query(Instance)
             .filter(Instance.store == store_from)
             .filter(Instance.created_time > start_time)
             .all()
@@ -81,7 +87,7 @@ class CreateLocalClone(Task):
             # Check if there is a matching instance already on our clone_to store.
             # If there is, we don't need to clone it.
             if (
-                query(Instance)
+                session.query(Instance)
                 .filter(Instance.store == store_to)
                 .filter(Instance.file == instance.file)
                 .first()
@@ -113,7 +119,7 @@ class CreateLocalClone(Task):
                     f"File {instance.file.name} is too large to fit on store {store_to}. Skipping."
                 )
 
-                transfer.fail_transfer()
+                transfer.fail_transfer(session=session)
 
                 all_transfers_successful = False
 
@@ -136,7 +142,7 @@ class CreateLocalClone(Task):
                             f"Failed to transfer file {instance.path} to store {store_to} using transfer manager {transfer_manager}."
                         )
 
-                        transfer.fail_transfer()
+                        transfer.fail_transfer(session=session)
 
                         continue
                 except FileNotFoundError as e:
@@ -144,7 +150,7 @@ class CreateLocalClone(Task):
                         f"File {instance.path} does not exist on store {store_from}. Skipping."
                     )
 
-                    transfer.fail_transfer()
+                    transfer.fail_transfer(session=session)
 
                     all_transfers_successful = False
 
@@ -155,7 +161,7 @@ class CreateLocalClone(Task):
                     f"Failed to transfer file {instance.path} to store {store_to}. Skipping."
                 )
 
-                transfer.fail_transfer()
+                transfer.fail_transfer(session=session)
 
                 all_transfers_successful = False
 
@@ -176,7 +182,7 @@ class CreateLocalClone(Task):
                         f"Expected {instance.file.checksum}, got {path_info.md5}."
                     )
 
-                    transfer.fail_transfer()
+                    transfer.fail_transfer(session=session)
 
                     store_to.store_manager.unstage(staged_path)
 
@@ -193,7 +199,7 @@ class CreateLocalClone(Task):
                 )
                 store_to.store_manager.unstage(staging_name)
 
-                transfer.fail_transfer()
+                transfer.fail_transfer(session=session)
 
                 all_transfers_successful = False
 

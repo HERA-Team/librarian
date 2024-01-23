@@ -25,7 +25,7 @@ from ..webutil import ServerError
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import TransferStatus, IncomingTransfer, OutgoingTransfer
 from ..orm.file import File
-from ..database import session, query
+from ..database import yield_session
 from ..logger import log
 
 from hera_librarian.models.clone import (
@@ -40,12 +40,13 @@ from hera_librarian.models.clone import (
     CloneFailRequest,
 )
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, status, Depends
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/v2/clone")
 
 @router.post("/stage", response_model=CloneInitiationResponse | CloneFailedResponse)
-def stage(request: CloneInitiationRequest, response: Response):
+def stage(request: CloneInitiationRequest, response: Response, session: Session = Depends(yield_session)):
     """
     Recieved from a remote librarian to initiate a clone.
 
@@ -104,16 +105,12 @@ def stage(request: CloneInitiationRequest, response: Response):
     # again a logic error. They should not have tried to send us that again! It's already
     # on its way.
 
-    existing_transfer = (
-        query(IncomingTransfer)
-        .filter(
-            (IncomingTransfer.transfer_checksum == request.upload_checksum)
-            & (IncomingTransfer.status != TransferStatus.FAILED)
-            & (IncomingTransfer.status != TransferStatus.COMPLETED)
-            & (IncomingTransfer.status != TransferStatus.CANCELLED)
-        )
-        .all()
-    )
+    existing_transfer = session.query(IncomingTransfer).filter(
+        (IncomingTransfer.transfer_checksum == request.upload_checksum)
+        & (IncomingTransfer.status != TransferStatus.FAILED)
+        & (IncomingTransfer.status != TransferStatus.COMPLETED)
+        & (IncomingTransfer.status != TransferStatus.CANCELLED)
+    ).all()
 
     if len(existing_transfer) != 0:
         log.info(
@@ -149,7 +146,7 @@ def stage(request: CloneInitiationRequest, response: Response):
 
             # Unstage the files.
             try:
-                store = StoreMetadata.from_id(transfer.store_id)
+                store = session.get(StoreMetadata, transfer.store_id)
                 store.store_manager.unstage(Path(transfer.staging_path))
             except ServerError:
                 # No store was yet assigned, do not need to delete.
@@ -175,6 +172,7 @@ def stage(request: CloneInitiationRequest, response: Response):
     transfer = IncomingTransfer.new_transfer(
         source=request.source,
         uploader=request.uploader,
+        upload_name=str(request.upload_name),
         transfer_size=request.upload_size,
         transfer_checksum=request.upload_checksum,
     )
@@ -184,7 +182,7 @@ def stage(request: CloneInitiationRequest, response: Response):
 
     use_store: Optional[StoreMetadata] = None
 
-    for store in query(StoreMetadata, ingestable=True).all():
+    for store in session.query(StoreMetadata).filter_by(ingestable=True).all():
         if not store.store_manager.available:
             continue
 
@@ -242,7 +240,7 @@ def stage(request: CloneInitiationRequest, response: Response):
 
 
 @router.post("/ongoing", response_model=CloneOngoingResponse | CloneFailedResponse)
-def ongoing(request: CloneOngoingRequest, response: Response):
+def ongoing(request: CloneOngoingRequest, response: Response, session: Session = Depends(yield_session)):
     """
     Called when the remote librarian has started the transfer. We should
     update the status of the transfer to ONGOING.
@@ -256,7 +254,7 @@ def ongoing(request: CloneOngoingRequest, response: Response):
 
     log.debug(f"Received clone ongoing request: {request}")
 
-    transfer = query(IncomingTransfer, id=request.destination_transfer_id).first()
+    transfer = session.query(IncomingTransfer).filter_by(id=request.destination_transfer_id).first()
 
     if transfer is None:
         log.debug(
@@ -302,7 +300,7 @@ def ongoing(request: CloneOngoingRequest, response: Response):
 
 
 @router.post("/complete", response_model=CloneCompleteResponse | CloneFailedResponse)
-def complete(request: CloneCompleteRequest, response: Response):
+def complete(request: CloneCompleteRequest, response: Response, session: Session = Depends(yield_session)):
     """
     The callback from librarian B to librarian A that it has completed the
     transfer. Used to update anything in our OutgiongTransfers that needs it.
@@ -316,7 +314,7 @@ def complete(request: CloneCompleteRequest, response: Response):
 
     log.debug(f"Received clone complete request: {request}")
 
-    transfer = query(OutgoingTransfer, id=request.source_transfer_id).first()
+    transfer = session.query(OutgoingTransfer).filter_by(id=request.source_transfer_id).first()
 
     if transfer is None:
         log.debug(
@@ -362,14 +360,14 @@ def complete(request: CloneCompleteRequest, response: Response):
 
 
 @router.post("/fail", response_model=CloneFailResponse | CloneFailedResponse)
-def fail(request: CloneFailRequest, response: Response):
+def fail(request: CloneFailRequest, response: Response, session: Session = Depends(yield_session)):
     """
     Endpoint to send to if you would like to fail a specific IncomingTransfer.
     """
 
     log.debug(f"Received clone fail request: {request}")
 
-    transfer = query(IncomingTransfer, id=request.destination_transfer_id).first()
+    transfer = session.query(IncomingTransfer).filter_by(id=request.destination_transfer_id).first()
 
     if transfer is None:
         log.debug(

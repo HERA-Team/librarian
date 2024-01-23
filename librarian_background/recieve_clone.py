@@ -12,7 +12,7 @@ from typing import Optional
 
 from .task import Task
 
-from librarian_server.database import session, query
+from librarian_server.database import get_session
 from librarian_server.orm import (
     File,
     Instance,
@@ -28,6 +28,10 @@ from hera_librarian.models.clone import (
     CloneCompleteResponse,
 )
 
+from typing import TYPE_CHECKING
+
+from sqlalchemy.orm import Session
+
 logger = logging.getLogger("schedule")
 
 
@@ -39,15 +43,21 @@ class RecieveClone(Task):
     deletion_policy: DeletionPolicy = DeletionPolicy.DISALLOWED
 
     def on_call(self):
+        with get_session() as session:
+            return self.core(session=session)
+
+    def core(self, session: Session):
         """
         Checks for incoming transfers and processes them.
         """
 
         # Find incoming transfers that are ONGOING
-        ongoing_transfers: list[IncomingTransfer] = query(
-            IncomingTransfer, status=TransferStatus.ONGOING
-        ).all()
-                
+        ongoing_transfers: list[IncomingTransfer] = (
+            session.query(IncomingTransfer)
+            .filter_by(status=TransferStatus.ONGOING)
+            .all()
+        )
+
         all_transfers_succeeded = True
 
         if len(ongoing_transfers) == 0:
@@ -118,7 +128,7 @@ class RecieveClone(Task):
                     path=path_info.path,
                     file=file,
                     store=store,
-                    deletion_policy=self.deletion_policy
+                    deletion_policy=self.deletion_policy,
                 )
 
                 session.add(file)
@@ -132,9 +142,9 @@ class RecieveClone(Task):
                 session.commit()
 
                 # Callback to the source librarian.
-                librarian: Optional[Librarian] = query(
-                    Librarian, name=transfer.source
-                ).first()
+                librarian: Optional[Librarian] = (
+                    session.query(Librarian).filter_by(name=transfer.source).first()
+                )
 
                 if librarian:
                     # Need to call back
@@ -148,10 +158,12 @@ class RecieveClone(Task):
                     )
 
                     try:
-                        response: CloneCompleteResponse = librarian.client.do_pydantic_http_post(
-                            endpoint="/api/v2/clone/complete",
-                            request_model=request,
-                            response_model=CloneCompleteResponse,
+                        response: CloneCompleteResponse = (
+                            librarian.client.do_pydantic_http_post(
+                                endpoint="/api/v2/clone/complete",
+                                request_model=request,
+                                response_model=CloneCompleteResponse,
+                            )
                         )
                     except Exception as e:
                         logger.error(
@@ -168,5 +180,4 @@ class RecieveClone(Task):
                 logger.info(f"Transfer {transfer.id} has not yet completed. Skipping.")
                 continue
 
-        
         return all_transfers_succeeded

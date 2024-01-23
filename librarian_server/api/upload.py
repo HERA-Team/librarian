@@ -7,7 +7,7 @@ from ..webutil import ServerError
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import TransferStatus, IncomingTransfer
 from ..orm.file import File
-from ..database import session, query
+from ..database import yield_session
 from ..logger import log
 
 from hera_librarian.models.uploads import (
@@ -20,13 +20,15 @@ from hera_librarian.models.uploads import (
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, status, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 router = APIRouter(prefix="/api/v2/upload")
 
 
 @router.post("/stage", response_model=UploadInitiationResponse | UploadFailedResponse)
-def stage(request: UploadInitiationRequest, response: Response):
+def stage(request: UploadInitiationRequest, response: Response, session: Session = Depends(yield_session)):
     """
     Initiates an upload to a store.
 
@@ -67,16 +69,12 @@ def stage(request: UploadInitiationRequest, response: Response):
         )
 
     # First, try to see if this is someone trying to re-start an existing transfer!
-    existing_transfer = (
-        session.query(IncomingTransfer)
-        .filter(
-            (IncomingTransfer.transfer_checksum == request.upload_checksum)
-            & (IncomingTransfer.status != TransferStatus.FAILED)
-            & (IncomingTransfer.status != TransferStatus.COMPLETED)
-            & (IncomingTransfer.status != TransferStatus.CANCELLED)
-        )
-        .all()
-    )
+    existing_transfer = session.query(IncomingTransfer).filter(
+        (IncomingTransfer.transfer_checksum == request.upload_checksum)
+        & (IncomingTransfer.status != TransferStatus.FAILED)
+        & (IncomingTransfer.status != TransferStatus.COMPLETED)
+        & (IncomingTransfer.status != TransferStatus.CANCELLED)
+    ).all()
 
     if len(existing_transfer) != 0:
         log.info(
@@ -86,7 +84,7 @@ def stage(request: UploadInitiationRequest, response: Response):
         for transfer in existing_transfer:
             # Unstage the files.
             try:
-                store = StoreMetadata.from_id(transfer.store_id)
+                store = session.get(StoreMetadata, transfer.store_id)
                 store.store_manager.unstage(Path(transfer.staging_path))
             except ServerError:
                 # Store with ID does not exist (usually store_id is None as transfer never got there.)
@@ -101,6 +99,7 @@ def stage(request: UploadInitiationRequest, response: Response):
     transfer = IncomingTransfer.new_transfer(
         source=request.uploader,
         uploader=request.uploader,
+        upload_name=str(request.upload_name),
         transfer_size=request.upload_size,
         transfer_checksum=request.upload_checksum,
     )
@@ -110,7 +109,7 @@ def stage(request: UploadInitiationRequest, response: Response):
 
     use_store: Optional[StoreMetadata] = None
 
-    for store in query(StoreMetadata, ingestable=True).all():
+    for store in session.query(StoreMetadata).filter_by(ingestable=True).all():
         if not store.store_manager.available:
             continue
 
@@ -165,7 +164,7 @@ def stage(request: UploadInitiationRequest, response: Response):
 
 
 @router.post("/commit")
-def commit(request: UploadCompletionRequest, response: Response):
+def commit(request: UploadCompletionRequest, response: Response, session: Session = Depends(yield_session)):
     """
     Commits a file to a store, called once it has been uploaded.
 
@@ -178,10 +177,10 @@ def commit(request: UploadCompletionRequest, response: Response):
 
     log.debug(f"Received upload completion request: {request}")
 
-    store: StoreMetadata = StoreMetadata.from_name(request.store_name)
+    store: StoreMetadata = session.query(StoreMetadata).filter_by(name=request.store_name).first()
 
     # Go grab the transfer from the database.
-    transfer = query(IncomingTransfer, id=request.transfer_id).first()
+    transfer = session.get(IncomingTransfer, request.transfer_id)
     transfer.status = TransferStatus.STAGED
     transfer.transfer_manager_name = request.transfer_provider_name
     # DB cannot handle path objects; serialize to string.
@@ -196,6 +195,7 @@ def commit(request: UploadCompletionRequest, response: Response):
         store.ingest_staged_file(
             request=request,
             transfer=transfer,
+            session=session,
         )
     except FileNotFoundError:
         log.debug(

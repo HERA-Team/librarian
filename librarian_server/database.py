@@ -22,25 +22,26 @@ engine = create_engine(
 log.info("Creating database session.")
 
 SessionMaker = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-session = SessionMaker()
+
+def yield_session() -> SessionMaker:
+    """
+    Yields a new databse session.
+    """
+
+    session = SessionMaker()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+def get_session() -> SessionMaker:
+    """
+    Returns a new database session. Unlike yield_session, it is
+    your responsibility to close the session.
+    """
+
+    return SessionMaker()
 
 Base = declarative_base()
 
-def query(model: Base, **kwargs):
-    """
-    Query the database for a model.
-
-    Parameters
-    ----------
-    model : Base
-        The model to query.
-    kwargs
-        The query parameters.
-
-    Returns
-    -------
-    Base
-        The query result.
-    """
-
-    return session.query(model).filter_by(**kwargs)
