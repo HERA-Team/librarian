@@ -11,6 +11,11 @@ from pydantic_settings import BaseSettings
 
 from .stores import StoreNames
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    server_settings: "ServerSettings"
+
 
 class StoreSettings(BaseModel):
     """
@@ -87,10 +92,15 @@ def load_settings() -> ServerSettings:
     global _settings
 
     try_paths = [
-        Path(os.environ["LIBRARIAN_CONFIG_PATH"]),
+        os.environ.get("LIBRARIAN_CONFIG_PATH", None),
     ]
 
     for path in try_paths:
+        if path is not None:
+            path = Path(path)
+        else:
+            continue
+
         if path.exists():
             _settings = ServerSettings.from_file(path)
             return _settings

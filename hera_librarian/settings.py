@@ -8,6 +8,11 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    client_settings: "ClientSettings"
+
 
 class ClientInfo(BaseModel):
     """
@@ -39,12 +44,17 @@ def load_settings() -> ClientSettings:
     global _settings
 
     try_paths = [
-        Path(os.environ["HL_CLIENT_CONFIG"]),
+        os.environ.get("HL_CLIENT_CONFIG", None),
         Path.home() / ".hl_client.cfg",
         Path.home() / ".hl_client.json",
     ]
 
     for path in try_paths:
+        if path is not None:
+            path = Path(path)
+        else:
+            continue
+
         if path.exists():
             _settings = ClientSettings.from_file(path)
             return _settings
