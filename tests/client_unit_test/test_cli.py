@@ -7,11 +7,13 @@
 """
 
 
-import pytest
 import os
+
+import pytest
 
 import hera_librarian
 from hera_librarian import cli
+
 
 def test_die(capsys):
     # test without specifying replacement args
@@ -74,6 +76,7 @@ bar          | 12
         cli.print_table(dict_list, col_list, col_names[:1])
 
     return
+
 
 def test_sizeof_fmt():
     # test a few known values
