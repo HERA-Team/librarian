@@ -3,13 +3,14 @@ Settings for the librarian server. This is a pydantic model
 deserialized from the available librarian config path.
 """
 
-from pydantic import BaseModel, field_validator, ValidationError
+import os
+from pathlib import Path
+
+from pydantic import BaseModel, ValidationError, field_validator
 from pydantic_settings import BaseSettings
 
 from .stores import StoreNames
 
-from pathlib import Path
-import os
 
 class StoreSettings(BaseModel):
     """
@@ -49,7 +50,7 @@ class ServerSettings(BaseSettings):
 
     secret_key: str
     sqlalchemy_database_uri: str
-    sqlalchemy_track_modifications: bool 
+    sqlalchemy_track_modifications: bool
 
     log_level: str = "DEBUG"
     displayed_site_name: str = "Untitled Librarian"
@@ -71,8 +72,48 @@ class ServerSettings(BaseSettings):
         with open(config_path, "r") as handle:
             return cls.model_validate_json(handle.read())
 
-        
-# Automatically create a variable, server_settings, from the environment variable
-# on import!
 
-server_settings = ServerSettings.from_file(os.environ["LIBRARIAN_CONFIG_PATH"])
+# Automatically create a variable, server_settings, from the environment variable
+# on _use_!
+
+_settings = None
+
+
+def load_settings() -> ServerSettings:
+    """
+    Load the settings from the config file.
+    """
+
+    global _settings
+
+    try_paths = [
+        Path(os.environ["LIBRARIAN_CONFIG_PATH"]),
+    ]
+
+    for path in try_paths:
+        if path.exists():
+            _settings = ServerSettings.from_file(path)
+            return _settings
+
+    _settings = ServerSettings()
+
+    return _settings
+
+
+def __getattr__(name):
+    """
+    Try to load the settings if they haven't been loaded yet.
+    """
+
+    if name == "HELLO_WORLD":
+        return "Hello World!"
+
+    if name == "server_settings":
+        global _settings
+
+        if _settings is not None:
+            return _settings
+
+        return load_settings()
+
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

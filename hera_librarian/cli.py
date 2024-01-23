@@ -6,18 +6,17 @@
 
 """
 
-
-
-
 import argparse
 import os
 import sys
 import json
 import time
 
-from . import __version__, LibrarianClient, RPCError
-from . import base_store
-from . import utils
+from . import LibrarianClient
+
+from .exceptions import LibrarianClientRemovedFunctionality
+
+__version__ = "TEST"
 
 
 # define some common help strings
@@ -563,31 +562,11 @@ def add_file_event(args):
     """
     Add a file event to a file in the librarian.
     """
-    payload = {}
-    for arg in args.key_vals:
-        bits = arg.split("=", 1)
-        if len(bits) != 2:
-            die('argument {} must take the form "key=value"'.format(arg))
 
-        # We parse each "value" as JSON ... and then re-encode it as JSON when
-        # talking to the server. So this is mostly about sanity checking.
-        key, text_val = bits
-        try:
-            value = json.loads(text_val)
-        except ValueError:
-            die("value {} for keyword {} does not parse as JSON".format(text_val, key))
-
-        payload[key] = value
-
-    path = os.path.basename(args.file_path)  # in case user provided a real filesystem path
-
-    # Let's do it
-    client = LibrarianClient(args.conn_name)
-
-    try:
-        client.create_file_event(path, event_type, **payload)
-    except RPCError as e:
-        die("event creation failed: {}".format(e))
+    raise LibrarianClientRemovedFunctionality(
+        "add_file_event",
+        "File events are no longer part of the librarian."
+    )
 
     return
 
@@ -596,22 +575,11 @@ def add_obs(args):
     """
     Register a list of files with the librarian.
     """
-    # Load the info ...
-    print("Gathering information ...")
-    file_info = {}
 
-    for path in args.paths:
-        path = os.path.abspath(path)
-        print("  ", path)
-        file_info[path] = utils.gather_info_for_path(path)
-
-    # ... and upload what we learned
-    print("Registering with Librarian.")
-    client = LibrarianClient(args.conn_name)
-    try:
-        client.register_instances(args.store_name, file_info)
-    except RPCError as e:
-        die("RPC failed: {}".format(e))
+    raise LibrarianClientRemovedFunctionality(
+        "add_obs",
+        "Consider using the 'upload' command instead."
+    )
 
     return
 
@@ -620,23 +588,11 @@ def launch_copy(args):
     """
     Launch a copy from one Librarian to another.
     """
-    # Argument validation is pretty simple
-    known_staging_store = None
-    known_staging_subdir = None
 
-    if args.pre_staged is not None:
-        known_staging_store, known_staging_subdir = args.pre_staged.split(":", 1)
-
-    # Let's do it
-    file_name = os.path.basename(args.file_name)  # in case the user has spelled out a path
-    client = LibrarianClient(args.source_conn_name)
-
-    try:
-        client.launch_file_copy(file_name, args.dest_conn_name, remote_store_path=args.dest,
-                                known_staging_store=known_staging_store,
-                                known_staging_subdir=known_staging_subdir)
-    except RPCError as e:
-        die("launch failed: {}".format(e))
+    raise LibrarianClientRemovedFunctionality(
+        "launch_copy",
+        "This is no longer required as it is handled by the background tasks."
+    )
 
     return
 
@@ -645,29 +601,11 @@ def assign_sessions(args):
     """
     Tell the Librarian to assign any recent Observations to grouped "observing sessions".
     """
-    # Let's do it
-    client = LibrarianClient(args.conn_name)
-    try:
-        result = client.assign_observing_sessions(
-            minimum_start_jd=args.minimum_start_jd,
-            maximum_start_jd=args.maximum_start_jd,
-        )
-    except RPCError as e:
-        die("assignment failed: {}".format(e))
 
-    try:
-        n = 0
-
-        for info in result["new_sessions"]:
-            if n == 0:
-                print("New sessions created:")
-            print("  {id:d}: start JD {start_time_jd:f}, stop JD {stop_time_jd:f}, n_obs {n_obs:d}".format(**info))
-            n += 1
-
-        if n == 0:
-            print("No new sessions created.")
-    except Exception as e:
-        die("sessions created, but failed to print info: {}".format(e))
+    raise LibrarianClientRemovedFunctionality(
+        "assign_sessions",
+        "Observing sessions are no longer tracked."
+    )
 
     return
 
