@@ -68,9 +68,10 @@ Legacy = "https://github.com/HERA-Team/librarian/"
 
 [tool.pytest.ini_options]
 testpaths = [
-    "tests/integration_test",
     "tests/server_unit_test",
     "tests/background_unit_test",
+    "tests/client_unit_test",
+    "tests/integration_test",
 ]
 
 [tool.coverage.run]
