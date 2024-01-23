@@ -30,6 +30,15 @@ class ClientInfo(BaseModel):
 class ClientSettings(BaseSettings):
     connections: dict[str, ClientInfo] = {}
 
+    @classmethod
+    def from_file(cls, config_path: Path | str) -> "ClientSettings":
+        """
+        Loads the settings from the given path.
+        """
+
+        with open(config_path, "r") as handle:
+            return cls.model_validate_json(handle.read())
+
 
 # Automatically create a settings object on use.
 
