@@ -62,6 +62,8 @@ class ServerSettings(BaseSettings):
     alembic_config_path: str = "."
     alembic_path: str = "alembic"
 
+    max_search_results: int = 64
+
     @classmethod
     def from_file(cls, config_path: Path | str) -> "ServerSettings":
         """
