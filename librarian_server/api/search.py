@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from hera_librarian.models.search import (FileSearchFailedResponse,
                                           FileSearchRequest,
                                           FileSearchResponse,
+                                          FileSearchResponses,
                                           InstanceSearchResponse,
                                           RemoteInstanceSearchResponse)
 
@@ -21,7 +22,7 @@ from ..settings import server_settings
 router = APIRouter(prefix="/api/v2/search")
 
 
-@router.post("/file", response_model=FileSearchResponse | FileSearchFailedResponse)
+@router.post("/file", response_model=FileSearchResponses | FileSearchFailedResponse)
 def file(
     request: FileSearchRequest,
     response: Response,
@@ -40,8 +41,8 @@ def file(
         query = query.where(File.name == request.name)
 
     if request.create_time_window is not None:
-        query = query.where(File.created_time >= request.create_time_window[0])
-        query = query.where(File.created_time <= request.create_time_window[1])
+        query = query.where(File.create_time >= request.create_time_window[0])
+        query = query.where(File.create_time <= request.create_time_window[1])
 
     if request.uploader is not None:
         query = query.where(File.uploader == request.uploader)
@@ -49,7 +50,7 @@ def file(
     if request.source is not None:
         query = query.where(File.source == request.source)
 
-    query.order_by(File.created_time)
+    query.order_by(File.create_time)
     query.limit(max(min(request.max_results, server_settings.max_search_results), 0))
 
     # Execute the query.
@@ -70,7 +71,7 @@ def file(
         respond_files.append(
             FileSearchResponse(
                 name=result.name,
-                create_time=result.created_time,
+                create_time=result.create_time,
                 size=result.size,
                 checksum=result.checksum,
                 uploader=result.uploader,
@@ -94,4 +95,4 @@ def file(
             )
         )
 
-    return respond_files
+    return FileSearchResponses(respond_files)

@@ -320,3 +320,65 @@ def test_server_with_missing_file(test_server, test_orm):
 
     session.commit()
     session.close()
+
+
+
+@pytest.fixture(scope="function")
+def test_server_with_many_files(test_server, test_orm):
+    """
+    Test server with a valid file and instance in the store.
+    """
+
+    session = test_server[1]()
+
+    store = session.query(test_orm.StoreMetadata).first()
+
+    data = random.randbytes(1024)
+
+    file_names = [f"many_server_example_file_{x}.txt" for x in range(128)]
+
+    for file_name in file_names:
+        file = test_orm.File.new_file(
+            filename=file_name,
+            size=len(data),
+            checksum=hashlib.md5(data).hexdigest(),
+            uploader="test",
+            source="test",
+        )
+
+        # Create the file in the store
+        path = store.store_manager._resolved_path_store(Path(file.name))
+
+        with open(path, "wb") as handle:
+            handle.write(data)
+
+        instance = test_orm.Instance.new_instance(
+            path=path,
+            file=file,
+            store=store,
+            deletion_policy="ALLOWED",
+        )
+
+        session.add_all([file, instance])
+    
+    session.commit()
+
+    session.close()
+
+    yield test_server
+
+    # Now delete those items from the database.
+
+    session = test_server[1]()
+
+    for file_name in file_names:
+        file = session.get(test_orm.File, file_name)
+        instance = file.instances[0]
+
+        session.delete(file)
+        session.delete(instance)
+
+    session.commit()
+    session.close()
+
+    path.unlink()

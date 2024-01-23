@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 from hera_librarian.deletion import DeletionPolicy
 
@@ -18,13 +18,15 @@ class FileSearchRequest(BaseModel):
 
     name: Optional[str] = None
     "The name of the file to search for."
-    create_time_window: Optional[tuple[datetime]] = Field(default=None, min_length=2, max_length=2)
+    create_time_window: Optional[tuple[datetime, ...]] = Field(
+        default=None, min_length=2, max_length=2
+    )
     "The time window to search for files in. This is a tuple of two datetimes, the first being the start and the second being the end."
     uploader: Optional[str] = None
     "The uploader to search for."
     source: Optional[str] = None
     "The source to search for."
-    max_results: Optional[int] = None
+    max_results: int = 64
     "The maximum number of results to return."
 
 
@@ -32,6 +34,7 @@ class InstanceSearchResponse(BaseModel):
     """
     Represents an instance in the file search response.
     """
+
     path: Path
     "The path of the instance."
     deletion_policy: DeletionPolicy
@@ -46,6 +49,7 @@ class RemoteInstanceSearchResponse(BaseModel):
     """
     Represents a remote instance in the file search response.
     """
+
     librarian_name: str
     "The name of the librarian that this instance lives on."
     copy_time: datetime
@@ -69,10 +73,13 @@ class FileSearchResponse(BaseModel):
     "The uploader of the file."
     source: str
     "The source of the file."
-    instances = list[InstanceSearchResponse]
+    instances: list[InstanceSearchResponse]
     "The instances of the file."
-    remote_instances = list[RemoteInstanceSearchResponse]
+    remote_instances: list[RemoteInstanceSearchResponse]
     "The remote instances of the file."
+
+
+FileSearchResponses = RootModel[list[FileSearchResponse]]
 
 
 class FileSearchFailedResponse(BaseModel):
