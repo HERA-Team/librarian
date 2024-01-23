@@ -21,7 +21,7 @@ class FileSearchRequest(BaseModel):
     create_time_window: Optional[tuple[datetime, ...]] = Field(
         default=None, min_length=2, max_length=2
     )
-    "The time window to search for files in. This is a tuple of two datetimes, the first being the start and the second being the end."
+    "The time window to search for files in. This is a tuple of two datetimes, the first being the start and the second being the end. Note that the datetimes should be in UTC."
     uploader: Optional[str] = None
     "The uploader to search for."
     source: Optional[str] = None

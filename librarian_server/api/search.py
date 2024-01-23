@@ -30,6 +30,11 @@ def file(
 ):
     """
     Searches for files in the librarian.
+
+    Possible response codes:
+
+    200 - OK. Search completed successfully.
+    404 - No file found to match search criteria.
     """
 
     log.debug(f"Received file search request: {request}")
