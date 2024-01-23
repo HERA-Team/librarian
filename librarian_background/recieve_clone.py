@@ -21,7 +21,7 @@ from librarian_server.orm import (
     TransferStatus,
     Librarian,
 )
-from librarian_server.deletion import DeletionPolicy
+from hera_librarian.deletion import DeletionPolicy
 
 from hera_librarian.models.clone import (
     CloneCompleteRequest,

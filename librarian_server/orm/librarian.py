@@ -6,7 +6,8 @@ to.
 from datetime import datetime
 from .. import database as db
 
-from hera_librarian import LibrarianClient, LibrarianHTTPError
+from hera_librarian import LibrarianClient
+from hera_librarian.exceptions import LibrarianHTTPError
 from pydantic import ValidationError
 
 class Librarian(db.Base):

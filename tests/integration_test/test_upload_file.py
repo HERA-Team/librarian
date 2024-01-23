@@ -8,7 +8,7 @@ from pathlib import Path
 
 def test_upload_simple(librarian_client, garbage_file, server):
     # Perform the upload
-    librarian_client.upload_file(garbage_file, Path("test_file"), null_obsid=True)
+    librarian_client.upload(garbage_file, Path("test_file"))
 
     # Check we got it!
     # TODO: Implement that check within the librarian client (i.e. the ability to search db)
@@ -31,8 +31,8 @@ def test_upload_simple(librarian_client, garbage_file, server):
 
 
 def test_upload_file_to_unique_directory(librarian_client, garbage_file, server):
-    librarian_client.upload_file(
-        garbage_file, Path("test_directory/test_file"), null_obsid=True
+    librarian_client.upload(
+        garbage_file, Path("test_directory/test_file")
     )
 
     # Check we got it (by manually verifying)
