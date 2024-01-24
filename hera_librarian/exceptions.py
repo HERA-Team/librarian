@@ -17,3 +17,10 @@ class LibrarianHTTPError(Exception):
 class LibrarianError(Exception):
     def __init__(self, message):
         super(LibrarianError, self).__init__(message)
+
+
+class LibrarianClientRemovedFunctionality(Exception):
+    def __Init__(self, name, message):
+        super(LibrarianClientRemovedFunctionality, self).__init__(
+            f"{name} is no longer avaialble in Librarian v2.0. {message}"
+        )

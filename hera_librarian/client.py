@@ -13,6 +13,7 @@ from .exceptions import LibrarianError, LibrarianHTTPError
 from .models.ping import PingRequest, PingResponse
 from .models.uploads import (UploadCompletionRequest, UploadInitiationRequest,
                              UploadInitiationResponse)
+from .settings import ClientInfo
 from .utils import get_md5_from_path, get_size_from_path
 
 if TYPE_CHECKING:
@@ -52,6 +53,28 @@ class LibrarianClient:
 
     def __repr__(self):
         return f"Librarian Client ({self.user}) for {self.host}:{self.port}"
+
+    @classmethod
+    def from_info(cls, client_info: ClientInfo):
+        """
+        Create a LibrarianClient from a ClientInfo object.
+
+        Parameters
+        ----------
+        client_info : ClientInfo
+            The ClientInfo object.
+
+        Returns
+        -------
+        LibrarianClient
+            The LibrarianClient.
+        """
+
+        return cls(
+            host=client_info.host,
+            port=client_info.port,
+            user=client_info.user,
+        )
 
     @property
     def hostname(self):
