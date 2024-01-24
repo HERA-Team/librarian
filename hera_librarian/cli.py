@@ -130,6 +130,197 @@ def sizeof_fmt(num, suffix="B"):
     return "{0:.1f} {1:}{2:}".format(num, "Y", suffix)
 
 
+def add_file_event(args):
+    """
+    Add a file event to a file in the librarian.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "add_file_event", "File events are no longer part of the librarian."
+    )
+
+
+def add_obs(args):
+    """
+    Register a list of files with the librarian.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "add_obs", "Consider using the 'upload' command instead."
+    )
+
+
+def launch_copy(args):
+    """
+    Launch a copy from one Librarian to another.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "launch_copy",
+        "This is no longer required as it is handled by the background tasks.",
+    )
+
+
+def assign_sessions(args):
+    """
+    Tell the Librarian to assign any recent Observations to grouped "observing sessions".
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "assign_sessions", "Observing sessions are no longer tracked."
+    )
+
+
+def check_connections(args):
+    """
+    Check this host's ability to connect to the other Librarians that have been configured,
+    as well as their stores.
+
+    """
+
+    any_failed = False
+
+    for conn_name, conn_info in client_settings.connections.items():
+        client = LibrarianClient.from_info(conn_info)
+
+        try:
+            client.ping()
+            print("Connection to {} ({}) succeeded.".format(conn_name, client.hostname))
+        except Exception as e:
+            print(
+                "Connection to {} ({}) failed: {}".format(conn_name, client.hostname, e)
+            )
+            any_failed = True
+
+    if any_failed:
+        sys.exit(1)
+
+
+def copy_metadata(args):
+    """
+    Copy metadata for files from one librarian to another.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "copy_metadata", "Metadata copying is now handled using background tasks."
+    )
+
+
+def delete_files(args):
+    """
+    Request to delete instances of files matching a given query.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "delete_files", "Deletion is currently not available using the client."
+    )
+
+
+def initiate_offload(args):
+    """
+    Initiate an "offload": move a bunch of file instances from one store to another.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "initiate_offload", "Offloading is now handled using background tasks."
+    )
+
+
+def locate_file(args):
+    """
+    Ask the Librarian where to find a file.
+    """
+
+    raise NotImplementedError(
+        "This needs to be implemented, but requires a change to the Librarian API."
+    )
+
+
+def offload_helper(args):
+    """
+    Launch this script to implement the "offload" functionality.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "offload_helper", "Offloading is now handled using background tasks."
+    )
+
+
+def search_files(args):
+    """
+    Search for files in the librarian.
+    """
+
+    raise NotImplementedError(
+        "This needs to be implemented, but requires a change to the Librarian API."
+    )
+
+
+def set_file_deletion_policy(args):
+    """
+    Set the "deletion policy" of one instance of this file.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "set_file_deletion_policy",
+        "Deletion is currently not available using the client.",
+    )
+
+
+def stage_files(args):
+    """
+    Tell the Librarian to stage files onto the local scratch disk.
+    """
+
+    raise LibrarianClientRemovedFunctionality(
+        "stage_files", "Staging is now handled automatically during upload."
+    )
+
+
+def upload(args):
+    """
+    Upload a file to a Librarian.
+    """
+    # Argument validation is pretty simple
+    if os.path.isabs(args.dest_store_path):
+        die(
+            "destination path must be relative to store top; got {}".format(
+                args.dest_store_path
+            )
+        )
+
+    if args.null_obsid and args.meta != "infer":
+        die('illegal to specify --null-obsid when --meta is not "infer"')
+
+    if args.meta == "json-stdin":
+        raise LibrarianClientRemovedFunctionality(
+            "upload::json-stdin", "JSON metadata is no longer supported."
+        )
+    elif args.meta == "infer":
+        pass
+    else:
+        die("unexpected metadata-gathering method {}".format(args.meta))
+
+    # Let's do it
+    client = LibrarianClient.from_info(client_settings.connections[args.conn_name])
+
+    try:
+        client.upload(
+            local_path=Path(args.local_path),
+            dest_path=Path(args.dest_store_path),
+            deletion_policy=args.deletion,
+            null_obsid=args.null_obsid,
+        )
+    except ValueError as e:
+        die("Upload failed, check paths: {}".format(e))
+    except LibrarianError as e:
+        die("Upload failed, librarian not contactable: {}".format(e))
+    except Exception as e:
+        die("Upload failed (unknown error): {}".format(e))
+
+    return
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -650,197 +841,6 @@ def config_upload_subparser(sub_parsers):
         help="The source endpoint ID for the globus transfer.",
     )
     sp.set_defaults(func=upload)
-
-    return
-
-
-def add_file_event(args):
-    """
-    Add a file event to a file in the librarian.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "add_file_event", "File events are no longer part of the librarian."
-    )
-
-
-def add_obs(args):
-    """
-    Register a list of files with the librarian.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "add_obs", "Consider using the 'upload' command instead."
-    )
-
-
-def launch_copy(args):
-    """
-    Launch a copy from one Librarian to another.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "launch_copy",
-        "This is no longer required as it is handled by the background tasks.",
-    )
-
-
-def assign_sessions(args):
-    """
-    Tell the Librarian to assign any recent Observations to grouped "observing sessions".
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "assign_sessions", "Observing sessions are no longer tracked."
-    )
-
-
-def check_connections(args):
-    """
-    Check this host's ability to connect to the other Librarians that have been configured,
-    as well as their stores.
-
-    """
-
-    any_failed = False
-
-    for conn_name, conn_info in client_settings.connections.items():
-        client = LibrarianClient.from_info(conn_info)
-
-        try:
-            client.ping()
-            print("Connection to {} ({}) succeeded.".format(conn_name, client.hostname))
-        except Exception as e:
-            print(
-                "Connection to {} ({}) failed: {}".format(conn_name, client.hostname, e)
-            )
-            any_failed = True
-
-    if any_failed:
-        sys.exit(1)
-
-
-def copy_metadata(args):
-    """
-    Copy metadata for files from one librarian to another.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "copy_metadata", "Metadata copying is now handled using background tasks."
-    )
-
-
-def delete_files(args):
-    """
-    Request to delete instances of files matching a given query.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "delete_files", "Deletion is currently not available using the client."
-    )
-
-
-def initiate_offload(args):
-    """
-    Initiate an "offload": move a bunch of file instances from one store to another.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "initiate_offload", "Offloading is now handled using background tasks."
-    )
-
-
-def locate_file(args):
-    """
-    Ask the Librarian where to find a file.
-    """
-
-    raise NotImplementedError(
-        "This needs to be implemented, but requires a change to the Librarian API."
-    )
-
-
-def offload_helper(args):
-    """
-    Launch this script to implement the "offload" functionality.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "offload_helper", "Offloading is now handled using background tasks."
-    )
-
-
-def search_files(args):
-    """
-    Search for files in the librarian.
-    """
-
-    raise NotImplementedError(
-        "This needs to be implemented, but requires a change to the Librarian API."
-    )
-
-
-def set_file_deletion_policy(args):
-    """
-    Set the "deletion policy" of one instance of this file.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "set_file_deletion_policy",
-        "Deletion is currently not available using the client.",
-    )
-
-
-def stage_files(args):
-    """
-    Tell the Librarian to stage files onto the local scratch disk.
-    """
-
-    raise LibrarianClientRemovedFunctionality(
-        "stage_files", "Staging is now handled automatically during upload."
-    )
-
-
-def upload(args):
-    """
-    Upload a file to a Librarian.
-    """
-    # Argument validation is pretty simple
-    if os.path.isabs(args.dest_store_path):
-        die(
-            "destination path must be relative to store top; got {}".format(
-                args.dest_store_path
-            )
-        )
-
-    if args.null_obsid and args.meta != "infer":
-        die('illegal to specify --null-obsid when --meta is not "infer"')
-
-    if args.meta == "json-stdin":
-        raise LibrarianClientRemovedFunctionality(
-            "upload::json-stdin", "JSON metadata is no longer supported."
-        )
-    elif args.meta == "infer":
-        pass
-    else:
-        die("unexpected metadata-gathering method {}".format(args.meta))
-
-    # Let's do it
-    client = LibrarianClient.from_info(client_settings.connections[args.conn_name])
-
-    try:
-        client.upload(
-            local_path=Path(args.local_path),
-            dest_path=Path(args.dest_store_path),
-            deletion_policy=args.deletion,
-            null_obsid=args.null_obsid,
-        )
-    except ValueError as e:
-        die("Upload failed, check paths: {}".format(e))
-    except LibrarianError as e:
-        die("Upload failed, librarian not contactable: {}".format(e))
-    except Exception as e:
-        die("Upload failed (unknown error): {}".format(e))
 
     return
 
