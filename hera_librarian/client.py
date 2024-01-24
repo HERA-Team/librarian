@@ -2,6 +2,7 @@
 The public-facing LibrarianClient object.
 """
 
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -11,6 +12,8 @@ from pydantic import BaseModel
 from .deletion import DeletionPolicy
 from .exceptions import LibrarianError, LibrarianHTTPError
 from .models.ping import PingRequest, PingResponse
+from .models.search import (FileSearchRequest, FileSearchResponse,
+                            FileSearchResponses)
 from .models.uploads import (UploadCompletionRequest, UploadInitiationRequest,
                              UploadInitiationResponse)
 from .settings import ClientInfo
@@ -206,9 +209,11 @@ class LibrarianClient:
         local_path : Path
             Path of the file or directory to upload.
         dest_path : Path
-            The destination 'path' on the librarian store (often the same as your filename, but may be under some root directory).
+            The destination 'path' on the librarian store (often the same as your
+            filename, but may be under some root directory).
         deletion_policy : DeletionPolicy | str, optional
-            Whether or not this file may be deleted, by default DeletionPolicy.DISALLOWED
+            Whether or not this file may be deleted, by default
+            DeletionPolicy.DISALLOWED
 
         Returns
         -------
@@ -295,3 +300,55 @@ class LibrarianClient:
         )
 
         return
+
+    def search_files(
+        self,
+        name: Optional[str] = None,
+        create_time_window: Optional[tuple[datetime, ...]] = None,
+        uploader: Optional[str] = None,
+        source: Optional[str] = None,
+        max_results: int = 64,
+    ) -> list[FileSearchResponse]:
+        """
+        Search for files on this librarain.
+
+        Parameters
+        ----------
+        name : Optional[str], optional
+            The name o files to search for, by default None
+        create_time_window : Optional[tuple[datetime, ...]], optional
+            A time window to search files within (make sure these are UTC
+            times), by default None
+        uploader : Optional[str], optional
+            The person who uploaded this file, by default None
+        source : Optional[str], optional
+            The source of this file, could be another librarian, by default None
+        max_results : int, optional
+            The maximal number of results., by default 64. Note that this can be
+            lower as it is also set by the server.
+
+        Returns
+        -------
+        list[FileSearchResponse]
+            A list of files that match the query.
+        """
+
+        try:
+            response: FileSearchResponses = self.post(
+                endpoint="search/file",
+                request=FileSearchRequest(
+                    name=name,
+                    create_time_window=create_time_window,
+                    uploader=uploader,
+                    source=source,
+                    max_results=max_results,
+                ),
+                response=FileSearchResponses,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 404 and e.reason == "No files found.":
+                return []
+            else:
+                raise e
+
+        return response.root
