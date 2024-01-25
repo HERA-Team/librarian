@@ -6,12 +6,8 @@
 
 """
 
-
-import os
-
 import pytest
 
-import hera_librarian
 from hera_librarian import cli
 
 

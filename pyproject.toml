@@ -22,6 +22,7 @@ dependencies = [
     "requests",
     "schedule",
     "checksumdir",
+    "dateutil",
 ]
 authors = [
     {name = "HERA Team", email = "hera@lists.berkeley.edu"},
