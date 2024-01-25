@@ -2,6 +2,7 @@
 Logging setup. Use this as 'from logger import log'
 """
 
+import inspect
 import logging as log
 
 from sqlalchemy.orm import Session
@@ -45,15 +46,29 @@ def log_to_database(
         The message describing this error.
     session : Session
         The database session to use.
+
+    Notes
+    -----
+
+    Automatically stores the above frame's file name, function, and line number in
+    the 'caller' field of the error.
     """
-    
+
     # Avoid circular imports.
     from .orm.errors import Error
 
     log_level = error_severity_to_logging_level[severity]
     log.log(log_level, message)
 
-    error = Error.new_error(severity, category, message)
+    caller = (
+        inspect.stack()[1].filename
+        + ":"
+        + inspect.stack()[1].function
+        + ":"
+        + str(inspect.stack()[1].lineno)
+    )
+
+    error = Error.new_error(severity, category, message, caller=caller)
 
     session.add(error)
     session.commit()

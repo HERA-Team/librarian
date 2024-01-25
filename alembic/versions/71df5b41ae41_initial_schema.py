@@ -173,6 +173,7 @@ def upgrade():
         Column("raised_time", DateTime(), nullable=False),
         Column("cleared_time", DateTime()),
         Column("cleared", Boolean(), nullable=False),
+        Column("caller", String(256)),
     )
 
 

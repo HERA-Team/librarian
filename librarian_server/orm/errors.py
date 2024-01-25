@@ -3,6 +3,7 @@ ORM for 'errors' table, describing (potentially critical) errors
 that need to be remedied by an outside entity.
 """
 
+from typing import Optional
 from .. import database as db
 
 from datetime import datetime
@@ -32,10 +33,12 @@ class Error(db.Base):
     "The time at which this error was cleared."
     cleared = db.Column(db.Boolean, nullable=False)
     "Whether or not this error has been cleared."
+    caller = db.Column(db.String(256), nullable=True)
+    "The caller that raised this error."
 
     @classmethod
     def new_error(
-            self, severity: ErrorSeverity, category: ErrorCategory, message: str
+            self, severity: ErrorSeverity, category: ErrorCategory, message: str, caller: Optional[str] = None
         ) -> "Error":
             """
             Create a new error object.
@@ -56,6 +59,7 @@ class Error(db.Base):
                 raised_time=datetime.utcnow(),
                 cleared_time=None,
                 cleared=False,
+                caller=caller,
             )
 
     def clear(self, session: Session) -> None:
