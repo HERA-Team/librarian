@@ -14,51 +14,16 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-from alembic import op
-from sqlalchemy import (
-    Column,
-    DateTime,
-    BigInteger,
-    String,
-    Integer,
-    PrimaryKeyConstraint,
-    ForeignKey,
-    Enum,
-    PickleType,
-    Boolean,
-)
-
 import enum
 
+from sqlalchemy import (BigInteger, Boolean, Column, DateTime, Enum,
+                        ForeignKey, Integer, PickleType, PrimaryKeyConstraint,
+                        String)
 
-class DeletionPolicy(enum.Enum):
-    """
-    Enumeration for whether or not a file can be deleted from a store.
-
-    Always defaults to 'DISALLOWED' when parsing.
-    """
-
-    DISALLOWED = 0
-    ALLOWED = 1
-
-
-class TransferStatus(enum.Enum):
-    """
-    The status of a transfer.
-    """
-
-    INITIATED = 0
-    "Transfer has been initiated, but client has not yet started moving data"
-    ONGOING = 1
-    "Client is currently (asynchronously) moving data to us. This is not possible with all transfer managers."
-    STAGED = 2
-    "Transfer has been staged, server is ready to complete the transfer."
-    COMPLETED = 3
-    "Transfer is completed"
-    FAILED = 4
-    "Transfer has been confirmed to have failed."
-    CANCELLED = 5
-    "Transfer has been cancelled by the client."
+from alembic import op
+from hera_librarian.deletion import DeletionPolicy
+from hera_librarian.errors import ErrorCategory, ErrorSeverity
+from hera_librarian.transfer import TransferStatus
 
 
 def upgrade():
@@ -196,7 +161,18 @@ def upgrade():
         # Securely store authenticator using a password hashing function
         Column("authenticator", String(256), nullable=False),
         Column("last_seen", DateTime(), nullable=False),
-        Column("last_heard", DateTime(), nullable=False)
+        Column("last_heard", DateTime(), nullable=False),
+    )
+
+    op.create_table(
+        "errors",
+        Column("id", Integer(), primary_key=True, autoincrement=True, unique=True),
+        Column("severity", Enum(ErrorSeverity), nullable=False),
+        Column("category", Enum(ErrorCategory), nullable=False),
+        Column("message", String(256), nullable=False),
+        Column("raised_time", DateTime(), nullable=False),
+        Column("cleared_time", DateTime()),
+        Column("cleared", Boolean(), nullable=False),
     )
 
 
