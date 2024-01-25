@@ -20,6 +20,7 @@ log.basicConfig(
 
 error_severity_to_logging_level = {
     ErrorSeverity.CRITICAL: log.CRITICAL,
+    ErrorSeverity.ERROR: log.ERROR,
     ErrorSeverity.WARNING: log.WARNING,
     ErrorSeverity.INFO: log.INFO,
 }
