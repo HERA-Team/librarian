@@ -3,6 +3,7 @@ Tests for file searches.
 """
 
 import subprocess
+from hera_librarian import cli
 
 
 def test_simple_name_search(librarian_client_command_line, garbage_file):
