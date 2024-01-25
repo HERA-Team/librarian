@@ -169,7 +169,7 @@ def upgrade():
         Column("id", Integer(), primary_key=True, autoincrement=True, unique=True),
         Column("severity", Enum(ErrorSeverity), nullable=False),
         Column("category", Enum(ErrorCategory), nullable=False),
-        Column("message", String(256), nullable=False),
+        Column("message", String, nullable=False),
         Column("raised_time", DateTime(), nullable=False),
         Column("cleared_time", DateTime()),
         Column("cleared", Boolean(), nullable=False),

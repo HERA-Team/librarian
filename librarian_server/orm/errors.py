@@ -25,7 +25,7 @@ class Error(db.Base):
     "The severity of this error."
     category = db.Column(db.Enum(ErrorCategory), nullable=False)
     "The category of this error."
-    message = db.Column(db.String(256), nullable=False)
+    message = db.Column(db.String, nullable=False)
     "The message describing this error."
     raised_time = db.Column(db.DateTime, nullable=False)
     "The time at which this error was raised."
