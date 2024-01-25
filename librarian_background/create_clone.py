@@ -4,19 +4,20 @@ within some time-frame.
 """
 
 
-from .task import Task
-
-import logging
 import datetime
-
-from schedule import CancelJob
+import logging
 from pathlib import Path
 
-from librarian_server.orm import StoreMetadata, Instance, CloneTransfer, TransferStatus
-from librarian_server.database import get_session
-
+from schedule import CancelJob
 from sqlalchemy.orm import Session
 
+from librarian_server.database import get_session
+from librarian_server.logger import (ErrorCategory, ErrorSeverity,
+                                     log_to_database)
+from librarian_server.orm import (CloneTransfer, Instance, StoreMetadata,
+                                  TransferStatus)
+
+from .task import Task
 
 logger = logging.getLogger("schedule")
 
@@ -36,15 +37,13 @@ class CreateLocalClone(Task):
     # TODO: In the future, we could implement a _rolling_ n day clone here, i.e. only keep the last n days of files on the clone_to store.
 
     def get_store(self, name: str, session: Session) -> StoreMetadata:
-        possible_metadata = (
-            session.query(StoreMetadata).filter_by(name=name).first()
-        )
+        possible_metadata = session.query(StoreMetadata).filter_by(name=name).first()
 
         if not possible_metadata:
             raise ValueError(f"Store {name} does not exist.")
 
         return possible_metadata
-    
+
     def on_call(self):
         with get_session() as session:
             return self.core(session=session)
@@ -54,8 +53,11 @@ class CreateLocalClone(Task):
             store_from = self.get_store(self.clone_from, session)
         except ValueError:
             # Store doesn't exist. Cancel this job.
-            logger.error(
-                f"Store {self.clone_from} does not exist. Cancelling job. Please update the configuration."
+            log_to_database(
+                severity=ErrorSeverity.CRITICAL,
+                category=ErrorCategory.CONFIGURATION,
+                message=f"Store {self.clone_from} does not exist. Cancelling job. Please update the configuration.",
+                session=session,
             )
             return CancelJob
 
@@ -63,8 +65,11 @@ class CreateLocalClone(Task):
             store_to = self.get_store(self.clone_to, session)
         except ValueError:
             # Store doesn't exist. Cancel this job.
-            logger.error(
-                f"Store {self.clone_to} does not exist. Cancelling job. Please update the configuration."
+            log_to_database(
+                severity=ErrorSeverity.CRITICAL,
+                category=ErrorCategory.CONFIGURATION,
+                message=f"Store {self.clone_to} does not exist. Cancelling job. Please update the configuration.",
+                session=session,
             )
             return CancelJob
 
@@ -107,7 +112,7 @@ class CreateLocalClone(Task):
             session.add(transfer)
             session.commit()
 
-            # TODO: Check if there is an already existing transfer! Maybe it is running asynchronously? Maybe we need to check the status?            
+            # TODO: Check if there is an already existing transfer! Maybe it is running asynchronously? Maybe we need to check the status?
 
             # Now we can clone the file to the clone_to store.
             try:
@@ -115,8 +120,13 @@ class CreateLocalClone(Task):
                     file_size=instance.file.size, file_name=instance.file.name
                 )
             except ValueError:
-                logger.error(
-                    f"File {instance.file.name} is too large to fit on store {store_to}. Skipping."
+                # TODO: In the future where we have multiple potential clone stores for SneakerNet we should
+                # automatically fail-over to the next store.
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.STORE_FULL,
+                    message=f"File {instance.file.name} is too large to fit on store {store_to}. Skipping. (Instance {instance.id})",
+                    session=session,
                 )
 
                 transfer.fail_transfer(session=session)
@@ -146,8 +156,11 @@ class CreateLocalClone(Task):
 
                         continue
                 except FileNotFoundError as e:
-                    logger.error(
-                        f"File {instance.path} does not exist on store {store_from}. Skipping."
+                    log_to_database(
+                        severity=ErrorSeverity.ERROR,
+                        category=ErrorCategory.DATA_AVAILABILITY,
+                        message=f"File {instance.path} does not exist on store {store_from}. Skipping. (Instance {instance.id})",
+                        session=session,
                     )
 
                     transfer.fail_transfer(session=session)
@@ -157,8 +170,11 @@ class CreateLocalClone(Task):
                     continue
 
             if not success:
-                logger.error(
-                    f"Failed to transfer file {instance.path} to store {store_to}. Skipping."
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.DATA_AVAILABILITY,
+                    message=f"Failed to transfer file {instance.path} to store {store_to}. Skipping. (Instance {instance.id})",
+                    session=session,
                 )
 
                 transfer.fail_transfer(session=session)
@@ -177,9 +193,12 @@ class CreateLocalClone(Task):
                 path_info = store_to.store_manager.path_info(staged_path)
 
                 if path_info.md5 != instance.file.checksum:
-                    logger.error(
-                        f"File {instance.path} on store {store_to} has an incorrect checksum. "
-                        f"Expected {instance.file.checksum}, got {path_info.md5}."
+                    log_to_database(
+                        severity=ErrorSeverity.ERROR,
+                        category=ErrorCategory.DATA_INTEGRITY,
+                        message=f"File {instance.path} on store {store_to} has an incorrect checksum. "
+                        f"Expected {instance.file.checksum}, got {path_info.md5}. (Instance {instance.id})",
+                        session=session,
                     )
 
                     transfer.fail_transfer(session=session)
@@ -194,9 +213,13 @@ class CreateLocalClone(Task):
                     staging_path=staged_path, store_path=Path(instance.file.name)
                 )
             except FileExistsError:
-                logger.error(
-                    f"File {instance.path} already exists on store {store_to}. Skipping."
+                log_to_database(
+                    severity=ErrorSeverity.CRITICAL,
+                    category=ErrorCategory.PROGRAMMING,
+                    message=f"File {instance.path} already exists on store {store_to}. Skipping. (Instance {instance.id})",
+                    session=session,
                 )
+
                 store_to.store_manager.unstage(staging_name)
 
                 transfer.fail_transfer(session=session)

@@ -35,3 +35,9 @@ class ErrorCategory(Enum):
 
     CONFIGURATION = "configuration"
     "Configuration errors are those that indicate that the librarian has been configured incorrectly."
+
+    STORE_FULL = "store_full"
+    "Store full errors are those that indicate that a store is full and cannot accept new data."
+
+    PROGRAMMING = "programming"
+    "Programming errors are those that indicate that the librarian has a bug, i.e. we have reached an 'unreachable' state."
