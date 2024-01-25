@@ -42,13 +42,8 @@ def test_upload_simple(librarian_client, garbage_file, server):
     assert search_result[0].instances[0].path == real_file_path
 
 
-
-
-
 def test_upload_file_to_unique_directory(librarian_client, garbage_file, server):
-    librarian_client.upload(
-        garbage_file, Path("test_directory/test_file")
-    )
+    librarian_client.upload(garbage_file, Path("test_directory/test_file"))
 
     # Check we got it (by manually verifying)
     conn = sqlite3.connect(server.database)

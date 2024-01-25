@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from typing import TYPE_CHECKING
 
@@ -29,6 +29,8 @@ class ClientInfo(BaseModel):
 
 class ClientSettings(BaseSettings):
     connections: dict[str, ClientInfo] = {}
+
+    model_config = SettingsConfigDict(env_prefix='librarian_client_')
 
     @classmethod
     def from_file(cls, config_path: Path | str) -> "ClientSettings":
