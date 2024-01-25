@@ -22,7 +22,7 @@ dependencies = [
     "requests",
     "schedule",
     "checksumdir",
-    "dateutil",
+    "python-dateutil",
 ]
 authors = [
     {name = "HERA Team", email = "hera@lists.berkeley.edu"},
