@@ -10,13 +10,14 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
+from hera_librarian.errors import ErrorCategory, ErrorSeverity
 from hera_librarian.models.errors import (ErrorClearRequest,
                                           ErrorClearResponse,
                                           ErrorSearchFailedResponse)
 from librarian_server.database import yield_session
-from librarian_server.orm import Error, ErrorCategory, ErrorSeverity
+from librarian_server.orm import Error
 
-router = APIRouter("/api/v2/error")
+router = APIRouter(prefix="/api/v2/error")
 
 
 @router.post("/clear", response_model=ErrorClearResponse | ErrorSearchFailedResponse)
@@ -31,6 +32,7 @@ def clear_error(
     Possible response codes:
 
     200 - OK. Error cleared successfully.
+    400 - Error has already been cleared.
     404 - No error found to match search criteria.
     """
 
@@ -40,7 +42,15 @@ def clear_error(
         response.status_code = status.HTTP_404_NOT_FOUND
 
         return ErrorSearchFailedResponse(
-            error_message="No error found to with ID {request.id} to clear.",
+            reason="No error found to with ID {request.id} to clear.",
+            suggested_remedy="Check you are searching for a valid error ID.",
+        )
+
+    if error.cleared:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+
+        return ErrorSearchFailedResponse(
+            reason="Error with ID {request.id} has already been cleared.",
             suggested_remedy="Check you are searching for a valid error ID.",
         )
 
