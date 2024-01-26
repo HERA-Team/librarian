@@ -21,6 +21,7 @@ from librarian_server.orm import (
     TransferStatus,
     Librarian,
 )
+from librarian_server.logger import log_to_database, ErrorCategory, ErrorSeverity
 from hera_librarian.deletion import DeletionPolicy
 
 from hera_librarian.models.clone import (
@@ -69,6 +70,7 @@ class RecieveClone(Task):
             store: StoreMetadata = transfer.store
 
             if store is None:
+                # TODO: Check if this should be a programming error.
                 logger.error(
                     f"Transfer {transfer.id} has no store associated with it. Skipping for now."
                 )
@@ -80,6 +82,7 @@ class RecieveClone(Task):
             try:
                 path_info = store.store_manager.path_info(Path(transfer.staging_path))
             except TypeError:
+                # TODO: Check if this should be a programming error.
                 logger.error(
                     f"Transfer {transfer.id} has no staging path associated with it. Skipping for now."
                 )
@@ -88,7 +91,7 @@ class RecieveClone(Task):
 
                 continue
 
-            # TODO: Make this check more robust?
+            # TODO: Make this check more robust? Could have transfer managers provide checks?
             if (
                 path_info.md5 == transfer.transfer_checksum
                 and path_info.size == transfer.transfer_size
@@ -159,8 +162,8 @@ class RecieveClone(Task):
 
                     try:
                         response: CloneCompleteResponse = (
-                            librarian.client.do_pydantic_http_post(
-                                endpoint="/api/v2/clone/complete",
+                            librarian.client.post(
+                                endpoint="clone/complete",
                                 request_model=request,
                                 response_model=CloneCompleteResponse,
                             )
