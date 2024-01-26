@@ -111,12 +111,12 @@ def file(
 
 @router.post("/error", response_model=ErrorSearchResponses | ErrorSearchFailedResponse)
 def error(
-    request: FileSearchRequest,
+    request: ErrorSearchRequest,
     response: Response,
     session: Session = Depends(yield_session),
 ):
     """
-    Searches for errors based upon the FileSearchRequest.
+    Searches for errors based upon the ErrorSearchRequest.
 
     Possible response codes:
 

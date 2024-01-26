@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, RootModel
 from ..errors import ErrorCategory, ErrorSeverity
 
 
-class ErrorRequest(BaseModel):
+class ErrorSearchRequest(BaseModel):
     """
     A request for a set of errors from the librarian.
     """
@@ -31,7 +31,7 @@ class ErrorRequest(BaseModel):
     "The number of errors to return."
 
 
-class ErrorResponse(BaseModel):
+class ErrorSearchResponse(BaseModel):
     """
     The response model for an individual error. We actually return
     ErrorResponses, defined below, which is a list of these.
@@ -55,7 +55,7 @@ class ErrorResponse(BaseModel):
     "The caller that raised this error."
 
 
-ErrorResponses = RootModel[list[ErrorResponse]]
+ErrorSearchResponses = RootModel[list[ErrorSearchResponse]]
 
 
 class ErrorClearRequest(BaseModel):
