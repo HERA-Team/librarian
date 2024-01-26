@@ -4,9 +4,10 @@ Test the search endpoint.
 
 import datetime
 
-from hera_librarian.models.errors import (ErrorSearchFailedResponse,
+from hera_librarian.models.errors import (ErrorCategory,
+                                          ErrorSearchFailedResponse,
                                           ErrorSearchRequest,
-                                          ErrorSearchResponses)
+                                          ErrorSearchResponses, ErrorSeverity)
 from hera_librarian.models.search import (FileSearchFailedResponse,
                                           FileSearchRequest,
                                           FileSearchResponse,
@@ -91,7 +92,47 @@ def test_failed_search(test_server_with_many_files_and_errors, test_client):
 def test_error_all_search(
     test_server_with_many_files_and_errors, test_client, test_orm
 ):
-    request = ErrorSearchRequest(include_resolved=False)
+    def make_request(request):
+        response = test_client.post(
+            "/api/v2/search/error",
+            headers={"Content-Type": "application/json"},
+            content=request.model_dump_json(),
+        )
+
+        assert response.status_code == 200
+
+        return ErrorSearchResponses.model_validate_json(response.content).root
+
+    response = make_request(ErrorSearchRequest(include_resolved=False))
+
+    for model in response:
+        assert model.cleared is False
+
+    response = make_request(ErrorSearchRequest(include_resolved=True))
+
+    includes_cleared = False
+    for model in response:
+        includes_cleared = includes_cleared or model.cleared
+
+    assert includes_cleared
+
+    response = make_request(ErrorSearchRequest(max_results=1))
+
+    assert len(response) == 1
+
+    response = make_request(ErrorSearchRequest(severity=ErrorSeverity.CRITICAL))
+
+    for model in response:
+        assert model.severity == ErrorSeverity.CRITICAL
+
+    response = make_request(ErrorSearchRequest(category=ErrorCategory.CONFIGURATION))
+
+    for model in response:
+        assert model.category == ErrorCategory.CONFIGURATION
+
+
+def test_failed_error_search(test_server_with_many_files_and_errors, test_client):
+    request = ErrorSearchRequest(id=-1)
 
     response = test_client.post(
         "/api/v2/search/error",
@@ -99,16 +140,13 @@ def test_error_all_search(
         content=request.model_dump_json(),
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 404
 
-    response = ErrorSearchResponses.model_validate_json(response.content)
+    response = ErrorSearchFailedResponse.model_validate_json(response.content)
 
-    for model in response.root:
-        assert model.cleared is False
-
-
-def test_failed_error_search(test_server_with_many_files_and_errors, test_client):
-    request = ErrorSearchRequest(id=-1)
+    request = ErrorSearchRequest(
+        create_time_window=[datetime.datetime.min, datetime.datetime.min]
+    )
 
     response = test_client.post(
         "/api/v2/search/error",

@@ -45,7 +45,9 @@ def test_negative_upload_size(test_client: TestClient):
 
 
 def test_extreme_upload_size(
-    test_client: TestClient, test_server: tuple[FastAPI, callable, Server], test_orm: Any
+    test_client: TestClient,
+    test_server: tuple[FastAPI, callable, Server],
+    test_orm: Any,
 ):
     """
     Tests that an upload size that is too large results in an error.
@@ -79,7 +81,9 @@ def test_extreme_upload_size(
 
 
 def test_valid_stage(
-    test_client: TestClient, test_server: tuple[FastAPI, callable, Server], test_orm: Any
+    test_client: TestClient,
+    test_server: tuple[FastAPI, callable, Server],
+    test_orm: Any,
 ):
     """
     Tests that a valid stage works.

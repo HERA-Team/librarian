@@ -337,7 +337,6 @@ def test_incoming_transfer_endpoints(
 
     # Check it's in the database with correct status
 
-
     # Clean up that garbage
     with get_session() as session:
         transfer = session.get(test_orm.OutgoingTransfer, transfer_id)
@@ -423,7 +422,7 @@ def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename)
     )
 
     _, get_session, _ = test_server
-    
+
     with get_session() as session:
         session.add(file)
         session.commit()

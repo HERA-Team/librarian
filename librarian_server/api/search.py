@@ -5,7 +5,7 @@ Contains endpoints for searching the files uploaded to the librarian.
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from hera_librarian.models.errors import (ErrorSearchFailedResponse,
@@ -61,8 +61,9 @@ def file(
     if request.source is not None:
         query = query.where(File.source == request.source)
 
-    query.order_by(File.create_time)
-    query.limit(max(min(request.max_results, server_settings.max_search_results), 0))
+    query = query.order_by(desc(File.create_time))
+    max_results = max(min(request.max_results, server_settings.max_search_results), 0)
+    query = query.limit(max_results)
 
     # Execute the query.
     results = session.execute(query).scalars().all()
@@ -139,14 +140,15 @@ def error(
         query = query.where(Error.severity == request.severity)
 
     if request.create_time_window is not None:
-        query.where(Error.raised_time >= request.create_time_window[0])
-        query.where(Error.raised_time <= request.create_time_window[1])
+        query = query.where(Error.raised_time >= request.create_time_window[0])
+        query = query.where(Error.raised_time <= request.create_time_window[1])
 
     if request.include_resolved is False:
         query = query.where(Error.cleared == False)
 
-    query.order_by(Error.raised_time)
-    query.limit(max(min(request.max_results, server_settings.max_search_results), 0))
+    query = query.order_by(desc(Error.raised_time))
+    max_results = max(min(request.max_results, server_settings.max_search_results), 0)
+    query = query.limit(max_results)
 
     results = session.execute(query).scalars().all()
 
