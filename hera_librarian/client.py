@@ -368,6 +368,7 @@ class LibrarianClient:
     ) -> list[ErrorSearchResponse]:
         """
         Search for files on this librarain.
+
         Parameters
         ----------
         id : Optional[int], optional
@@ -443,7 +444,6 @@ class LibrarianClient:
             )
         except LibrarianHTTPError as e:
             if e.status_code == 404 and "No error found with ID" in e.reason:
-                print("HELLO WORLD")
                 raise ValueError(e.reason)
             elif e.status_code == 400 and "Error with ID" in e.reason:
                 raise ValueError(e.reason)

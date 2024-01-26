@@ -17,7 +17,7 @@ from pathlib import Path
 import dateutil.parser
 
 from . import LibrarianClient
-from .exceptions import LibrarianClientRemovedFunctionality, LibrarianError
+from .exceptions import LibrarianClientRemovedFunctionality, LibrarianError, LibrarianHTTPError
 from .settings import client_settings
 
 __version__ = "TEST"
@@ -25,7 +25,6 @@ __version__ = "TEST"
 
 # define some common help strings
 _conn_name_help = "Which Librarian to talk to; as in ~/.hl_client.cfg."
-
 
 def die(fmt, *args):
     """Exit the script with the specifying error string.
@@ -51,6 +50,13 @@ def die(fmt, *args):
         text = fmt % args
     print("error:", text, file=sys.stderr)
     sys.exit(1)
+
+
+def get_client(conn_name):
+    if conn_name not in client_settings.connections:
+        die("Connection name {} not found in client settings.".format(conn_name))
+    
+    return LibrarianClient.from_info(client_settings.connections[conn_name])
 
 
 # from https://stackoverflow.com/questions/17330139/python-printing-a-dictionary-as-a-horizontal-table-with-headers
@@ -393,7 +399,48 @@ def search_errors(args):
     Search for errors on the librarian.
     """
 
-    raise NotImplementedError
+    client = get_client(args.conn_name)
+
+    try:
+        errors = client.search_errors(
+            id=args.id,
+            category=args.category,
+            severity=args.severity,
+            create_time_window=args.create_time_window,
+            include_resolved=args.include_resolved,
+            max_results=args.max_results,
+        )
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if len(errors) == 0:
+        print("No errors found.")
+        return
+    
+    print_table(
+        [e.dict() for e in errors],
+        col_list=["id", "severity", "category", "message", "raised_time", "cleared_time", "cleared", "caller"],
+        col_names=["ID", "Severity", "Category", "Message", "Raised", "Cleared", "Cleared Time", "Caller"],
+    )
+
+    return 0
+
+
+def clear_error(args):
+    """
+    Clear an error on the librarian.
+    """
+
+    client = get_client(args.conn_name)
+
+    try:
+        client.clear_error(args.id)
+    except ValueError as e:
+        die(f"Unable to find or clear error on the librarian: {e.args[0]}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+    
+    return 0
 
 
 # make the base parser
