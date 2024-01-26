@@ -156,8 +156,9 @@ def error(
         log.debug(f"No errors found. Returning 'error'.")
         response.status_code = status.HTTP_404_NOT_FOUND
         return ErrorSearchFailedResponse(
-            reason="No files found.",
-            suggested_remedy="Check that you are searching for the correct file.",
+            reason="No errors found.",
+            suggested_remedy="Check that you are searching for the correct "
+            "errors, or maybe you have a happy librarian!",
         )
 
     # Build the response.
