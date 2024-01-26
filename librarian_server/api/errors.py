@@ -42,7 +42,7 @@ def clear_error(
         response.status_code = status.HTTP_404_NOT_FOUND
 
         return ErrorSearchFailedResponse(
-            reason="No error found to with ID {request.id} to clear.",
+            reason=f"No error found with ID {request.id} to clear.",
             suggested_remedy="Check you are searching for a valid error ID.",
         )
 
@@ -50,7 +50,7 @@ def clear_error(
         response.status_code = status.HTTP_400_BAD_REQUEST
 
         return ErrorSearchFailedResponse(
-            reason="Error with ID {request.id} has already been cleared.",
+            reason=f"Error with ID {request.id} has already been cleared.",
             suggested_remedy="Check you are searching for a valid error ID.",
         )
 

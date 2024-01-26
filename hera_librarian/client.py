@@ -397,7 +397,7 @@ class LibrarianClient:
 
         try:
             response: ErrorSearchResponses = self.post(
-                endpoint="search/errors",
+                endpoint="search/error",
                 request=ErrorSearchRequest(
                     id=id,
                     category=category,
@@ -411,7 +411,7 @@ class LibrarianClient:
         except LibrarianHTTPError as e:
             if e.status_code == 404 and e.reason == "No errors found.":
                 return []
-            else:
+            else:  # pragma: no cover
                 raise e
 
         return response.root
@@ -443,6 +443,9 @@ class LibrarianClient:
             )
         except LibrarianHTTPError as e:
             if e.status_code == 404 and "No error found with ID" in e.reason:
+                print("HELLO WORLD")
                 raise ValueError(e.reason)
             elif e.status_code == 400 and "Error with ID" in e.reason:
                 raise ValueError(e.reason)
+            else:  # pragma: no cover
+                raise e

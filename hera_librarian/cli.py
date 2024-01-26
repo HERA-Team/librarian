@@ -388,6 +388,14 @@ def upload(args):
     return
 
 
+def search_errors(args):
+    """
+    Search for errors on the librarian.
+    """
+
+    raise NotImplementedError
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
