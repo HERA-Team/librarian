@@ -75,7 +75,7 @@ def server_setup(tmp_path_factory) -> Server:
 
     store_config = [
         {
-            "store_name": "test_store",
+            "store_name": "local_store",
             "store_type": "local",
             "ingestable": True,
             "store_data": {
@@ -90,7 +90,7 @@ def server_setup(tmp_path_factory) -> Server:
             },
         },
         {
-            "store_name": "test_store_clone",
+            "store_name": "local_clone",
             "store_type": "local",
             "ingestable": False,
             "store_data": {
