@@ -94,6 +94,7 @@ class RecieveClone(Task):
                         f"Transfer {transfer.id}: cannot get information about staging "
                         f"path: {transfer.staging_path}. Skipping for now."
                     ),
+                    session=session,
                 )
 
                 all_transfers_succeeded = False
