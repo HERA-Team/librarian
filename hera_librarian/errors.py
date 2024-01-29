@@ -21,6 +21,9 @@ class ErrorSeverity(Enum):
     INFO = "info"
     "Informational errors are those that are not critical and do not need to be fixed."
 
+    def __str__(self):
+        return self.value
+
 
 class ErrorCategory(Enum):
     """
@@ -41,3 +44,6 @@ class ErrorCategory(Enum):
 
     PROGRAMMING = "programming"
     "Programming errors are those that indicate that the librarian has a bug, i.e. we have reached an 'unreachable' state."
+
+    def __str__(self):
+        return self.value
