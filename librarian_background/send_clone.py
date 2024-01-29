@@ -12,7 +12,7 @@ import datetime
 from schedule import CancelJob
 from pathlib import Path
 
-from librarian_server.database import get_session()
+from librarian_server.database import get_session
 from librarian_server.orm import (
     StoreMetadata,
     Instance,

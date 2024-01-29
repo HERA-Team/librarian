@@ -7,11 +7,14 @@
 """
 
 import argparse
+import datetime
 import json
 import os
 import sys
 import time
 from pathlib import Path
+
+import dateutil.parser
 
 from . import LibrarianClient
 from .exceptions import LibrarianClientRemovedFunctionality, LibrarianError
@@ -251,9 +254,74 @@ def search_files(args):
     Search for files in the librarian.
     """
 
-    raise NotImplementedError(
-        "This needs to be implemented, but requires a change to the Librarian API."
+    if args.search is not None:
+        raise LibrarianClientRemovedFunctionality(
+            "search_files", "JSON search functionality is removed. See help."
+        )
+
+    # Create the search request
+
+    # Start with the most complex part, parsing dates...
+    create_time_window = None
+
+    if args.create_time_start is not None or args.create_time_end is not None:
+        create_time_window = []
+
+        if args.create_time_start is not None:
+            create_time_window.append(dateutil.parser.parse(args.create_time_start))
+        else:
+            create_time_window.append(datetime.datetime.min)
+
+        if args.create_time_end is not None:
+            create_time_window.append(dateutil.parser.parse(args.create_time_end))
+        else:
+            create_time_window.append(datetime.datetime.max)
+
+        create_time_window = tuple(create_time_window)
+
+    # Perform the search
+
+    client = LibrarianClient.from_info(client_settings.connections[args.conn_name])
+
+    search_response = client.search_files(
+        name=args.name,
+        create_time_window=create_time_window,
+        uploader=args.uploader,
+        source=args.source,
+        max_results=args.max_results,
     )
+
+    if len(search_response) == 0:
+        print("No results found.")
+        return 1
+
+    # Print the results
+    for file in search_response:
+        print(
+            "\033[1m"
+            + f"{file.name} ({sizeof_fmt(file.size)}) - {file.create_time} - {file.uploader} - {file.source}"
+            + "\033[0m"
+        )
+
+        if len(file.instances) == 0:
+            print("No instances of this file found.")
+        else:
+            print("Instances:")
+
+        for instance in file.instances:
+            print(
+                f"    {instance.path} - {'AVAILABLE' if instance.available else 'NOT AVAILABLE'}"
+            )
+
+        if len(file.remote_instances) == 0:
+            print("No remote instances of this file found.")
+        else:
+            print("Remote instances:")
+
+        for remote_instance in file.remote_instances:
+            print(f"    {remote_instance.librarian_name}")
+
+    return 0
 
 
 def set_file_deletion_policy(args):
@@ -309,7 +377,6 @@ def upload(args):
             local_path=Path(args.local_path),
             dest_path=Path(args.dest_store_path),
             deletion_policy=args.deletion,
-            null_obsid=args.null_obsid,
         )
     except ValueError as e:
         die("Upload failed, check paths: {}".format(e))
@@ -674,10 +741,38 @@ def config_search_files_subparser(sub_parsers):
     )
     sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
     sp.add_argument(
-        "search",
+        "--search",
         metavar="JSON-SEARCH",
         help="A JSON search specification; files that match will be displayed.",
+        required=False,
     )
+    sp.add_argument(
+        "-n",
+        "--name",
+        default=None,
+        help="Only search for files with this name.",
+    )
+    sp.add_argument(
+        "--create-time-start",
+        help="Search for files who were created after this date and time. Use a parseable date string, if no timezone is specified, UTC is assumed.",
+    )
+    sp.add_argument(
+        "--create-time-end",
+        help="Search for files who were created before this date and time. Use a parseable date string, if no timezone is specified, UTC is assumed.",
+    )
+    sp.add_argument(
+        "-u", "--uploader", help="Search for files uploaded by this uploader."
+    )
+    sp.add_argument(
+        "-s", "--source", help="Search for files uploaded from this source."
+    )
+    sp.add_argument(
+        "--max-results",
+        type=int,
+        default=64,
+        help="Maximum number of results to return.",
+    )
+
     sp.set_defaults(func=search_files)
 
     return

@@ -7,6 +7,9 @@ from pathlib import Path
 
 
 def test_upload_simple(librarian_client, garbage_file, server):
+    """
+    Also tests file searching.
+    """
     # Perform the upload
     librarian_client.upload(garbage_file, Path("test_file"))
 
@@ -29,11 +32,18 @@ def test_upload_simple(librarian_client, garbage_file, server):
 
     assert real_file_contents == garbage_file_contents
 
+    search_result = librarian_client.search_files(name="test_file")
+
+    assert len(search_result) == 1
+
+    assert search_result[0].name == "test_file"
+    assert search_result[0].size == 1024
+
+    assert search_result[0].instances[0].path == real_file_path
+
 
 def test_upload_file_to_unique_directory(librarian_client, garbage_file, server):
-    librarian_client.upload(
-        garbage_file, Path("test_directory/test_file")
-    )
+    librarian_client.upload(garbage_file, Path("test_directory/test_file"))
 
     # Check we got it (by manually verifying)
     conn = sqlite3.connect(server.database)

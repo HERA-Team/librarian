@@ -4,17 +4,10 @@ Fixtures for integration testing of the servers and client.
 
 import json
 import os
-import random
 import shutil
-import socket
-import subprocess
 import sys
-from pathlib import Path
-from socket import gethostname
-from subprocess import run
 
 import pytest
-from pydantic import BaseModel
 from xprocess import ProcessStarter
 
 from hera_librarian import LibrarianClient
@@ -42,7 +35,7 @@ def server(xprocess, tmp_path_factory, request):
     for label, key in setup.env.items():
         if key is None:
             raise ValueError(f"Environment variable {label} is None.")
-    
+
     xprocess.ensure("server", Starter)
 
     setup.process = "server"
@@ -76,12 +69,29 @@ def librarian_client(server) -> LibrarianClient:
     Returns a LibrarianClient connected to the server.
     """
 
-    client = LibrarianClient(
-        host="http://localhost",
-        port=server.id,
-        user="test-A"
-    )
+    client = LibrarianClient(host="http://localhost", port=server.id, user="test-A")
 
     yield client
 
     del client
+
+
+@pytest.fixture
+def librarian_client_command_line(server):
+    """
+    Sets up the required environment variables for the command line client.
+    """
+
+    connections = json.dumps(
+        {
+            "test-A": {
+                "user": "test-B",
+                "port": server.id,
+                "host": "http://localhost",
+            }
+        }
+    )
+
+    os.environ["LIBRARIAN_CLIENT_CONNECTIONS"] = connections
+
+    yield "test-A"
