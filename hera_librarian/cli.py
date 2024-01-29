@@ -417,12 +417,14 @@ def search_errors(args):
 
     client = get_client(args.conn_name)
 
+    create_time_window = parse_create_time_window(args)
+
     try:
         errors = client.search_errors(
             id=args.id,
             category=args.category,
             severity=args.severity,
-            create_time_window=args.create_time_window,
+            create_time_window=create_time_window,
             include_resolved=args.include_resolved,
             max_results=args.max_results,
         )
@@ -519,6 +521,7 @@ def generate_parser():
     config_stage_files_subparser(sub_parsers)
     config_upload_subparser(sub_parsers)
     config_search_errors_subparser(sub_parsers)
+    config_clear_error_subparser(sub_parsers)
 
     return ap
 
@@ -1122,6 +1125,7 @@ def config_clear_error_subparser(sub_parsers):
 
     sp.add_argument(
         "id",
+        metavar="ERROR-ID",
         help="The ID of the error to clear.",
         type=int,
     )

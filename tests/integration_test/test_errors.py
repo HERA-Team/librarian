@@ -2,6 +2,8 @@
 Tests that the client can handle communicating with the librarian about errors correctly.
 """
 
+import subprocess
+
 import pytest
 
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
@@ -13,24 +15,28 @@ def server_with_fake_errors(server, test_orm, librarian_database_session_maker):
     Starts a server with a fake error.
     """
 
+    error_ids = []
+
     with librarian_database_session_maker() as session:
-        error = test_orm.Error.new_error(
-            severity=ErrorSeverity.CRITICAL,
-            category=ErrorCategory.CONFIGURATION,
-            message="This is a fake error.",
-        )
+        for error in range(32):
+            error = test_orm.Error.new_error(
+                severity=ErrorSeverity.CRITICAL,
+                category=ErrorCategory.CONFIGURATION,
+                message="This is a fake error.",
+            )
 
-        session.add(error)
-        session.commit()
+            session.add(error)
+            session.commit()
 
-        error_id = error.id
+            error_ids.append(error.id)
 
     yield server
 
     with librarian_database_session_maker() as session:
-        error = session.get(test_orm.Error, error_id)
+        for error_id in error_ids:
+            error = session.get(test_orm.Error, error_id)
+            session.delete(error)
 
-        session.delete(error)
         session.commit()
 
 
@@ -82,3 +88,43 @@ def test_error_search_missing(server_with_fake_errors, librarian_client):
 
     with pytest.raises(ValueError):
         cleared_error = librarian_client.clear_error(-1)
+
+
+def test_error_search_cli_path(server_with_fake_errors, librarian_client_command_line):
+    """
+    Tests that the CLI can search for errors correctly.
+    """
+
+    captured = subprocess.check_output(
+        [
+            "librarian",
+            "search-errors",
+            librarian_client_command_line,
+            "--id=30",
+            "--include-resolved",
+        ]
+    )
+
+    assert "This is a fake error." in str(captured)
+
+    captured = subprocess.check_output(
+        [
+            "librarian",
+            "clear-error",
+            librarian_client_command_line,
+            "30",
+        ]
+    )
+
+    assert captured == b""
+
+    captured = subprocess.check_output(
+        [
+            "librarian",
+            "search-errors",
+            librarian_client_command_line,
+            "--include-resolved",
+        ]
+    )
+
+    assert "True" in str(captured)
