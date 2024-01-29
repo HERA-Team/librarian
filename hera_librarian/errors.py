@@ -45,5 +45,8 @@ class ErrorCategory(Enum):
     PROGRAMMING = "programming"
     "Programming errors are those that indicate that the librarian has a bug, i.e. we have reached an 'unreachable' state."
 
+    LIBRARIAN_NETWORK_AVAILABILITY = "librarian_network_availability"
+    "Librarian network availability errors are those that indicate that the network connection to other librarians is not available."
+
     def __str__(self):
         return self.value
