@@ -21,7 +21,6 @@ The following flow occurs when cloning data from librarian A to librarian B:
 from typing import Optional
 from pathlib import Path
 
-from ..webutil import ServerError
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import TransferStatus, IncomingTransfer, OutgoingTransfer
 from ..orm.file import File
@@ -42,6 +41,7 @@ from hera_librarian.models.clone import (
 
 from fastapi import APIRouter, Response, status, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import SQLAlchemyError
 
 router = APIRouter(prefix="/api/v2/clone")
 
@@ -148,7 +148,7 @@ def stage(request: CloneInitiationRequest, response: Response, session: Session 
             try:
                 store = session.get(StoreMetadata, transfer.store_id)
                 store.store_manager.unstage(Path(transfer.staging_path))
-            except ServerError:
+            except SQLAlchemyError as e:
                 # No store was yet assigned, do not need to delete.
                 pass
 

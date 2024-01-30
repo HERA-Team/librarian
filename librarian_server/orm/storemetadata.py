@@ -12,8 +12,6 @@ from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_
 from hera_librarian.models.uploads import UploadCompletionRequest
 from hera_librarian.deletion import DeletionPolicy
 
-from ..webutil import ServerError
-
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -119,8 +117,8 @@ class StoreMetadata(db.Base):
             If the file already exists on the store.
         ValueError
             If the file does not match the expected size or checksum.
-        ServerError
-            If there is an unhandled database exception.        
+        SQLAlchemyError
+            If there was a problem committing the file to the database.
         """
 
         # We do not have any custom metadata any more. So MetaMode is no longer required...
@@ -211,14 +209,8 @@ class StoreMetadata(db.Base):
 
             session.rollback()
 
-            try:
-                transfer.status = TransferStatus.FAILED
-                session.commit()
-            except SQLAlchemyError as e:
-                # We can't even set the transfer status... We are in big trouble!
-                raise ServerError(
-                    "Unhandled database exception when rolling back failed upload: ", e
-                )
+            transfer.status = TransferStatus.FAILED
+            session.commit()
 
         return instance
 
