@@ -117,7 +117,8 @@ class CreateLocalClone(Task):
             # Now we can clone the file to the clone_to store.
             try:
                 staging_name, staged_path = store_to.store_manager.stage(
-                    file_size=instance.file.size, file_name=instance.file.name
+                    file_size=instance.file.size,
+                    file_name=Path(instance.file.name).name,
                 )
             except ValueError:
                 # TODO: In the future where we have multiple potential clone stores for SneakerNet we should
@@ -212,8 +213,12 @@ class CreateLocalClone(Task):
 
                     continue
 
+                resolved_store_path = store_to.store_manager.store(
+                    Path(instance.file.name)
+                )
+
                 store_to.store_manager.commit(
-                    staging_path=staged_path, store_path=Path(instance.file.name)
+                    staging_path=staged_path, store_path=resolved_store_path
                 )
             except FileExistsError:
                 log_to_database(
