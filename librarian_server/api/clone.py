@@ -41,7 +41,7 @@ from hera_librarian.models.clone import (
 
 from fastapi import APIRouter, Response, status, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 
 router = APIRouter(prefix="/api/v2/clone")
 
