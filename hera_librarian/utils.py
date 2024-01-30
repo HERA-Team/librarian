@@ -1,13 +1,5 @@
-# -*- mode: python; coding: utf-8 -*-
-# Copyright 2016-2017 the HERA Team.
-# Licensed under the BSD License.
-
-"""Utilities for interacting with the librarian.
-
-These are various, mainly I/O-related, functions that could be shared between
-a variety of scripts. A lot of what we do is related to the fact that some
-Librarian "files" are MIRIAD data sets that are actually directories.
-
+"""
+Useful utilities for files.
 """
 
 import os.path
