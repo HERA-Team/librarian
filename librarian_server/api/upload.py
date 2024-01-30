@@ -19,7 +19,8 @@ from hera_librarian.models.uploads import (
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Response, status, Depends
+from fastapi import APIRouter, Depends, Response, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -27,7 +28,11 @@ router = APIRouter(prefix="/api/v2/upload")
 
 
 @router.post("/stage", response_model=UploadInitiationResponse | UploadFailedResponse)
-def stage(request: UploadInitiationRequest, response: Response, session: Session = Depends(yield_session)):
+def stage(
+    request: UploadInitiationRequest,
+    response: Response,
+    session: Session = Depends(yield_session),
+):
     """
     Initiates an upload to a store.
 
@@ -68,12 +73,16 @@ def stage(request: UploadInitiationRequest, response: Response, session: Session
         )
 
     # First, try to see if this is someone trying to re-start an existing transfer!
-    existing_transfer = session.query(IncomingTransfer).filter(
-        (IncomingTransfer.transfer_checksum == request.upload_checksum)
-        & (IncomingTransfer.status != TransferStatus.FAILED)
-        & (IncomingTransfer.status != TransferStatus.COMPLETED)
-        & (IncomingTransfer.status != TransferStatus.CANCELLED)
-    ).all()
+    existing_transfer = (
+        session.query(IncomingTransfer)
+        .filter(
+            (IncomingTransfer.transfer_checksum == request.upload_checksum)
+            & (IncomingTransfer.status != TransferStatus.FAILED)
+            & (IncomingTransfer.status != TransferStatus.COMPLETED)
+            & (IncomingTransfer.status != TransferStatus.CANCELLED)
+        )
+        .all()
+    )
 
     if len(existing_transfer) != 0:
         log.info(
@@ -163,7 +172,11 @@ def stage(request: UploadInitiationRequest, response: Response, session: Session
 
 
 @router.post("/commit")
-def commit(request: UploadCompletionRequest, response: Response, session: Session = Depends(yield_session)):
+def commit(
+    request: UploadCompletionRequest,
+    response: Response,
+    session: Session = Depends(yield_session),
+):
     """
     Commits a file to a store, called once it has been uploaded.
 
@@ -176,7 +189,9 @@ def commit(request: UploadCompletionRequest, response: Response, session: Sessio
 
     log.debug(f"Received upload completion request: {request}")
 
-    store: StoreMetadata = session.query(StoreMetadata).filter_by(name=request.store_name).first()
+    store: StoreMetadata = (
+        session.query(StoreMetadata).filter_by(name=request.store_name).first()
+    )
 
     # Go grab the transfer from the database.
     transfer = session.get(IncomingTransfer, request.transfer_id)

@@ -22,6 +22,7 @@ from librarian_server.orm import (
     Librarian,
 )
 from librarian_server.settings import server_settings
+from librarian_server.logger import log_to_database
 
 from hera_librarian.models.clone import (
     CloneInitiationRequest,
@@ -29,6 +30,7 @@ from hera_librarian.models.clone import (
     CloneOngoingRequest,
     CloneOngoingResponse
 )
+from hera_librarian.errors import ErrorCategory, ErrorSeverity
 
 from typing import TYPE_CHECKING
 
@@ -70,9 +72,14 @@ class SendClone(Task):
         ).first()
 
         if librarian is None:
-            logger.error(
-                f"Librarian {self.destination_librarian} does not exist within database."
-                "Cancelling job. Please update the configuration."
+            log_to_database(
+                severity=ErrorSeverity.CRITICAL,
+                category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                description=(
+                    f"Librarian {self.destination_librarian} does not exist within database. "
+                    "Cancelling job. Please update the configuration (and re-start the librarian)."
+                ),
+                session=session,
             )
             return CancelJob
         
@@ -81,10 +88,18 @@ class SendClone(Task):
         try:
             client.ping()
         except Exception as e:
-            logger.error(
-                f"Librarian {self.destination_librarian} is unreachable. Cancelling job."
+            log_to_database(
+                severity=ErrorSeverity.ERROR,
+                category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                description=(
+                    f"Librarian {self.destination_librarian} is unreachable. Skipping sending clones."
+                ),
+                session=session,
             )
-            return CancelJob
+
+            # No point canceling job, our freind could just be down for a while.
+
+            return
 
         current_time = datetime.datetime.utcnow()
         age_in_days = datetime.timedelta(days=self.age_in_days)
@@ -106,9 +121,16 @@ class SendClone(Task):
             ).first()
 
             if use_store is None:
-                logger.error(
-                    "Store {self.store_preference} does not exist. Cancelling job. Please update the configuration."
+                log_to_database(
+                    severity=ErrorSeverity.CRITICAL,
+                    category=ErrorCategory.CONFIGURATION,
+                    description=(
+                        f"Store {self.store_preference} does not exist. Cancelling job. "
+                        "Please update the configuration."
+                    ),
+                    session=session,
                 )
+
                 return CancelJob
 
         for file in files_without_remote_instances:
@@ -165,8 +187,14 @@ class SendClone(Task):
                     response_model=CloneInitiationResponse,
                 )
             except Exception as e:
-                logger.error(
-                    f"Failed to stage clone for file {file.name} with exception {e}."
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                    description=(
+                        f"Unable to communicate with remote librarian for {transfer.id} "
+                        f"to stage clone with exception {e}."
+                    ),
+                    session=session,
                 )
 
                 # Mark the transfer as failed.
@@ -199,8 +227,14 @@ class SendClone(Task):
                     continue
 
             if not success:
-                logger.error(
-                    f"Failed to transfer file {instance.path} to remote store. Skipping."
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.DATA_AVAILABILITY,
+                    description=(
+                        f"Unable to transfer file {instance.path} to remote store. "
+                        "Skipping."
+                    ),
+                    session=session,
                 )
 
                 transfer.fail_transfer(session=session)
@@ -227,9 +261,14 @@ class SendClone(Task):
                     response_model=CloneOngoingResponse,
                 )
             except Exception as e:
-                logger.error(
-                    f"Unable to communicate with remote librarian for {transfer.id} "
-                    f"to let it know that the transfer is ongoing with exception {e}."
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                    description=(
+                        f"Unable to communicate with remote librarian for {transfer.id} "
+                        f"to let it know that the transfer is ongoing with exception {e}."
+                    ),
+                    session=session,
                 )
 
                 # Don't fail the transfer... I mean, the data is on the way (it might

@@ -7,12 +7,14 @@ import json
 import os
 import random
 import shutil
+import datetime
 from pathlib import Path
 from subprocess import run
 
 import pytest
 
 from hera_librarian.utils import get_md5_from_path, get_size_from_path
+from hera_librarian.errors import ErrorCategory, ErrorSeverity
 
 from .server import Server, server_setup
 
@@ -324,9 +326,9 @@ def test_server_with_missing_file(test_server, test_orm):
 
 
 @pytest.fixture(scope="function")
-def test_server_with_many_files(test_server, test_orm):
+def test_server_with_many_files_and_errors(test_server, test_orm):
     """
-    Test server with a valid file and instance in the store.
+    Test server with many valid files and some errors in the database.
     """
 
     session = test_server[1]()
@@ -335,6 +337,7 @@ def test_server_with_many_files(test_server, test_orm):
 
     data = random.randbytes(1024)
 
+    # Add many files
     file_names = [f"many_server_example_file_{x}.txt" for x in range(128)]
 
     for file_name in file_names:
@@ -363,6 +366,26 @@ def test_server_with_many_files(test_server, test_orm):
     
     session.commit()
 
+    # Add errors
+    error_ids = []
+
+    for x in range(128):
+        error = test_orm.Error.new_error(
+            severity=random.choice([e for e in ErrorSeverity]),
+            category=random.choice([e for e in ErrorCategory]),
+            message=f"Test error {x}",
+            caller="test",
+        )
+
+        if x % 2:
+            error.cleared = True
+            error.cleared_time = datetime.datetime.utcnow()
+
+        session.add(error)
+        session.commit()
+
+        error_ids.append(error.id)
+
     session.close()
 
     yield test_server
@@ -377,6 +400,11 @@ def test_server_with_many_files(test_server, test_orm):
 
         session.delete(file)
         session.delete(instance)
+
+    for error_id in error_ids:
+        error = session.get(test_orm.Error, error_id)
+
+        session.delete(error)
 
     session.commit()
     session.close()
