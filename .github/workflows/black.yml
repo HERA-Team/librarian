@@ -10,5 +10,5 @@ jobs:
       - uses: psf/black@stable
         with:
           options: "--check --verbose"
-          src: "./src"
+          src: "hera_librarian librarian_background librarian_server librarian_server_scripts alembic tests"
       - uses: isort/isort-action@master
