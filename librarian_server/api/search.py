@@ -8,16 +8,20 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from hera_librarian.models.errors import (ErrorSearchFailedResponse,
-                                          ErrorSearchRequest,
-                                          ErrorSearchResponse,
-                                          ErrorSearchResponses)
-from hera_librarian.models.search import (FileSearchFailedResponse,
-                                          FileSearchRequest,
-                                          FileSearchResponse,
-                                          FileSearchResponses,
-                                          InstanceSearchResponse,
-                                          RemoteInstanceSearchResponse)
+from hera_librarian.models.errors import (
+    ErrorSearchFailedResponse,
+    ErrorSearchRequest,
+    ErrorSearchResponse,
+    ErrorSearchResponses,
+)
+from hera_librarian.models.search import (
+    FileSearchFailedResponse,
+    FileSearchRequest,
+    FileSearchResponse,
+    FileSearchResponses,
+    InstanceSearchResponse,
+    RemoteInstanceSearchResponse,
+)
 
 from ..database import yield_session
 from ..logger import log

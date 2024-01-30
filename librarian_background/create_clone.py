@@ -3,7 +3,6 @@ Task that takes a store and clones all files uploaded to it to another store
 within some time-frame.
 """
 
-
 import datetime
 import logging
 from pathlib import Path
@@ -12,10 +11,8 @@ from schedule import CancelJob
 from sqlalchemy.orm import Session
 
 from librarian_server.database import get_session
-from librarian_server.logger import (ErrorCategory, ErrorSeverity,
-                                     log_to_database)
-from librarian_server.orm import (CloneTransfer, Instance, StoreMetadata,
-                                  TransferStatus)
+from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
+from librarian_server.orm import CloneTransfer, Instance, StoreMetadata, TransferStatus
 
 from .task import Task
 

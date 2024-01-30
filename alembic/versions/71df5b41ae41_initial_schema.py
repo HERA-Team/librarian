@@ -16,9 +16,18 @@ depends_on = None
 
 import enum
 
-from sqlalchemy import (BigInteger, Boolean, Column, DateTime, Enum,
-                        ForeignKey, Integer, PickleType, PrimaryKeyConstraint,
-                        String)
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    PickleType,
+    PrimaryKeyConstraint,
+    String,
+)
 
 from alembic import op
 from hera_librarian.deletion import DeletionPolicy

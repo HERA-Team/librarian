@@ -2,37 +2,33 @@
 Sends clones of files to a remote librarian.
 """
 
-
-from typing import Optional
-from .task import Task
-
-import logging
 import datetime
+import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
 from schedule import CancelJob
-from pathlib import Path
 
-from librarian_server.database import get_session
-from librarian_server.orm import (
-    StoreMetadata,
-    Instance,
-    OutgoingTransfer,
-    TransferStatus,
-    File,
-    Librarian,
-)
-from librarian_server.settings import server_settings
-from librarian_server.logger import log_to_database
-
+from hera_librarian.errors import ErrorCategory, ErrorSeverity
 from hera_librarian.models.clone import (
     CloneInitiationRequest,
     CloneInitiationResponse,
     CloneOngoingRequest,
-    CloneOngoingResponse
+    CloneOngoingResponse,
 )
-from hera_librarian.errors import ErrorCategory, ErrorSeverity
+from librarian_server.database import get_session
+from librarian_server.logger import log_to_database
+from librarian_server.orm import (
+    File,
+    Instance,
+    Librarian,
+    OutgoingTransfer,
+    StoreMetadata,
+    TransferStatus,
+)
+from librarian_server.settings import server_settings
 
-from typing import TYPE_CHECKING
+from .task import Task
 
 if TYPE_CHECKING:
     from hera_librarian import LibrarianClient
@@ -67,9 +63,9 @@ class SendClone(Task):
         """
         # Before even attempting to do anything, get the information about the librarian and create
         # a client connection to it.
-        librarian: Optional[Librarian] = session.query(
-            Librarian).filter_by(name=self.destination_librarian
-        ).first()
+        librarian: Optional[Librarian] = (
+            session.query(Librarian).filter_by(name=self.destination_librarian).first()
+        )
 
         if librarian is None:
             log_to_database(
@@ -82,7 +78,7 @@ class SendClone(Task):
                 session=session,
             )
             return CancelJob
-        
+
         client: "LibrarianClient" = librarian.get_client()
 
         try:
@@ -105,20 +101,25 @@ class SendClone(Task):
         age_in_days = datetime.timedelta(days=self.age_in_days)
         oldest_file_age = current_time - age_in_days
 
-        files_without_remote_instances: list[File] = session.query(
-            File).filter(
-            File.create_time > oldest_file_age and
-            File.remote_instances.any(librarian_name=self.destination_librarian)
-        ).all()
+        files_without_remote_instances: list[File] = (
+            session.query(File)
+            .filter(
+                File.create_time > oldest_file_age
+                and File.remote_instances.any(librarian_name=self.destination_librarian)
+            )
+            .all()
+        )
 
         logger.info(
             f"Found {len(files_without_remote_instances)} files without remote instances."
         )
 
         if self.store_preference is not None:
-            use_store: StoreMetadata = session.query(
-                StoreMetadata).filter_by(name = self.store_preference
-            ).first()
+            use_store: StoreMetadata = (
+                session.query(StoreMetadata)
+                .filter_by(name=self.store_preference)
+                .first()
+            )
 
             if use_store is None:
                 log_to_database(
@@ -177,7 +178,7 @@ class SendClone(Task):
                 source_transfer_id=transfer.id,
                 uploader=file.uploader,
                 # TODO better identifier for this...
-                source=server_settings.displayed_site_name
+                source=server_settings.displayed_site_name,
             )
 
             try:
@@ -201,7 +202,6 @@ class SendClone(Task):
                 transfer.fail_transfer(session=session)
                 continue
 
-            
             # Great! Let's try to begin the (async) transfer of the file.
             success = False
             for tm_name, transfer_manager in response.transfer_providers:

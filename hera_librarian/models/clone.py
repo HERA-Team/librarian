@@ -4,9 +4,10 @@ Models for cloning to a remote librarian.
 
 from pathlib import Path
 from typing import Union
+
 from pydantic import BaseModel, Field
 
-from hera_librarian.transfers.local import LocalTransferManager, CoreTransferManager
+from hera_librarian.transfers.local import CoreTransferManager, LocalTransferManager
 
 
 class CloneInitiationRequest(BaseModel):
@@ -104,6 +105,7 @@ class CloneCompleteRequest(BaseModel):
     destination_transfer_id: int
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
 
+
 class CloneCompleteResponse(BaseModel):
     """
     In a librarian A -> librarian B transfer, this is the response
@@ -115,7 +117,6 @@ class CloneCompleteResponse(BaseModel):
     "The ID of the transfer. Note that this is the OutgoingTransfer ID."
     destination_transfer_id: int
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
-
 
 
 class CloneFailedResponse(BaseModel):
@@ -131,7 +132,6 @@ class CloneFailedResponse(BaseModel):
     "The ID of the transfer. Note that this is the OutgoingTransfer ID."
     destination_transfer_id: int
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
-
 
 
 class CloneFailRequest(BaseModel):

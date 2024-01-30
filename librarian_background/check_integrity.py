@@ -9,8 +9,7 @@ from schedule import CancelJob
 from sqlalchemy.orm import Session
 
 from librarian_server.database import get_session
-from librarian_server.logger import (ErrorCategory, ErrorSeverity,
-                                     log_to_database)
+from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm import Instance, StoreMetadata
 
 from .task import Task

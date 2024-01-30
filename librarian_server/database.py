@@ -2,13 +2,22 @@
 Core database runner for SQLAlchemy.
 """
 
-from .settings import server_settings
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    PickleType,
+    String,
+    create_engine,
+)
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+
 from .logger import log
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, relationship, declarative_base
-
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Enum, DateTime, BigInteger, PickleType
+from .settings import server_settings
 
 log.info("Starting database engine.")
 
@@ -16,12 +25,13 @@ log.info("Starting database engine.")
 engine = create_engine(
     server_settings.sqlalchemy_database_uri,
     # Required for async and SQLite
-    connect_args={"check_same_thread": False}
+    connect_args={"check_same_thread": False},
 )
 
 log.info("Creating database session.")
 
 SessionMaker = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
 
 def yield_session() -> SessionMaker:
     """
@@ -43,5 +53,5 @@ def get_session() -> SessionMaker:
 
     return SessionMaker()
 
-Base = declarative_base()
 
+Base = declarative_base()

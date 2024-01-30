@@ -4,6 +4,7 @@ Core transfer manager (prototype)
 
 from pydantic import BaseModel
 
+
 class CoreTransferManager(BaseModel):
     def transfer(self, local_path: str, remote_path: str):
         """

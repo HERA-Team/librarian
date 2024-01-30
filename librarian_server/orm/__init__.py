@@ -2,9 +2,9 @@
 ORM for database storage.
 """
 
+from .errors import Error
 from .file import File
 from .instance import Instance
-from .storemetadata import StoreMetadata
-from .transfer import IncomingTransfer, TransferStatus, CloneTransfer, OutgoingTransfer
 from .librarian import Librarian
-from .errors import Error
+from .storemetadata import StoreMetadata
+from .transfer import CloneTransfer, IncomingTransfer, OutgoingTransfer, TransferStatus

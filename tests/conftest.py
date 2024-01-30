@@ -2,19 +2,19 @@
 Shared fixtures amongst all tests.
 """
 
+import datetime
 import hashlib
 import json
 import os
 import random
 import shutil
-import datetime
 from pathlib import Path
 from subprocess import run
 
 import pytest
 
-from hera_librarian.utils import get_md5_from_path, get_size_from_path
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
+from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
 from .server import Server, server_setup
 
@@ -324,7 +324,6 @@ def test_server_with_missing_file(test_server, test_orm):
     session.close()
 
 
-
 @pytest.fixture(scope="function")
 def test_server_with_many_files_and_errors(test_server, test_orm):
     """
@@ -363,7 +362,7 @@ def test_server_with_many_files_and_errors(test_server, test_orm):
         )
 
         session.add_all([file, instance])
-    
+
     session.commit()
 
     # Add errors

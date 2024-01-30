@@ -24,4 +24,3 @@ class PingResponse(BaseModel):
     "The description of this librarian."
 
     pass
-

@@ -2,24 +2,21 @@
 ORM for incoming and outgoing transfers.
 """
 
-
-from .. import database as db
-from ..logger import log
-
-from .librarian import Librarian
+import datetime
+from typing import TYPE_CHECKING
 
 from hera_librarian.models.clone import CloneFailRequest, CloneFailResponse
 from hera_librarian.transfer import TransferStatus
 
-import datetime
-
-from typing import TYPE_CHECKING
+from .. import database as db
+from ..logger import log
+from .librarian import Librarian
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from .file import File
     from .instance import Instance
-
-    from sqlalchemy.orm import Session
 
 
 class IncomingTransfer(db.Base):
@@ -54,7 +51,9 @@ class IncomingTransfer(db.Base):
 
     store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
     "The ID of the store that this interaction is with."
-    store = db.relationship("StoreMetadata", primaryjoin="IncomingTransfer.store_id == StoreMetadata.id")
+    store = db.relationship(
+        "StoreMetadata", primaryjoin="IncomingTransfer.store_id == StoreMetadata.id"
+    )
     "The store that this object is on or going to."
     transfer_manager_name = db.Column(db.String(256))
     "Name of the transfer manager that the client is using/used to upload the file."
@@ -74,7 +73,12 @@ class IncomingTransfer(db.Base):
 
     @classmethod
     def new_transfer(
-        self, uploader: str, upload_name: str, source: str, transfer_size: int, transfer_checksum: str
+        self,
+        uploader: str,
+        upload_name: str,
+        source: str,
+        transfer_size: int,
+        transfer_checksum: str,
     ) -> "IncomingTransfer":
         """
         Create a new transfer!
@@ -151,7 +155,6 @@ class OutgoingTransfer(db.Base):
             instance_id=instance.id,
             start_time=datetime.datetime.utcnow(),
         )
-    
 
     def fail_transfer(self, session: "Session"):
         """
@@ -169,7 +172,9 @@ class OutgoingTransfer(db.Base):
         # Now here's the interesting part - we need to communicate to the
         # remote librarian that the transfer failed!
 
-        librarian: Librarian = session.query(Librarian).filter_by(name=self.destination).first()
+        librarian: Librarian = (
+            session.query(Librarian).filter_by(name=self.destination).first()
+        )
 
         if not librarian:
             # Librarian doesn't exist. We can't do anything.
@@ -178,7 +183,7 @@ class OutgoingTransfer(db.Base):
                 "This state should be entirely unreachable."
             )
             return
-        
+
         client = librarian.client()
 
         request = CloneFailRequest(
@@ -191,11 +196,13 @@ class OutgoingTransfer(db.Base):
             response = client.do_pydantic_http_post(
                 path="/api/v2/clone/fail",
                 request_model=request,
-                response_model=CloneFailResponse
+                response_model=CloneFailResponse,
             )
 
             if not response.succeeded:
-                raise Exception("Remote librarian refused or failed to set transfer status to FAILED.")
+                raise Exception(
+                    "Remote librarian refused or failed to set transfer status to FAILED."
+                )
         except Exception as e:
             log.error(
                 f"Failed to communicate to remote librarian that transfer {self.id} "
@@ -225,15 +232,21 @@ class CloneTransfer(db.Base):
     end_time = db.Column(db.DateTime)
     "The time at which this interaction was ended."
 
-    source_store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
+    source_store_id = db.Column(
+        db.Integer, db.ForeignKey("store_metadata.id"), nullable=False
+    )
     "The ID of the source store that this interaction is with."
-    destination_store_id = db.Column(db.Integer, db.ForeignKey("store_metadata.id"), nullable=False)
+    destination_store_id = db.Column(
+        db.Integer, db.ForeignKey("store_metadata.id"), nullable=False
+    )
     "The ID of the destination store that this interaction is with."
 
     transfer_manager_name = db.Column(db.String(256))
     "Name of the transfer manager that the client is using/used to upload the file."
 
-    source_instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"), nullable=False)
+    source_instance_id = db.Column(
+        db.Integer, db.ForeignKey("instances.id"), nullable=False
+    )
     "The ID of the instance that this transfer is copying."
     destination_instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"))
     "The ID of the instance that this transfer is copying to."

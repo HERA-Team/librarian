@@ -4,6 +4,7 @@ Error enumeraion for the librarian. Categories of errors.
 
 from enum import Enum
 
+
 class ErrorSeverity(Enum):
     """
     Severity of errors.

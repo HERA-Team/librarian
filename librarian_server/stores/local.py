@@ -3,16 +3,20 @@ The simplest possible store is a local store, which just executes
 all commands on the machine local to the librarian server.
 """
 
-from .core import CoreStore
-from .pathinfo import PathInfo
-from hera_librarian.utils import get_md5_from_path, get_size_from_path, get_type_from_path
-from hera_librarian.transfers.core import CoreTransferManager
-
-from pathlib import Path
-
 import os
 import shutil
 import uuid
+from pathlib import Path
+
+from hera_librarian.transfers.core import CoreTransferManager
+from hera_librarian.utils import (
+    get_md5_from_path,
+    get_size_from_path,
+    get_type_from_path,
+)
+
+from .core import CoreStore
+from .pathinfo import PathInfo
 
 
 class LocalStore(CoreStore):
@@ -86,7 +90,7 @@ class LocalStore(CoreStore):
 
         # Check if the parent is still in the staging area. We don't want
         # to leave random dregs around!
-                
+
         if os.path.exists(complete_path.parent):
             try:
                 resolved_path = self._resolved_path_staging(complete_path.parent)
@@ -94,7 +98,7 @@ class LocalStore(CoreStore):
             except ValueError:
                 # The parent is not in the staging area. We can't delete it.
                 pass
-            
+
         return
 
     def commit(self, staging_path: Path, store_path: Path):
@@ -109,19 +113,19 @@ class LocalStore(CoreStore):
 
         if resolved_path.exists():
             raise FileExistsError(f"File {path} already exists on store.")
-        
+
         # Now create any directory structure that is required to store the file.
         resolved_path.parent.mkdir(parents=True, exist_ok=True)
 
         return resolved_path
-    
+
     def path_info(self, path: Path) -> PathInfo:
         # Promote path to object if required
         path = Path(path)
 
         if not path.exists():
             raise FileNotFoundError(f"Path {path} does not exist")
-        
+
         return PathInfo(
             # Use the old functions for consistency.
             path=path,
@@ -129,10 +133,8 @@ class LocalStore(CoreStore):
             md5=get_md5_from_path(path),
             size=get_size_from_path(path),
         )
-    
-    def can_transfer(
-        self, using: CoreTransferManager
-    ):
+
+    def can_transfer(self, using: CoreTransferManager):
         return using.valid
 
     def transfer_out(
@@ -143,9 +145,9 @@ class LocalStore(CoreStore):
 
         if not resolved_store_path.exists():
             raise FileNotFoundError(f"File {store_path} does not exist on store.")
-        
+
         if using.valid:
             # We can transfer it out!
             return using.transfer(resolved_store_path, destination_path)
-        
+
         return False

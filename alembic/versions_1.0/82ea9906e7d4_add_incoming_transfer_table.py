@@ -8,9 +8,9 @@ Revises: baf3ead3d88b
 Create Date: 2023-12-01 15:10:41.994989
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 revision = "82ea9906e7d4"
 down_revision = "baf3ead3d88b"

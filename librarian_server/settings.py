@@ -5,13 +5,12 @@ deserialized from the available librarian config path.
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ValidationError, field_validator
 from pydantic_settings import BaseSettings
 
 from .stores import StoreNames
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     server_settings: "ServerSettings"

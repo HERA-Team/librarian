@@ -11,9 +11,11 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
-from hera_librarian.models.errors import (ErrorClearRequest,
-                                          ErrorClearResponse,
-                                          ErrorSearchFailedResponse)
+from hera_librarian.models.errors import (
+    ErrorClearRequest,
+    ErrorClearResponse,
+    ErrorSearchFailedResponse,
+)
 from librarian_server.database import yield_session
 from librarian_server.orm import Error
 

@@ -7,18 +7,14 @@ server framework (e.g. guivcorn if you needed more threads), and
 you can even run the librarian_background module as a separate instance.
 """
 
-from librarian_server.settings import server_settings
-
-from librarian_server.database import get_session
-from librarian_server.orm import StoreMetadata
-
-from librarian_server.logger import log
-
-from librarian_background import background
-
+import subprocess
 from pathlib import Path
 
-import subprocess
+from librarian_background import background
+from librarian_server.database import get_session
+from librarian_server.logger import log
+from librarian_server.orm import StoreMetadata
+from librarian_server.settings import server_settings
 
 # Do this in if __name__ == "__main__" so we can spawn threads on MacOS...
 

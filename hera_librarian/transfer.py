@@ -4,6 +4,7 @@ TransferStatus enum.
 
 from enum import Enum
 
+
 class TransferStatus(Enum):
     """
     The status of a transfer.

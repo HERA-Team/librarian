@@ -4,28 +4,23 @@ Host for store metadata and related tasks.
 Includes the StoreMetadata class, which is a database model.
 """
 
-
-from .. import database as db
-
-from ..stores import Stores, CoreStore
-from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
-from hera_librarian.models.uploads import UploadCompletionRequest
-from hera_librarian.deletion import DeletionPolicy
-
-from ..webutil import ServerError
-
+import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy.orm import reconstructor, Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, reconstructor
 
+from hera_librarian.deletion import DeletionPolicy
+from hera_librarian.models.uploads import UploadCompletionRequest
+from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
+
+from .. import database as db
+from ..stores import CoreStore, Stores
 from .file import File
 from .instance import Instance
-from .transfer import TransferStatus, IncomingTransfer
-
-import datetime
+from .transfer import IncomingTransfer, TransferStatus
 
 
 class StoreMetadata(db.Base):
@@ -119,8 +114,8 @@ class StoreMetadata(db.Base):
             If the file already exists on the store.
         ValueError
             If the file does not match the expected size or checksum.
-        ServerError
-            If there is an unhandled database exception.        
+        SQLAlchemyError
+            If there was a problem committing the file to the database.
         """
 
         # We do not have any custom metadata any more. So MetaMode is no longer required...
@@ -211,14 +206,8 @@ class StoreMetadata(db.Base):
 
             session.rollback()
 
-            try:
-                transfer.status = TransferStatus.FAILED
-                session.commit()
-            except SQLAlchemyError as e:
-                # We can't even set the transfer status... We are in big trouble!
-                raise ServerError(
-                    "Unhandled database exception when rolling back failed upload: ", e
-                )
+            transfer.status = TransferStatus.FAILED
+            session.commit()
 
         return instance
 

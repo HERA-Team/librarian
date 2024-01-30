@@ -3,7 +3,9 @@ A pydantic model that implements callable so that it can be executed as a task.
 """
 
 import abc
+
 from pydantic import BaseModel
+
 
 class Task(BaseModel, abc.ABC):
     """
@@ -34,4 +36,3 @@ class Task(BaseModel, abc.ABC):
         """
 
         return self.on_call()
-

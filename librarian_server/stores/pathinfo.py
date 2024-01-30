@@ -3,9 +3,10 @@ Path info object.
 """
 
 from pathlib import Path
+from typing import Optional
+
 from pydantic import BaseModel
 
-from typing import Optional
 
 class PathInfo(BaseModel):
     """
@@ -13,6 +14,7 @@ class PathInfo(BaseModel):
     various implementations of the store managers to return valid
     PathInfo objects, which then serialize themselves.
     """
+
     path: Path
     "Path being considered"
     filetype: str

@@ -8,19 +8,21 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from hera_librarian.models.uploads import (UploadCompletionRequest,
-                                           UploadFailedResponse,
-                                           UploadInitiationRequest,
-                                           UploadInitiationResponse)
+from hera_librarian.models.uploads import (
+    UploadCompletionRequest,
+    UploadFailedResponse,
+    UploadInitiationRequest,
+    UploadInitiationResponse,
+)
 
 from ..database import yield_session
 from ..logger import log
 from ..orm.file import File
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import IncomingTransfer, TransferStatus
-from ..webutil import ServerError
 
 router = APIRouter(prefix="/api/v2/upload")
 
@@ -92,7 +94,7 @@ def stage(
             try:
                 store = session.get(StoreMetadata, transfer.store_id)
                 store.store_manager.unstage(Path(transfer.staging_path))
-            except ServerError:
+            except SQLAlchemyError as e:
                 # Store with ID does not exist (usually store_id is None as transfer never got there.)
                 # That's ok, if there's no store ID, nobody actually staged the file.
                 pass
@@ -244,7 +246,7 @@ def commit(
             suggested_remedy="Try to transfer the file again. If the problem persists, "
             "contact the administrator of this librarian instance.",
         )
-    except ServerError as e:
+    except Exception as e:
         log.debug(
             "Extremely bad internal server error. Likley a database communication issue."
         )
