@@ -85,6 +85,7 @@ def main():
         "librarian_server:main",
         port=server_settings.port,
         log_level=server_settings.log_level.lower(),
+        factory=True,
     )
 
     log.info("Server shut down.")
