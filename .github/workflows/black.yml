@@ -11,8 +11,5 @@ jobs:
         continue-on-error: true
         with:
           options: "--check --verbose"
-          src: "hera_librarian librarian_background librarian_server librarian_server_scripts alembic tests"
       - uses: isort/isort-action@master
         continue-on-error: true
-        with:
-          sortPaths: "hera_librarian librarian_background librarian_server librarian_server_scripts alembic tests"

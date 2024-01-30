@@ -87,3 +87,7 @@ exclude_lines = ["pragma: no cover"]
 
 [tool.isort]
 profile = "black"
+skip = ["docs", ".github", ".vscode", "container", "env", "env311", "build"]
+
+[tool.black]
+exclude = "docs|.github|.vscode|container|env|env311|build"
