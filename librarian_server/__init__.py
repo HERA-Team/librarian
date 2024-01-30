@@ -5,8 +5,10 @@ We have moved from Flask to FastAPI to ensure that web requests can be performed
 asynchronously, and that background tasks can work on any available ASGI server.
 """
 
-from .settings import server_settings
 from fastapi import FastAPI
+
+from .settings import server_settings
+
 
 def main() -> FastAPI:
     from .logger import log
@@ -18,11 +20,13 @@ def main() -> FastAPI:
 
     log.debug("Adding API router.")
 
-    from .api import upload_router, ping_router, clone_router, search_router
+    from .api import (clone_router, error_router, ping_router, search_router,
+                      upload_router)
 
     app.include_router(upload_router)
     app.include_router(ping_router)
     app.include_router(clone_router)
     app.include_router(search_router)
+    app.include_router(error_router)
 
     return app

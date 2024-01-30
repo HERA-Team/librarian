@@ -10,7 +10,11 @@ import requests
 from pydantic import BaseModel
 
 from .deletion import DeletionPolicy
+from .errors import ErrorCategory, ErrorSeverity
 from .exceptions import LibrarianError, LibrarianHTTPError
+from .models.errors import (ErrorClearRequest, ErrorClearResponse,
+                            ErrorSearchFailedResponse, ErrorSearchRequest,
+                            ErrorSearchResponse, ErrorSearchResponses)
 from .models.ping import PingRequest, PingResponse
 from .models.search import (FileSearchRequest, FileSearchResponse,
                             FileSearchResponses)
@@ -352,3 +356,96 @@ class LibrarianClient:
                 raise e
 
         return response.root
+
+    def search_errors(
+        self,
+        id: Optional[int] = None,
+        category: Optional[ErrorCategory] = None,
+        severity: Optional[ErrorSeverity] = None,
+        create_time_window: Optional[tuple[datetime, ...]] = None,
+        include_resolved: bool = False,
+        max_results: int = 64,
+    ) -> list[ErrorSearchResponse]:
+        """
+        Search for files on this librarain.
+
+        Parameters
+        ----------
+        id : Optional[int], optional
+            The ID of the error to search for. If left empty, all errors will be
+            returned., by default None
+        category : Optional[ErrorCategory], optional
+            The category of errors to return. If left empty, all errors will be
+            returned., by default None
+        severity : Optional[ErrorSeverity], optional
+            The severity of errors to return. If left empty, all errors will be
+            returned., by default None
+        create_time_window : Optional[tuple[datetime, ...]], optional
+            The time window to search for files in. This is a tuple of two
+            datetimes, the first being the start and the second being the end.
+            Note that the datetimes should be in UTC., by default None
+        include_resolved : bool, optional
+            Whether or not to include resolved errors in the response. By
+            default, we do not., by default False
+        max_results : int, optional
+            The number of errors to return., by default 64
+
+        Returns
+        -------
+        list[ErrorSearchResponse]
+            A list of errors that match the query.
+        """
+
+        try:
+            response: ErrorSearchResponses = self.post(
+                endpoint="search/error",
+                request=ErrorSearchRequest(
+                    id=id,
+                    category=category,
+                    severity=severity,
+                    create_time_window=create_time_window,
+                    include_resolved=include_resolved,
+                    max_results=max_results,
+                ),
+                response=ErrorSearchResponses,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 404 and e.reason == "No errors found.":
+                return []
+            else:  # pragma: no cover
+                raise e
+
+        return response.root
+
+    def clear_error(
+        self,
+        id: int,
+    ):
+        """
+        Clear an error on this librarain.
+
+        Parameters
+        ----------
+        id : int
+            The ID of the error to clear.
+
+        Raises
+        ------
+
+        ValueError
+            If the provided error ID is not found, or if the error has already been cleared.
+        """
+
+        try:
+            self.post(
+                endpoint="error/clear",
+                request=ErrorClearRequest(id=id),
+                response=ErrorClearResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 404 and "No error found with ID" in e.reason:
+                raise ValueError(e.reason)
+            elif e.status_code == 400 and "Error with ID" in e.reason:
+                raise ValueError(e.reason)
+            else:  # pragma: no cover
+                raise e

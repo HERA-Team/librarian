@@ -19,7 +19,7 @@ SERVER_LOG_PATH = None
 
 
 @pytest.fixture(scope="package")
-def server(xprocess, tmp_path_factory, request):
+def server(xprocess, tmp_path_factory, request) -> Server:
     """
     Starts a single server with pytest-xprocess.
     """
@@ -95,3 +95,30 @@ def librarian_client_command_line(server):
     os.environ["LIBRARIAN_CLIENT_CONNECTIONS"] = connections
 
     yield "test-A"
+
+
+@pytest.fixture(scope="package")
+def librarian_database_session_maker(server: Server):
+    """
+    Generates a session maker for the database for the librarian
+    running in the other process. Use this to make database changes
+    behind the librarian's back (sparingly!).
+
+    If using this, ask yourself if there should be a client API
+    endpoint for this instead.
+    """
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine(
+        server.SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False}
+    )
+
+    SessionMaker = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+    yield SessionMaker
+
+    del SessionMaker
+
+    engine.dispose()

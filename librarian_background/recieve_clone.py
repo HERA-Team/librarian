@@ -21,6 +21,7 @@ from librarian_server.orm import (
     TransferStatus,
     Librarian,
 )
+from librarian_server.logger import log_to_database, ErrorCategory, ErrorSeverity
 from hera_librarian.deletion import DeletionPolicy
 
 from hera_librarian.models.clone import (
@@ -69,8 +70,14 @@ class RecieveClone(Task):
             store: StoreMetadata = transfer.store
 
             if store is None:
-                logger.error(
-                    f"Transfer {transfer.id} has no store associated with it. Skipping for now."
+                log_to_database(
+                    severity=ErrorSeverity.CRITICAL,
+                    category=ErrorCategory.PROGRAMMING,
+                    message=(
+                        f"Transfer {transfer.id} has no store associated with it. "
+                        "Skipping for now, but this should never happen."
+                    ),
+                    session=session,
                 )
 
                 all_transfers_succeeded = False
@@ -80,15 +87,21 @@ class RecieveClone(Task):
             try:
                 path_info = store.store_manager.path_info(Path(transfer.staging_path))
             except TypeError:
-                logger.error(
-                    f"Transfer {transfer.id} has no staging path associated with it. Skipping for now."
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.DATA_AVAILABILITY,
+                    message=(
+                        f"Transfer {transfer.id}: cannot get information about staging "
+                        f"path: {transfer.staging_path}. Skipping for now."
+                    ),
+                    session=session,
                 )
 
                 all_transfers_succeeded = False
 
                 continue
 
-            # TODO: Make this check more robust?
+            # TODO: Make this check more robust? Could have transfer managers provide checks?
             if (
                 path_info.md5 == transfer.transfer_checksum
                 and path_info.size == transfer.transfer_size
@@ -159,15 +172,21 @@ class RecieveClone(Task):
 
                     try:
                         response: CloneCompleteResponse = (
-                            librarian.client.do_pydantic_http_post(
-                                endpoint="/api/v2/clone/complete",
+                            librarian.client.post(
+                                endpoint="clone/complete",
                                 request_model=request,
                                 response_model=CloneCompleteResponse,
                             )
                         )
                     except Exception as e:
-                        logger.error(
-                            f"Failed to call back to librarian {librarian.name} with exception {e}."
+                        log_to_database(
+                            severity=ErrorSeverity.ERROR,
+                            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                            message=(
+                                f"Failed to call back to librarian {librarian.name} "
+                                f"with exception {e}."
+                            ),
+                            session=session,
                         )
                 else:
                     logger.error(

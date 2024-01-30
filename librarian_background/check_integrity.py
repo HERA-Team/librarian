@@ -2,18 +2,18 @@
 Task for checking the integrity of the store.
 """
 
-from .task import Task
-
-import logging
 import datetime
+import logging
 
 from schedule import CancelJob
-
-from librarian_server.orm import StoreMetadata, Instance
-from librarian_server.database import get_session
-
 from sqlalchemy.orm import Session
 
+from librarian_server.database import get_session
+from librarian_server.logger import (ErrorCategory, ErrorSeverity,
+                                     log_to_database)
+from librarian_server.orm import Instance, StoreMetadata
+
+from .task import Task
 
 logger = logging.getLogger("schedule")
 
@@ -50,8 +50,11 @@ class CheckIntegrity(Task):
             store = self.get_store(session=session)
         except ValueError:
             # Store doesn't exist. Cancel this job.
-            logger.error(
-                f"Store {self.store_name} does not exist. Cancelling job. Please update the configuration."
+            log_to_database(
+                severity=ErrorSeverity.CRITICAL,
+                category=ErrorCategory.CONFIGURATION,
+                message=f"Store {self.store_name} does not exist. Cancelling job. Please update the configuration.",
+                session=session,
             )
             return CancelJob
 
@@ -73,7 +76,12 @@ class CheckIntegrity(Task):
                 path_info = store.store_manager.path_info(file.path)
             except FileNotFoundError:
                 all_files_fine = False
-                logger.error(f"File {file.path} on store {store.name} is missing!")
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.DATA_AVAILABILITY,
+                    message=f"File {file.path} on store {store.name} is missing. (Instance: {file.id})",
+                    session=session,
+                )
                 continue
 
             # Compare checksum to database
@@ -88,8 +96,11 @@ class CheckIntegrity(Task):
             else:
                 # File is not fine. Log it.
                 all_files_fine = False
-                logger.error(
-                    f"File {file.path} on store {store.name} has an incorrect checksum. Expected {expected_checksum}, got {path_info.md5}."
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.DATA_INTEGRITY,
+                    message=f"File {file.path} on store {store.name} has an incorrect checksum. Expected {expected_checksum}, got {path_info.md5}. (Instance: {file.id})",
+                    session=session,
                 )
 
         if all_files_fine:

@@ -13,11 +13,13 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 import dateutil.parser
 
 from . import LibrarianClient
-from .exceptions import LibrarianClientRemovedFunctionality, LibrarianError
+from .exceptions import (LibrarianClientRemovedFunctionality, LibrarianError,
+                         LibrarianHTTPError)
 from .settings import client_settings
 
 __version__ = "TEST"
@@ -51,6 +53,42 @@ def die(fmt, *args):
         text = fmt % args
     print("error:", text, file=sys.stderr)
     sys.exit(1)
+
+
+def get_client(conn_name):
+    if conn_name not in client_settings.connections:
+        die("Connection name {} not found in client settings.".format(conn_name))
+
+    return LibrarianClient.from_info(client_settings.connections[conn_name])
+
+
+def parse_create_time_window(
+    args,
+    start_time_name: str = "create_time_start",
+    end_time_name: str = "create_time_end",
+) -> Optional[tuple[datetime.datetime, datetime.datetime]]:
+    """
+    Parses a window to search for files between two times.
+    """
+
+    create_time_window = None
+
+    if args.create_time_start is not None or args.create_time_end is not None:
+        create_time_window = []
+
+        if args.create_time_start is not None:
+            create_time_window.append(dateutil.parser.parse(args.create_time_start))
+        else:
+            create_time_window.append(datetime.datetime.min)
+
+        if args.create_time_end is not None:
+            create_time_window.append(dateutil.parser.parse(args.create_time_end))
+        else:
+            create_time_window.append(datetime.datetime.max)
+
+        create_time_window = tuple(create_time_window)
+
+    return create_time_window
 
 
 # from https://stackoverflow.com/questions/17330139/python-printing-a-dictionary-as-a-horizontal-table-with-headers
@@ -261,23 +299,7 @@ def search_files(args):
 
     # Create the search request
 
-    # Start with the most complex part, parsing dates...
-    create_time_window = None
-
-    if args.create_time_start is not None or args.create_time_end is not None:
-        create_time_window = []
-
-        if args.create_time_start is not None:
-            create_time_window.append(dateutil.parser.parse(args.create_time_start))
-        else:
-            create_time_window.append(datetime.datetime.min)
-
-        if args.create_time_end is not None:
-            create_time_window.append(dateutil.parser.parse(args.create_time_end))
-        else:
-            create_time_window.append(datetime.datetime.max)
-
-        create_time_window = tuple(create_time_window)
+    create_time_window = parse_create_time_window(args)
 
     # Perform the search
 
@@ -385,7 +407,76 @@ def upload(args):
     except Exception as e:
         die("Upload failed (unknown error): {}".format(e))
 
-    return
+    return 0
+
+
+def search_errors(args):
+    """
+    Search for errors on the librarian.
+    """
+
+    client = get_client(args.conn_name)
+
+    create_time_window = parse_create_time_window(args)
+
+    try:
+        errors = client.search_errors(
+            id=args.id,
+            category=args.category,
+            severity=args.severity,
+            create_time_window=create_time_window,
+            include_resolved=args.include_resolved,
+            max_results=args.max_results,
+        )
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if len(errors) == 0:
+        print("No errors found.")
+        return
+
+    print_table(
+        [e.dict() for e in errors],
+        col_list=[
+            "id",
+            "severity",
+            "category",
+            "message",
+            "raised_time",
+            "cleared_time",
+            "cleared",
+            "caller",
+        ],
+        col_names=[
+            "ID",
+            "Severity",
+            "Category",
+            "Message",
+            "Raised",
+            "Cleared",
+            "Cleared Time",
+            "Caller",
+        ],
+    )
+
+    return 0
+
+
+def clear_error(args):
+    """
+    Clear an error on the librarian.
+    """
+
+    client = get_client(args.conn_name)
+
+    try:
+        client.clear_error(args.id)
+    except ValueError as e:
+        die(f"Unable to find or clear error on the librarian: {e.args[0]}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    return 0
 
 
 # make the base parser
@@ -429,6 +520,8 @@ def generate_parser():
     config_set_file_deletion_policy_subparser(sub_parsers)
     config_stage_files_subparser(sub_parsers)
     config_upload_subparser(sub_parsers)
+    config_search_errors_subparser(sub_parsers)
+    config_clear_error_subparser(sub_parsers)
 
     return ap
 
@@ -938,6 +1031,106 @@ def config_upload_subparser(sub_parsers):
     sp.set_defaults(func=upload)
 
     return
+
+
+def config_search_errors_subparser(sub_parsers):
+    # function documentation
+    doc = """Search for errors in the librarian.
+
+    """
+    example = """Search for errors matching the query, for instance to find all errors
+    with a level of 'CRITICAL', you would use:
+
+    librarian search-errors LIBRARIAN_NAME --severity=critical
+
+    """
+
+    hlp = "Search for errors matching a query"
+
+    from .errors import ErrorCategory, ErrorSeverity
+
+    # add sub parser
+    sp = sub_parsers.add_parser(
+        "search-errors", description=doc, epilog=example, help=hlp
+    )
+
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+
+    sp.add_argument(
+        "--id",
+        help="Search for an error with this ID.",
+        type=int,
+    )
+
+    sp.add_argument(
+        "-c",
+        "--category",
+        type=ErrorCategory,
+        choices=list(ErrorCategory),
+    )
+
+    sp.add_argument(
+        "-s",
+        "--severity",
+        help="Search for errors with this severity.",
+        type=ErrorSeverity,
+        choices=list(ErrorSeverity),
+    )
+
+    sp.add_argument(
+        "--create-time-start",
+        help="Search for errors who were created after this date and time. Use a parseable date string, if no timezone is specified, UTC is assumed.",
+    )
+
+    sp.add_argument(
+        "--create-time-end",
+        help="Search for errors who were created before this date and time. Use a parseable date string, if no timezone is specified, UTC is assumed.",
+    )
+
+    sp.add_argument(
+        "--include-resolved",
+        action="store_true",
+        help="If this flag is present, include errors that have been cleared in the search. Otherwise, only active errors are returned.",
+    )
+
+    sp.add_argument(
+        "--max-results",
+        type=int,
+        default=64,
+        help="Maximum number of results to return.",
+    )
+
+    sp.set_defaults(func=search_errors)
+
+
+def config_clear_error_subparser(sub_parsers):
+    # function documentation
+    doc = """Clear an error on the librarian.
+
+    """
+    example = """Clear an error with the given ID:
+
+    librarian clear-error LIBRARIAN_NAME 1234
+
+    """
+
+    hlp = "Clear an error on the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser(
+        "clear-error", description=doc, epilog=example, help=hlp
+    )
+
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+
+    sp.add_argument(
+        "id",
+        metavar="ERROR-ID",
+        help="The ID of the error to clear.",
+        type=int,
+    )
+
+    sp.set_defaults(func=clear_error)
 
 
 def main():

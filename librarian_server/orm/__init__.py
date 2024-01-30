@@ -7,3 +7,4 @@ from .instance import Instance
 from .storemetadata import StoreMetadata
 from .transfer import IncomingTransfer, TransferStatus, CloneTransfer, OutgoingTransfer
 from .librarian import Librarian
+from .errors import Error
