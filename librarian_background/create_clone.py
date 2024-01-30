@@ -155,11 +155,14 @@ class CreateLocalClone(Task):
                         transfer.fail_transfer(session=session)
 
                         continue
+                    else:
+                        break
+
                 except FileNotFoundError as e:
                     log_to_database(
                         severity=ErrorSeverity.ERROR,
                         category=ErrorCategory.DATA_AVAILABILITY,
-                        message=f"File {instance.path} does not exist on store {store_from}. Skipping. (Instance {instance.id})",
+                        message=f"File {e.filename} does not exist when trying to clone from {store_from}. Skipping. (Instance {instance.id})",
                         session=session,
                     )
 
