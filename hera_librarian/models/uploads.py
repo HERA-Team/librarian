@@ -2,12 +2,13 @@
 Models for uploads.
 """
 
-from pydantic import BaseModel, field_validator, SerializeAsAny
+from pathlib import Path
+from typing import Union
+
+from pydantic import BaseModel, SerializeAsAny, field_validator
 
 from ..transfers import CoreTransferManager, LocalTransferManager
 
-from pathlib import Path
-from typing import Union
 
 class UploadInitiationRequest(BaseModel):
     """

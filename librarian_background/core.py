@@ -4,15 +4,15 @@ A safe scheduler implementation from:
 https://gist.github.com/mplewis/8483f1c24f2d6259aef6
 """
 
+import datetime
 import logging
 from traceback import format_exc
-import datetime
 
 from schedule import Scheduler
 
 from .task import Task
 
-logger = logging.getLogger('schedule')
+logger = logging.getLogger("schedule")
 
 
 class SafeScheduler(Scheduler):

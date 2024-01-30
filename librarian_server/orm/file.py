@@ -4,11 +4,10 @@ the database. They contain, notably, a unique filename (that may actually
 be a path, e.g. abcd/efgh/ijkl.txt).
 """
 
-from .. import database as db
-
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
+from .. import database as db
 from .instance import Instance
 
 

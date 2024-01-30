@@ -5,6 +5,7 @@ Unit tests for the RecieveClone background task.
 import shutil
 from pathlib import Path
 
+
 def test_recieve_clone_with_valid_no_clones(test_client, test_server, test_orm):
     """
     Test the null case where we have no incoming clones.
@@ -17,6 +18,7 @@ def test_recieve_clone_with_valid_no_clones(test_client, test_server, test_orm):
     )
 
     assert clone_task()
+
 
 def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_file):
     """
@@ -49,7 +51,9 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
     incoming_transfer.status = test_orm.TransferStatus.ONGOING
     incoming_transfer.store = store
     incoming_transfer.staging_path = str(resolved_path)
-    incoming_transfer.store_path = str(store.store_manager.store(Path(garbage_file.name)))
+    incoming_transfer.store_path = str(
+        store.store_manager.store(Path(garbage_file.name))
+    )
     incoming_transfer.upload_name = garbage_file.name
 
     session.add(incoming_transfer)
@@ -80,6 +84,9 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
 
     # Check the file is in the store.
 
-    assert store.store_manager.path_info(Path(incoming_transfer.store_path)).md5 == info.md5
+    assert (
+        store.store_manager.path_info(Path(incoming_transfer.store_path)).md5
+        == info.md5
+    )
 
     session.close()

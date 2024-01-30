@@ -16,6 +16,7 @@ TransferManagerNames: dict[str, int] = {
     "local": 1,
 }
 
+
 def transfer_manager_from_name(name: str) -> CoreTransferManager:
     """
     Get a transfer manager from its name.

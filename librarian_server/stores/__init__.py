@@ -2,12 +2,11 @@
 All valid stores.
 """
 
-from .pathinfo import PathInfo
+from enum import Enum
+
 from .core import CoreStore
 from .local import LocalStore
-
-
-from enum import Enum
+from .pathinfo import PathInfo
 
 Stores: dict[int, CoreStore] = {
     0: CoreStore,

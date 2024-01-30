@@ -3,9 +3,11 @@ Tests we can log errors.
 """
 
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
-from hera_librarian.models.errors import (ErrorClearRequest,
-                                          ErrorClearResponse,
-                                          ErrorSearchFailedResponse)
+from hera_librarian.models.errors import (
+    ErrorClearRequest,
+    ErrorClearResponse,
+    ErrorSearchFailedResponse,
+)
 
 
 def test_error_to_db(test_server, test_orm):

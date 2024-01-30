@@ -2,13 +2,12 @@
 Contains endpoints for pinging and requesting a ping back.
 """
 
-from ..logger import log
-from ..settings import server_settings
-
 from fastapi import APIRouter
 
 from hera_librarian.models.ping import PingRequest, PingResponse
 
+from ..logger import log
+from ..settings import server_settings
 
 router = APIRouter(prefix="/api/v2/ping")
 

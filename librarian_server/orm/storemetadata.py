@@ -4,26 +4,23 @@ Host for store metadata and related tasks.
 Includes the StoreMetadata class, which is a database model.
 """
 
-
-from .. import database as db
-
-from ..stores import Stores, CoreStore
-from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
-from hera_librarian.models.uploads import UploadCompletionRequest
-from hera_librarian.deletion import DeletionPolicy
-
+import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy.orm import reconstructor, Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, reconstructor
 
+from hera_librarian.deletion import DeletionPolicy
+from hera_librarian.models.uploads import UploadCompletionRequest
+from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
+
+from .. import database as db
+from ..stores import CoreStore, Stores
 from .file import File
 from .instance import Instance
-from .transfer import TransferStatus, IncomingTransfer
-
-import datetime
+from .transfer import IncomingTransfer, TransferStatus
 
 
 class StoreMetadata(db.Base):

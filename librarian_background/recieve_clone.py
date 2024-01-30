@@ -4,34 +4,27 @@ from a remote librarian. We loop through the incoming transfers and check
 to see if they have completed.
 """
 
-
-import logging
 import datetime
+import logging
 from pathlib import Path
-from typing import Optional
-
-from .task import Task
-
-from librarian_server.database import get_session
-from librarian_server.orm import (
-    File,
-    Instance,
-    StoreMetadata,
-    IncomingTransfer,
-    TransferStatus,
-    Librarian,
-)
-from librarian_server.logger import log_to_database, ErrorCategory, ErrorSeverity
-from hera_librarian.deletion import DeletionPolicy
-
-from hera_librarian.models.clone import (
-    CloneCompleteRequest,
-    CloneCompleteResponse,
-)
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy.orm import Session
+
+from hera_librarian.deletion import DeletionPolicy
+from hera_librarian.models.clone import CloneCompleteRequest, CloneCompleteResponse
+from librarian_server.database import get_session
+from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
+from librarian_server.orm import (
+    File,
+    IncomingTransfer,
+    Instance,
+    Librarian,
+    StoreMetadata,
+    TransferStatus,
+)
+
+from .task import Task
 
 logger = logging.getLogger("schedule")
 
@@ -171,12 +164,10 @@ class RecieveClone(Task):
                     )
 
                     try:
-                        response: CloneCompleteResponse = (
-                            librarian.client.post(
-                                endpoint="clone/complete",
-                                request_model=request,
-                                response_model=CloneCompleteResponse,
-                            )
+                        response: CloneCompleteResponse = librarian.client.post(
+                            endpoint="clone/complete",
+                            request_model=request,
+                            response_model=CloneCompleteResponse,
                         )
                     except Exception as e:
                         log_to_database(

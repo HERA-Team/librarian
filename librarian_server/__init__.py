@@ -20,8 +20,13 @@ def main() -> FastAPI:
 
     log.debug("Adding API router.")
 
-    from .api import (clone_router, error_router, ping_router, search_router,
-                      upload_router)
+    from .api import (
+        clone_router,
+        error_router,
+        ping_router,
+        search_router,
+        upload_router,
+    )
 
     app.include_router(upload_router)
     app.include_router(ping_router)

@@ -3,13 +3,14 @@ ORM for 'errors' table, describing (potentially critical) errors
 that need to be remedied by an outside entity.
 """
 
-from typing import Optional
-from .. import database as db
-
 from datetime import datetime
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
+
+from .. import database as db
 
 
 class Error(db.Base):
@@ -38,29 +39,33 @@ class Error(db.Base):
 
     @classmethod
     def new_error(
-            self, severity: ErrorSeverity, category: ErrorCategory, message: str, caller: Optional[str] = None
-        ) -> "Error":
-            """
-            Create a new error object.
+        self,
+        severity: ErrorSeverity,
+        category: ErrorCategory,
+        message: str,
+        caller: Optional[str] = None,
+    ) -> "Error":
+        """
+        Create a new error object.
 
-            Parameters
-            ----------
-            severity : ErrorSeverity
-                The severity of this error.
-            category : ErrorCategory
-                The category of this error.
-            message : str
-                The message describing this error.
-            """
-            return Error(
-                severity=severity,
-                category=category,
-                message=message,
-                raised_time=datetime.utcnow(),
-                cleared_time=None,
-                cleared=False,
-                caller=caller,
-            )
+        Parameters
+        ----------
+        severity : ErrorSeverity
+            The severity of this error.
+        category : ErrorCategory
+            The category of this error.
+        message : str
+            The message describing this error.
+        """
+        return Error(
+            severity=severity,
+            category=category,
+            message=message,
+            raised_time=datetime.utcnow(),
+            cleared_time=None,
+            cleared=False,
+            caller=caller,
+        )
 
     def clear(self, session: Session) -> None:
         """

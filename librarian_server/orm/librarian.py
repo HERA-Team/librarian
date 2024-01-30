@@ -4,11 +4,14 @@ to.
 """
 
 from datetime import datetime
-from .. import database as db
+
+from pydantic import ValidationError
 
 from hera_librarian import LibrarianClient
 from hera_librarian.exceptions import LibrarianHTTPError
-from pydantic import ValidationError
+
+from .. import database as db
+
 
 class Librarian(db.Base):
     """
@@ -38,7 +41,6 @@ class Librarian(db.Base):
     last_heard = db.Column(db.DateTime, nullable=False)
     "The last time we heard from this librarian (the last time it connected to us)."
 
-
     @classmethod
     def new_librarian(self, name: str, url: str, port: int) -> "Librarian":
         """
@@ -64,7 +66,7 @@ class Librarian(db.Base):
             url=url,
             port=port,
             last_seen=datetime.utcnow(),
-            last_heard=datetime.utcnow()
+            last_heard=datetime.utcnow(),
         )
 
         # Before returning it, we should ping it to confirm it exists.
@@ -74,19 +76,16 @@ class Librarian(db.Base):
         try:
             client.ping()
         except LibrarianHTTPError:
-            raise ValueError(
-                "Librarian does not exist or is unreachable."
-            )
+            raise ValueError("Librarian does not exist or is unreachable.")
         except ValidationError:
             raise ValueError(
                 "Librarian does not conform to specification and "
                 "is returning an invalid response to ping."
             )
-        
-        librarian.last_seen = datetime.utcnow()
-        
-        return librarian
 
+        librarian.last_seen = datetime.utcnow()
+
+        return librarian
 
     def client(self) -> LibrarianClient:
         """
@@ -102,11 +101,6 @@ class Librarian(db.Base):
             conn_name=self.name,
             conn_config={
                 "url": f"{self.url}:{self.port}",
-                "authenticator": self.authenticator
-            })
-
-
-
-    
-
-    
+                "authenticator": self.authenticator,
+            },
+        )

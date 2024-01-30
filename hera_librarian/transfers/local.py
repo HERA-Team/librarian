@@ -8,8 +8,9 @@ from socket import gethostname
 
 from .core import CoreTransferManager
 
+
 class LocalTransferManager(CoreTransferManager):
-    hostname: str 
+    hostname: str
     "The hostname of the machine being transferred to."
 
     def transfer(self, local_path: Path, remote_path: Path):
@@ -23,4 +24,3 @@ class LocalTransferManager(CoreTransferManager):
     @property
     def valid(self) -> bool:
         return gethostname() == self.hostname
-    

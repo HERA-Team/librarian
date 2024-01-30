@@ -18,8 +18,11 @@ from typing import Optional
 import dateutil.parser
 
 from . import LibrarianClient
-from .exceptions import (LibrarianClientRemovedFunctionality, LibrarianError,
-                         LibrarianHTTPError)
+from .exceptions import (
+    LibrarianClientRemovedFunctionality,
+    LibrarianError,
+    LibrarianHTTPError,
+)
 from .settings import client_settings
 
 __version__ = "TEST"

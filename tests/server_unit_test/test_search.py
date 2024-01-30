@@ -4,14 +4,19 @@ Test the search endpoint.
 
 import datetime
 
-from hera_librarian.models.errors import (ErrorCategory,
-                                          ErrorSearchFailedResponse,
-                                          ErrorSearchRequest,
-                                          ErrorSearchResponses, ErrorSeverity)
-from hera_librarian.models.search import (FileSearchFailedResponse,
-                                          FileSearchRequest,
-                                          FileSearchResponse,
-                                          FileSearchResponses)
+from hera_librarian.models.errors import (
+    ErrorCategory,
+    ErrorSearchFailedResponse,
+    ErrorSearchRequest,
+    ErrorSearchResponses,
+    ErrorSeverity,
+)
+from hera_librarian.models.search import (
+    FileSearchFailedResponse,
+    FileSearchRequest,
+    FileSearchResponse,
+    FileSearchResponses,
+)
 
 
 def test_search_by_filename(test_server_with_many_files_and_errors, test_client):

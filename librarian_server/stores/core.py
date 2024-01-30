@@ -3,19 +3,20 @@ Core store (prototype).
 """
 
 import abc
-
-from .pathinfo import PathInfo
 from pathlib import Path
+
 from pydantic import BaseModel
 
 from hera_librarian.transfers.core import CoreTransferManager
+
+from .pathinfo import PathInfo
 
 
 class CoreStore(BaseModel, abc.ABC):
     """
     Prototype for store management. Should never be used directly
     (other than for type hints, and obviously cannot due to being an ABC!).
-    All derived classes must implement all of the functions defined in 
+    All derived classes must implement all of the functions defined in
     this abstract base class. We use ABC not prototypes as Pydantic is not
     compatible with prototypes.
 
@@ -124,10 +125,8 @@ class CoreStore(BaseModel, abc.ABC):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod    
-    def can_transfer(
-            self, using: CoreTransferManager
-        ) -> bool:
+    @abc.abstractmethod
+    def can_transfer(self, using: CoreTransferManager) -> bool:
         """
         Determines if a transfer can be performed using the specified TransferManager.
 

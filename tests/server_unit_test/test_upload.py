@@ -11,10 +11,12 @@ from fastapi.applications import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm.session import Session
 
-from hera_librarian.models.uploads import (UploadCompletionRequest,
-                                           UploadFailedResponse,
-                                           UploadInitiationRequest,
-                                           UploadInitiationResponse)
+from hera_librarian.models.uploads import (
+    UploadCompletionRequest,
+    UploadFailedResponse,
+    UploadInitiationRequest,
+    UploadInitiationResponse,
+)
 from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
 from ..server import Server

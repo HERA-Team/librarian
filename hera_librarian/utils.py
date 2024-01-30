@@ -3,9 +3,9 @@ Useful utilities for files.
 """
 
 import os.path
-
 from pathlib import Path
-from checksumdir import dirhash, _filehash, HASH_FUNCS
+
+from checksumdir import HASH_FUNCS, _filehash, dirhash
 
 
 def get_type_from_path(path):
@@ -14,8 +14,7 @@ def get_type_from_path(path):
     This is just the last bit of text following the last ".", by definition.
 
     """
-    return path.split('.')[-1]
-
+    return path.split(".")[-1]
 
 
 def get_md5_from_path(path):
@@ -52,6 +51,6 @@ def get_size_from_path(path):
 
     for dirname, _, files in os.walk(path):
         for f in files:
-            size += os.path.getsize(dirname + '/' + f)
+            size += os.path.getsize(dirname + "/" + f)
 
     return size
