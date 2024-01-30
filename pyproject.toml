@@ -85,3 +85,5 @@ source = [
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover"]
 
+[tool.isort]
+profile = "black"
