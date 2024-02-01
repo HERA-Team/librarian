@@ -23,6 +23,7 @@ dependencies = [
     "schedule",
     "checksumdir",
     "python-dateutil",
+    "argon2-cffi",
 ]
 authors = [
     {name = "HERA Team", email = "hera@lists.berkeley.edu"},

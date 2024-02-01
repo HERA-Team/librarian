@@ -33,6 +33,7 @@ from alembic import op
 from hera_librarian.deletion import DeletionPolicy
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
 from hera_librarian.transfer import TransferStatus
+from librarian_server.authlevel import AuthLevel
 
 
 def upgrade():
@@ -183,6 +184,13 @@ def upgrade():
         Column("cleared_time", DateTime()),
         Column("cleared", Boolean(), nullable=False),
         Column("caller", String(256)),
+    )
+
+    op.create_table(
+        "users",
+        Column("username", String(256), primary_key=True, unique=True),
+        Column("auth_token", String(256), nullable=False),
+        Column("auth_level", Enum(AuthLevel), nullable=False),
     )
 
 
