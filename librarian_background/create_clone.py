@@ -135,27 +135,25 @@ class CreateLocalClone(Task):
 
             success = False
 
-            # TODO: Isn't this logic faulty? We should simply try all the transfer managers until
-            #       one works, right?
             for tm_name, transfer_manager in store_to.transfer_managers.items():
                 try:
+                    if not store_from.store_manager.can_transfer(
+                        using=transfer_manager
+                    ):
+                        continue
+
                     success = store_from.store_manager.transfer_out(
                         store_path=Path(instance.path),
                         destination_path=staged_path,
                         using=transfer_manager,
                     )
 
-                    if not success:
-                        logger.debug(
-                            f"Failed to transfer file {instance.path} to store {store_to} using transfer manager {transfer_manager}."
-                        )
-
-                        transfer.fail_transfer(session=session)
-
-                        continue
-                    else:
+                    if success:
                         break
 
+                    logger.debug(
+                        f"Failed to transfer file {instance.path} to store {store_to} using transfer manager {transfer_manager}."
+                    )
                 except FileNotFoundError as e:
                     log_to_database(
                         severity=ErrorSeverity.ERROR,
@@ -171,6 +169,8 @@ class CreateLocalClone(Task):
                     continue
 
             if not success:
+                # Fail the transfer _here_, not after trying every transfer manager.
+
                 log_to_database(
                     severity=ErrorSeverity.ERROR,
                     category=ErrorCategory.DATA_AVAILABILITY,
@@ -236,10 +236,8 @@ class CreateLocalClone(Task):
             store_to.store_manager.unstage(staging_name)
 
             # Everything is good! We can create a new instance.
-            # TODO: Fix this - the instance.path is not the correct path; that's the path on the
-            #       OLD store not our new store...
             new_instance = Instance.new_instance(
-                path=instance.path,
+                path=resolved_store_path,
                 file=instance.file,
                 store=store_to,
                 deletion_policy=instance.deletion_policy,
