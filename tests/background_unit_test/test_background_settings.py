@@ -2,10 +2,10 @@
 Tests our ability to serialize/deserialize the background settings.
 """
 
-from librarian_background.settings import BackgroundSettings
 
+def test_background_settings_full(test_server):
+    from librarian_background.settings import BackgroundSettings
 
-def test_background_settings_full():
     BackgroundSettings.model_validate(
         {
             "check_integrity": [
@@ -29,5 +29,7 @@ def test_background_settings_full():
     )
 
 
-def test_background_settings_empty():
+def test_background_settings_empty(test_server):
+    from librarian_background.settings import BackgroundSettings
+
     BackgroundSettings()
