@@ -24,6 +24,10 @@ class Server(BaseModel):
     SQLALCHEMY_DATABASE_URI: str
     PORT: str
     ADD_STORES: str
+    LIBRARIAN_BACKGROUND_CHECK_INTEGRITY: str
+    LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE: str
+    LIBRARIAN_BACKGROUND_SEND_CLONE: str
+    LIBRARIAN_BACKGROUND_RECIEVE_CLONE: str
     process: str | None = None
 
     @property
@@ -35,6 +39,10 @@ class Server(BaseModel):
             "ADD_STORES": self.ADD_STORES,
             "ALEMBIC_CONFIG_PATH": str(Path(__file__).parent.parent),
             "ALEMBIC_PATH": shutil.which("alembic"),
+            "LIBRARIAN_BACKGROUND_CHECK_INTEGRITY": self.LIBRARIAN_BACKGROUND_CHECK_INTEGRITY,
+            "LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE": self.LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE,
+            "LIBRARIAN_BACKGROUND_SEND_CLONE": self.LIBRARIAN_BACKGROUND_SEND_CLONE,
+            "LIBRARIAN_BACKGROUND_RECIEVE_CLONE": self.LIBRARIAN_BACKGROUND_RECIEVE_CLONE,
         }
 
 
@@ -108,6 +116,29 @@ def server_setup(tmp_path_factory) -> Server:
 
     add_stores = json.dumps(store_config)
 
+    check_integrity = json.dumps(
+        [
+            {
+                "task_name": "check",
+                "every": "00:01:00",
+                "age_in_days": 7,
+                "store_name": "local_store",
+            }
+        ]
+    )
+
+    create_local_clone = json.dumps(
+        [
+            {
+                "task_name": "clone",
+                "every": "00:01:00",
+                "age_in_days": 7,
+                "clone_from": "local_store",
+                "clone_to": "local_clone",
+            }
+        ]
+    )
+
     return Server(
         id=server_id_and_port,
         base_path=tmp_path,
@@ -118,6 +149,10 @@ def server_setup(tmp_path_factory) -> Server:
         SQLALCHEMY_DATABASE_URI=f"sqlite:///{database}",
         PORT=str(server_id_and_port),
         ADD_STORES=add_stores,
+        LIBRARIAN_BACKGROUND_CHECK_INTEGRITY=check_integrity,
+        LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE=create_local_clone,
+        LIBRARIAN_BACKGROUND_SEND_CLONE="[]",
+        LIBRARIAN_BACKGROUND_RECIEVE_CLONE="[]",
     )
 
 
