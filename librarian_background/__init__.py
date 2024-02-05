@@ -13,22 +13,22 @@ import time
 from .check_integrity import CheckIntegrity
 from .core import SafeScheduler
 from .create_clone import CreateLocalClone
+from .settings import background_settings
 
 
 def background(run_once: bool = False):
     scheduler = SafeScheduler()
     # Set scheduling...
-    scheduler.every(12).hours.do(
-        CheckIntegrity(name="check_integrity", store_name="local_store", age_in_days=7)
+
+    all_tasks = (
+        background_settings.check_integrity
+        + background_settings.create_local_clone
+        + background_settings.send_clone
+        + background_settings.recieve_clone
     )
-    scheduler.every(12).hours.do(
-        CreateLocalClone(
-            name="create_clone",
-            clone_from="local_store",
-            clone_to="local_clone",
-            age_in_days=7,
-        )
-    )
+
+    for task in all_tasks:
+        scheduler.every(task.every.seconds).seconds.do(task.task)
 
     # ...and run it all on startup.
     scheduler.run_all()
