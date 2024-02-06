@@ -42,8 +42,9 @@ class LibrarianClient:
     host: str
     port: int
     user: str
+    password: str
 
-    def __init__(self, host: str, port: int, user: str):
+    def __init__(self, host: str, port: int, user: str, password: str):
         """
         Create a new LibrarianClient.
 
@@ -55,6 +56,8 @@ class LibrarianClient:
             The port of the Librarian server.
         user : str
             The name of the user.
+        password : str
+            The password of the user.
         """
 
         if host[-1] == "/":
@@ -64,6 +67,7 @@ class LibrarianClient:
 
         self.port = port
         self.user = user
+        self.password = password
 
     def __repr__(self):
         return f"Librarian Client ({self.user}) for {self.host}:{self.port}"
@@ -88,6 +92,7 @@ class LibrarianClient:
             host=client_info.host,
             port=client_info.port,
             user=client_info.user,
+            password=client_info.password,
         )
 
     @property
@@ -154,6 +159,7 @@ class LibrarianClient:
             self.resolve(endpoint),
             data=data,
             headers={"Content-Type": "application/json"},
+            auth=(self.user, self.password),
         )
 
         if str(r.status_code)[0] != "2":

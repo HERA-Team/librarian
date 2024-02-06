@@ -69,7 +69,25 @@ def librarian_client(server) -> LibrarianClient:
     Returns a LibrarianClient connected to the server.
     """
 
-    client = LibrarianClient(host="http://localhost", port=server.id, user="test-A")
+    connections = json.dumps(
+        {
+            "test-A": {
+                "user": "test-A",
+                "port": server.id,
+                "host": "http://localhost",
+                "password": "test_A_password",
+            }
+        }
+    )
+
+    os.environ["LIBRARIAN_CLIENT_CONNECTIONS"] = connections
+
+    client = LibrarianClient(
+        host="http://localhost",
+        port=server.id,
+        user="test-A",
+        password="test_A_password",
+    )
 
     yield client
 
@@ -88,6 +106,7 @@ def librarian_client_command_line(server):
                 "user": "test-B",
                 "port": server.id,
                 "host": "http://localhost",
+                "password": "test_B_password",
             }
         }
     )
