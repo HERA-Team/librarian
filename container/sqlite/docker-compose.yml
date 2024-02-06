@@ -16,7 +16,9 @@ services:
       - 127.0.0.1:21108:21108
     volumes:
       - "database:/volumes/database"
-      - "store:/mounts/stores"
+      - type: "bind"
+        source: "/tmp/store"
+        target: "/tmp/store"
     environment:
       - LIBRARIAN_CONFIG_PATH=server_config.json
       - LIBRARIAN_BACKGROUND_CONFIG=background_config.json
@@ -25,6 +27,5 @@ services:
       - LIBRARIAN_SERVER_PORT=21108
 
 volumes:
-  store: 
   database:
   

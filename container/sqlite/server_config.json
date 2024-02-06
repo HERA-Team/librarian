@@ -8,13 +8,16 @@
             "store_type": "local",
             "ingestable": true,
             "store_data": {
-                "staging_path": "/mounts/stores/libstore/staging",
-                "store_path": "/mounts/stores/libstore/store"
+                "staging_path": "/tmp/store/libstore/staging",
+                "store_path": "/tmp/store/libstore/store"
             },
             "transfer_manager_data": {
                 "local": {
                     "available": true,
-                    "hostname": "example-librarian-hostname"
+                    "hostnames": [
+                        "borrowj-adapter.physics.upenn.edu",
+                        "example-librarian-hostname"
+                    ]
                 }
             }
         },
@@ -23,13 +26,16 @@
             "store_type": "local",
             "ingestable": false,
             "store_data": {
-                "staging_path": "/mounts/stores/libclone/staging",
-                "store_path": "/mounts/stores/libclone/store"
+                "staging_path": "/tmp/store/libclone/staging",
+                "store_path": "/tmp/store/libclone/store"
             },
             "transfer_manager_data": {
                 "local": {
                     "available": true,
-                    "hostname": "example-librarian-hostname"
+                    "hostnames": [
+                        "borrowj-adapter.physics.upenn.edu",
+                        "example-librarian-hostname"
+                    ]
                 }
             }
         }
