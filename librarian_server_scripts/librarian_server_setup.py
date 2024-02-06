@@ -196,7 +196,7 @@ def main():
         try:
             conn.execute(
                 text(
-                    f"CREATE USER {args.librarian_db_user} WITH PASSWORD '{args.librarian_db_password}'"
+                    f"CREATE USER {args.librarian_db_user} WITH PASSWORD {args.librarian_db_password}"
                 )
             )
             conn.execute(text(f"GRANT libserver TO {args.librarian_db_user}"))
