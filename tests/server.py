@@ -21,9 +21,10 @@ class Server(BaseModel):
     store_directory: Path
     database: Path
     LIBRARIAN_CONFIG_PATH: str
-    SQLALCHEMY_DATABASE_URI: str
-    PORT: str
-    ADD_STORES: str
+    LIBRARIAN_SERVER_DATABASE_DRIVER: str
+    LIBRARIAN_SERVER_DATABASE: str
+    LIBRARIAN_SERVER_PORT: str
+    LIBRARIAN_SERVER_ADD_STORES: str
     LIBRARIAN_BACKGROUND_CHECK_INTEGRITY: str
     LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE: str
     LIBRARIAN_BACKGROUND_SEND_CLONE: str
@@ -34,11 +35,12 @@ class Server(BaseModel):
     def env(self) -> dict[str, str]:
         return {
             "LIBRARIAN_CONFIG_PATH": self.LIBRARIAN_CONFIG_PATH,
-            "SQLALCHEMY_DATABASE_URI": self.SQLALCHEMY_DATABASE_URI,
-            "PORT": self.PORT,
-            "ADD_STORES": self.ADD_STORES,
-            "ALEMBIC_CONFIG_PATH": str(Path(__file__).parent.parent),
-            "ALEMBIC_PATH": shutil.which("alembic"),
+            "LIBRARIAN_SERVER_DATABASE_DRIVER": self.LIBRARIAN_SERVER_DATABASE_DRIVER,
+            "LIBRARIAN_SERVER_DATABASE": self.LIBRARIAN_SERVER_DATABASE,
+            "LIBRARIAN_SERVER_PORT": self.LIBRARIAN_SERVER_PORT,
+            "LIBRARIAN_SERVER_ADD_STORES": self.LIBRARIAN_SERVER_ADD_STORES,
+            "LIBRARIAN_SERVER_ALEMBIC_CONFIG_PATH": str(Path(__file__).parent.parent),
+            "LIBRARIAN_SERVER_ALEMBIC_PATH": shutil.which("alembic"),
             "LIBRARIAN_BACKGROUND_CHECK_INTEGRITY": self.LIBRARIAN_BACKGROUND_CHECK_INTEGRITY,
             "LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE": self.LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE,
             "LIBRARIAN_BACKGROUND_SEND_CLONE": self.LIBRARIAN_BACKGROUND_SEND_CLONE,
@@ -146,9 +148,10 @@ def server_setup(tmp_path_factory) -> Server:
         store_directory=store_directory,
         database=database,
         LIBRARIAN_CONFIG_PATH=librarian_config_path,
-        SQLALCHEMY_DATABASE_URI=f"sqlite:///{database}",
-        PORT=str(server_id_and_port),
-        ADD_STORES=add_stores,
+        LIBRARIAN_SERVER_DATABASE_DRIVER="sqlite",
+        LIBRARIAN_SERVER_DATABASE=str(database),
+        LIBRARIAN_SERVER_PORT=str(server_id_and_port),
+        LIBRARIAN_SERVER_ADD_STORES=add_stores,
         LIBRARIAN_BACKGROUND_CHECK_INTEGRITY=check_integrity,
         LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE=create_local_clone,
         LIBRARIAN_BACKGROUND_SEND_CLONE="[]",

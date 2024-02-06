@@ -5,10 +5,11 @@ deserialized from the available librarian config path.
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from pydantic import BaseModel, ValidationError, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import URL
 
 from .stores import StoreNames
 
@@ -52,7 +53,12 @@ class ServerSettings(BaseSettings):
     variables.
     """
 
-    sqlalchemy_database_uri: str
+    database_driver: str = "sqlite"
+    database_user: Optional[str] = None
+    database_password: Optional[str] = None
+    database_host: Optional[str] = None
+    database_port: Optional[int] = None
+    database: Optional[str] = None
 
     log_level: str = "DEBUG"
     displayed_site_name: str = "Untitled Librarian"
@@ -66,6 +72,23 @@ class ServerSettings(BaseSettings):
     alembic_path: str = "alembic"
 
     max_search_results: int = 64
+
+    model_config = SettingsConfigDict(env_prefix="librarian_server_")
+
+    @property
+    def sqlalchemy_database_uri(self) -> str:
+        """
+        The SQLAlchemy database URI.
+        """
+
+        return URL.create(
+            self.database_driver,
+            username=self.database_user,
+            password=self.database_password,
+            host=self.database_host,
+            port=self.database_port,
+            database=self.database,
+        )
 
     @classmethod
     def from_file(cls, config_path: Path | str) -> "ServerSettings":

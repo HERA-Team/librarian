@@ -8,6 +8,7 @@ import shutil
 import sys
 
 import pytest
+from sqlalchemy import URL
 from xprocess import ProcessStarter
 
 from hera_librarian import LibrarianClient
@@ -131,7 +132,11 @@ def librarian_database_session_maker(server: Server):
     from sqlalchemy.orm import sessionmaker
 
     engine = create_engine(
-        server.SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False}
+        URL.create(
+            server.LIBRARIAN_SERVER_DATABASE_DRIVER,
+            database=server.LIBRARIAN_SERVER_DATABASE,
+        ),
+        connect_args={"check_same_thread": False},
     )
 
     SessionMaker = sessionmaker(bind=engine, autocommit=False, autoflush=False)

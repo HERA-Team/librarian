@@ -60,9 +60,10 @@ def test_server(tmp_path_factory):
 
     env_vars = {
         "LIBRARIAN_CONFIG_PATH": None,
-        "SQLALCHEMY_DATABASE_URI": None,
-        "PORT": None,
-        "ADD_STORES": None,
+        "LIBRARIAN_SERVER_DATABASE_DRIVER": None,
+        "LIBRARIAN_SERVER_DATABASE": None,
+        "LIBRARIAN_SERVER_PORT": None,
+        "LIBRARIAN_SERVER_ADD_STORES": None,
     }
 
     for env_var in list(env_vars.keys()):
@@ -88,7 +89,7 @@ def test_server(tmp_path_factory):
     from librarian_server.settings import StoreSettings
 
     with get_session() as session:
-        for store_config in json.loads(setup.ADD_STORES):
+        for store_config in json.loads(setup.LIBRARIAN_SERVER_ADD_STORES):
             store_config = StoreSettings(**store_config)
 
             store = StoreMetadata(
