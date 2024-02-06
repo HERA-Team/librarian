@@ -1,0 +1,13 @@
+{
+    "create_local_clone": [
+        {
+            "task_name": "Local cloner",
+            "every": "06:00:00",
+            "age_in_days": 7,
+            "clone_from": "store",
+            "clone_to": "clone"
+        }
+    ]
+}
+            
+            

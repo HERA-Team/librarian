@@ -1,0 +1,37 @@
+{
+    "log_level": "DEBUG",
+    "displayed_site_name": "Docker Example",
+    "displayed_site_description": "An example docker deployment of the librarian.",
+    "add_stores": [
+        {
+            "store_name": "store",
+            "store_type": "local",
+            "ingestable": true,
+            "store_data": {
+                "staging_path": "/mounts/stores/libstore/staging",
+                "store_path": "/mounts/stores/libstore/store"
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": true,
+                    "hostname": "example-librarian-hostname"
+                }
+            }
+        },
+        {
+            "store_name": "clone",
+            "store_type": "local",
+            "ingestable": false,
+            "store_data": {
+                "staging_path": "/mounts/stores/libclone/staging",
+                "store_path": "/mounts/stores/libclone/store"
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": true,
+                    "hostname": "example-librarian-hostname"
+                }
+            }
+        }
+    ]
+}
