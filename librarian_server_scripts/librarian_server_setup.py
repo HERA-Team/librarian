@@ -205,3 +205,7 @@ def main():
             exit(1)
 
     log.debug(f"Database user {args.librarian_db_user}, role, and password created.")
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

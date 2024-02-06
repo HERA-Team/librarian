@@ -28,7 +28,7 @@ def server(xprocess, tmp_path_factory, request) -> Server:
 
     class Starter(ProcessStarter):
         pattern = "Uvicorn running on"
-        args = [sys.executable, shutil.which("librarian-server-start")]
+        args = [sys.executable, shutil.which("librarian-server-start"), "--setup"]
         timeout = 10
         env = setup.env
 
