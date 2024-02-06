@@ -2,6 +2,12 @@ This is a very simple setup for the librarian, using a local SQLite database
 as the core librarian database. Production setups may want to use the
 postgres container.
 
+You will need to run the `pre_docker_setup.sh` script to put things in the right
+place before running:
+
+- `docker compose build`
+- `docker compose up`
+
 A few things to keep in mind when deploying the librarian:
 
 - This is inherently not secure by default; you will need to change the administrator
