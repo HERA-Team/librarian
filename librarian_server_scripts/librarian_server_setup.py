@@ -7,8 +7,10 @@ Checks whether you have an empty database, unless you have the `--migrate` flag.
 import argparse as ap
 import subprocess
 
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
+from sqlalchemy.exc import IntegrityError, InternalError, ProgrammingError
 
+from librarian_server.authlevel import AuthLevel
 from librarian_server.database import engine, get_session
 from librarian_server.logger import log
 from librarian_server.orm import StoreMetadata
@@ -143,13 +145,21 @@ def main():
     from librarian_server.orm import User
 
     with get_session() as session:
-        user = User(username=args.initial_user, password=args.initial_password)
-        session.add(user)
-        session.commit()
+        try:
+            user = User.new_user(
+                username=args.initial_user,
+                password=args.initial_password,
+                auth_level=AuthLevel.ADMIN,
+            )
+            session.add(user)
+            session.commit()
+        except IntegrityError:
+            log.debug(f"User {args.initial_user} already exists in database.")
+            session.rollback()
 
     log.debug(f"Initial user {args.initial_user} created.")
 
-    if "postgres" not in server_settings.database_url:
+    if "postgres" not in server_settings.sqlalchemy_database_uri:
         log.debug(
             "Database is not postgres; SQLite does not play as nicely with roles. Exiting."
         )
@@ -158,16 +168,40 @@ def main():
     log.debug("Creating new database user, role, and password.")
 
     with engine.begin() as conn:
-        conn.execute("CREATE ROLE libserver")
-        conn.execute(
-            "GRANT INSERT AND SELECT AND UPDATE AND DELETE ON files "
-            "AND instances AND incoming_transfers AND outgoing_transfers "
-            "AND clone_transfers AND librarians AND remote_instances "
-            "AND errors TO libserver"
-        )
-        conn.execute(
-            f"CREATE USER {args.librarian_db_user} WITH PASSWORD '{args.librarian_db_password}'"
-        )
-        conn.execute(f"GRANT libserver TO {args.librarian_db_user}")
+        try:
+            conn.execute(text("CREATE ROLE libserver"))
+
+            # Granting INSERT, SELECT, UPDATE, DELETE, REFERENCES privaleges.
+            conn.execute(
+                text(
+                    "GRANT INSERT,SELECT,UPDATE,DELETE,REFERENCES ON files,"
+                    "instances,incoming_transfers,outgoing_transfers"
+                    ",clone_transfers,remote_instances"
+                    ",users TO libserver"
+                )
+            )
+            # Grant just SELECT, REFERENCES privaleges.
+            conn.execute(
+                text(
+                    "GRANT SELECT,REFERENCES ON store_metadata,librarians TO libserver"
+                )
+            )
+            # Grant INSERT, SELECT, UPDATE privaleges.
+            conn.execute(
+                text("GRANT INSERT,SELECT,UPDATE,REFERENCES ON errors TO libserver")
+            )
+        except ProgrammingError:
+            log.error("Role libserver already exists.")
+
+        try:
+            conn.execute(
+                text(
+                    f"CREATE USER {args.librarian_db_user} WITH PASSWORD '{args.librarian_db_password}'"
+                )
+            )
+            conn.execute(text(f"GRANT libserver TO {args.librarian_db_user}"))
+        except InternalError:
+            log.error(f"User {args.librarian_db_user} already exists.")
+            exit(1)
 
     log.debug(f"Database user {args.librarian_db_user}, role, and password created.")
