@@ -154,12 +154,10 @@ def stage(
             )
 
             # Unstage the files.
-            try:
-                store = session.get(StoreMetadata, transfer.store_id)
+            store = session.get(StoreMetadata, transfer.store_id)
+
+            if store is not None:
                 store.store_manager.unstage(Path(transfer.staging_path))
-            except SQLAlchemyError as e:
-                # No store was yet assigned, do not need to delete.
-                pass
 
             transfer.status = TransferStatus.FAILED
             session.commit()

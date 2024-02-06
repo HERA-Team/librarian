@@ -91,13 +91,10 @@ def stage(
 
         for transfer in existing_transfer:
             # Unstage the files.
-            try:
-                store = session.get(StoreMetadata, transfer.store_id)
+            store = session.get(StoreMetadata, transfer.store_id)
+
+            if store is not None:
                 store.store_manager.unstage(Path(transfer.staging_path))
-            except SQLAlchemyError as e:
-                # Store with ID does not exist (usually store_id is None as transfer never got there.)
-                # That's ok, if there's no store ID, nobody actually staged the file.
-                pass
 
             transfer.status = TransferStatus.FAILED
 
