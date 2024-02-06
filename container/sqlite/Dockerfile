@@ -14,8 +14,10 @@ RUN cat server_config.json
 RUN echo "Background config:"
 RUN cat background_config.json
 
-RUN mkdir -p /mounts/stores/libstore
-RUN mkdir -p /mounts/stores/libclone
+RUN mkdir -p /tmp/store/libstore/store
+RUN mkdir -p /tmp/store/libstore/staging
+RUN mkdir -p /tmp/store/libclone/store
+RUN mkdir -p /tmp/store/libclone/staging
 RUN mkdir -p /volumes/database
 
 ARG LIBRARIAN_CONFIG_PATH

@@ -1,4 +1,8 @@
-{
+{   
+    "database_driver": "postgresql+psycopg",
+    "database_port": "5432",
+    "database": "librarian",
+    "database_host": "librarian-database",
     "log_level": "DEBUG",
     "displayed_site_name": "Docker Example",
     "displayed_site_description": "An example docker deployment of the librarian.",
@@ -15,7 +19,7 @@
                 "local": {
                     "available": true,
                     "hostnames": [
-                        "YOUR_HOSTNAME",
+                        "borrowj-adapter.physics.upenn.edu",
                         "example-librarian-hostname"
                     ]
                 }
@@ -33,7 +37,7 @@
                 "local": {
                     "available": true,
                     "hostnames": [
-                        "YOUR_HOSTNAME",
+                        "borrowj-adapter.physics.upenn.edu",
                         "example-librarian-hostname"
                     ]
                 }
