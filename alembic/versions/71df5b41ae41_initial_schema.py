@@ -152,16 +152,6 @@ def upgrade():
     )
 
     op.create_table(
-        "remote_instances",
-        Column("id", Integer(), primary_key=True, autoincrement=True, unique=True),
-        Column("file_name", String(256), ForeignKey("files.name"), nullable=False),
-        Column("store_id", Integer(), nullable=False),
-        Column("librarian_id", Integer(), ForeignKey("librarians.id"), nullable=False),
-        Column("copy_time", DateTime(), nullable=False),
-        Column("sender", String(256), nullable=False),
-    )
-
-    op.create_table(
         "librarians",
         Column("id", Integer(), primary_key=True, autoincrement=True),
         Column("name", String(256), nullable=False, unique=True),
@@ -171,6 +161,16 @@ def upgrade():
         Column("authenticator", String(256), nullable=False),
         Column("last_seen", DateTime(), nullable=False),
         Column("last_heard", DateTime(), nullable=False),
+    )
+
+    op.create_table(
+        "remote_instances",
+        Column("id", Integer(), primary_key=True, autoincrement=True, unique=True),
+        Column("file_name", String(256), ForeignKey("files.name"), nullable=False),
+        Column("store_id", Integer(), nullable=False),
+        Column("librarian_id", Integer(), ForeignKey("librarians.id"), nullable=False),
+        Column("copy_time", DateTime(), nullable=False),
+        Column("sender", String(256), nullable=False),
     )
 
     op.create_table(

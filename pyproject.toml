@@ -57,6 +57,9 @@ dev = [
     "pytest-cov",
     "pytest-xprocess",
 ]
+postgres = [
+    "psycopg[binary,pool]",
+]
 
 [project.scripts]
 librarian-server-start = "librarian_server_scripts.librarian_server_start:main"
@@ -84,6 +87,7 @@ source = [
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover"]
+exclude_also = ["if TYPE_CHECKING:"]
 
 [tool.isort]
 profile = "black"
