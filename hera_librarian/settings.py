@@ -24,6 +24,8 @@ class ClientInfo(BaseModel):
     "The port of this librarian server"
     host: str
     "The hostname of this librarian server"
+    password: str
+    "Your password on this librarian"
 
 
 class ClientSettings(BaseSettings):
