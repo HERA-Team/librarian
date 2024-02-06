@@ -20,54 +20,6 @@ from librarian_server.settings import server_settings
 
 
 def main():
-    log.info("Librarian-server-start settings: " + str(server_settings))
-    # Perform pre-startup tasks!
-    log.debug("Creating the database.")
-    return_value = subprocess.call(
-        f"cd {server_settings.alembic_config_path}; {server_settings.alembic_path} upgrade head",
-        shell=True,
-    )
-    if return_value != 0:
-        log.debug("Error creating or updating the database. Exiting.")
-        exit(0)
-    else:
-        log.debug("Successfully created or updated the database.")
-
-    log.debug("Adding store metadata to database.")
-
-    stores_added = 0
-
-    with get_session() as session:
-        for store_config in server_settings.add_stores:
-            if (
-                session.query(StoreMetadata)
-                .filter(StoreMetadata.name == store_config.store_name)
-                .first()
-            ):
-                log.debug(
-                    f"Store {store_config.store_name} already exists in database."
-                )
-                continue
-
-            log.debug(f"Adding store {store_config.store_name} to database.")
-
-            store = StoreMetadata(
-                name=store_config.store_name,
-                store_type=store_config.store_type,
-                ingestable=store_config.ingestable,
-                store_data={**store_config.store_data, "name": store_config.store_name},
-                transfer_manager_data=store_config.transfer_manager_data,
-            )
-
-            session.add(store)
-
-            stores_added += 1
-
-        log.debug(f"Added {stores_added} store to the database. Committing.")
-
-        if stores_added > 0:
-            session.commit()
-
     # Now we can start the background process thread.
     log.info("Starting background process.")
 

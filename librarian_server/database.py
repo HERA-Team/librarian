@@ -25,7 +25,11 @@ log.info("Starting database engine.")
 engine = create_engine(
     server_settings.sqlalchemy_database_uri,
     # Required for async and SQLite
-    connect_args={"check_same_thread": False},
+    connect_args=(
+        {"check_same_thread": False}
+        if "sqlite" in server_settings.sqlalchemy_database_uri
+        else {}
+    ),
 )
 
 log.info("Creating database session.")

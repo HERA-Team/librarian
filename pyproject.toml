@@ -64,6 +64,7 @@ postgres = [
 [project.scripts]
 librarian-server-start = "librarian_server_scripts.librarian_server_start:main"
 librarian-background-only = "librarian_server_scripts.librarian_background_only:main"
+librarian-server-setup = "librarian_server_scripts.librarian_server_setup:main"
 librarian = "hera_librarian.cli:main"
 
 [project.urls]
