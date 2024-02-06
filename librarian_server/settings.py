@@ -64,6 +64,7 @@ class ServerSettings(BaseSettings):
     displayed_site_name: str = "Untitled Librarian"
     displayed_site_description: str = "No description set."
 
+    host: str = "0.0.0.0"
     port: int
 
     add_stores: list[StoreSettings]

@@ -61,6 +61,7 @@ def main(setup=args.setup):
 
     uvicorn.run(
         "librarian_server:main",
+        host=server_settings.host,
         port=server_settings.port,
         log_level=server_settings.log_level.lower(),
         factory=True,
