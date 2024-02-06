@@ -10,8 +10,8 @@ from .core import CoreTransferManager
 
 
 class LocalTransferManager(CoreTransferManager):
-    hostname: str
-    "The hostname of the machine being transferred to."
+    hostnames: list[str]
+    "The hostname(s) of the machine being transferred to."
 
     def transfer(self, local_path: Path, remote_path: Path):
         # TODO: Verify that the location we are trying to copy to exists.
@@ -23,4 +23,4 @@ class LocalTransferManager(CoreTransferManager):
 
     @property
     def valid(self) -> bool:
-        return gethostname() == self.hostname
+        return gethostname() in self.hostnames
