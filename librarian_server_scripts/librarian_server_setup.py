@@ -74,7 +74,7 @@ def main():
         )
         if return_value != 0:
             log.debug("Error creating or updating the database. Exiting.")
-            exit(0)
+            exit(1)
         else:
             log.debug("Successfully created or updated the database.")
 
