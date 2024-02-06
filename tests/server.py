@@ -95,7 +95,7 @@ def server_setup(tmp_path_factory) -> Server:
             "transfer_manager_data": {
                 "local": {
                     "available": "true",
-                    "hostname": socket.gethostname(),
+                    "hostnames": [socket.gethostname()],
                 }
             },
         },
@@ -110,7 +110,7 @@ def server_setup(tmp_path_factory) -> Server:
             "transfer_manager_data": {
                 "local": {
                     "available": "true",
-                    "hostname": socket.gethostname(),
+                    "hostnames": [socket.gethostname()],
                 }
             },
         },
