@@ -1,5 +1,0 @@
-Host = lib-store
-  User = sobs
-  Port = 2222
-  IdentityFile = ~/.ssh/id_rsa
-  StrictHostKeyChecking = no
