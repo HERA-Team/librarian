@@ -52,9 +52,7 @@ class ServerSettings(BaseSettings):
     variables.
     """
 
-    secret_key: str
     sqlalchemy_database_uri: str
-    sqlalchemy_track_modifications: bool
 
     log_level: str = "DEBUG"
     displayed_site_name: str = "Untitled Librarian"
