@@ -101,6 +101,16 @@ def get_user_with_readonly(
     return get_user_with_level(AuthLevel.READONLY, credentials, session)
 
 
+def get_user_with_callback(
+    credentials: SecurityDepedency, session: SessionDependency
+) -> UserPermissions:
+    """
+    Ensure user is authenticated with a level of at least CALLBACK.
+    """
+
+    return get_user_with_level(AuthLevel.CALLBACK, credentials, session)
+
+
 def get_user_with_readappend(
     credentials: SecurityDepedency, session: SessionDependency
 ) -> UserPermissions:
@@ -133,6 +143,7 @@ def get_user_with_admin(
 
 NoneUserDependency = Annotated[UserPermissions, Depends(get_user_with_none)]
 ReadonlyUserDependency = Annotated[UserPermissions, Depends(get_user_with_readonly)]
+CallbackUserDependency = Annotated[UserPermissions, Depends(get_user_with_callback)]
 ReadappendUserDependency = Annotated[UserPermissions, Depends(get_user_with_readappend)]
 ReadwriteUserDependency = Annotated[UserPermissions, Depends(get_user_with_readwrite)]
 AdminUserDependency = Annotated[UserPermissions, Depends(get_user_with_admin)]

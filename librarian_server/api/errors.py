@@ -19,6 +19,9 @@ from hera_librarian.models.errors import (
 from librarian_server.database import yield_session
 from librarian_server.orm import Error
 
+from ..logger import log
+from .auth import AdminUserDependency
+
 router = APIRouter(prefix="/api/v2/error")
 
 
@@ -26,10 +29,13 @@ router = APIRouter(prefix="/api/v2/error")
 def clear_error(
     request: ErrorClearRequest,
     response: Response,
+    user: AdminUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
     Clears an error.
+
+    Must be an adiministrator to use this endpoint.
 
     Possible response codes:
 
@@ -37,6 +43,8 @@ def clear_error(
     400 - Error has already been cleared.
     404 - No error found to match search criteria.
     """
+
+    log.info(f"Received error clear request from {user.username}: {request}")
 
     error = session.get(Error, request.id)
 

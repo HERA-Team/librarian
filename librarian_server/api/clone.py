@@ -42,6 +42,7 @@ from ..logger import log
 from ..orm.file import File
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import IncomingTransfer, OutgoingTransfer, TransferStatus
+from .auth import CallbackUserDependency, ReadappendUserDependency
 
 router = APIRouter(prefix="/api/v2/clone")
 
@@ -50,6 +51,7 @@ router = APIRouter(prefix="/api/v2/clone")
 def stage(
     request: CloneInitiationRequest,
     response: Response,
+    user: ReadappendUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
@@ -75,7 +77,7 @@ def stage(
         -> Success! Please stage the file.
     """
 
-    log.debug(f"Received clone initiation request: {request}")
+    log.debug(f"Received clone initiation request from {user.username}: {request}")
 
     # Figure out which store to use.
     if request.upload_size < 0:
@@ -177,7 +179,7 @@ def stage(
     # No existing transfer.
 
     transfer = IncomingTransfer.new_transfer(
-        source=request.source,
+        source=user.username,
         uploader=request.uploader,
         upload_name=str(request.upload_name),
         transfer_size=request.upload_size,
@@ -250,11 +252,14 @@ def stage(
 def ongoing(
     request: CloneOngoingRequest,
     response: Response,
+    user: ReadappendUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
     Called when the remote librarian has started the transfer. We should
     update the status of the transfer to ONGOING.
+
+    You must have the correct username to update the transfer.
 
     Possible response codes:
 
@@ -263,11 +268,14 @@ def ongoing(
     406 - Not acceptable. Transfer is not in INITIATED status.
     """
 
-    log.debug(f"Received clone ongoing request: {request}")
+    log.debug(f"Received clone ongoing request from {user.username}: {request}")
 
     transfer = (
         session.query(IncomingTransfer)
-        .filter_by(id=request.destination_transfer_id)
+        .filter_by(
+            id=request.destination_transfer_id,
+            source=user.username,
+        )
         .first()
     )
 
@@ -281,7 +289,8 @@ def ongoing(
             reason="Could not find transfer.",
             suggested_remedy=(
                 "Your librarian is trying to tell us that a transfer is ongoing, but we cannot "
-                "find the transfer. Check the background task ordering."
+                "find the transfer. Check the background task ordering and that you have the correct "
+                "username in the request."
             ),
             source_transfer_id=request.source_transfer_id,
             destination_transfer_id=request.destination_transfer_id,
@@ -318,6 +327,7 @@ def ongoing(
 def complete(
     request: CloneCompleteRequest,
     response: Response,
+    user: CallbackUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
@@ -331,10 +341,14 @@ def complete(
     406 - Not acceptable. Transfer is not in STAGED status.
     """
 
-    log.debug(f"Received clone complete request: {request}")
+    log.debug(f"Received clone complete request from {user.username}: {request}")
 
     transfer = (
-        session.query(OutgoingTransfer).filter_by(id=request.source_transfer_id).first()
+        session.query(OutgoingTransfer)
+        .filter_by(
+            id=request.source_transfer_id,
+        )
+        .first()
     )
 
     if transfer is None:
@@ -384,17 +398,28 @@ def complete(
 def fail(
     request: CloneFailRequest,
     response: Response,
+    user: ReadappendUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
     Endpoint to send to if you would like to fail a specific IncomingTransfer.
+
+    You must have the correct username to update the transfer.
+
+    Possible response codes:
+
+    200 - OK. Transfer status updated.
+    404 - Not found. Could not find transfer.
     """
 
-    log.debug(f"Received clone fail request: {request}")
+    log.debug(f"Received clone fail request from {user.username}: {request}")
 
     transfer = (
         session.query(IncomingTransfer)
-        .filter_by(id=request.destination_transfer_id)
+        .filter_by(
+            id=request.destination_transfer_id,
+            source=user.username,
+        )
         .first()
     )
 

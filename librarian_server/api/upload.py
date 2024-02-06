@@ -23,6 +23,7 @@ from ..logger import log
 from ..orm.file import File
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import IncomingTransfer, TransferStatus
+from .auth import ReadappendUserDependency, UnauthorizedError
 
 router = APIRouter(prefix="/api/v2/upload")
 
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/api/v2/upload")
 def stage(
     request: UploadInitiationRequest,
     response: Response,
+    user: ReadappendUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
@@ -47,7 +49,7 @@ def stage(
     201 - Created staging area.
     """
 
-    log.debug(f"Received upload initiation request: {request}")
+    log.debug(f"Received upload initiation request from {user.username}: {request}")
 
     # Figure out which store to use.
     if request.upload_size < 0:
@@ -86,7 +88,8 @@ def stage(
 
     if len(existing_transfer) != 0:
         log.info(
-            f"Found {len(existing_transfer)} existing transfers with checksum {request.upload_checksum}. Failing existing transfer."
+            f"Found {len(existing_transfer)} existing transfers with "
+            f"checksum {request.upload_checksum}. Failing existing transfer."
         )
 
         for transfer in existing_transfer:
@@ -102,7 +105,7 @@ def stage(
 
     # Now we can write to the database.
     transfer = IncomingTransfer.new_transfer(
-        source=request.uploader,
+        source=user.username,
         uploader=request.uploader,
         upload_name=str(request.upload_name),
         transfer_size=request.upload_size,
@@ -134,7 +137,10 @@ def stage(
 
         return UploadFailedResponse(
             reason="No stores available for upload. Your upload is too large.",
-            suggested_remedy="Try again later, or try to upload a smaller file. Contact the administrator of this librarian instance.",
+            suggested_remedy=(
+                "Try again later, or try to upload a smaller file. Contact "
+                "the administrator of this librarian instance."
+            ),
         )
 
     # Now generate the response; tell client to use this store, and keep a record.
@@ -172,6 +178,7 @@ def stage(
 def commit(
     request: UploadCompletionRequest,
     response: Response,
+    user: ReadappendUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
@@ -184,7 +191,7 @@ def commit(
     200 - OK. Upload succeeded.
     """
 
-    log.debug(f"Received upload completion request: {request}")
+    log.debug(f"Received upload completion request from {user.username}: {request}")
 
     store: StoreMetadata = (
         session.query(StoreMetadata).filter_by(name=request.store_name).first()
@@ -192,6 +199,10 @@ def commit(
 
     # Go grab the transfer from the database.
     transfer = session.get(IncomingTransfer, request.transfer_id)
+
+    if not transfer.source == user.username:
+        raise UnauthorizedError
+
     transfer.status = TransferStatus.STAGED
     transfer.transfer_manager_name = request.transfer_provider_name
     # DB cannot handle path objects; serialize to string.
