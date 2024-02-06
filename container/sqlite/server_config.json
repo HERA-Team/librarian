@@ -15,7 +15,7 @@
                 "local": {
                     "available": true,
                     "hostnames": [
-                        "borrowj-adapter.physics.upenn.edu",
+                        "YOUR_HOSTNAME",
                         "example-librarian-hostname"
                     ]
                 }
@@ -33,7 +33,7 @@
                 "local": {
                     "available": true,
                     "hostnames": [
-                        "borrowj-adapter.physics.upenn.edu",
+                        "YOUR_HOSTNAME",
                         "example-librarian-hostname"
                     ]
                 }

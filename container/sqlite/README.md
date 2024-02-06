@@ -3,7 +3,7 @@ as the core librarian database. Production setups may want to use the
 postgres container.
 
 You will need to run the `pre_docker_setup.sh` script to put things in the right
-place before running:
+place before, edit server_config.json a little, and run:
 
 - `docker compose build`
 - `docker compose up`
