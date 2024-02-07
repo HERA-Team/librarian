@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 import requests
 from pydantic import BaseModel
 
+from .authlevel import AuthLevel
 from .deletion import DeletionPolicy
 from .errors import ErrorCategory, ErrorSeverity
 from .exceptions import LibrarianError, LibrarianHTTPError
@@ -26,6 +27,15 @@ from .models.uploads import (
     UploadCompletionRequest,
     UploadInitiationRequest,
     UploadInitiationResponse,
+)
+from .models.users import (
+    UserAdministrationChangeResponse,
+    UserAdministrationCreationRequest,
+    UserAdministrationDeleteRequest,
+    UserAdministrationGetRequest,
+    UserAdministrationGetResponse,
+    UserAdministrationPasswordChange,
+    UserAdministrationUpdateRequest,
 )
 from .settings import ClientInfo
 from .utils import get_md5_from_path, get_size_from_path
@@ -184,9 +194,15 @@ class LibrarianClient:
             # not the deserialized r.json()
             return response.model_validate_json(r.content)
 
-    def ping(self) -> PingResponse:
+    def ping(self, require_login: bool = False) -> PingResponse:
         """
         Ping the remote librarian to see if it exists.
+
+        Arguments
+        ---------
+
+        require_login : bool, optional
+            If True, we require the user to be logged in. If False, we don't.
 
         Returns
         -------
@@ -205,7 +221,7 @@ class LibrarianClient:
         """
 
         response: PingResponse = self.post(
-            endpoint="ping",
+            endpoint="ping/logged" if require_login else "ping",
             request=PingRequest(),
             response=PingResponse,
         )
@@ -370,6 +386,58 @@ class LibrarianClient:
 
         return response.root
 
+    def change_password(self, current_password: str, new_password: str):
+        """
+        Change the password of the user.
+
+        Parameters
+        ----------
+        current_password: str
+            The current password.
+        new_password : str
+            The new password.
+        """
+
+        if current_password != self.password:
+            raise ValueError("The current password is incorrect.")
+
+        response = self.post(
+            endpoint="users/password_update",
+            request=UserAdministrationPasswordChange(
+                password=current_password, new_password=new_password
+            ),
+            response=UserAdministrationChangeResponse,
+        )
+
+        return response.success
+
+
+class AdminClient(LibrarianClient):
+    """
+    A client for the Librarian API with admin privileges.
+    """
+
+    def __init__(self, host: str, port: int, user: str, password: str):
+        """
+        Create a new AdminClient.
+
+        Parameters
+        ----------
+        host : str
+            The hostname of the Librarian server.
+        port : int
+            The port of the Librarian server.
+        user : str
+            The name of the user.
+        password : str
+            The password of the user.
+        """
+
+        super().__init__(host, port, user, password)
+
+    def __repr__(self):
+        return f"Admin Client ({self.user}) for {self.host}:{self.port}"
+
     def search_errors(
         self,
         id: Optional[int] = None,
@@ -459,6 +527,132 @@ class LibrarianClient:
             if e.status_code == 404 and "No error found with ID" in e.reason:
                 raise ValueError(e.reason)
             elif e.status_code == 400 and "Error with ID" in e.reason:
+                raise ValueError(e.reason)
+            else:  # pragma: no cover
+                raise e
+
+    def create_user(
+        self,
+        username: str,
+        password: str,
+        auth_level: AuthLevel,
+    ):
+        """
+        Create a user on this librarian.
+
+        Parameters
+        ----------
+        username : str
+            The username of the new user.
+        password : str
+            The password of the new user.
+        auth_level : AuthLevel
+            The authentication level of the new user.
+        """
+
+        try:
+            self.post(
+                endpoint="users/create",
+                request=UserAdministrationCreationRequest(
+                    username=username,
+                    password=password,
+                    permission=auth_level,
+                ),
+                response=UserAdministrationChangeResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "User already exists" in e.reason:
+                raise ValueError(e.reason)
+            else:  # pragma: no cover
+                raise e
+
+    def delete_user(
+        self,
+        username: str,
+    ):
+        """
+        Delete a user on this librarian.
+
+        Parameters
+        ----------
+        username : str
+            The username of the user to delete.
+        """
+
+        try:
+            self.post(
+                endpoint="users/delete",
+                request=UserAdministrationDeleteRequest(
+                    username=username,
+                ),
+                response=UserAdministrationChangeResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "User not found" in e.reason:
+                raise ValueError(e.reason)
+            else:  # pragma: no cover
+                raise e
+
+    def update_user(
+        self,
+        username: str,
+        new_password: Optional[str] = None,
+        auth_level: Optional[AuthLevel] = None,
+    ):
+        """
+        Update a user on this librarian.
+
+        Parameters
+        ----------
+        username : str
+            The username of the user to update.
+        new_password : str, optional
+            The new password of the user.
+        auth_level : AuthLevel, optional
+            The new authentication level of the user.
+        """
+
+        try:
+            self.post(
+                endpoint="users/update",
+                request=UserAdministrationUpdateRequest(
+                    username=username,
+                    password=new_password,
+                    permission=auth_level,
+                ),
+                response=UserAdministrationChangeResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "User not found" in e.reason:
+                raise ValueError(e.reason)
+            else:  # pragma: no cover
+                raise e
+
+    def get_user(self, username: str) -> UserAdministrationGetResponse:
+        """
+        Get a user on this librarian.
+
+        Parameters
+        ----------
+        username : str
+            The username of the user to get.
+
+        Returns
+        -------
+        UserAdministrationGetResponse
+            The user.
+        """
+
+        try:
+            response: UserAdministrationGetResponse = self.post(
+                endpoint="users/get",
+                request=UserAdministrationGetRequest(username=username),
+                response=UserAdministrationGetResponse,
+            )
+
+            return response
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "User not found" in e.reason:
                 raise ValueError(e.reason)
             else:  # pragma: no cover
                 raise e

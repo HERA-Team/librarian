@@ -22,7 +22,7 @@ class AuthLevel(Enum):
     READAPPEND = 3
     "Can read and append to the databases and store."
 
-    READWIRTE = 4
+    READWRITE = 4
     "Can read and write to the databases and store."
 
     ADMIN = 100

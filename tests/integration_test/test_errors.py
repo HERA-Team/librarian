@@ -40,12 +40,12 @@ def server_with_fake_errors(server, test_orm, librarian_database_session_maker):
         session.commit()
 
 
-def test_error_search(server_with_fake_errors, librarian_client):
+def test_error_search(server_with_fake_errors, admin_client):
     """
     Tests that the client can search for errors correctly.
     """
 
-    all_errors = librarian_client.search_errors()
+    all_errors = admin_client.search_errors()
 
     assert len(all_errors) > 0
 
@@ -61,33 +61,31 @@ def test_error_search(server_with_fake_errors, librarian_client):
 
     error_to_clear = all_errors[0].id
 
-    cleared_error = librarian_client.clear_error(error_to_clear)
+    cleared_error = admin_client.clear_error(error_to_clear)
 
-    all_errors = librarian_client.search_errors(
-        id=error_to_clear, include_resolved=True
-    )
+    all_errors = admin_client.search_errors(id=error_to_clear, include_resolved=True)
 
     assert all_errors[0].cleared
 
     # Check what happens if we clear it again
 
     with pytest.raises(ValueError):
-        cleared_error = librarian_client.clear_error(error_to_clear)
+        cleared_error = admin_client.clear_error(error_to_clear)
 
 
-def test_error_search_missing(server_with_fake_errors, librarian_client):
+def test_error_search_missing(server_with_fake_errors, admin_client):
     """
     Tests that the client can handle searching for errors that don't exist.
     """
 
-    all_errors = librarian_client.search_errors(id=-1)
+    all_errors = admin_client.search_errors(id=-1)
 
     assert len(all_errors) == 0
 
     # Try to clear it
 
     with pytest.raises(ValueError):
-        cleared_error = librarian_client.clear_error(-1)
+        cleared_error = admin_client.clear_error(-1)
 
 
 def test_error_search_cli_path(server_with_fake_errors, librarian_client_command_line):

@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import URL
 from xprocess import ProcessStarter
 
-from hera_librarian import LibrarianClient
+from hera_librarian import AdminClient, LibrarianClient
 
 from ..server import Server, run_background_tasks, server_setup
 
@@ -84,6 +84,47 @@ def librarian_client(server) -> LibrarianClient:
     os.environ["LIBRARIAN_CLIENT_CONNECTIONS"] = connections
 
     client = LibrarianClient(
+        host="http://localhost",
+        port=server.id,
+        user="admin",
+        password="password",
+    )
+
+    yield client
+
+    del client
+
+
+@pytest.fixture
+def admin_client(server) -> AdminClient:
+    """
+    Returns a librarian administration client.
+
+    Parameters
+    ----------
+    server : _type_
+        _description_
+
+    Yields
+    ------
+    Iterator[AdminClient]
+        _description_
+    """
+
+    connections = json.dumps(
+        {
+            "test-A": {
+                "user": "admin",
+                "port": server.id,
+                "host": "http://localhost",
+                "password": "password",
+            }
+        }
+    )
+
+    os.environ["LIBRARIAN_CLIENT_CONNECTIONS"] = connections
+
+    client = AdminClient(
         host="http://localhost",
         port=server.id,
         user="admin",

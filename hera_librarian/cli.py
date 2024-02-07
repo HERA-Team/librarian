@@ -17,7 +17,7 @@ from typing import Optional
 
 import dateutil.parser
 
-from . import LibrarianClient
+from . import AdminClient, LibrarianClient
 from .exceptions import (
     LibrarianClientRemovedFunctionality,
     LibrarianError,
@@ -58,11 +58,14 @@ def die(fmt, *args):
     sys.exit(1)
 
 
-def get_client(conn_name):
+def get_client(conn_name, admin=False):
     if conn_name not in client_settings.connections:
         die("Connection name {} not found in client settings.".format(conn_name))
 
-    return LibrarianClient.from_info(client_settings.connections[conn_name])
+    if admin:
+        return AdminClient.from_info(client_settings.connections[conn_name])
+    else:
+        return LibrarianClient.from_info(client_settings.connections[conn_name])
 
 
 def parse_create_time_window(
@@ -306,7 +309,7 @@ def search_files(args):
 
     # Perform the search
 
-    client = LibrarianClient.from_info(client_settings.connections[args.conn_name])
+    client = get_client(args.conn_name)
 
     search_response = client.search_files(
         name=args.name,
@@ -418,7 +421,7 @@ def search_errors(args):
     Search for errors on the librarian.
     """
 
-    client = get_client(args.conn_name)
+    client = get_client(args.conn_name, admin=True)
 
     create_time_window = parse_create_time_window(args)
 
@@ -470,7 +473,7 @@ def clear_error(args):
     Clear an error on the librarian.
     """
 
-    client = get_client(args.conn_name)
+    client = get_client(args.conn_name, admin=True)
 
     try:
         client.clear_error(args.id)

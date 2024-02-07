@@ -108,7 +108,7 @@ def update(
         )
 
     if request.password is not None:
-        user.password = user.hash_password(request.password)
+        user.auth_token = user.hash_password(request.password)
 
     if request.permission is not None:
         user.auth_level = request.permission
@@ -216,7 +216,7 @@ def password_update(
         response.status_code = status.HTTP_400_BAD_REQUEST
         return UserAdministrationChangeResponse(success=False, username=user.username)
 
-    user.password = user.hash_password(request.new_password)
+    user.auth_token = user.hash_password(request.new_password)
     session.commit()
 
     response.status_code = status.HTTP_200_OK

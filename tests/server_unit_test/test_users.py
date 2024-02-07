@@ -56,19 +56,43 @@ def test_create_user(test_server, test_client):
 
     assert response.status_code == 400
 
-    # See if _using_ the test_user we can create an account, we shouldn't be able to!
     response = test_client.post_with_auth(
+        "/api/v2/users/update",
+        headers={"Content-Type": "application/json"},
+        content=UserAdministrationUpdateRequest(
+            username="test_user",
+            password="new_password",
+            permission=AuthLevel.READWRITE,
+        ).model_dump_json(),
+    )
+
+    # See if _using_ the test_user we can create an account, we shouldn't be able to!
+    response = test_client.post(
         "/api/v2/users/create",
         headers={"Content-Type": "application/json"},
         content=UserAdministrationCreationRequest(
             username="test_user",
-            password="test_password",
+            password="new_password",
             permission=AuthLevel.READONLY,
         ).model_dump_json(),
-        auth=("test_user", "test_password"),
+        auth=("test_user", "new_password"),
     )
 
     assert response.status_code == 401
+
+    # But they can change their -own- password
+    response = test_client.post(
+        "/api/v2/users/password_update",
+        headers={"Content-Type": "application/json"},
+        content=UserAdministrationPasswordChange(
+            username="test_user",
+            password="new_password",
+            new_password="new_new_password",
+        ).model_dump_json(),
+        auth=("test_user", "new_password"),
+    )
+
+    assert response.status_code == 200
 
     # Clean up
 
