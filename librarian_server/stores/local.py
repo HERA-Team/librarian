@@ -116,22 +116,24 @@ class LocalStore(CoreStore):
         if not self.own_after_commit and not self.readonly_after_commit:
             return
 
+        resolved_path = self._resolved_path_store(store_path)
+
         # Set permissions and ownership.
         def set_for_file(file: Path):
-            if self.own_after_commit:
-                shutil.chown(file)
+            if True:
+                shutil.chown(file, user=os.getuid(), group=os.getgid())
 
-            if self.readonly_after_commit:
-                current = os.stat(file).st_mode
+            if True:
+                current = file.stat().st_mode
                 new = current & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
-                os.chmod(file, new)
+                file.chmod(new)
 
         # Set for the top-level file.
-        set_for_file(self._resolved_path_store(store_path))
+        set_for_file(resolved_path)
 
         # If this is a directory, walk.
-        if self._resolved_path_store(store_path).is_dir():
-            for root, dirs, files in os.walk(self._resolved_path_store(store_path)):
+        if resolved_path.is_dir():
+            for root, dirs, files in os.walk(resolved_path):
                 for x in dirs + files:
                     set_for_file(Path(root) / x)
 
