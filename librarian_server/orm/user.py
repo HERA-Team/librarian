@@ -43,12 +43,10 @@ class User(db.Base):
         User
             The new user.
         """
-        # Create a new user.
-        ph = argon2.PasswordHasher()
 
         user = cls(
             username=username,
-            auth_token=ph.hash(password),
+            auth_token=cls.hash_password(password),
             auth_level=auth_level,
         )
 
@@ -86,6 +84,25 @@ class User(db.Base):
                 return AuthLevel.NONE
 
         return AuthLevel.NONE
+
+    @staticmethod
+    def hash_password(self, password: str) -> str:
+        """
+        Hash a password.
+
+        Parameters
+        ----------
+        password : str
+            The plaintext password.
+
+        Returns
+        -------
+        str
+            The hashed password.
+        """
+        ph = argon2.PasswordHasher()
+
+        return ph.hash(password)
 
     def check_password(self, password: str) -> bool:
         """
