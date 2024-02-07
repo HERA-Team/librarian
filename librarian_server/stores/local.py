@@ -126,9 +126,9 @@ class LocalStore(CoreStore):
 
                 if self.readonly_after_commit:
                     if file.is_dir():
-                        file.chmod(555)
+                        file.chmod(0o555)
                     else:
-                        file.chmod(444)
+                        file.chmod(0o444)
 
             # Set for the top-level file.
             set_for_file(resolved_path)
