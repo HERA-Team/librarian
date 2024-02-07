@@ -22,7 +22,7 @@ from hera_librarian.models.search import (
 def test_search_by_filename(test_server_with_many_files_and_errors, test_client):
     request = FileSearchRequest(name="many_server_example_file_0.txt")
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/search/file",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -41,7 +41,7 @@ def test_search_by_created_time(test_server_with_many_files_and_errors, test_cli
         )
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/search/file",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -55,7 +55,7 @@ def test_search_by_created_time(test_server_with_many_files_and_errors, test_cli
 def test_search_by_source(test_server_with_many_files_and_errors, test_client):
     request = FileSearchRequest(source="test")
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/search/file",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -69,7 +69,7 @@ def test_search_by_source(test_server_with_many_files_and_errors, test_client):
 def test_search_by_uploader(test_server_with_many_files_and_errors, test_client):
     request = FileSearchRequest(uploader="test")
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/search/file",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -83,7 +83,7 @@ def test_search_by_uploader(test_server_with_many_files_and_errors, test_client)
 def test_failed_search(test_server_with_many_files_and_errors, test_client):
     request = FileSearchRequest(name="this_file_does_not_exist")
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/search/file",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -98,7 +98,7 @@ def test_error_all_search(
     test_server_with_many_files_and_errors, test_client, test_orm
 ):
     def make_request(request):
-        response = test_client.post(
+        response = test_client.post_with_auth(
             "/api/v2/search/error",
             headers={"Content-Type": "application/json"},
             content=request.model_dump_json(),
@@ -139,7 +139,7 @@ def test_error_all_search(
 def test_failed_error_search(test_server_with_many_files_and_errors, test_client):
     request = ErrorSearchRequest(id=-1)
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/search/error",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -153,7 +153,7 @@ def test_failed_error_search(test_server_with_many_files_and_errors, test_client
         create_time_window=[datetime.datetime.min, datetime.datetime.min]
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/search/error",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),

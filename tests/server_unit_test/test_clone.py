@@ -33,7 +33,7 @@ def test_stage_negative_clone(test_client):
         source_transfer_id=-1,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/stage", content=request.model_dump_json()
     )
 
@@ -57,7 +57,7 @@ def test_extreme_clone_size(test_client, test_server, test_orm):
         source_transfer_id=-1,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/stage", content=request.model_dump_json()
     )
 
@@ -78,7 +78,7 @@ def test_valid_stage_and_fail(test_client, test_server, test_orm):
         source_transfer_id=-1,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/stage", content=request.model_dump_json()
     )
 
@@ -101,7 +101,7 @@ def test_valid_stage_and_fail(test_client, test_server, test_orm):
 
     # Now see what happens if we try to clone again.
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/stage", content=request.model_dump_json()
     )
 
@@ -117,7 +117,9 @@ def test_valid_stage_and_fail(test_client, test_server, test_orm):
         reason="test",
     )
 
-    response = test_client.post("/api/v2/clone/fail", content=request.model_dump_json())
+    response = test_client.post_with_auth(
+        "/api/v2/clone/fail", content=request.model_dump_json()
+    )
 
     assert response.status_code == 200
 
@@ -143,7 +145,9 @@ def test_try_to_fail_non_existent_transfer(test_client, test_server, test_orm):
         reason="test",
     )
 
-    response = test_client.post("/api/v2/clone/fail", content=request.model_dump_json())
+    response = test_client.post_with_auth(
+        "/api/v2/clone/fail", content=request.model_dump_json()
+    )
 
     assert response.status_code == 404
 
@@ -160,7 +164,7 @@ def test_ongoing_transfer_nonexistent(test_client, test_server, test_orm):
         destination_transfer_id=-10000,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/ongoing", content=request.model_dump_json()
     )
 
@@ -195,7 +199,7 @@ def test_ongoing_transfer(
         source_transfer_id=-1,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/stage", content=request.model_dump_json()
     )
 
@@ -210,7 +214,7 @@ def test_ongoing_transfer(
         destination_transfer_id=decoded_response.destination_transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/ongoing", content=request_ongoing.model_dump_json()
     )
 
@@ -235,7 +239,7 @@ def test_ongoing_transfer(
 
     # If we try to upload again with the same source and destination, it should fail.
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/stage", content=request.model_dump_json()
     )
 
@@ -253,7 +257,7 @@ def test_ongoing_transfer(
         reason="test",
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/fail", content=request_fail.model_dump_json()
     )
 
@@ -315,7 +319,7 @@ def test_incoming_transfer_endpoints(
         destination_transfer_id=transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/complete", content=request.model_dump_json()
     )
 
@@ -330,7 +334,7 @@ def test_incoming_transfer_endpoints(
         transfer.status = test_orm.TransferStatus.ONGOING
         session.commit()
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/complete", content=request.model_dump_json()
     )
 
@@ -364,7 +368,7 @@ def test_complete_no_transfer(test_client, test_server, test_orm):
         destination_transfer_id=-1,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/complete", content=request.model_dump_json()
     )
 
@@ -384,7 +388,7 @@ def test_set_ongoing_with_different_status(test_client, test_server, test_orm):
     with get_session() as session:
         transfer = test_orm.IncomingTransfer.new_transfer(
             uploader="test",
-            source="test",
+            source="admin",
             upload_name="test",
             transfer_size=100,
             transfer_checksum="",
@@ -393,22 +397,44 @@ def test_set_ongoing_with_different_status(test_client, test_server, test_orm):
         transfer.status = test_orm.TransferStatus.COMPLETED
 
         session.add(transfer)
+
+        transfer_fail = test_orm.IncomingTransfer.new_transfer(
+            uploader="test",
+            source="NOTADMIN",
+            upload_name="test",
+            transfer_size=100,
+            transfer_checksum="",
+        )
+
+        session.add(transfer_fail)
+
         session.commit()
 
         transfer_id = transfer.id
+        transfer_fail_id = transfer_fail.id
 
     request = CloneOngoingRequest(
         source_transfer_id=transfer_id,
         destination_transfer_id=transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/ongoing", content=request.model_dump_json()
     )
 
     assert response.status_code == 406
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
+
+    response = test_client.post_with_auth(
+        "/api/v2/clone/ongoing",
+        content=CloneOngoingRequest(
+            source_transfer_id=transfer_fail_id,
+            destination_transfer_id=transfer_fail_id,
+        ).model_dump_json(),
+    )
+
+    assert response.status_code == 404
 
 
 def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename):
@@ -440,7 +466,7 @@ def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename)
         source_transfer_id=-1,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/clone/stage", content=request.model_dump_json()
     )
 

@@ -10,7 +10,7 @@ import subprocess
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError, InternalError, ProgrammingError
 
-from librarian_server.authlevel import AuthLevel
+from hera_librarian.authlevel import AuthLevel
 from librarian_server.database import engine, get_session
 from librarian_server.logger import log
 from librarian_server.orm import StoreMetadata

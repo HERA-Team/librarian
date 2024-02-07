@@ -16,10 +16,13 @@ class AuthLevel(Enum):
     READONLY = 1
     "Can read from the databases and store, but not write."
 
-    READAPPEND = 2
+    CALLBACK = 2
+    "Can read from the databases and store, and can mark callbacks for outbound messages."
+
+    READAPPEND = 3
     "Can read and append to the databases and store."
 
-    READWIRTE = 3
+    READWRITE = 4
     "Can read and write to the databases and store."
 
     ADMIN = 100

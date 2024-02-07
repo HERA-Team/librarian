@@ -30,10 +30,10 @@ from sqlalchemy import (
 )
 
 from alembic import op
+from hera_librarian.authlevel import AuthLevel
 from hera_librarian.deletion import DeletionPolicy
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
 from hera_librarian.transfer import TransferStatus
-from librarian_server.authlevel import AuthLevel
 
 
 def upgrade():

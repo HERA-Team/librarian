@@ -28,6 +28,7 @@ from ..logger import log
 from ..orm.errors import Error, ErrorCategory, ErrorSeverity
 from ..orm.file import File
 from ..settings import server_settings
+from .auth import AdminUserDependency, ReadonlyUserDependency
 
 router = APIRouter(prefix="/api/v2/search")
 
@@ -36,6 +37,7 @@ router = APIRouter(prefix="/api/v2/search")
 def file(
     request: FileSearchRequest,
     response: Response,
+    user: ReadonlyUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
@@ -47,7 +49,7 @@ def file(
     404 - No file found to match search criteria.
     """
 
-    log.debug(f"Received file search request: {request}")
+    log.debug(f"Received file search request from user {user.username}: {request}")
 
     # Start to build our query.
     query = select(File)
@@ -118,6 +120,7 @@ def file(
 def error(
     request: ErrorSearchRequest,
     response: Response,
+    user: AdminUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
@@ -129,7 +132,7 @@ def error(
     404 - No file found to match search criteria.
     """
 
-    log.debug(f"Received error search request: {request}")
+    log.debug(f"Received error search request from {user.username}: {request}")
 
     # Start to build our query.
     query = select(Error)
