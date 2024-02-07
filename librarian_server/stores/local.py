@@ -118,24 +118,27 @@ class LocalStore(CoreStore):
 
         resolved_path = self._resolved_path_store(store_path)
 
-        # Set permissions and ownership.
-        def set_for_file(file: Path):
-            if True:
-                shutil.chown(file, user=os.getuid(), group=os.getgid())
+        try:
+            # Set permissions and ownership.
+            def set_for_file(file: Path):
+                if self.own_after_commit:
+                    shutil.chown(file, user=os.getuid(), group=os.getgid())
 
-            if True:
-                current = file.stat().st_mode
-                new = current & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
-                file.chmod(new)
+                if self.readonly_after_commit:
+                    current = file.stat().st_mode
+                    new = current & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
+                    file.chmod(new)
 
-        # Set for the top-level file.
-        set_for_file(resolved_path)
+            # Set for the top-level file.
+            set_for_file(resolved_path)
 
-        # If this is a directory, walk.
-        if resolved_path.is_dir():
-            for root, dirs, files in os.walk(resolved_path):
-                for x in dirs + files:
-                    set_for_file(Path(root) / x)
+            # If this is a directory, walk.
+            if resolved_path.is_dir():
+                for root, dirs, files in os.walk(resolved_path):
+                    for x in dirs + files:
+                        set_for_file(Path(root) / x)
+        except ValueError:
+            raise PermissionError(f"Could not set permissions on {resolved_path}")
 
         return
 
