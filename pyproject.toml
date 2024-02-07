@@ -10,7 +10,6 @@ requires-python = ">=3.10"
 version = "2.0.0a"
 dependencies = [
     "alembic",
-    "astropy",
     "fastapi",
     "sqlalchemy",
     "httpx",
