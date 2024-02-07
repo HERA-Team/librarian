@@ -5,6 +5,7 @@ all commands on the machine local to the librarian server.
 
 import os
 import shutil
+import stat
 import uuid
 from pathlib import Path
 
@@ -22,6 +23,11 @@ from .pathinfo import PathInfo
 class LocalStore(CoreStore):
     staging_path: Path
     store_path: Path
+
+    own_after_commit: bool = False
+    "If true, the user running the server will chown the files after committing."
+    readonly_after_commit: bool = False
+    "If true, the user running the server will chmod the files to 444 after commit."
 
     @property
     def available(self) -> bool:
@@ -106,6 +112,30 @@ class LocalStore(CoreStore):
             self._resolved_path_staging(staging_path),
             self._resolved_path_store(store_path),
         )
+
+        if not self.own_after_commit and not self.readonly_after_commit:
+            return
+
+        # Set permissions and ownership.
+        def set_for_file(file: Path):
+            if self.own_after_commit:
+                shutil.chown(file)
+
+            if self.readonly_after_commit:
+                current = os.stat(file).st_mode
+                new = current & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
+                os.chmod(file, new)
+
+        # Set for the top-level file.
+        set_for_file(self._resolved_path_store(store_path))
+
+        # If this is a directory, walk.
+        if self._resolved_path_store(store_path).is_dir():
+            for root, dirs, files in os.walk(self._resolved_path_store(store_path)):
+                for x in dirs + files:
+                    set_for_file(Path(root) / x)
+
+        return
 
     def store(self, path: Path) -> Path:
         # First, check if the file already exists, and it's within our store
