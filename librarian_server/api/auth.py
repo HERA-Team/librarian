@@ -21,7 +21,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..authlevel import AuthLevel
+from ...hera_librarian.authlevel import AuthLevel
 from ..database import yield_session
 from ..orm import User
 

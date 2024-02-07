@@ -5,8 +5,8 @@ ORM model for a user.
 import argon2
 from sqlalchemy.orm import Session
 
+from ...hera_librarian.authlevel import AuthLevel
 from .. import database as db
-from ..authlevel import AuthLevel
 
 
 class User(db.Base):
