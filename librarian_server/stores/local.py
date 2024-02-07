@@ -126,9 +126,17 @@ class LocalStore(CoreStore):
 
                 if self.readonly_after_commit:
                     if file.is_dir():
-                        os.chmod(file, 0o555)
+                        os.chmod(
+                            file,
+                            stat.S_IREAD
+                            | stat.S_IRGRP
+                            | stat.S_IROTH
+                            | stat.S_IXUSR
+                            | stat.S_IXGRP
+                            | stat.S_IXOTH,
+                        )
                     else:
-                        os.chmod(file, 0o444)
+                        os.chmod(file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
 
             # Set for the top-level file.
             set_for_file(resolved_path)
