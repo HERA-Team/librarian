@@ -125,9 +125,10 @@ class LocalStore(CoreStore):
                     shutil.chown(file, user=os.getuid(), group=os.getgid())
 
                 if self.readonly_after_commit:
-                    current = file.stat().st_mode
-                    new = current & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
-                    file.chmod(new)
+                    if file.is_dir():
+                        file.chmod(555)
+                    else:
+                        file.chmod(444)
 
             # Set for the top-level file.
             set_for_file(resolved_path)
