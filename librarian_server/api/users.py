@@ -12,6 +12,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from hera_librarian.authlevel import AuthLevel
 from hera_librarian.models.users import (
     UserAdministrationChangeResponse,
     UserAdministrationCreationRequest,
@@ -58,7 +59,7 @@ def create(
         new_user = User.new_user(
             username=request.username,
             password=request.password,
-            permission=request.permission,
+            auth_level=request.permission,
         )
         session.add(new_user)
         session.commit()
@@ -110,7 +111,7 @@ def update(
         user.password = user.hash_password(request.password)
 
     if request.permission is not None:
-        user.permission = request.permission
+        user.auth_level = request.permission
 
     session.commit()
 
@@ -177,11 +178,13 @@ def get(
     if user is None:
         log.error(f"User {request.username} does not exist.")
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return UserAdministrationGetResponse(username=request.username)
+        return UserAdministrationGetResponse(
+            username=request.username, permission=AuthLevel.NONE
+        )
 
     return UserAdministrationGetResponse(
         username=user.username,
-        permission=user.permission,
+        permission=user.auth_level,
     )
 
 
