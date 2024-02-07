@@ -20,7 +20,7 @@ def test_secondary_server_simple(
     response = test_client.post(
         "/api/v2/ping",
         content=PingRequest().model_dump_json(),
-        auth=("test-A", "test_A_password"),
+        auth=("admin", "password"),
     )
 
     assert response.status_code == 200

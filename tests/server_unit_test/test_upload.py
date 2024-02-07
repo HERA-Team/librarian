@@ -35,7 +35,7 @@ def test_negative_upload_size(test_client: TestClient):
         upload_name="test.txt",
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/stage", content=request.model_dump_json()
     )
 
@@ -63,7 +63,7 @@ def test_extreme_upload_size(
         upload_name="test.txt",
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/stage", content=request.model_dump_json()
     )
 
@@ -101,7 +101,7 @@ def test_valid_stage(
         upload_name="test.txt",
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/stage", content=request.model_dump_json()
     )
 
@@ -123,7 +123,7 @@ def test_valid_stage(
         )
 
     # Now we can check what happens when we try to upload the same file.
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/stage", content=request.model_dump_json()
     )
 
@@ -154,7 +154,9 @@ def helper_generate_transfer(
         upload_name=str(garbage_filename),
     )
 
-    response = client.post("/api/v2/upload/stage", content=request.model_dump_json())
+    response = client.post_with_auth(
+        "/api/v2/upload/stage", content=request.model_dump_json()
+    )
 
     assert response.status_code == 201
 
@@ -197,7 +199,7 @@ def test_full_upload(
         transfer_id=stage_response.transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/commit",
         content=request.model_dump_json(),
     )
@@ -231,7 +233,7 @@ def test_full_upload(
     with open(garbage_file, "rb") as handle:
         data = handle.read()
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/stage",
         content=UploadInitiationRequest(
             destination_location=str(garbage_filename),
@@ -275,7 +277,7 @@ def test_commit_no_file_uploaded(
         transfer_id=stage_response.transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/commit",
         content=request.model_dump_json(),
     )
@@ -326,7 +328,7 @@ def test_commit_wrong_file_uploaded(
         transfer_id=stage_response.transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/commit",
         content=request.model_dump_json(),
     )
@@ -393,7 +395,7 @@ def test_commit_file_exists(
         transfer_id=stage_response.transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/commit",
         content=request.model_dump_json(),
     )
@@ -432,7 +434,7 @@ def test_directory_upload(test_client, test_server, test_orm, tmp_path):
         upload_name="test",
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/stage", content=request.model_dump_json()
     )
 
@@ -463,7 +465,7 @@ def test_directory_upload(test_client, test_server, test_orm, tmp_path):
         transfer_id=decoded_response.transfer_id,
     )
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/upload/commit",
         content=request.model_dump_json(),
     )

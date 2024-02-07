@@ -156,7 +156,10 @@ def stage(
             )
 
             # Unstage the files.
-            store = session.get(StoreMetadata, transfer.store_id)
+            if transfer.store_id is not None:
+                store = session.get(StoreMetadata, transfer.store_id)
+            else:
+                store = None
 
             if store is not None:
                 store.store_manager.unstage(Path(transfer.staging_path))

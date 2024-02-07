@@ -11,7 +11,13 @@ def test_ping(test_client):
         "/api/v2/ping",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
-        auth=("test", "test"),
+        auth=("admin", "password"),
+    )
+    assert response.status_code == 200
+
+    response = test_client.post_with_auth(
+        "/api/v2/ping/logged",
+        content=request.model_dump_json(),
     )
     assert response.status_code == 200
     # Check we can decode the response
@@ -24,6 +30,6 @@ def test_ping_logged_not_logged(test_client):
         "/api/v2/ping/logged",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
-        auth=("test", "test-not-real-password"),
+        auth=("admin", "test-not-real-password"),
     )
     assert response.status_code == 401

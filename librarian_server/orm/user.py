@@ -86,7 +86,7 @@ class User(db.Base):
         return AuthLevel.NONE
 
     @staticmethod
-    def hash_password(self, password: str) -> str:
+    def hash_password(password: str) -> str:
         """
         Hash a password.
 

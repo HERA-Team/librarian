@@ -8,6 +8,7 @@ import json
 import os
 import random
 import shutil
+import sys
 from pathlib import Path
 from subprocess import run
 
@@ -50,7 +51,7 @@ def garbage_filename() -> Path:
 DATABASE_PATH = None
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="session")
 def test_server(tmp_path_factory):
     """
     Starts a single 'server' using the test client.
@@ -74,7 +75,7 @@ def test_server(tmp_path_factory):
     DATABASE_PATH = str(setup.database)
 
     # Before starting, create the DB schema
-    run(["alembic", "upgrade", "head"])
+    run([sys.executable, shutil.which("librarian-server-setup")], env=setup.env)
 
     import importlib
 
@@ -83,26 +84,6 @@ def test_server(tmp_path_factory):
 
     app = librarian_server.main()
     get_session = librarian_server.database.get_session
-
-    # Need to add our stores...
-    from librarian_server.orm import StoreMetadata
-    from librarian_server.settings import StoreSettings
-
-    with get_session() as session:
-        for store_config in json.loads(setup.LIBRARIAN_SERVER_ADD_STORES):
-            store_config = StoreSettings(**store_config)
-
-            store = StoreMetadata(
-                name=store_config.store_name,
-                store_type=store_config.store_type,
-                ingestable=store_config.ingestable,
-                store_data={**store_config.store_data, "name": store_config.store_name},
-                transfer_manager_data=store_config.transfer_manager_data,
-            )
-
-            session.add(store)
-
-        session.commit()
 
     yield app, get_session, setup
 
@@ -124,6 +105,25 @@ def test_client(test_server):
     from fastapi.testclient import TestClient
 
     client = TestClient(app)
+
+    def client_post_with_auth(endpoint: str, content=None, **kwargs):
+        """
+        A request with the test client that includes the auth header.
+        """
+
+        if "auth" not in kwargs:
+            kwargs["auth"] = ("admin", "password")
+
+        if "headers" not in kwargs:
+            kwargs["headers"] = {"Content-Type": "application/json"}
+
+        return client.post(
+            endpoint,
+            content=content,
+            **kwargs,
+        )
+
+    client.post_with_auth = client_post_with_auth
 
     yield client
 

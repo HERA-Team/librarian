@@ -92,7 +92,7 @@ def test_clear_endpoint(test_server_with_many_files_and_errors, test_client, tes
 
     request = ErrorClearRequest(id=-1)
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/error/clear",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -108,7 +108,7 @@ def test_clear_endpoint(test_server_with_many_files_and_errors, test_client, tes
 
     request = ErrorClearRequest(id=error_id)
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/error/clear",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),
@@ -132,7 +132,7 @@ def test_clear_endpoint(test_server_with_many_files_and_errors, test_client, tes
 
     request = ErrorClearRequest(id=error_id)
 
-    response = test_client.post(
+    response = test_client.post_with_auth(
         "/api/v2/error/clear",
         headers={"Content-Type": "application/json"},
         content=request.model_dump_json(),

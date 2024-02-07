@@ -73,10 +73,10 @@ def librarian_client(server) -> LibrarianClient:
     connections = json.dumps(
         {
             "test-A": {
-                "user": "test-A",
+                "user": "admin",
                 "port": server.id,
                 "host": "http://localhost",
-                "password": "test_A_password",
+                "password": "password",
             }
         }
     )
@@ -86,8 +86,8 @@ def librarian_client(server) -> LibrarianClient:
     client = LibrarianClient(
         host="http://localhost",
         port=server.id,
-        user="test-A",
-        password="test_A_password",
+        user="admin",
+        password="password",
     )
 
     yield client
@@ -104,10 +104,10 @@ def librarian_client_command_line(server):
     connections = json.dumps(
         {
             "test-A": {
-                "user": "test-B",
+                "user": "admin",
                 "port": server.id,
                 "host": "http://localhost",
-                "password": "test_B_password",
+                "password": "password",
             }
         }
     )
