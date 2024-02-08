@@ -15,9 +15,23 @@ class LocalTransferManager(CoreTransferManager):
     "The hostname(s) of the machine being transferred to."
 
     def transfer(self, local_path: Path, remote_path: Path):
+        """
+        Raises
+        ------
+
+        ValueError
+            If the transfer fails.
+        PermissionError
+            If the permissions cannot be set.
+        """
         # Need to make sure that the the permissions are correctly
         # set on all files and directories that we copy over.
         # They should have rw-rw-r-- and rwxrwxr-x permissions.
+
+        # Get the group of the parent.
+        parent_group = remote_path.parent.stat().st_gid
+        # Get this user's uid.
+        uid = os.getuid()
 
         def set_for_file(file: Path):
             if file.is_dir():
@@ -27,6 +41,10 @@ class LocalTransferManager(CoreTransferManager):
                 )
             else:
                 os.chmod(file, 0o664)
+
+            os.chown(file, uid=uid, gid=parent_group)
+
+            return
 
         copy_success = False
 

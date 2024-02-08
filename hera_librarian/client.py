@@ -293,15 +293,19 @@ class LibrarianClient:
         # TODO: Should probably have some manual ordering here.
         for name, transfer_manager in transfer_managers.items():
             if transfer_manager.valid:
-                transfer_manager.transfer(
-                    local_path=local_path, remote_path=response.staging_location
-                )
+                try:
+                    transfer_manager.transfer(
+                        local_path=local_path, remote_path=response.staging_location
+                    )
 
-                # We used this.
-                used_transfer_manager = transfer_manager
-                used_transfer_manager_name = name
-
-                break
+                    # We used this.
+                    used_transfer_manager = transfer_manager
+                    used_transfer_manager_name = name
+                    break
+                except PermissionError:
+                    raise LibrarianError(
+                        f"Could not set permissions on {response.staging_location}"
+                    )
             else:
                 print(f"Warning: transfer manager {name} is not valid.")
 
