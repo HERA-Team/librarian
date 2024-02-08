@@ -79,8 +79,10 @@ class LocalStore(CoreStore):
 
         # Create the empty directory.
         resolved_path = self._resolved_path_staging(stage_path)
+
         if self.group_write_after_stage:
             resolved_path.mkdir(mode=0o775)
+            os.chmod(resolved_path, 0o775)
         else:
             resolved_path.mkdir()
 
