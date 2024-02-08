@@ -117,17 +117,23 @@ class LocalStore(CoreStore):
     def commit(self, staging_path: Path, store_path: Path):
         need_ownership_changes = self.own_after_commit or self.readonly_after_commit
 
-        use_func_commit = shutil.copy2 if need_ownership_changes else shutil.move
-
-        use_func_commit(
-            self._resolved_path_staging(staging_path),
-            self._resolved_path_store(store_path),
-        )
+        resolved_path_staging = self._resolved_path_staging(staging_path)
+        resolved_path_store = self._resolved_path_store(store_path)
 
         if not need_ownership_changes:
-            return
+            # We can just move the file.
+            shutil.move(
+                resolved_path_staging,
+                resolved_path_store,
+            )
 
-        resolved_path = self._resolved_path_store(store_path)
+            return
+        else:
+            # We need to copy the file and then set the permissions.
+            if resolved_path_store.is_dir():
+                shutil.copytree(resolved_path_staging, resolved_path_store)
+            else:
+                shutil.copy2(resolved_path_staging, resolved_path_store)
 
         try:
             # Set permissions and ownership.
@@ -150,15 +156,15 @@ class LocalStore(CoreStore):
                         os.chmod(file, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
 
             # Set for the top-level file.
-            set_for_file(resolved_path)
+            set_for_file(resolved_path_store)
 
             # If this is a directory, walk.
-            if resolved_path.is_dir():
-                for root, dirs, files in os.walk(resolved_path):
+            if resolved_path_store.is_dir():
+                for root, dirs, files in os.walk(resolved_path_store):
                     for x in dirs + files:
                         set_for_file(Path(root) / x)
         except ValueError:
-            raise PermissionError(f"Could not set permissions on {resolved_path}")
+            raise PermissionError(f"Could not set permissions on {resolved_path_store}")
 
         return
 
