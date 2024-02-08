@@ -259,7 +259,8 @@ def commit(
         )
     except Exception as e:
         log.debug(
-            "Extremely bad internal server error. Likley a database communication issue."
+            "Extremely bad internal server error. Likley a database communication issue. "
+            f"Error: {e}"
         )
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return UploadFailedResponse(
