@@ -115,12 +115,16 @@ class LocalStore(CoreStore):
         return
 
     def commit(self, staging_path: Path, store_path: Path):
-        shutil.move(
+        need_ownership_changes = self.own_after_commit or self.readonly_after_commit
+
+        use_func_commit = shutil.copy2 if need_ownership_changes else shutil.move
+
+        use_func_commit(
             self._resolved_path_staging(staging_path),
             self._resolved_path_store(store_path),
         )
 
-        if not self.own_after_commit and not self.readonly_after_commit:
+        if not need_ownership_changes:
             return
 
         resolved_path = self._resolved_path_store(store_path)
