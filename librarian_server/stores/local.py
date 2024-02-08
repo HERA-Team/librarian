@@ -24,10 +24,12 @@ class LocalStore(CoreStore):
     staging_path: Path
     store_path: Path
 
+    group_write_after_stage: bool = False
+    "If true, the user running the server will chmod the stage directories to 775 after creating."
     own_after_commit: bool = False
     "If true, the user running the server will chown the files after committing."
     readonly_after_commit: bool = False
-    "If true, the user running the server will chmod the files to 444 after commit."
+    "If true, the user running the server will chmod the files to 444 and folders to 555 after commit."
 
     @property
     def available(self) -> bool:
@@ -77,7 +79,10 @@ class LocalStore(CoreStore):
 
         # Create the empty directory.
         resolved_path = self._resolved_path_staging(stage_path)
-        resolved_path.mkdir()
+        if self.group_write_after_stage:
+            resolved_path.mkdir(mode=0o775)
+        else:
+            resolved_path.mkdir()
 
         return stage_path, resolved_path / file_name
 
