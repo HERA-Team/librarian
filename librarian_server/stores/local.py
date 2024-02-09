@@ -130,7 +130,7 @@ class LocalStore(CoreStore):
             return
         else:
             # We need to copy the file and then set the permissions.
-            if resolved_path_store.is_dir():
+            if resolved_path_staging.is_dir():
                 shutil.copytree(resolved_path_staging, resolved_path_store)
             else:
                 shutil.copy2(resolved_path_staging, resolved_path_store)
