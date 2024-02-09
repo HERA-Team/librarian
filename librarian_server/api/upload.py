@@ -258,9 +258,11 @@ def commit(
             "contact the administrator of this librarian instance.",
         )
     except Exception as e:
+        import traceback
+
         log.debug(
             "Extremely bad internal server error. Likley a database communication issue. "
-            f"Error: {e}"
+            f"Error: {e}, Traceback:\n{traceback.format_exc()}"
         )
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return UploadFailedResponse(
