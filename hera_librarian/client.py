@@ -711,7 +711,7 @@ class AdminClient(LibrarianClient):
 
         try:
             response: AdminCreateFileResponse = self.post(
-                endpoint="add_file",
+                endpoint="admin/add_file",
                 request=AdminCreateFileRequest(
                     name=name,
                     create_time=create_time,

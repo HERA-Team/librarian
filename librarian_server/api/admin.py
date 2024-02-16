@@ -63,7 +63,7 @@ def add_file(
     existing_file = session.get(File, request.name)
 
     if existing_file is not None:
-        return AdminCreateFileResponse(already_exists=True)
+        return AdminCreateFileResponse(already_exists=True, success=True)
 
     # Check the file instance exists.
     full_path = Path(request.path)
