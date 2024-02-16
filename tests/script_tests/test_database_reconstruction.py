@@ -6,8 +6,6 @@ import shutil
 import subprocess
 import sys
 
-from librarian_server_scripts.librarian_server_rebuild_database import run_migration
-
 
 def test_database_reconstruction(test_database_reconstruction_server):
     setup, get_session, orm = test_database_reconstruction_server
