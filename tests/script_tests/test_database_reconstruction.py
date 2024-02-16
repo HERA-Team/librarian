@@ -29,12 +29,11 @@ def test_database_reconstruction(test_database_reconstruction_server):
             shutil.which("librarian-server-rebuild-database"),
             "--directories",
             f"--store=local_store",
-            "--directory",
+            "--directories",
+            "--i-know-what-i-am-doing",
         ],
         env=setup.env,
     )
-
-    run_migration(store_name="local_store", directory=True)
 
     # Now check we ingested all those files.
 
