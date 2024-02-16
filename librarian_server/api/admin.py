@@ -20,6 +20,7 @@ from hera_librarian.models.admin import (
 
 from ..database import yield_session
 from ..orm import File, Instance, StoreMetadata
+from ..stores import StoreNames
 from .auth import AdminUserDependency
 
 router = APIRouter(prefix="/api/v2/admin")
@@ -48,6 +49,14 @@ def add_file(
         return AdminRequestFailedResponse(
             reason=f"Store {request.store_name} does not exist.",
             suggested_remedy="Create the store first. Maybe you need to run DB migration?",
+        )
+
+    # TODO: Can't do code coverage until we add nonlocal stores.
+    if store.store_type != StoreNames["local"]:  # pragma: no cover
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return AdminRequestFailedResponse(
+            reason=f"Store {request.store_name} is not a local store.",
+            suggested_remedy="Use a local store for this operation.",
         )
 
     # Check if the file exists already.
