@@ -13,6 +13,11 @@ from .authlevel import AuthLevel
 from .deletion import DeletionPolicy
 from .errors import ErrorCategory, ErrorSeverity
 from .exceptions import LibrarianError, LibrarianHTTPError
+from .models.admin import (
+    AdminCreateFileRequest,
+    AdminCreateFileResponse,
+    AdminRequestFailedResponse,
+)
 from .models.errors import (
     ErrorClearRequest,
     ErrorClearResponse,
@@ -660,3 +665,71 @@ class AdminClient(LibrarianClient):
                 raise ValueError(e.reason)
             else:  # pragma: no cover
                 raise e
+
+    def add_file_row(
+        self,
+        name: str,
+        create_time: datetime,
+        size: int,
+        checksum: str,
+        uploader: str,
+        path: str,
+        store_name: str,
+    ):
+        """
+        Add a file row for an already existing file on the store.
+        This is useful in the case that you need to re-build the
+        librarian database in place. This is inherrently a lossy process.
+
+        Parameters
+        ----------
+        name : str
+            The unique filename of this file.
+        create_time : datetime
+            The time at which this file was placed on the store.
+        size : int
+            Size in bytes of the file
+        checksum : str
+            Checksum (MD5 hash) of the file.
+        uploader : str
+            Uploader of the file.
+        path : str
+            Path to the instance (full) on the store.
+        store_name : str
+            The name of the store that this file is on.
+
+        Returns
+        -------
+        AdminCreateFileResponse
+            The response from the server.
+
+        Raises
+        ------
+        LibrarianError
+            If the file already exists on the store.
+        """
+
+        try:
+            response: AdminCreateFileResponse = self.post(
+                endpoint="admin/add_file",
+                request=AdminCreateFileRequest(
+                    name=name,
+                    create_time=create_time,
+                    size=size,
+                    checksum=checksum,
+                    uploader=uploader,
+                    source=self.user,
+                    path=path,
+                    store_name=store_name,
+                ),
+                response=AdminCreateFileResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Store" in e.reason:
+                raise LibrarianError(e.reason)
+            if e.status_code == 400 and "File" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise LibrarianError(f"Unknown error. {e}")
+
+        return response

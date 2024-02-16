@@ -21,6 +21,7 @@ def main() -> FastAPI:
     log.debug("Adding API router.")
 
     from .api import (
+        admin_router,
         clone_router,
         error_router,
         ping_router,
@@ -35,5 +36,6 @@ def main() -> FastAPI:
     app.include_router(search_router)
     app.include_router(error_router)
     app.include_router(users_router)
+    app.include_router(admin_router)
 
     return app
