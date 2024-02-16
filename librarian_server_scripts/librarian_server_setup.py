@@ -165,46 +165,46 @@ def main():
         )
         exit(0)
 
-    log.debug("Creating new database user, role, and password.")
+    # log.debug("Creating new database user, role, and password.")
 
-    with engine.begin() as conn:
-        try:
-            conn.execute(text("CREATE ROLE libserver"))
+    # with engine.begin() as conn:
+    #     try:
+    #         conn.execute(text("CREATE ROLE libserver"))
 
-            # Granting INSERT, SELECT, UPDATE, DELETE, REFERENCES privaleges.
-            conn.execute(
-                text(
-                    "GRANT INSERT,SELECT,UPDATE,DELETE,REFERENCES ON files,"
-                    "instances,incoming_transfers,outgoing_transfers"
-                    ",clone_transfers,remote_instances"
-                    ",users TO libserver"
-                )
-            )
-            # Grant just SELECT, REFERENCES privaleges.
-            conn.execute(
-                text(
-                    "GRANT SELECT,REFERENCES ON store_metadata,librarians TO libserver"
-                )
-            )
-            # Grant INSERT, SELECT, UPDATE privaleges.
-            conn.execute(
-                text("GRANT INSERT,SELECT,UPDATE,REFERENCES ON errors TO libserver")
-            )
-        except ProgrammingError:
-            log.error("Role libserver already exists.")
+    #         # Granting INSERT, SELECT, UPDATE, DELETE, REFERENCES privaleges.
+    #         conn.execute(
+    #             text(
+    #                 "GRANT INSERT,SELECT,UPDATE,DELETE,REFERENCES ON files,"
+    #                 "instances,incoming_transfers,outgoing_transfers"
+    #                 ",clone_transfers,remote_instances"
+    #                 ",users TO libserver"
+    #             )
+    #         )
+    #         # Grant just SELECT, REFERENCES privaleges.
+    #         conn.execute(
+    #             text(
+    #                 "GRANT SELECT,REFERENCES ON store_metadata,librarians TO libserver"
+    #             )
+    #         )
+    #         # Grant INSERT, SELECT, UPDATE privaleges.
+    #         conn.execute(
+    #             text("GRANT INSERT,SELECT,UPDATE,REFERENCES ON errors TO libserver")
+    #         )
+    #     except ProgrammingError:
+    #         log.error("Role libserver already exists.")
 
-        try:
-            conn.execute(
-                text(
-                    f"CREATE USER {args.librarian_db_user} WITH PASSWORD {args.librarian_db_password}"
-                )
-            )
-            conn.execute(text(f"GRANT libserver TO {args.librarian_db_user}"))
-        except InternalError:
-            log.error(f"User {args.librarian_db_user} already exists.")
-            exit(1)
+    #     try:
+    #         conn.execute(
+    #             text(
+    #                 f"CREATE USER {args.librarian_db_user} WITH PASSWORD {args.librarian_db_password}"
+    #             )
+    #         )
+    #         conn.execute(text(f"GRANT libserver TO {args.librarian_db_user}"))
+    #     except InternalError:
+    #         log.error(f"User {args.librarian_db_user} already exists.")
+    #         exit(1)
 
-    log.debug(f"Database user {args.librarian_db_user}, role, and password created.")
+    # log.debug(f"Database user {args.librarian_db_user}, role, and password created.")
 
 
 if __name__ == "__main__":  # pragma: no cover

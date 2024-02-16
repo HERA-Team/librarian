@@ -91,5 +91,5 @@ def test_add_file(
             path=str(
                 store_location / "test_upload_without_uploading_but_doesnt_exist.txt"
             ),
-            store_name="fake_store",
+            store_name="local_store",
         )
