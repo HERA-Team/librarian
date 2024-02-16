@@ -65,6 +65,7 @@ librarian-server-start = "librarian_server_scripts.librarian_server_start:main"
 librarian-background-only = "librarian_server_scripts.librarian_background_only:main"
 librarian-server-setup = "librarian_server_scripts.librarian_server_setup:main"
 librarian = "hera_librarian.cli:main"
+librarian-server-rebuild-database = "librarian_server_scripts.librarian_server_rebuild_database:main"
 
 [project.urls]
 Homepage = "https://github.com/simonsobs/librarian"
@@ -76,6 +77,7 @@ testpaths = [
     "tests/background_unit_test",
     "tests/client_unit_test",
     "tests/integration_test",
+    "tests/script_tests",
 ]
 
 [tool.coverage.run]

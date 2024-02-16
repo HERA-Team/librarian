@@ -77,8 +77,6 @@ def test_server(tmp_path_factory):
     # Before starting, create the DB schema
     run([sys.executable, shutil.which("librarian-server-setup")], env=setup.env)
 
-    import importlib
-
     import librarian_server
     import librarian_server.database
 
