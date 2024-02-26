@@ -20,15 +20,33 @@ def test_create_local_clone_with_valid(
 
         from_store = [store.name for store in stores if store.ingestable][0]
         to_store = [store.name for store in stores if not store.ingestable][0]
+        empty = [
+            store.name
+            for store in stores
+            if store.store_manager.report_full_fraction == 0.0
+        ][0]
 
     clone_task = CreateLocalClone(
         name="Local clone",
         clone_from=from_store,
-        clone_to=to_store,
+        clone_to=[empty, to_store],
         age_in_days=1,
     )
 
     assert clone_task()
+
+    found_clone = False
+
+    with get_session() as session:
+        instances = session.query(test_orm.Instance).all()
+
+        for instance in instances:
+            assert instance.store.name != empty
+
+            if instance.store.name == to_store:
+                found_clone = True
+
+    assert found_clone
 
 
 def test_create_local_clone_with_invalid(

@@ -83,6 +83,12 @@ def server_setup(tmp_path_factory) -> Server:
     store_directory_clone = tmp_path / f"store_clone_{server_id_and_port}"
     store_directory_clone.mkdir()
 
+    staging_directory_empty = tmp_path / f"staging_empty_{server_id_and_port}"
+    staging_directory_empty.mkdir()
+
+    store_directory_empty = tmp_path / f"store_empty_{server_id_and_port}"
+    store_directory_empty.mkdir()
+
     store_config = [
         {
             "store_name": "local_store",
@@ -106,6 +112,23 @@ def server_setup(tmp_path_factory) -> Server:
             "store_data": {
                 "staging_path": str(staging_directory_clone),
                 "store_path": str(store_directory_clone),
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostnames": [socket.gethostname()],
+                }
+            },
+        },
+        {
+            # A store that will _always_ report as empty!
+            "store_name": "local_empty",
+            "store_type": "local",
+            "ingestable": False,
+            "store_data": {
+                "staging_path": str(staging_directory_empty),
+                "store_path": str(store_directory_empty),
+                "report_full_fraction": 0.0,
             },
             "transfer_manager_data": {
                 "local": {

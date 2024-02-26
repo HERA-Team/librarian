@@ -6,8 +6,10 @@ within some time-frame.
 import datetime
 import logging
 from pathlib import Path
+from typing import Optional
 
 from schedule import CancelJob
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from librarian_server.database import get_session
@@ -26,8 +28,8 @@ class CreateLocalClone(Task):
 
     clone_from: str
     "Name of the store to clone from."
-    clone_to: str
-    "Name of the store to create copies on."
+    clone_to: str | list[str]
+    "Name of the store(s) to create copies on. If multiple are provided, the task will go through each one in order in case one or more stores are full."
     age_in_days: int
     "Age in days of the files to check. I.e. only check files younger than this (we assume older files are fine as they've been checked before)"
 
@@ -59,7 +61,12 @@ class CreateLocalClone(Task):
             return CancelJob
 
         try:
-            store_to = self.get_store(self.clone_to, session)
+            if isinstance(self.clone_to, list):
+                stores_to = [
+                    self.get_store(clone_to, session) for clone_to in self.clone_to
+                ]
+            else:
+                stores_to = [self.get_store(self.clone_to, session)]
         except ValueError:
             # Store doesn't exist. Cancel this job.
             log_to_database(
@@ -88,16 +95,42 @@ class CreateLocalClone(Task):
         for instance in instances:
             # Check if there is a matching instance already on our clone_to store.
             # If there is, we don't need to clone it.
-            if (
-                session.query(Instance)
-                .filter(Instance.store == store_to)
-                .filter(Instance.file == instance.file)
-                .first()
-            ):
-                unnecessary_clones += 1
-                logger.debug(
-                    f"File instance {Instance} already exists on clone_to store. Skipping."
+            for secondary_instance in instance.file.instances:
+                if secondary_instance.store in stores_to:
+                    unnecessary_clones += 1
+                    logger.debug(
+                        f"File instance {instance} already exists on clone_to store. Skipping."
+                    )
+                    continue
+
+            store_available = False
+            store_to: Optional[StoreMetadata] = None
+
+            for store in stores_to:
+                if not store.store_manager.available:
+                    continue
+
+                if not store.store_manager.free_space >= instance.file.size:
+                    continue
+
+                store_available = True
+                store_to = store
+
+                break
+
+            if not store_available:
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.STORE_FULL,
+                    message=(
+                        f"File {instance.file.name} is too large to fit on any store in "
+                        f"{self.clone_to}. Skipping. (Instance {instance.id})"
+                    ),
+                    session=session,
                 )
+
+                all_transfers_successful = False
+
                 continue
 
             transfer = CloneTransfer.new_transfer(
@@ -118,12 +151,13 @@ class CreateLocalClone(Task):
                     file_name=Path(instance.file.name).name,
                 )
             except ValueError:
-                # TODO: In the future where we have multiple potential clone stores for SneakerNet we should
-                # automatically fail-over to the next store.
                 log_to_database(
                     severity=ErrorSeverity.ERROR,
                     category=ErrorCategory.STORE_FULL,
-                    message=f"File {instance.file.name} is too large to fit on store {store_to}. Skipping. (Instance {instance.id})",
+                    message=(
+                        f"File {instance.file.name} is too large to fit on store {store_to}. "
+                        f"Skipping, but this should have already have been caught. (Instance {instance.id})"
+                    ),
                     session=session,
                 )
 
