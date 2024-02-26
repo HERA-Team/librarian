@@ -24,6 +24,9 @@ class LocalStore(CoreStore):
     staging_path: Path
     store_path: Path
 
+    report_full_fraction: float = 1.0
+    "The fraction of the store that must be full before we report it as full. 1.0 means 100% full. Typical to set 0.9 or 0.95."
+
     group_write_after_stage: bool = False
     "If true, the user running the server will chmod the stage directories to 775 after creating."
     own_after_commit: bool = False
@@ -38,10 +41,15 @@ class LocalStore(CoreStore):
 
     @property
     def free_space(self) -> int:
-        return min(
-            shutil.disk_usage(self.store_path).free,
-            shutil.disk_usage(self.staging_path).free,
-        )
+        store = shutil.disk_usage(self.store_path)
+        staging = shutil.disk_usage(self.staging_path)
+
+        reserved_fraction = 1.0 - self.report_full_fraction
+
+        store_free = store.free - (store.total * reserved_fraction)
+        staging_free = staging.free - (staging.total * reserved_fraction)
+
+        return max(min(store_free, staging_free), 0)
 
     def _resolved_path_staging(self, path: Path) -> Path:
         if not path.is_absolute():
