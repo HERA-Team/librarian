@@ -16,11 +16,16 @@ from hera_librarian.models.admin import (
     AdminCreateFileRequest,
     AdminCreateFileResponse,
     AdminRequestFailedResponse,
+    AdminStoreListItem,
+    AdminStoreListResponse,
+    AdminStoreManifestRequest,
+    AdminStoreManifestResponse,
+    ManifestEntry,
 )
 
 from ..database import yield_session
 from ..orm import File, Instance, StoreMetadata
-from ..stores import StoreNames
+from ..stores import InvertedStoreNames, StoreNames
 from .auth import AdminUserDependency
 
 router = APIRouter(prefix="/api/v2/admin")
@@ -96,3 +101,80 @@ def add_file(
     session.commit()
 
     return AdminCreateFileResponse(success=True, file_exists=True)
+
+
+@router.post("/store_list")
+def store_list(
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+):
+    """
+    Returns a list of all stores in the database with some basic information
+    about them.
+    """
+
+    stores = session.query(StoreMetadata).all()
+
+    return AdminStoreListResponse(
+        [
+            AdminStoreListItem(
+                name=store.name,
+                store_type=InvertedStoreNames[store.store_type],
+                free_space=store.store_manager.free_space,
+                ingestable=store.ingestable,
+                available=store.store_manager.available,
+            )
+            for store in stores
+        ]
+    )
+
+
+@router.post(
+    "/store_manifest",
+    response_model=AdminStoreManifestResponse | AdminRequestFailedResponse,
+)
+def store_manifest(
+    request: AdminStoreManifestRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+):
+    """
+    Retrives the manifest of an entire store. Returns as JSON. This will
+    be a very large request and response, so use with caution.
+    """
+
+    # First, get the store.
+    store = (
+        session.query(StoreMetadata).filter_by(name=request.store_name).one_or_none()
+    )
+
+    if store is None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return AdminRequestFailedResponse(
+            reason=f"Store {request.store_name} does not exist.",
+            suggested_remedy="Create the store first. Maybe you need to run DB migration?",
+        )
+
+    # Get the list of instances.
+    instances = session.query(Instance).filter_by(store=store).all()
+
+    return AdminStoreManifestResponse(
+        store_name=store.name,
+        store_files=[
+            ManifestEntry(
+                name=instance.file.name,
+                create_time=instance.file.create_time,
+                size=instance.file.size,
+                checksum=instance.file.checksum,
+                uploader=instance.file.uploader,
+                source=instance.file.source,
+                instance_path=instance.path,
+                deletion_policy=instance.deletion_policy,
+                instance_create_time=instance.created_time,
+                instance_available=instance.available,
+            )
+            for instance in instances
+        ],
+    )

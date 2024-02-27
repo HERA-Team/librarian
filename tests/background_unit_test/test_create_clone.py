@@ -2,6 +2,11 @@
 Tests the CreateClone background service.
 """
 
+from hera_librarian.models.admin import (
+    AdminStoreManifestRequest,
+    AdminStoreManifestResponse,
+)
+
 
 def test_create_local_clone_with_valid(
     test_client, test_server_with_valid_file, test_orm
@@ -35,7 +40,7 @@ def test_create_local_clone_with_valid(
 
     assert clone_task()
 
-    found_clone = False
+    clones = []
 
     with get_session() as session:
         instances = session.query(test_orm.Instance).all()
@@ -44,9 +49,21 @@ def test_create_local_clone_with_valid(
             assert instance.store.name != empty
 
             if instance.store.name == to_store:
-                found_clone = True
+                clones.append(instance)
 
-    assert found_clone
+    assert len(clones) > 0
+
+    # Generate the manifest
+    response = test_client.post_with_auth(
+        "/api/v2/admin/store_manifest",
+        content=AdminStoreManifestRequest(store_name=to_store).model_dump_json(),
+    )
+
+    assert response.status_code == 200
+
+    manifest = AdminStoreManifestResponse.model_validate_json(response.content)
+
+    assert len(manifest.store_files) == len(clones)
 
 
 def test_create_local_clone_with_invalid(

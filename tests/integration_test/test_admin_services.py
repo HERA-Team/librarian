@@ -93,3 +93,30 @@ def test_add_file(
             ),
             store_name="local_store",
         )
+
+
+def test_store_list(server, admin_client):
+    store_list = admin_client.get_store_list()
+
+
+def test_store_manifest(server, admin_client):
+    store_list = admin_client.get_store_list()
+
+    for store in store_list:
+        manifest = admin_client.get_store_manifest(store.name)
+
+        assert manifest.store_name == store.name
+
+        for entry in manifest.store_files:
+            assert entry.name is not None
+            assert entry.create_time is not None
+            assert entry.size is not None
+            assert entry.checksum is not None
+            assert entry.uploader is not None
+            assert entry.source is not None
+            assert entry.instance_path is not None
+            assert entry.deletion_policy is not None
+            assert entry.instance_create_time is not None
+            assert entry.instance_available is not None
+
+            assert entry.size == get_size_from_path(entry.instance_path)

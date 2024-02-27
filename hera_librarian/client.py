@@ -17,6 +17,10 @@ from .models.admin import (
     AdminCreateFileRequest,
     AdminCreateFileResponse,
     AdminRequestFailedResponse,
+    AdminStoreListItem,
+    AdminStoreListResponse,
+    AdminStoreManifestRequest,
+    AdminStoreManifestResponse,
 )
 from .models.errors import (
     ErrorClearRequest,
@@ -731,5 +735,56 @@ class AdminClient(LibrarianClient):
                 raise LibrarianError(e.reason)
             else:
                 raise LibrarianError(f"Unknown error. {e}")
+
+        return response
+
+    def get_store_list(
+        self,
+    ) -> list[AdminStoreListItem]:
+        """
+        Get the list of stores on this librarian.
+
+        Returns
+        -------
+        list[AdminStoreListResponse]
+            The list of stores.
+        """
+
+        response: AdminStoreListResponse = self.post(
+            endpoint="admin/store_list",
+            response=AdminStoreListResponse,
+        )
+
+        return response.root
+
+    def get_store_manifest(
+        self,
+        store_name: str,
+    ) -> AdminStoreManifestResponse:
+        """
+        Get the manifest of a store on this librarian.
+
+        Parameters
+        ----------
+        store_name : str
+            The name of the store to get the manifest for.
+
+        Returns
+        -------
+        AdminStoreManifestResponse
+            The manifest of the store.
+        """
+
+        try:
+            response: AdminStoreManifestResponse = self.post(
+                endpoint="admin/store_manifest",
+                request=AdminStoreManifestRequest(store_name=store_name),
+                response=AdminStoreManifestResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Store" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
 
         return response

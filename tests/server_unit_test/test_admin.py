@@ -9,6 +9,8 @@ from hera_librarian.models.admin import (
     AdminCreateFileRequest,
     AdminCreateFileResponse,
     AdminRequestFailedResponse,
+    AdminStoreListResponse,
+    AdminStoreManifestRequest,
 )
 from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
@@ -134,3 +136,39 @@ def test_add_file_no_store_exists(test_client):
     response = AdminRequestFailedResponse.model_validate_json(response.content)
 
     assert response.reason == "Store not_a_store does not exist."
+
+
+def test_search_stores_and_manifest(test_client):
+    """
+    Tests that we can search for stores.
+    """
+
+    response = test_client.post_with_auth("/api/v2/admin/store_list", content="")
+
+    assert response.status_code == 200
+
+    response = AdminStoreListResponse.model_validate_json(response.content).root
+
+    # Now we can try the manifest!
+
+    new_response = test_client.post_with_auth(
+        "/api/v2/admin/store_manifest",
+        content=AdminStoreManifestRequest(
+            store_name=response[0].name
+        ).model_dump_json(),
+    )
+
+    assert new_response.status_code == 200
+
+    new_response = AdminStoreManifestRequest.model_validate_json(new_response.content)
+
+    assert new_response.store_name == response[0].name
+
+
+def test_search_manifest_no_store(test_client):
+    response = test_client.post_with_auth(
+        "/api/v2/admin/store_manifest",
+        content=AdminStoreManifestRequest(store_name="not_a_store").model_dump_json(),
+    )
+
+    assert response.status_code == 400
