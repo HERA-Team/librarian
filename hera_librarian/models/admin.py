@@ -95,14 +95,30 @@ class ManifestEntry(BaseModel):
     instance_create_time: datetime
     "The time the instance was created."
     instance_available: bool
+    "Whether the instance is available or not. If not, no outgoing transfer is created."
+
+    outgoing_transfer_id: int
+    "The ID of the outgoing transfer, if it exists."
 
 
 class AdminStoreManifestRequest(BaseModel):
     store_name: str
     "The name of the store to get the manifest for."
 
+    create_outgoing_transfers: bool = False
+    "Whether to create outgoing transfers for the files in the manifest."
+
+    destination_librarian: str = ""
+    "The name of the librarian to send the files to, if create_outgoing_transfers is true."
+
+    disable_store: bool = False
+    "Whether to disable the store after creating the outgoing transfers."
+
 
 class AdminStoreManifestResponse(BaseModel):
+    librarian_name: str
+    "The name of the librarian that generated this manifest."
+
     store_name: str
     "The name of the store."
 
