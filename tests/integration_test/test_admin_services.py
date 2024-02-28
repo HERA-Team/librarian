@@ -120,3 +120,36 @@ def test_store_manifest(server, admin_client):
             assert entry.instance_available is not None
 
             assert entry.size == get_size_from_path(entry.instance_path)
+
+
+def test_set_store_state(
+    server, admin_client, librarian_database_session_maker, test_orm
+):
+    store_list = admin_client.get_store_list()
+
+    for store in store_list:
+        response = admin_client.set_store_state(store.name, enabled=False)
+
+        assert response is False
+
+        with librarian_database_session_maker() as session:
+            store = (
+                session.query(test_orm.StoreMetadata)
+                .filter_by(name=store.name)
+                .one_or_none()
+            )
+
+            assert not store.enabled
+
+        response = admin_client.set_store_state(store.name, enabled=True)
+
+        assert response is True
+
+        with librarian_database_session_maker() as session:
+            store = (
+                session.query(test_orm.StoreMetadata)
+                .filter_by(name=store.name)
+                .one_or_none()
+            )
+
+            assert store.enabled

@@ -29,6 +29,8 @@ from .models.admin import (
     AdminStoreListResponse,
     AdminStoreManifestRequest,
     AdminStoreManifestResponse,
+    AdminStoreStateChangeRequest,
+    AdminStoreStateChangeResponse,
 )
 from .models.errors import (
     ErrorClearRequest,
@@ -798,6 +800,49 @@ class AdminClient(LibrarianClient):
         )
 
         return response.root
+
+    def set_store_state(
+        self,
+        store_name: str,
+        enabled: bool,
+    ) -> bool:
+        """
+        Sets the enabled (or disabled) state of a store on this librarian.
+
+        Parameters
+        ----------
+        store_name : str
+            The name of the store to change the state of.
+        enabled : bool
+            The new state of the store.
+
+        Returns
+        -------
+        bool
+            The new (confirmed) state of the store.
+
+        Raises
+        ------
+        LibrarianError
+            If the store does not exist.
+        """
+
+        try:
+            response: AdminStoreStateChangeResponse = self.post(
+                endpoint="admin/stores/state_change",
+                request=AdminStoreStateChangeRequest(
+                    store_name=store_name,
+                    enabled=enabled,
+                ),
+                response=AdminStoreStateChangeResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Store" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response.enabled
 
     def get_store_manifest(
         self,
