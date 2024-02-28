@@ -50,6 +50,8 @@ class StoreMetadata(db.Base):
     "The name of this store (as defined in the parameter file)."
     ingestable = db.Column(db.Boolean, nullable=False, default=True)
     "Whether this store accepts ingest requests or is just for cloning other stores."
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    "Whether this store is enabled or not. If not, it will not be used for any operations."
     store_type = db.Column(db.Integer, nullable=False)
     "The type of this store. Indexes into hera_librarain.stores.Stores."
     store_data = db.Column(db.PickleType)
@@ -119,6 +121,9 @@ class StoreMetadata(db.Base):
         """
 
         # We do not have any custom metadata any more. So MetaMode is no longer required...
+
+        if not self.enabled:
+            raise ValueError(f"Store {self.name} is not enabled.")
 
         staged_path = request.staging_location
         store_path = request.destination_location

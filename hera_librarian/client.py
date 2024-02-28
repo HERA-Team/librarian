@@ -9,6 +9,14 @@ from typing import TYPE_CHECKING, Optional
 import requests
 from pydantic import BaseModel
 
+from hera_librarian.models.clone import (
+    CloneCompleteRequest,
+    CloneInitiationRequest,
+    CloneInitiationResponse,
+    CloneOngoingRequest,
+    CloneOngoingResponse,
+)
+
 from .authlevel import AuthLevel
 from .deletion import DeletionPolicy
 from .errors import ErrorCategory, ErrorSeverity
@@ -237,6 +245,62 @@ class LibrarianClient:
 
         return response
 
+    def _copy_file(
+        self,
+        transfer_managers: dict[str, "CoreTransferManager"],
+        local_path: Path,
+        remote_path: Path,
+    ) -> str:
+        """
+        Copy a file to the librarian. Used by the underlying upload and
+        cloning functions.
+
+        Parameters
+        ----------
+        transfer_managers : dict[str, CoreTransferManager]
+            The transfer managers to use.
+        local_path : Path
+            The path of the local file.
+        remote_path : Path
+            The path of the remote file.
+
+        Returns
+        -------
+        str
+            The name of the transfer manager that was used.
+
+        Raises
+        ------
+        LibrarianError
+            If no valid transfer managers are found.
+        """
+
+        # Now try all the transfer managers. If they're valid, we try to use them.
+        # If they fail, we should probably catch the exception.
+        # TODO: Catch the exception on failure.
+        used_transfer_manager_name: Optional[str] = None
+
+        # TODO: Should probably have some manual ordering here.
+        for name, transfer_manager in transfer_managers.items():
+            if transfer_manager.valid:
+                try:
+                    transfer_manager.transfer(
+                        local_path=local_path, remote_path=remote_path
+                    )
+
+                    # We used this.
+                    used_transfer_manager_name = name
+                    break
+                except PermissionError:
+                    raise LibrarianError(f"Could not set permissions on {remote_path}")
+            else:
+                print(f"Warning: transfer manager {name} is not valid.")
+
+        if used_transfer_manager_name is None:
+            raise LibrarianError("No valid transfer managers found.")
+
+        return used_transfer_manager_name
+
     def upload(
         self,
         local_path: Path,
@@ -293,33 +357,11 @@ class LibrarianClient:
 
         transfer_managers = response.transfer_providers
 
-        # Now try all the transfer managers. If they're valid, we try to use them.
-        # If they fail, we should probably catch the exception.
-        # TODO: Catch the exception on failure.
-        used_transfer_manager: Optional["CoreTransferManager"] = None
-        used_transfer_manager_name: Optional[str] = None
-
-        # TODO: Should probably have some manual ordering here.
-        for name, transfer_manager in transfer_managers.items():
-            if transfer_manager.valid:
-                try:
-                    transfer_manager.transfer(
-                        local_path=local_path, remote_path=response.staging_location
-                    )
-
-                    # We used this.
-                    used_transfer_manager = transfer_manager
-                    used_transfer_manager_name = name
-                    break
-                except PermissionError:
-                    raise LibrarianError(
-                        f"Could not set permissions on {response.staging_location}"
-                    )
-            else:
-                print(f"Warning: transfer manager {name} is not valid.")
-
-        if used_transfer_manager is None:
-            raise LibrarianError("No valid transfer managers found.")
+        used_transfer_manager_name = self._copy_file(
+            transfer_managers=transfer_managers,
+            local_path=local_path,
+            remote_path=response.staging_location,
+        )
 
         # If we made it here, the file is successfully on the store!
         request = UploadCompletionRequest(
@@ -329,7 +371,7 @@ class LibrarianClient:
             upload_name=response.upload_name,
             destination_location=dest_path,
             transfer_provider_name=used_transfer_manager_name,
-            transfer_provider=used_transfer_manager,
+            transfer_provider=transfer_managers[used_transfer_manager_name],
             # Note: meta_mode is used in current status
             meta_mode="infer",
             deletion_policy=deletion_policy,
@@ -751,7 +793,7 @@ class AdminClient(LibrarianClient):
         """
 
         response: AdminStoreListResponse = self.post(
-            endpoint="admin/store_list",
+            endpoint="admin/stores/list",
             response=AdminStoreListResponse,
         )
 
@@ -777,7 +819,7 @@ class AdminClient(LibrarianClient):
 
         try:
             response: AdminStoreManifestResponse = self.post(
-                endpoint="admin/store_manifest",
+                endpoint="admin/stores/manifest",
                 request=AdminStoreManifestRequest(store_name=store_name),
                 response=AdminStoreManifestResponse,
             )
@@ -788,3 +830,87 @@ class AdminClient(LibrarianClient):
                 raise e
 
         return response
+
+    def ingest_manifest_entry(
+        self,
+        name: Path,
+        create_time: datetime,
+        size: int,
+        checksum: str,
+        uploader: str,
+        source: str,
+        deletion_policy: DeletionPolicy,
+        local_path: Path,
+    ):
+        """
+        Ingest a manifest entry into the librarian. This is used for
+        sneakernet transfers, and aims to be a lossless process. You should
+        use the same user as the original librarian for this to be
+        entirely seamless.
+
+        Parameters
+        ----------
+
+        name : str
+            The name of the file.
+        create_time : datetime
+            The time the file was created.
+        size : int
+            The size of the file in bytes.
+        checksum : str
+            The checksum of the file.
+        uploader : str
+            The uploader of the file.
+        source : str
+            The source of the file.
+        deletion_policy : DeletionPolicy
+            The deletion policy of the instance.
+        local_path : Path
+            The path to the instance on the store.
+        """
+
+        # We will use the clone endpoints on the server for this process, as
+        # it is effectively a self-managed clone.
+
+        initiation_request = CloneInitiationRequest(
+            upload_size=size,
+            upload_checksum=checksum,
+            upload_name=name.name,
+            destination_location=name,
+            # Uploader is SPECIFICALLY kept as a param here because it
+            uploader=uploader,
+            source=source,
+            # TODO: As part of the manifest generation process, we should generate
+            #       outbound transfers for all the files.
+            source_transfer_id=-1,
+        )
+
+        initiaton_response: CloneInitiationResponse = self.post(
+            endpoint="clone/stage",
+            request=initiation_request,
+            response=CloneInitiationResponse,
+        )
+
+        # Because this is a clone and is async, we need to set
+        # the status as ongoing on the server.
+
+        ongoing_request = CloneOngoingRequest(
+            source_transfer_id=initiaton_response.source_transfer_id,
+            destination_transfer_id=initiaton_response.destination_transfer_id,
+        )
+
+        ongoing_reponse = self.post(
+            endpoint="clone/ongoing",
+            request=ongoing_request,
+            response=CloneOngoingResponse,
+        )
+
+        transfer_managers = initiaton_response.transfer_providers
+
+        used_transfer_manager_name = self._copy_file(
+            transfer_managers=transfer_managers,
+            local_path=local_path,
+            remote_path=initiaton_response.staging_location,
+        )
+
+        return

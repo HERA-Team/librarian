@@ -6,6 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, RootModel
 
+from hera_librarian.deletion import DeletionPolicy
+
 
 class AdminCreateFileRequest(BaseModel):
     # File properties
@@ -65,6 +67,9 @@ class AdminStoreListItem(BaseModel):
     available: bool
     "Whether this store is available or not."
 
+    enabled: bool
+    "Whether this store is enabled or not."
+
 
 AdminStoreListResponse = RootModel[list[AdminStoreListItem]]
 
@@ -85,7 +90,7 @@ class ManifestEntry(BaseModel):
 
     instance_path: str
     "The path to the instance on the store."
-    deletion_policy: str
+    deletion_policy: DeletionPolicy
     "The deletion policy of the instance."
     instance_create_time: datetime
     "The time the instance was created."
@@ -103,3 +108,22 @@ class AdminStoreManifestResponse(BaseModel):
 
     store_files: list[ManifestEntry]
     "The files on the store."
+
+
+class AdminStoreStateChangeRequest(BaseModel):
+    store_name: str
+    "The name of the store to enable or disable."
+
+    enabled: bool
+    "Whether to enable or disable the store. If true, it will be set to enabled, else disabled."
+
+
+class AdminStoreStateChangeResponse(BaseModel):
+    store_name: str
+    "The name of the store."
+
+    enabled: bool
+    "The current state of the store."
+
+    success: bool
+    "Whether your transaction was ultimately successful."

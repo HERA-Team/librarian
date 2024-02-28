@@ -55,7 +55,7 @@ def test_create_local_clone_with_valid(
 
     # Generate the manifest
     response = test_client.post_with_auth(
-        "/api/v2/admin/store_manifest",
+        "/api/v2/admin/stores/manifest",
         content=AdminStoreManifestRequest(store_name=to_store).model_dump_json(),
     )
 

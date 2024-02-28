@@ -20,6 +20,8 @@ from hera_librarian.models.admin import (
     AdminStoreListResponse,
     AdminStoreManifestRequest,
     AdminStoreManifestResponse,
+    AdminStoreStateChangeRequest,
+    AdminStoreStateChangeResponse,
     ManifestEntry,
 )
 
@@ -103,7 +105,7 @@ def add_file(
     return AdminCreateFileResponse(success=True, file_exists=True)
 
 
-@router.post("/store_list")
+@router.post("/stores/list")
 def store_list(
     user: AdminUserDependency,
     response: Response,
@@ -124,6 +126,7 @@ def store_list(
                 free_space=store.store_manager.free_space,
                 ingestable=store.ingestable,
                 available=store.store_manager.available,
+                enabled=store.enabled,
             )
             for store in stores
         ]
@@ -131,7 +134,50 @@ def store_list(
 
 
 @router.post(
-    "/store_manifest",
+    "/stores/state_change",
+    response_model=AdminStoreStateChangeResponse | AdminRequestFailedResponse,
+)
+def store_state_change(
+    request: AdminStoreStateChangeRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+) -> AdminStoreStateChangeResponse:
+    """
+    Endpoint for changing the 'enabled' state of a store. You can use
+    this to disable stores that you temporarly want to disable access
+    to (such as swapping out sneaker net disks, etc.).
+    """
+
+    # First, get the store.
+    store = (
+        session.query(StoreMetadata).filter_by(name=request.store_name).one_or_none()
+    )
+
+    if store is None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return AdminRequestFailedResponse(
+            reason=f"Store {request.store_name} does not exist.",
+            suggested_remedy="Create the store first. Maybe you need to run DB migration?",
+        )
+
+    # Now, change the state.
+    store.enabled = request.enabled
+
+    session.commit()
+
+    # Get that store again.
+    store = (
+        session.query(StoreMetadata).filter_by(name=request.store_name).one_or_none()
+    )
+
+    return AdminStoreStateChangeResponse(
+        store_name=store.name, success=True, enabled=store.enabled
+    )
+
+
+@router.post(
+    "/stores/manifest",
     response_model=AdminStoreManifestResponse | AdminRequestFailedResponse,
 )
 def store_manifest(
@@ -142,7 +188,9 @@ def store_manifest(
 ):
     """
     Retrives the manifest of an entire store. Returns as JSON. This will
-    be a very large request and response, so use with caution.
+    be a very large request and response, so use with caution. You can then
+    ingest the manifest items individually into a different instance of
+    the librarian, thus completing the 'sneakernet' process.
     """
 
     # First, get the store.

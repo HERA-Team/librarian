@@ -11,6 +11,8 @@ from hera_librarian.models.admin import (
     AdminRequestFailedResponse,
     AdminStoreListResponse,
     AdminStoreManifestRequest,
+    AdminStoreStateChangeRequest,
+    AdminStoreStateChangeResponse,
 )
 from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
@@ -143,7 +145,7 @@ def test_search_stores_and_manifest(test_client):
     Tests that we can search for stores.
     """
 
-    response = test_client.post_with_auth("/api/v2/admin/store_list", content="")
+    response = test_client.post_with_auth("/api/v2/admin/stores/list", content="")
 
     assert response.status_code == 200
 
@@ -152,7 +154,7 @@ def test_search_stores_and_manifest(test_client):
     # Now we can try the manifest!
 
     new_response = test_client.post_with_auth(
-        "/api/v2/admin/store_manifest",
+        "/api/v2/admin/stores/manifest",
         content=AdminStoreManifestRequest(
             store_name=response[0].name
         ).model_dump_json(),
@@ -167,8 +169,57 @@ def test_search_stores_and_manifest(test_client):
 
 def test_search_manifest_no_store(test_client):
     response = test_client.post_with_auth(
-        "/api/v2/admin/store_manifest",
+        "/api/v2/admin/stores/manifest",
         content=AdminStoreManifestRequest(store_name="not_a_store").model_dump_json(),
     )
 
     assert response.status_code == 400
+
+
+def test_store_state_change(test_client):
+    # First, search the stores.
+    response = test_client.post_with_auth("/api/v2/admin/stores/list", content="")
+    response = AdminStoreListResponse.model_validate_json(response.content).root
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/stores/state_change",
+        content=AdminStoreStateChangeRequest(
+            store_name=response[0].name, enabled=False
+        ).model_dump_json(),
+    )
+
+    assert response.status_code == 200
+
+    response = AdminStoreStateChangeResponse.model_validate_json(response.content)
+
+    assert response.enabled == False
+
+    # Get them again from search endpoint.
+    response = test_client.post_with_auth("/api/v2/admin/stores/list", content="")
+
+    response = AdminStoreListResponse.model_validate_json(response.content).root
+
+    assert response[0].enabled == False
+
+    # Enable it again.
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/stores/state_change",
+        content=AdminStoreStateChangeRequest(
+            store_name=response[0].name, enabled=True
+        ).model_dump_json(),
+    )
+
+    assert response.status_code == 200
+
+
+def test_store_state_change_no_store(test_client):
+    response = test_client.post_with_auth(
+        "/api/v2/admin/stores/state_change",
+        content=AdminStoreStateChangeRequest(
+            store_name="not_a_store", enabled=False
+        ).model_dump_json(),
+    )
+
+    assert response.status_code == 400
+    response = AdminRequestFailedResponse.model_validate_json(response.content)

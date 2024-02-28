@@ -107,7 +107,7 @@ class CreateLocalClone(Task):
             store_to: Optional[StoreMetadata] = None
 
             for store in stores_to:
-                if not store.store_manager.available:
+                if not (store.store_manager.available and store.enabled):
                     continue
 
                 if not store.store_manager.free_space >= instance.file.size:

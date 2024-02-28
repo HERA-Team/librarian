@@ -195,7 +195,7 @@ def stage(
     use_store: Optional[StoreMetadata] = None
 
     for store in session.query(StoreMetadata).filter_by(ingestable=True).all():
-        if not store.store_manager.available:
+        if not (store.store_manager.available and store.enabled):
             continue
 
         if store.store_manager.free_space > request.upload_size:
