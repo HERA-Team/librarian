@@ -159,6 +159,7 @@ class OutgoingTransfer(db.Base):
             destination=destination,
             transfer_size=file.size,
             transfer_checksum=file.checksum,
+            file_name=file.name,
             instance_id=instance.id,
             start_time=datetime.datetime.utcnow(),
         )

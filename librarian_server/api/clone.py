@@ -41,6 +41,7 @@ from ..database import yield_session
 from ..logger import log
 from ..orm.file import File
 from ..orm.instance import RemoteInstance
+from ..orm.librarian import Librarian
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import IncomingTransfer, OutgoingTransfer, TransferStatus
 from .auth import CallbackUserDependency, ReadappendUserDependency
@@ -342,7 +343,8 @@ def complete(
     Possible response codes:
 
     200 - OK. Transfer status updated.
-    404 - Not found. Could not find transfer.
+    400 - Not found. Could not find transfer.
+    400 - Bad request. Could not find librarian.
     406 - Not acceptable. Transfer is not in STAGED status.
     """
 
@@ -361,7 +363,7 @@ def complete(
             f"Could not find transfer with ID {request.source_transfer_id}. Returning error."
         )
 
-        response.status_code = status.HTTP_404_NOT_FOUND
+        response.status_code = status.HTTP_400_BAD_REQUEST
         return CloneFailedResponse(
             reason="Could not find transfer.",
             suggested_remedy=(
@@ -389,13 +391,30 @@ def complete(
             destination_transfer_id=request.destination_transfer_id,
         )
 
+    librarian = session.query(Librarian).filter_by(name=transfer.destination).first()
+
+    if librarian is None:
+        log.debug(f"Could not find librarian {transfer.destination}. Returning error.")
+
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return CloneFailedResponse(
+            reason=f"Could not find librarian {transfer.destination}.",
+            suggested_remedy=(
+                f"Check your librarian configuration. The librarian {transfer.destination} needs "
+                "to be an entry in this database. No remote instances will be created, and the "
+                "transfer status will not be updated, so you can try again afterwards."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
     transfer.status = TransferStatus.COMPLETED
 
     # Create new remote instance for this file that was just completed.
     remote_instance = RemoteInstance.new_instance(
         file=transfer.file,
         store_id=request.store_id,
-        librarian=transfer.destination,
+        librarian=librarian,
     )
 
     session.add(remote_instance)

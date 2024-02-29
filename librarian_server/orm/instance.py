@@ -142,8 +142,8 @@ class RemoteInstance(db.Base):
         return RemoteInstance(
             file=file,
             store_id=store_id,
+            librarian_id=librarian.id,
             librarian=librarian,
             copy_time=datetime.utcnow(),
-            # TODO: This should somehow be our name? Not just the displayed site name.
-            sender=server_settings.displayed_site_name,
+            sender=server_settings.name,
         )
