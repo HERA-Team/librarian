@@ -122,6 +122,13 @@ class OutgoingTransfer(db.Base):
     end_time = db.Column(db.DateTime)
     "The time at which this interaction was ended."
 
+    file_name = db.Column(db.String(256), db.ForeignKey("files.name"), nullable=False)
+    "The name of the file that is being uploaded."
+    file = db.relationship(
+        "File", primaryjoin="File.name == OutgoingTransfer.file_name"
+    )
+    "The file that is being uploaded."
+
     instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"), nullable=False)
     "The ID of the instance that this transfer is copying."
     instance = db.relationship(
