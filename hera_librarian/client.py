@@ -847,6 +847,10 @@ class AdminClient(LibrarianClient):
     def get_store_manifest(
         self,
         store_name: str,
+        create_outgoing_transfers: bool = False,
+        destination_librarian: str | None = None,
+        disable_store: bool = False,
+        mark_local_instances_as_unavailable: bool = False,
     ) -> AdminStoreManifestResponse:
         """
         Get the manifest of a store on this librarian.
@@ -855,6 +859,18 @@ class AdminClient(LibrarianClient):
         ----------
         store_name : str
             The name of the store to get the manifest for.
+        create_outgoing_transfers : bool, optional
+            Whether to create outgoing transfers for the files in the
+            manifest, by default False
+        destination_librarian : str, optional
+            The name of the librarian to send the files to, if
+            create_outgoing_transfers is true, by default None
+        disable_store : bool, optional
+            Whether to disable the store after creating the outgoing
+            transfers, by default False
+        mark_local_instances_as_unavailable : bool, optional
+            Mark the local instances as unavailable after creating the
+            outgoing transfers, by default False
 
         Returns
         -------
@@ -865,7 +881,17 @@ class AdminClient(LibrarianClient):
         try:
             response: AdminStoreManifestResponse = self.post(
                 endpoint="admin/stores/manifest",
-                request=AdminStoreManifestRequest(store_name=store_name),
+                request=AdminStoreManifestRequest(
+                    store_name=store_name,
+                    create_outgoing_transfers=create_outgoing_transfers,
+                    destination_librarian=(
+                        destination_librarian
+                        if destination_librarian is not None
+                        else ""
+                    ),
+                    disable_store=disable_store,
+                    mark_local_instances_as_unavailable=mark_local_instances_as_unavailable,
+                ),
                 response=AdminStoreManifestResponse,
             )
         except LibrarianHTTPError as e:
