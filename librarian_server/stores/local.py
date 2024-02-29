@@ -49,7 +49,7 @@ class LocalStore(CoreStore):
         store_free = store.free - (store.total * reserved_fraction)
         staging_free = staging.free - (staging.total * reserved_fraction)
 
-        return max(min(store_free, staging_free), 0)
+        return int(max(min(store_free, staging_free), 0))
 
     def _resolved_path_staging(self, path: Path) -> Path:
         if not path.is_absolute():
