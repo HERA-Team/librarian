@@ -317,6 +317,7 @@ def test_incoming_transfer_endpoints(
     request = CloneCompleteRequest(
         source_transfer_id=transfer_id,
         destination_transfer_id=transfer_id,
+        store_id=store.id,
     )
 
     response = test_client.post_with_auth(
@@ -366,6 +367,7 @@ def test_complete_no_transfer(test_client, test_server, test_orm):
     request = CloneCompleteRequest(
         source_transfer_id=-1,
         destination_transfer_id=-1,
+        store_id=-1,
     )
 
     response = test_client.post_with_auth(

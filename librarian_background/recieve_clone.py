@@ -161,6 +161,7 @@ class RecieveClone(Task):
                     request = CloneCompleteRequest(
                         source_transfer_id=transfer.id,
                         destination_instance_id=instance.id,
+                        store_id=store.id,
                     )
 
                     try:

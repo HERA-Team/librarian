@@ -104,6 +104,8 @@ class CloneCompleteRequest(BaseModel):
     "The ID of the transfer. Note that this is the OutgoingTransfer ID."
     destination_transfer_id: int
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
+    store_id: int
+    "The ID of the store that was the ultimate destination of the transfer."
 
 
 class CloneCompleteResponse(BaseModel):

@@ -40,6 +40,7 @@ from hera_librarian.models.clone import (
 from ..database import yield_session
 from ..logger import log
 from ..orm.file import File
+from ..orm.instance import RemoteInstance
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import IncomingTransfer, OutgoingTransfer, TransferStatus
 from .auth import CallbackUserDependency, ReadappendUserDependency
@@ -335,7 +336,8 @@ def complete(
 ):
     """
     The callback from librarian B to librarian A that it has completed the
-    transfer. Used to update anything in our OutgiongTransfers that needs it.
+    transfer. Used to update anything in our OutgiongTransfers that needs it,
+    as well as create the appropriate remote instances.
 
     Possible response codes:
 
@@ -388,6 +390,16 @@ def complete(
         )
 
     transfer.status = TransferStatus.COMPLETED
+
+    # Create new remote instance for this file that was just completed.
+    remote_instance = RemoteInstance.new_instance(
+        file=transfer.file,
+        store_id=request.store_id,
+        librarian=transfer.destination,
+    )
+
+    session.add(remote_instance)
+
     session.commit()
 
     response.status_code = status.HTTP_200_OK

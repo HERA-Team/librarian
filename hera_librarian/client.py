@@ -911,6 +911,7 @@ class AdminClient(LibrarianClient):
         uploader: str,
         source: str,
         deletion_policy: DeletionPolicy,
+        source_transfer_id: int,
         local_path: Path,
     ):
         """
@@ -936,6 +937,8 @@ class AdminClient(LibrarianClient):
             The source of the file.
         deletion_policy : DeletionPolicy
             The deletion policy of the instance.
+        source_transfer_id : int
+            The ID of the outgoing transfer.
         local_path : Path
             The path to the instance on the store.
         """
@@ -948,12 +951,13 @@ class AdminClient(LibrarianClient):
             upload_checksum=checksum,
             upload_name=name.name,
             destination_location=name,
-            # Uploader is SPECIFICALLY kept as a param here because it
+            # Uploader is SPECIFICALLY kept as a param here because it is the
+            # source librarian, not us doing the ingestion.
             uploader=uploader,
             source=source,
             # TODO: As part of the manifest generation process, we should generate
             #       outbound transfers for all the files.
-            source_transfer_id=-1,
+            source_transfer_id=source_transfer_id,
         )
 
         initiaton_response: CloneInitiationResponse = self.post(
