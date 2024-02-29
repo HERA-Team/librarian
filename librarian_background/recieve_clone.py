@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy.orm import Session
 
 from hera_librarian.deletion import DeletionPolicy
+from hera_librarian.exceptions import LibrarianHTTPError
 from hera_librarian.models.clone import CloneCompleteRequest, CloneCompleteResponse
 from librarian_server.database import get_session
 from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
@@ -105,15 +106,22 @@ class RecieveClone(Task):
                 )
 
                 # Move the file to the store.
-                # TODO: Check where that store path is coming from!
                 try:
+                    # Annoyingly staging_path is absolute and store path is relative.
+                    # TODO: Fix that!
                     store.store_manager.commit(
-                        Path(transfer.staging_path), Path(transfer.store_path)
+                        Path(transfer.staging_path),
+                        store.store_manager.store(Path(transfer.store_path)),
                     )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to move file {transfer.staging_path} to store "
-                        f"{store.name} at {transfer.store_path}. Exception: {e}. Skipping for now."
+                    log_to_database(
+                        severity=ErrorSeverity.ERROR,
+                        category=ErrorCategory.PROGRAMMING,
+                        message=(
+                            f"Failed to move file {transfer.staging_path} to store "
+                            f"{store.name} at {transfer.store_path}. Exception: {e}. Skipping for now."
+                        ),
+                        session=session,
                     )
 
                     all_transfers_succeeded = False
@@ -159,18 +167,23 @@ class RecieveClone(Task):
                     )
 
                     request = CloneCompleteRequest(
-                        source_transfer_id=transfer.id,
-                        destination_instance_id=instance.id,
+                        source_transfer_id=transfer.source_transfer_id,
+                        destination_transfer_id=transfer.id,
                         store_id=store.id,
                     )
 
+                    logger.debug(f"Request to send: {request}")
+
+                    downstream_client = librarian.client()
+
                     try:
-                        response: CloneCompleteResponse = librarian.client.post(
+                        logger.info("Sending clone complete request.")
+                        response: CloneCompleteResponse = downstream_client.post(
                             endpoint="clone/complete",
-                            request_model=request,
-                            response_model=CloneCompleteResponse,
+                            request=request,
+                            response=CloneCompleteResponse,
                         )
-                    except Exception as e:
+                    except LibrarianHTTPError as e:
                         log_to_database(
                             severity=ErrorSeverity.ERROR,
                             category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
@@ -182,10 +195,14 @@ class RecieveClone(Task):
                         )
                 else:
                     logger.error(
-                        f"Transfer {transfer.id} has no source librarian. Cannot callback."
+                        f"Transfer {transfer.id} has no source librarian "
+                        f"(source is {transfer.source}) - cannot callback."
                     )
 
                 # Can now delete the file
+                logger.info(
+                    f"Transfer {transfer.id} has completed. Deleting staged file."
+                )
                 store.store_manager.unstage(Path(transfer.staging_path))
             else:
                 logger.info(f"Transfer {transfer.id} has not yet completed. Skipping.")

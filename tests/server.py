@@ -48,7 +48,7 @@ class Server(BaseModel):
         }
 
 
-def server_setup(tmp_path_factory) -> Server:
+def server_setup(tmp_path_factory, name="librarian_server") -> Server:
     """
     Sets up a server.
     """
@@ -88,6 +88,12 @@ def server_setup(tmp_path_factory) -> Server:
 
     store_directory_empty = tmp_path / f"store_empty_{server_id_and_port}"
     store_directory_empty.mkdir()
+
+    staging_directory_sneaker = tmp_path / f"staging_sneaker_{server_id_and_port}"
+    staging_directory_sneaker.mkdir()
+
+    store_directory_sneaker = tmp_path / f"store_sneaker_{server_id_and_port}"
+    store_directory_sneaker.mkdir()
 
     store_config = [
         {
@@ -137,6 +143,23 @@ def server_setup(tmp_path_factory) -> Server:
                 }
             },
         },
+        {
+            # A store that we will use for sneaker transfers.
+            "store_name": "local_sneaker",
+            "store_type": "local",
+            "ingestable": False,
+            "store_data": {
+                "staging_path": str(staging_directory_sneaker),
+                "store_path": str(store_directory_sneaker),
+                "report_full_fraction": 0.9,
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostnames": [socket.gethostname()],
+                }
+            },
+        },
     ]
 
     add_stores = json.dumps(store_config)
@@ -170,6 +193,7 @@ def server_setup(tmp_path_factory) -> Server:
         staging_directory=staging_directory,
         store_directory=store_directory,
         database=database,
+        LIBRARIAN_SERVER_NAME=name,
         LIBRARIAN_CONFIG_PATH=librarian_config_path,
         LIBRARIAN_SERVER_DATABASE_DRIVER="sqlite",
         LIBRARIAN_SERVER_DATABASE=str(database),

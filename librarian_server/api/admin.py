@@ -24,6 +24,7 @@ from hera_librarian.models.admin import (
     AdminStoreStateChangeResponse,
     ManifestEntry,
 )
+from hera_librarian.transfer import TransferStatus
 
 from ..database import yield_session
 from ..logger import log
@@ -271,7 +272,7 @@ def store_manifest(
             )
 
     # Get the list of instances.
-    instances = session.query(Instance).filter_by(store=store).all()
+    instances = session.query(Instance).filter_by(store_id=store.id).all()
 
     def create_manifest_entry(instance: Instance) -> ManifestEntry:
         "Create a linked transfer and manifest entry based on logic."
@@ -282,6 +283,9 @@ def store_manifest(
                 instance=instance,
                 file=instance.file,
             )
+
+            # Need to set this as ongoing already for sneakernet transfers.
+            transfer.status = TransferStatus.ONGOING
 
             session.add(transfer)
             session.commit()

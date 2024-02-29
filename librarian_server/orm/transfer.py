@@ -71,6 +71,9 @@ class IncomingTransfer(db.Base):
     transfer_data = db.Column(db.PickleType)
     "Serialized transfer data, likely from the transfer manager. For instance, this could include the Globus data."
 
+    source_transfer_id: int = db.Column(db.Integer)
+    "The ID of the corresponding OutgoingTransfer on a remote system."
+
     @classmethod
     def new_transfer(
         self,

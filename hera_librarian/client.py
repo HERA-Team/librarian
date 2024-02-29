@@ -923,7 +923,7 @@ class AdminClient(LibrarianClient):
         Parameters
         ----------
 
-        name : str
+        name : Path
             The name of the file.
         create_time : datetime
             The time the file was created.
@@ -960,11 +960,19 @@ class AdminClient(LibrarianClient):
             source_transfer_id=source_transfer_id,
         )
 
-        initiaton_response: CloneInitiationResponse = self.post(
-            endpoint="clone/stage",
-            request=initiation_request,
-            response=CloneInitiationResponse,
-        )
+        try:
+            initiaton_response: CloneInitiationResponse = self.post(
+                endpoint="clone/stage",
+                request=initiation_request,
+                response=CloneInitiationResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 409 and "already exists on librarian" in e.reason:
+                # This is ok, but that person needs to know so they can callback
+                # to the source librarian.
+                raise LibrarianError(e.reason)
+            else:
+                raise e
 
         # Because this is a clone and is async, we need to set
         # the status as ongoing on the server.

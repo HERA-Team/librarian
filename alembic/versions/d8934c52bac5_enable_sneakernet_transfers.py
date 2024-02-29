@@ -24,6 +24,9 @@ def upgrade():
     with op.batch_alter_table("store_metadata") as batch_op:
         batch_op.add_column(sa.Column("enabled", sa.Boolean, default=True))
 
+    with op.batch_alter_table("incoming_transfers") as batch_op:
+        batch_op.add_column(sa.Column("source_transfer_id", sa.Integer))
+
     with op.batch_alter_table("outgoing_transfers") as batch_op:
         batch_op.add_column(sa.Column("file_name", sa.String(256)))
 
@@ -54,4 +57,5 @@ def upgrade():
 
 def downgrade():
     op.drop_column("store_metadata", "enabled")
+    op.drop_column("incoming_transfers", "source_transfer_id")
     op.drop_column("outgoing_transfers", "file_name")

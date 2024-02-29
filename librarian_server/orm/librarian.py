@@ -106,9 +106,8 @@ class Librarian(db.Base):
         """
 
         return LibrarianClient(
-            conn_name=self.name,
-            conn_config={
-                "url": f"{self.url}:{self.port}",
-                "authenticator": self.authenticator,
-            },
+            host=self.url,
+            port=self.port,
+            user=self.authenticator.split(":")[0],
+            password=self.authenticator.split(":")[1],
         )

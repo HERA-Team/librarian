@@ -291,7 +291,7 @@ class CreateLocalClone(Task):
 
         logger.info(
             f"Cloned {successful_clones}/{len(instances)} files from store {store_from} "
-            f"to store {store_to}. {unnecessary_clones}/{len(instances)} files were already "
+            f"to store(s) {stores_to}. {unnecessary_clones}/{len(instances)} files were already "
             f"present on the clone_to store. All successful: "
             f"{successful_clones + unnecessary_clones}/{len(instances)}."
         )

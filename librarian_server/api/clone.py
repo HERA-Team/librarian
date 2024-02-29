@@ -184,12 +184,14 @@ def stage(
     # No existing transfer.
 
     transfer = IncomingTransfer.new_transfer(
-        source=user.username,
+        source=request.source,
         uploader=request.uploader,
         upload_name=str(request.upload_name),
         transfer_size=request.upload_size,
         transfer_checksum=request.upload_checksum,
     )
+
+    transfer.source_transfer_id = request.source_transfer_id
 
     session.add(transfer)
     session.commit()
@@ -228,6 +230,9 @@ def stage(
 
     transfer.store_id = use_store.id
     transfer.staging_path = str(file_location)
+
+    # Set store path now as it will not change.
+    transfer.store_path = str(request.destination_location)
 
     session.commit()
 
@@ -279,7 +284,6 @@ def ongoing(
         session.query(IncomingTransfer)
         .filter_by(
             id=request.destination_transfer_id,
-            source=user.username,
         )
         .first()
     )
@@ -452,7 +456,6 @@ def fail(
         session.query(IncomingTransfer)
         .filter_by(
             id=request.destination_transfer_id,
-            source=user.username,
         )
         .first()
     )
