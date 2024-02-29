@@ -42,7 +42,9 @@ class Librarian(db.Base):
     "The last time we heard from this librarian (the last time it connected to us)."
 
     @classmethod
-    def new_librarian(self, name: str, url: str, port: int) -> "Librarian":
+    def new_librarian(
+        self, name: str, url: str, port: int, check_connection: bool = True
+    ) -> "Librarian":
         """
         Create a new librarian object.
 
@@ -54,6 +56,9 @@ class Librarian(db.Base):
             The URL of this librarian.
         port : int
             The port of this librarian.
+        check_connection : bool
+            Whether to check the connection to this librarian before
+            returning it (default: True, but turn this off for tests.)
 
         Returns
         -------
@@ -68,6 +73,9 @@ class Librarian(db.Base):
             last_seen=datetime.utcnow(),
             last_heard=datetime.utcnow(),
         )
+
+        if not check_connection:
+            return librarian
 
         # Before returning it, we should ping it to confirm it exists.
 

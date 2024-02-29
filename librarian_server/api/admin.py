@@ -28,6 +28,7 @@ from hera_librarian.models.admin import (
 from ..database import yield_session
 from ..logger import log
 from ..orm import File, Instance, Librarian, OutgoingTransfer, StoreMetadata
+from ..settings import server_settings
 from ..stores import InvertedStoreNames, StoreNames
 from .auth import AdminUserDependency
 
@@ -192,6 +193,31 @@ def store_manifest(
     be a very large request and response, so use with caution. You can then
     ingest the manifest items individually into a different instance of
     the librarian, thus completing the 'sneakernet' process.
+
+    This is a very powerful endpoint, and has the following options
+    configured with its request:
+
+    - create_outgoing_transfers: If true, will create outgoing transfers
+        for each file in the manifest. This is useful for sneakernetting
+        files to a different librarian.
+
+    - destination_librarian: The name of the librarian to send the files to,
+        if create_outgoing_transfers is true. This is required if you are
+        creating outgoing transfers.
+
+    - disable_store: If true, will disable the store after creating the
+        outgoing transfers. This is useful for sneakernetting files to a
+        different librarian, as it allows you to (in one transaction)
+        generate all the outgoing transfers, then disable the store.
+
+    - mark_local_instances_as_unavailable: If true, will mark the local
+        instances as unavailable after creating the outgoing transfers.
+
+    An easy sneakernet workflow is to set all of these to true. This will
+    generate a complete manifest, create outgoing transfers for each file,
+    then disable the store and mark the local instances as unavailable
+    (as we are assuming you are going to then remove the files from the
+    disks entirely).
     """
 
     log.debug(f"Recieved manifest request from {user.username}: {request}.")
@@ -210,6 +236,14 @@ def store_manifest(
             reason=f"Store {request.store_name} does not exist.",
             suggested_remedy="Create the store first. Maybe you need to run DB migration?",
         )
+
+    # Now, stop anyone from ingesting any new files if we want the store
+    # to be disabled at the end of this process.
+
+    if request.disable_store:
+        store.enabled = False
+        session.commit()
+        log.info(f"Disabled store {store.name}.")
 
     # If we are going to create outgoing transfers, we need to make sure
     # that the destination librarian exists.
@@ -256,7 +290,7 @@ def store_manifest(
         else:
             transfer_id = -1
 
-        return ManifestEntry(
+        entry = ManifestEntry(
             name=instance.file.name,
             create_time=instance.file.create_time,
             size=instance.file.size,
@@ -270,7 +304,14 @@ def store_manifest(
             outgoing_transfer_id=transfer_id,
         )
 
+        if request.mark_local_instances_as_unavailable:
+            instance.available = False
+            session.commit()
+
+        return entry
+
     response = AdminStoreManifestResponse(
+        librarian_name=server_settings.name,
         store_name=store.name,
         store_files=[
             create_manifest_entry(instance)
@@ -279,39 +320,8 @@ def store_manifest(
         ],
     )
 
-    if request.disable_store:
-        store.enabled = False
-
-        try:
-            session.commit()
-        except Exception as e:
-            log.error(
-                f"Failed to disable store {store.name}: {e}. Returning 500, but before "
-                "that, we need to kill off all these transfers we just created."
-            )
-
-            # Kill off all the transfers we just created.
-            if request.create_outgoing_transfers:
-                successfully_killed = 0
-                for file in response.store_files:
-                    if file.outgoing_transfer_id != -1:
-                        transfer = session.query(OutgoingTransfer).get(
-                            file.outgoing_transfer_id
-                        )
-                        transfer.fail_transfer(session)
-                        successfully_killed += 1
-
-                log.error(
-                    f"Killed off {successfully_killed}/{len(response.store_files)} transfers "
-                    "we just created."
-                )
-
-            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-            return AdminRequestFailedResponse(
-                reason="Failed to disable store.",
-                suggested_remedy="Check the logs for more information.",
-            )
-
-        log.info(f"Disabled store {store.name}.")
+    log.info(
+        f"Generated manifest for store {store.name} containing {len(response.store_files)} files."
+    )
 
     return response

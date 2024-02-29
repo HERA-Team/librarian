@@ -53,6 +53,10 @@ class ServerSettings(BaseSettings):
     variables.
     """
 
+    # Top level name of the server. Should be unique.
+    name: str = "librarian_server"
+
+    # Database settings.
     database_driver: str = "sqlite"
     database_user: Optional[str] = None
     database_password: Optional[str] = None
@@ -61,6 +65,8 @@ class ServerSettings(BaseSettings):
     database: Optional[str] = None
 
     log_level: str = "DEBUG"
+
+    # Display name and description of the site, used in UI only.
     displayed_site_name: str = "Untitled Librarian"
     displayed_site_description: str = "No description set."
 

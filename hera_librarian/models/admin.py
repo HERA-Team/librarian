@@ -114,6 +114,9 @@ class AdminStoreManifestRequest(BaseModel):
     disable_store: bool = False
     "Whether to disable the store after creating the outgoing transfers."
 
+    mark_local_instances_as_unavailable: bool = False
+    "Mark the local instances as unavailable after creating the outgoing transfers."
+
 
 class AdminStoreManifestResponse(BaseModel):
     librarian_name: str
