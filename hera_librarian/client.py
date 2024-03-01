@@ -956,8 +956,6 @@ class AdminClient(LibrarianClient):
             # source librarian, not us doing the ingestion.
             uploader=uploader,
             source=source,
-            # TODO: As part of the manifest generation process, we should generate
-            #       outbound transfers for all the files.
             source_transfer_id=source_transfer_id,
         )
 
