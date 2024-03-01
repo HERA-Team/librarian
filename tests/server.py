@@ -20,6 +20,8 @@ class Server(BaseModel):
     staging_directory: Path
     store_directory: Path
     database: Path
+    LIBRARIAN_SERVER_NAME: str
+    LIBRARIAN_SERVER_DISPLAYED_SITE_NAME: str
     LIBRARIAN_CONFIG_PATH: str
     LIBRARIAN_SERVER_DATABASE_DRIVER: str
     LIBRARIAN_SERVER_DATABASE: str
@@ -34,6 +36,8 @@ class Server(BaseModel):
     @property
     def env(self) -> dict[str, str]:
         return {
+            "LIBRARIAN_SERVER_NAME": self.LIBRARIAN_SERVER_NAME,
+            "LIBRARIAN_SERVER_DISPLAYED_SITE_NAME": self.LIBRARIAN_SERVER_DISPLAYED_SITE_NAME,
             "LIBRARIAN_CONFIG_PATH": self.LIBRARIAN_CONFIG_PATH,
             "LIBRARIAN_SERVER_DATABASE_DRIVER": self.LIBRARIAN_SERVER_DATABASE_DRIVER,
             "LIBRARIAN_SERVER_DATABASE": self.LIBRARIAN_SERVER_DATABASE,
@@ -194,6 +198,7 @@ def server_setup(tmp_path_factory, name="librarian_server") -> Server:
         store_directory=store_directory,
         database=database,
         LIBRARIAN_SERVER_NAME=name,
+        LIBRARIAN_SERVER_DISPLAYED_SITE_NAME=name.replace("_", " ").title(),
         LIBRARIAN_CONFIG_PATH=librarian_config_path,
         LIBRARIAN_SERVER_DATABASE_DRIVER="sqlite",
         LIBRARIAN_SERVER_DATABASE=str(database),

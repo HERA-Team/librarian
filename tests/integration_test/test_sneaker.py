@@ -29,7 +29,7 @@ def test_sneakernet_workflow(
     # Before starting, register the downstream and upstream librarians.
     with test_server_with_many_files_and_errors[1]() as session:
         live_server = test_orm.Librarian.new_librarian(
-            name="librarian_server",
+            name="live_server",
             url="http://localhost",
             port=server.id,
             check_connection=False,
@@ -45,7 +45,7 @@ def test_sneakernet_workflow(
     with librarian_database_session_maker() as session:
         # Note we will never actually access this.
         test_server = test_orm.Librarian.new_librarian(
-            name="librarian_server",
+            name="test_server",
             url="http://localhost",
             port=test_server_with_many_files_and_errors[2].id,
             check_connection=False,
@@ -85,7 +85,7 @@ def test_sneakernet_workflow(
     manifest = admin_client.get_store_manifest(
         "local_sneaker",
         create_outgoing_transfers=True,
-        destination_librarian="librarian_server",
+        destination_librarian="test_server",
         disable_store=True,
         mark_local_instances_as_unavailable=True,
     )
@@ -185,7 +185,7 @@ def test_sneakernet_workflow(
 
             # Remote instance
             assert len(instance.file.remote_instances) > 0
-            assert "librarian_server" in [
+            assert "test_server" in [
                 x.librarian.name for x in instance.file.remote_instances
             ]
 

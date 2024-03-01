@@ -62,6 +62,7 @@ def test_server(tmp_path_factory):
     setup = server_setup(tmp_path_factory, name="test_server")
 
     env_vars = {
+        "LIBRARIAN_SERVER_NAME": None,
         "LIBRARIAN_CONFIG_PATH": None,
         "LIBRARIAN_SERVER_DATABASE_DRIVER": None,
         "LIBRARIAN_SERVER_DATABASE": None,

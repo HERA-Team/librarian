@@ -273,7 +273,7 @@ def test_manifest_generation_and_extra_opts(
     new_response = AdminStoreManifestResponse.model_validate_json(new_response.content)
 
     assert new_response.store_name == response[0].name
-    assert new_response.librarian_name == "librarian_server"
+    assert new_response.librarian_name == "test_server"
 
     session = get_session()
 
