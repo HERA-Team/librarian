@@ -91,6 +91,8 @@ def test_sneakernet_workflow(
     )
 
     # Now we can use the manifest to ingest the files into the destination librarian.
+    ingested_entries = []
+
     for entry in manifest.store_files:
         # Only do this for our actual sneaker netted files. The other ones
         # that were present on the store we don't care about
@@ -106,7 +108,6 @@ def test_sneakernet_workflow(
                 outgoing_transfer_id=entry.outgoing_transfer_id,
                 store_id=1,
             )
-
             continue
 
         mocked_admin_client.ingest_manifest_entry(
@@ -121,6 +122,8 @@ def test_sneakernet_workflow(
             local_path=tmp_path / Path(entry.name).name,
         )
 
+        ingested_entries.append(entry)
+
     # Now we need to run the ingest job on the destination server.
     from librarian_background.recieve_clone import RecieveClone
 
@@ -134,9 +137,9 @@ def test_sneakernet_workflow(
     # Now we should have ingested everything. We have a few things to check:
     # - The transfer status' of the outgoing and inbound transfers.
     # - The availability of the instances.
+    # - The remote instances of the files.
     # - The availability of the store.
     # - The new copies of the files.
-    # - The remote instances of the files.
 
     # Check the transfer status.
 
@@ -146,3 +149,79 @@ def test_sneakernet_workflow(
             outgoing_transfer = session.get(test_orm.OutgoingTransfer, transfer)
 
             assert outgoing_transfer.status == test_orm.TransferStatus.COMPLETED
+
+    # Incoming
+    with test_server_with_many_files_and_errors[1]() as session:
+        for transfer in (x.outgoing_transfer_id for x in ingested_entries):
+            incoming_transfer = (
+                session.query(test_orm.IncomingTransfer)
+                .filter_by(source_transfer_id=transfer)
+                .one_or_none()
+            )
+
+            assert incoming_transfer.status == test_orm.TransferStatus.COMPLETED
+
+    # Now the availability of the instances.
+
+    # Source
+    with librarian_database_session_maker() as session:
+        # Get source store
+        source_store = (
+            session.query(test_orm.StoreMetadata)
+            .filter_by(name=manifest.store_name)
+            .one()
+        )
+
+        for entry in ingested_entries:
+            # Local Instance
+
+            instance = (
+                session.query(test_orm.Instance)
+                .filter_by(file_name=entry.name, store_id=source_store.id)
+                .one_or_none()
+            )
+
+            assert instance.available is False
+
+            # Remote instance
+            assert len(instance.file.remote_instances) > 0
+            assert "librarian_server" in [
+                x.librarian.name for x in instance.file.remote_instances
+            ]
+
+    # Destination
+    used_store = None
+    with test_server_with_many_files_and_errors[1]() as session:
+        for entry in ingested_entries:
+            # Only have local Instance
+            instance = (
+                session.query(test_orm.Instance)
+                .filter_by(file_name=entry.name)
+                .one_or_none()
+            )
+
+            used_store = instance.store.name
+
+            assert instance.available is True
+
+    # Check that we correctly disabled the store.
+    with librarian_database_session_maker() as session:
+        store = (
+            session.query(test_orm.StoreMetadata)
+            .filter_by(name=manifest.store_name)
+            .one()
+        )
+
+        assert store.enabled is False
+
+    # Check that the new copies of the files are actually there.
+    from librarian_background.check_integrity import CheckIntegrity
+
+    task = CheckIntegrity(
+        name="sneakernet_check_integrity_job",
+        age_in_days=100,
+        store_name=used_store,
+    )
+
+    with test_server_with_many_files_and_errors[1]() as session:
+        task.core(session=session)

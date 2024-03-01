@@ -187,7 +187,10 @@ def stage(
     transfer = IncomingTransfer.new_transfer(
         source=request.source,
         uploader=request.uploader,
-        upload_name=str(request.upload_name),
+        # A little confusing, but upload_name here is the file name
+        # as it should be ingested (incl. extra path), but upload_name is the
+        # actual 'file name'
+        upload_name=str(request.destination_location),
         transfer_size=request.upload_size,
         transfer_checksum=request.upload_checksum,
     )
