@@ -48,6 +48,10 @@ class UserPermissions(BaseModel):
     permission: AuthLevel
     "The permission level of the user."
 
+    @property
+    def is_admin(self) -> bool:
+        return self.permission == AuthLevel.ADMIN
+
 
 def get_user(
     credentials: SecurityDepedency, session: SessionDependency

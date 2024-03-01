@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from hera_librarian.models.clone import (
     CloneCompleteRequest,
+    CloneCompleteResponse,
     CloneInitiationRequest,
     CloneInitiationResponse,
     CloneOngoingRequest,
@@ -997,3 +998,42 @@ class AdminClient(LibrarianClient):
         )
 
         return
+
+    def complete_outgoing_transfer(
+        self,
+        outgoing_transfer_id: int,
+        store_id: int,
+    ) -> bool:
+        """
+        Complete a transfer on this librarian.
+
+        Parameters
+        ----------
+        outgoing_transfer_id : int
+            The ID of the outgoing transfer to complete.
+        store_id: int
+            The ID of the store that the transfer ended up on.
+
+        Returns
+        -------
+        bool
+            Whether or not the transfer was completed.
+        """
+
+        try:
+            response = self.post(
+                endpoint="clone/complete",
+                request=CloneCompleteRequest(
+                    source_transfer_id=outgoing_transfer_id,
+                    destination_transfer_id=-1,
+                    store_id=store_id,
+                ),
+                response=CloneCompleteResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Transfer" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return True

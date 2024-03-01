@@ -97,6 +97,16 @@ def test_sneakernet_workflow(
         local_path = tmp_path / Path(entry.name).name
 
         if not local_path.exists():
+            # This is another file (not one that we actually wanted to sneaker
+            # in this test). Because we didn't actually make a copy of the store,
+            # we can't actually check these files; Let's just lie and say we
+            # ingested it.
+
+            admin_client.complete_outgoing_transfer(
+                outgoing_transfer_id=entry.outgoing_transfer_id,
+                store_id=1,
+            )
+
             continue
 
         mocked_admin_client.ingest_manifest_entry(
@@ -127,3 +137,12 @@ def test_sneakernet_workflow(
     # - The availability of the store.
     # - The new copies of the files.
     # - The remote instances of the files.
+
+    # Check the transfer status.
+
+    # Outgoing
+    with librarian_database_session_maker() as session:
+        for transfer in (x.outgoing_transfer_id for x in manifest.store_files):
+            outgoing_transfer = session.get(test_orm.OutgoingTransfer, transfer)
+
+            assert outgoing_transfer.status == test_orm.TransferStatus.COMPLETED

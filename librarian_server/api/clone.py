@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, status
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -344,6 +345,8 @@ def complete(
     transfer. Used to update anything in our OutgiongTransfers that needs it,
     as well as create the appropriate remote instances.
 
+    Administrator only: can complete other user's transfers.
+
     Possible response codes:
 
     200 - OK. Transfer status updated.
@@ -354,13 +357,14 @@ def complete(
 
     log.debug(f"Received clone complete request from {user.username}: {request}")
 
-    transfer = (
-        session.query(OutgoingTransfer)
-        .filter_by(
-            id=request.source_transfer_id,
-        )
-        .first()
-    )
+    query = select(OutgoingTransfer)
+
+    query = query.where(OutgoingTransfer.id == request.source_transfer_id)
+
+    if not user.is_admin:
+        query = query.where(OutgoingTransfer.uploader == user.username)
+
+    transfer = session.execute(query).scalars().one_or_none()
 
     if transfer is None:
         log.debug(
@@ -442,7 +446,8 @@ def fail(
     """
     Endpoint to send to if you would like to fail a specific IncomingTransfer.
 
-    You must have the correct username to update the transfer.
+    You must have the correct username to update the transfer if you are not an
+    administrator of this instance.
 
     Possible response codes:
 
@@ -452,12 +457,17 @@ def fail(
 
     log.debug(f"Received clone fail request from {user.username}: {request}")
 
-    transfer = (
-        session.query(IncomingTransfer)
-        .filter_by(
-            id=request.destination_transfer_id,
-        )
-        .first()
+    query = select(IncomingTransfer)
+
+    query = query.where(IncomingTransfer.id == request.destination_transfer_id)
+
+    if not user.is_admin:
+        query = query.where(IncomingTransfer.uploader == user.username)
+
+    transfer = session.execute(query).scalars().one_or_none()
+
+    log.debug(
+        f"Result of transfer query for ID {request.destination_transfer_id}: {transfer}"
     )
 
     if transfer is None:
