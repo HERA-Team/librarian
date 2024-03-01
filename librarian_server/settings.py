@@ -11,6 +11,8 @@ from pydantic import BaseModel, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
+from hera_librarian.errors import ErrorCategory, ErrorSeverity
+
 from .stores import StoreNames
 
 if TYPE_CHECKING:
@@ -79,6 +81,13 @@ class ServerSettings(BaseSettings):
     alembic_path: str = "alembic"
 
     max_search_results: int = 64
+
+    # Slack integration; by default disable this. You will need a slack
+    # webhook url, and by default we raise all log_to_database alerts to slack too.
+    slack_webhook_enable: bool = False
+    slack_webhook_url: Optional[str] = None
+    slack_webhook_post_error_severity: list[ErrorSeverity] = list(ErrorSeverity)
+    slack_webhook_post_error_category: list[ErrorCategory] = list(ErrorCategory)
 
     model_config = SettingsConfigDict(env_prefix="librarian_server_")
 
