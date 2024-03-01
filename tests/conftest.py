@@ -61,18 +61,12 @@ def test_server(tmp_path_factory):
 
     setup = server_setup(tmp_path_factory, name="test_server")
 
-    env_vars = {
-        "LIBRARIAN_SERVER_NAME": None,
-        "LIBRARIAN_CONFIG_PATH": None,
-        "LIBRARIAN_SERVER_DATABASE_DRIVER": None,
-        "LIBRARIAN_SERVER_DATABASE": None,
-        "LIBRARIAN_SERVER_PORT": None,
-        "LIBRARIAN_SERVER_ADD_STORES": None,
-    }
+    env_vars = {x: None for x in setup.env.keys()}
 
     for env_var in list(env_vars.keys()):
         env_vars[env_var] = os.environ.get(env_var, None)
-        os.environ[env_var] = getattr(setup, env_var)
+        if setup.env[env_var] is not None:
+            os.environ[env_var] = setup.env[env_var]
 
     global DATABASE_PATH
     DATABASE_PATH = str(setup.database)

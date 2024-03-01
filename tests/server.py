@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from subprocess import run
 
+from cryptography.fernet import Fernet
 from pydantic import BaseModel
 
 
@@ -24,6 +25,7 @@ class Server(BaseModel):
     LIBRARIAN_SERVER_DISPLAYED_SITE_NAME: str
     LIBRARIAN_CONFIG_PATH: str
     LIBRARIAN_SERVER_DATABASE_DRIVER: str
+    LIBRARIAN_SERVER_ENCRYPTION_KEY: str
     LIBRARIAN_SERVER_DATABASE: str
     LIBRARIAN_SERVER_PORT: str
     LIBRARIAN_SERVER_ADD_STORES: str
@@ -39,6 +41,7 @@ class Server(BaseModel):
             "LIBRARIAN_SERVER_NAME": self.LIBRARIAN_SERVER_NAME,
             "LIBRARIAN_SERVER_DISPLAYED_SITE_NAME": self.LIBRARIAN_SERVER_DISPLAYED_SITE_NAME,
             "LIBRARIAN_CONFIG_PATH": self.LIBRARIAN_CONFIG_PATH,
+            "LIBRARIAN_SERVER_ENCRYPTION_KEY": self.LIBRARIAN_SERVER_ENCRYPTION_KEY,
             "LIBRARIAN_SERVER_DATABASE_DRIVER": self.LIBRARIAN_SERVER_DATABASE_DRIVER,
             "LIBRARIAN_SERVER_DATABASE": self.LIBRARIAN_SERVER_DATABASE,
             "LIBRARIAN_SERVER_PORT": self.LIBRARIAN_SERVER_PORT,
@@ -199,6 +202,7 @@ def server_setup(tmp_path_factory, name="librarian_server") -> Server:
         database=database,
         LIBRARIAN_SERVER_NAME=name,
         LIBRARIAN_SERVER_DISPLAYED_SITE_NAME=name.replace("_", " ").title(),
+        LIBRARIAN_SERVER_ENCRYPTION_KEY=Fernet.generate_key().decode(),
         LIBRARIAN_CONFIG_PATH=librarian_config_path,
         LIBRARIAN_SERVER_DATABASE_DRIVER="sqlite",
         LIBRARIAN_SERVER_DATABASE=str(database),

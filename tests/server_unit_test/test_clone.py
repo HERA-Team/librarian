@@ -308,7 +308,11 @@ def test_incoming_transfer_endpoints(
         session.commit()
 
         librarian = test_orm.Librarian.new_librarian(
-            name="test2", url="http://localhost", port=5000, check_connection=False
+            name="test2",
+            url="http://localhost",
+            port=5000,
+            check_connection=False,
+            authenticator="admin:password",
         )
         librarian.authenticator = "does_not_authenticate"
         session.add(librarian)

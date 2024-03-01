@@ -246,7 +246,8 @@ def test_manifest_generation_and_extra_opts(
         librarian = test_orm.Librarian.new_librarian(
             "our_closest_friend",
             "http://localhost",
-            80,
+            authenticator="admin:password",  # This is the default authenticator.
+            port=80,
             check_connection=False,
         )
 

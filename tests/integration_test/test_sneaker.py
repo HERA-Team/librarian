@@ -31,13 +31,9 @@ def test_sneakernet_workflow(
         live_server = test_orm.Librarian.new_librarian(
             name="live_server",
             url="http://localhost",
+            authenticator="admin:password",  # This is the default authenticator.
             port=server.id,
-            check_connection=False,
         )
-
-        live_server.authenticator = "admin:password"
-
-        live_server.client().ping()
 
         session.add(live_server)
         session.commit()
@@ -47,11 +43,10 @@ def test_sneakernet_workflow(
         test_server = test_orm.Librarian.new_librarian(
             name="test_server",
             url="http://localhost",
+            authenticator="admin:password",  # This is the default authenticator.
             port=test_server_with_many_files_and_errors[2].id,
             check_connection=False,
         )
-
-        test_server.authenticator = "admin:password"
 
         session.add(test_server)
         session.commit()

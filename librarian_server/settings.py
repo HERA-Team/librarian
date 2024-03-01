@@ -58,6 +58,11 @@ class ServerSettings(BaseSettings):
     # Top level name of the server. Should be unique.
     name: str = "librarian_server"
 
+    # Encryption key for the server, for connecting to other librarians.
+    # Don't write this in the config file, it should be set as an environment
+    # variable.
+    encryption_key: Optional[str] = None
+
     # Database settings.
     database_driver: str = "sqlite"
     database_user: Optional[str] = None
@@ -72,11 +77,14 @@ class ServerSettings(BaseSettings):
     displayed_site_name: str = "Untitled Librarian"
     displayed_site_description: str = "No description set."
 
+    # Host and port to bind to.
     host: str = "0.0.0.0"
     port: int
 
+    # Stores that the librarian should add or migrate
     add_stores: list[StoreSettings]
 
+    # Database migration settings
     alembic_config_path: str = "."
     alembic_path: str = "alembic"
 
