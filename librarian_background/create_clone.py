@@ -32,6 +32,8 @@ class CreateLocalClone(Task):
     "Name of the store(s) to create copies on. If multiple are provided, the task will go through each one in order in case one or more stores are full."
     age_in_days: int
     "Age in days of the files to check. I.e. only check files younger than this (we assume older files are fine as they've been checked before)"
+    files_per_run: int = 1024
+    "Maximum number of files to clone in any one run. If there are more files than this, we will put off cloning them until the next run."
 
     # TODO: In the future, we could implement a _rolling_ n day clone here, i.e. only keep the last n days of files on the clone_to store.
 
@@ -48,6 +50,8 @@ class CreateLocalClone(Task):
             return self.core(session=session)
 
     def core(self, session: Session):
+        core_begin = datetime.datetime.utcnow()
+
         try:
             store_from = self.get_store(self.clone_from, session)
         except ValueError:
@@ -80,19 +84,67 @@ class CreateLocalClone(Task):
         # Now figure out what files were uploaded in the past age_in_days days.
         start_time = datetime.datetime.now() - datetime.timedelta(days=self.age_in_days)
 
-        # Now we can query the database for all files that were uploaded in the past age_in_days days.
-        instances: list[Instance] = (
-            session.query(Instance)
-            .filter(Instance.store == store_from)
-            .filter(Instance.created_time > start_time)
-            .all()
+        # Now we can query the database for all files that were uploaded in the past age_in_days days,
+        # and do not live on one of our stores.
+
+        # Step-by-step:
+        # 1. Get all filenames instances on the source store.
+        # 2. Get all filenames of instances on destination store.
+        # 3. Get the difference between the two.
+        # 4. Get all instances on the source store that are in the difference.
+        # 5. Get all instances on the source store that are in the difference and are younger than start_time.
+        # 6. Clone all of these instances to the destination store.
+
+        source_store_id = store_from.id
+        destination_store_ids = [store.id for store in stores_to]
+
+        query_all_source_instances = select(Instance.file_name).where(
+            Instance.store_id == source_store_id
         )
+
+        query_all_destination_instances = select(Instance.file_name).where(
+            Instance.store_id.in_(destination_store_ids)
+        )
+
+        query_bisection = query_all_source_instances.except_(
+            query_all_destination_instances
+        )
+
+        query_all_instances = select(Instance).where(
+            Instance.file_name.in_(query_bisection)
+        )
+
+        query_all_local_instances = query_all_instances.where(
+            Instance.store_id == source_store_id
+        )
+
+        query = query_all_local_instances.where(Instance.created_time > start_time)
+
+        instances: list[Instance] = session.execute(query).scalars().all()
 
         successful_clones = 0
         unnecessary_clones = 0
         all_transfers_successful = True
 
         for instance in instances:
+            # First, check if we have gone over time:
+            if (
+                (datetime.datetime.utcnow() - core_begin > self.soft_timeout)
+                if self.soft_timeout
+                else False
+            ):
+                logger.info(
+                    "CreateLocalClone task has gone over time. Will reschedule for later."
+                )
+                break
+
+            if successful_clones > self.files_per_run:
+                logger.info(
+                    f"CreateLocalClone task has cloned {successful_clones} files, which is over "
+                    f"the limit of {self.files_per_run}. Will reschedule for later."
+                )
+                break
+
             # Check if there is a matching instance already on our clone_to store.
             # If there is, we don't need to clone it.
             for secondary_instance in instance.file.instances:

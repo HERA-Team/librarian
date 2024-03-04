@@ -3,6 +3,7 @@ A pydantic model that implements callable so that it can be executed as a task.
 """
 
 import abc
+from datetime import timedelta
 
 from pydantic import BaseModel
 
@@ -21,6 +22,8 @@ class Task(BaseModel, abc.ABC):
     "Name of the task to be displayed in the scheduler."
     reschedule_on_failure: bool = True
     "Whether or not to reschedule the task if it fails."
+    soft_timeout: timedelta | None = None
+    "A soft request to timeout the task after this amount of time."
 
     @abc.abstractmethod
     def on_call(self):
