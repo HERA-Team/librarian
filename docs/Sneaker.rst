@@ -86,7 +86,8 @@ using the command-line utility:
 
 .. code:: bash
 
-    librarian set-store-state local-librarian --store-name local-store --enabled
+    librarian set-store-state local-librarian --store local-store --enabled
+    >>> Store local-store state set to enabled.
 
 This sets a store called ``local-store`` on a librarian (as defined in
 ``~/.hl_config.cfg``) to be enabled. If the store is already enabled, this will
@@ -98,6 +99,7 @@ the following command-line wrapper to ``get_store_list``:
 .. code:: bash
 
     librarian get-store-list local-librarian
+    >>> local-store (local) [599.5 GB Free] - Ingestable - Available - Enabled
 
 Which will print out helpful information about all attached stores to the
 librarian. As these things are generally meant to be transparent to regular
