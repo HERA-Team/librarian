@@ -36,6 +36,9 @@ class RecieveClone(Task):
     """
 
     deletion_policy: DeletionPolicy = DeletionPolicy.DISALLOWED
+    "The deletion policy for ingested instances."
+    files_per_run: int = 1024
+    "The number of files to process per run."
 
     def on_call(self):
         with get_session() as session:
@@ -45,6 +48,8 @@ class RecieveClone(Task):
         """
         Checks for incoming transfers and processes them.
         """
+
+        core_begin = datetime.datetime.utcnow()
 
         # Find incoming transfers that are ONGOING
         ongoing_transfers: list[IncomingTransfer] = (
@@ -58,9 +63,26 @@ class RecieveClone(Task):
         if len(ongoing_transfers) == 0:
             logger.info("No ongoing transfers to process.")
 
-        for transfer in ongoing_transfers:
-            # Check if the transfer has completed
+        transfers_processed = 0
 
+        for transfer in ongoing_transfers:
+            if (
+                (datetime.datetime.utcnow() - core_begin > self.soft_timeout)
+                if self.soft_timeout
+                else False
+            ):
+                logger.info(
+                    "RecieveClone task has gone over time. Will reschedule for later."
+                )
+                break
+
+            if transfers_processed >= self.files_per_run:
+                logger.info(
+                    f"Processed {transfers_processed} transfers, which is the maximum for this run."
+                )
+                break
+
+            # Check if the transfer has completed
             store: StoreMetadata = transfer.store
 
             if store is None:
@@ -207,5 +229,7 @@ class RecieveClone(Task):
             else:
                 logger.info(f"Transfer {transfer.id} has not yet completed. Skipping.")
                 continue
+
+            transfers_processed += 1
 
         return all_transfers_succeeded
