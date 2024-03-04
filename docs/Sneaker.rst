@@ -58,4 +58,47 @@ following steps:
   as complete and create a ``RemoteInstance`` for each file that
   has been successfully transferred.
 
-Below, we have a step-by-step guide to performing a SneakerNet transfer.
+Below, we have a step-by-step guide to performing a SneakerNet transfer using
+the librarian command-line interface.
+
+### Step 1: Adding or enabling a store
+
+For more information on adding a store, see :ref:`Stores`. It is crucial
+to mark SneakerNet stores as 'non-ingestible' (i.e. set ``ingestible: false``
+in the configuration file), otherwise they themselves will ingest new
+data passed to the librarian.
+
+There are three main states that are important for stores:
+
+1. ``ingestible``: Whether or not 'fresh' files (those sent from uploads
+   or from clones) can be added to the store.
+2. ``enabled``: Whether or not the store is currently marked as available
+    for use. All stores start out enabled, but may be disabled when they
+    are full, or a disk is being swapped out.
+3. ``available``: This is an internal state that is tracked, irrespective
+   of ``ingestible`` or ``enabled`` which indicates whether the physical
+   device is available for recieving commands. For local stores, this is
+   generally forced to be true.
+
+If your store is starting out disabled, you will need to enable it
+by using the ``set_store_state`` endpoint. This can be easily accomplished
+using the command-line utility:
+
+.. code:: bash
+
+    librarian set-store-state local-librarian --store-name local-store --enabled
+
+This sets a store called ``local-store`` on a librarian (as defined in
+``~/.hl_config.cfg``) to be enabled. If the store is already enabled, this will
+still go through.
+
+If you need to know what stores are available on the librarian, you can use
+the following command-line wrapper to ``get_store_list``:
+
+.. code:: bash
+
+    librarian get-store-list local-librarian
+
+Which will print out helpful information about all attached stores to the
+librarian. As these things are generally meant to be transparent to regular
+users of the librarian, these endpoints require administrator privileges.
