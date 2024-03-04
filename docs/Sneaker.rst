@@ -61,7 +61,8 @@ following steps:
 Below, we have a step-by-step guide to performing a SneakerNet transfer using
 the librarian command-line interface.
 
-### Step 1: Adding or enabling a store
+Step 1: Adding or enabling a store
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For more information on adding a store, see :ref:`Stores`. It is crucial
 to mark SneakerNet stores as 'non-ingestible' (i.e. set ``ingestible: false``
