@@ -485,6 +485,54 @@ def clear_error(args):
     return 0
 
 
+def get_store_list(args):
+    """
+    Get a list of stores from the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        store_list = client.get_store_list()
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if len(store_list) == 0:
+        print("No stores found.")
+        return
+
+    for store in store_list:
+        print(
+            f"\033[1m{store.name}\033[0m ({store.store_type}) [{sizeof_fmt(store.free_space)} Free] "
+            f"- {'' if store.ingestable else 'Not '}Ingestable "
+            f"- {'' if store.available else 'Not '}Available "
+            f"- {'Enabled' if store.enabled else 'Disabled'}"
+        )
+
+
+def set_store_state(args):
+    """
+    Set the state of a store on the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    enabled = args.enabled and (not args.disabled)
+
+    try:
+        state = client.set_store_state(store_name=args.store_name, enabled=enabled)
+
+        print(
+            f"Store {args.store_name} state set to {'enabled' if state else 'disabled'}."
+        )
+    except ValueError as e:
+        die(f"Unable to find or set state of store on the librarian: {e.args[0]}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    return 0
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -528,6 +576,8 @@ def generate_parser():
     config_upload_subparser(sub_parsers)
     config_search_errors_subparser(sub_parsers)
     config_clear_error_subparser(sub_parsers)
+    config_get_store_list_subparser(sub_parsers)
+    config_set_store_state_subparser(sub_parsers)
 
     return ap
 
@@ -1137,6 +1187,53 @@ def config_clear_error_subparser(sub_parsers):
     )
 
     sp.set_defaults(func=clear_error)
+
+
+def config_get_store_list_subparser(sub_parsers):
+    # function documentation
+    doc = """Get a list of stores known to the librarian.
+
+    """
+    hlp = "Get a list of stores known to the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("get-store-list", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.set_defaults(func=get_store_list)
+
+    return
+
+
+def config_set_store_state_subparser(sub_parsers):
+    # function documentation
+    doc = """Set the state of a store on the librarian.
+
+    """
+    hlp = "Set the state of a store on the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("set-store-state", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--store",
+        dest="store_name",
+        help="The name of the store to set the state of.",
+    )
+    sp.add_argument(
+        "--enabled",
+        dest="enabled",
+        action="store_true",
+        help="Set the store to enabled.",
+    )
+    sp.add_argument(
+        "--disabled",
+        dest="disabled",
+        action="store_true",
+        help="Set the store to disabled.",
+    )
+    sp.set_defaults(func=set_store_state)
+
+    return
 
 
 def main():
