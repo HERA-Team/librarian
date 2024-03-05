@@ -85,7 +85,7 @@ If your store is starting out disabled, you will need to enable it
 by using the ``set_store_state`` endpoint. This can be easily accomplished
 using the command-line utility:
 
-.. code:: bash
+.. code::
 
     $ librarian set-store-state local-librarian --store local-store --enabled
     Store local-store state set to enabled.
@@ -97,7 +97,7 @@ still go through.
 If you need to know what stores are available on the librarian, you can use
 the following command-line wrapper to ``get_store_list``:
 
-.. code:: bash
+.. code::
 
     $ librarian get-store-list local-librarian
     local-store (local) [599.5 GB Free] - Ingestable - Available - Enabled
@@ -140,7 +140,7 @@ This process will also disable the store on the source librarian,
 create outgoing transfers, and mark local instances as unavailable,
 ready for the disk to be replaced.
 
-.. code:: bash
+.. code::
 
     $ librarian get-store-manifest local-librarian \
       --store local-clone --create-outgoing-transfers \
@@ -169,7 +169,7 @@ Once the data has been moved to the destination site, you will need
 to ingest the data into the librarian. This is done using the
 ``ingest_store_manifest`` endpoint:
 
-.. code:: bash
+.. code::
 
     $ librarian ingest-manifest local --manifest ./test_manifest.json --store-root=/path/to/sneaker/device/store
       Ingesting manifest: 100%|███████████████████████████████| 4/4 [00:00<00:00, 31.48it/s]
