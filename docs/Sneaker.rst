@@ -74,8 +74,8 @@ There are three main states that are important for stores:
 1. ``ingestible``: Whether or not 'fresh' files (those sent from uploads
    or from clones) can be added to the store.
 2. ``enabled``: Whether or not the store is currently marked as available
-    for use. All stores start out enabled, but may be disabled when they
-    are full, or a disk is being swapped out.
+   for use. All stores start out enabled, but may be disabled when they
+   are full, or a disk is being swapped out.
 3. ``available``: This is an internal state that is tracked, irrespective
    of ``ingestible`` or ``enabled`` which indicates whether the physical
    device is available for recieving commands. For local stores, this is
@@ -105,3 +105,63 @@ the following command-line wrapper to ``get_store_list``:
 Which will print out helpful information about all attached stores to the
 librarian. As these things are generally meant to be transparent to regular
 users of the librarian, these endpoints require administrator privileges.
+
+Step 2: Background tasks and remote librarians
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There are two core background tasks that are used in SneakerNet transfers:
+``CreateLocalClone`` and ``ReceiveClone``. The first is used at the source site
+to create a complete clone of the data ingested into the librarian, and the
+latter is used to ingest the data into the destination librarian. More
+information on background task scheduling is available in the :ref:`Background`
+section.
+
+At each librarian site, you will also need to register the remote librarian
+using the command-line tools. This will also generally involve account
+provision on both librarians, as callbacks are required.
+
+To provision a new account, you will need to use the ``create_user``
+endpoint, which can be accessed through the command-line tool:
+
+TODO: THIS SHOULD BE COMPLETED IN RESPONSE TO ISSUE #61.
+
+Once the appropriate accounts are provisioned, you will need
+to register them with their respective librarians. This can be done
+with the ``register_remote_librarian`` endpoint:
+
+TODO: THIS SHOULD BE COMPLETED IN RESPONSE TO ISSUE #60
+
+Step 3: Creating a store manifest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Once one of your SneakerNet stores are filled up, you can create
+a manifest of the store using the ``get_store_manifest`` endpoint.
+This process will also disable the store on the source librarian,
+create outgoing transfers, and mark local instances as unavailable,
+ready for the disk to be replaced.
+
+.. code:: bash
+
+    $ librarian get-store-manifest local-librarian --store local-clone --create-outgoing-transfers --disable-store --mark-instances-as-unavailable --output /path/to/manifest.json
+
+The file will be saved as a serialized json object. It is strongly
+recommended that you back up this file, as it is the only unique
+record of the data that is being transferred. It should also likely
+be packaged with the SneakerNet transfer for easy ingestion on
+the other side.
+
+Step 4: Moving the data
+^^^^^^^^^^^^^^^^^^^^^^^
+
+You will then need to move the data to the destination site. This
+is generally done by physically moving the device to the destination
+site. It is recommended that you also move the manifest file with
+the data, as it will be required for the next step, as well as
+sending this (considerably smaller amount of data) over the network.
+
+Step 5: Ingesting the store manifest
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Once the data has been moved to the destination site, you will need
+to ingest the data into the librarian. This is done using the
+``ingest_store_manifest`` endpoint:

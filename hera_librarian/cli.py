@@ -533,6 +533,33 @@ def set_store_state(args):
     return 0
 
 
+def get_store_manifest(args):
+    """
+    Get the manifest for a store on the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        manifest = client.get_store_manifest(
+            store_name=args.store_name,
+            create_outgoing_transfers=args.destination_librarian is not None,
+            destination_librarian=args.destination_librarian,
+            disable_store=args.disable_store,
+            mark_local_instances_as_unavailable=args.mark_instances_as_unavailable,
+        )
+    except LibrarianError as e:
+        die(f"Error communicating with the librarian server: {e}")
+
+    if args.output is not None:
+        with open(args.output, "w") as f:
+            f.write(manifest.model_dump_json(indent=2))
+    else:
+        print(manifest.model_dump_json(indent=2))
+
+    return 0
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -578,6 +605,7 @@ def generate_parser():
     config_clear_error_subparser(sub_parsers)
     config_get_store_list_subparser(sub_parsers)
     config_set_store_state_subparser(sub_parsers)
+    config_get_store_manifest_subparser(sub_parsers)
 
     return ap
 
@@ -1234,6 +1262,59 @@ def config_set_store_state_subparser(sub_parsers):
     sp.set_defaults(func=set_store_state)
 
     return
+
+
+def config_get_store_manifest_subparser(sub_parsers):
+    # function documentation
+    doc = """Get a list of files known to the librarian on a given store.
+
+    """
+    hlp = "Get a list of files known to the librarian on a given store"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("get-store-manifest", description=doc, help=hlp)
+
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+
+    sp.add_argument(
+        "--store",
+        dest="store_name",
+        help="The name of the store to get the manifest of.",
+    )
+
+    sp.add_argument(
+        "--destination-librarian",
+        help=(
+            "The name of the librarian that the manifest will be copied to and "
+            "ingested into. This option will create outgoing transfers to this "
+            "librarian, awaiting a callback, and is an optional parameter."
+        ),
+        default=None,
+    )
+
+    sp.add_argument(
+        "--disable-store",
+        action="store_true",
+        help=(
+            "If specified, the store will be disabled once the manifest is generated."
+        ),
+    )
+
+    sp.add_argument(
+        "--mark-instances-as-unavailable",
+        action="store_true",
+        help=(
+            "If specified, the instances of the files will be marked as "
+            "unavailable once the manifest is generated."
+        ),
+    )
+
+    sp.add_argument(
+        "--output",
+        help=("If specified, the manifest will be written to the given file."),
+    )
+
+    sp.set_defaults(func=get_store_manifest)
 
 
 def main():
