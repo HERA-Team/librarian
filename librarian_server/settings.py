@@ -104,7 +104,7 @@ class ServerSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="librarian_server_")
 
-    def model_post_init(__context):
+    def model_post_init(__context, *args, **kwargs):
         """
         Read sensitive data from their appropriate files.
         """
