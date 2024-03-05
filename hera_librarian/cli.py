@@ -560,6 +560,63 @@ def get_store_manifest(args):
     return 0
 
 
+def ingest_manifest(args):
+    """
+    Ingest a manifest into the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    from hera_librarian.models.admin import AdminStoreManifestResponse
+
+    try:
+        from tqdm import tqdm
+
+        tqdm_available = True
+    except ImportError:
+        tqdm_available = False
+
+        def tqdm(x, *args, **kwargs):
+            return x
+
+    # Load the manifest
+    with open(args.manifest, "r") as f:
+        manifest = AdminStoreManifestResponse.model_validate_json(f.read())
+
+    # Now loop through each manifest entry nd ingest it.
+    already_existing = 0
+    successful = 0
+    total = len(manifest.store_files)
+
+    for item in tqdm(manifest.store_files, desc="Ingesting manifest"):
+        try:
+            client.ingest_manifest_entry(
+                name=Path(item.name),
+                create_time=item.create_time,
+                size=item.size,
+                checksum=item.checksum,
+                uploader=manifest.librarian_name,
+                source=item.source,
+                deletion_policy=item.deletion_policy,
+                source_transfer_id=item.outgoing_transfer_id,
+                local_path=args.store_root / item.name,
+            )
+
+            successful += 1
+        except LibrarianError as e:
+            if "already exists" in str(e):
+                already_existing += 1
+            else:
+                die(f"Error ingesting {item.name}: {e}")
+
+    print(
+        f"Successfully ingested {successful}/{total} files, "
+        f"{already_existing}/{total} already existed."
+    )
+
+    return 0
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -606,6 +663,7 @@ def generate_parser():
     config_get_store_list_subparser(sub_parsers)
     config_set_store_state_subparser(sub_parsers)
     config_get_store_manifest_subparser(sub_parsers)
+    config_ingest_manifest_subparser(sub_parsers)
 
     return ap
 
@@ -1315,6 +1373,35 @@ def config_get_store_manifest_subparser(sub_parsers):
     )
 
     sp.set_defaults(func=get_store_manifest)
+
+
+def config_ingest_manifest_subparser(sub_parsers):
+    # function documentation
+    doc = """Ingest a manifest into the librarian.
+
+    """
+    hlp = "Ingest a manifest into the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("ingest-manifest", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+
+    sp.add_argument(
+        "--manifest",
+        help="The path to the manifest file to ingest.",
+        type=Path,
+    )
+
+    sp.add_argument(
+        "--store-root",
+        metavar="STORE-ROOT",
+        help="The root of the store to ingest the manifest into.",
+        type=Path,
+    )
+
+    sp.set_defaults(func=ingest_manifest)
+
+    return
 
 
 def main():

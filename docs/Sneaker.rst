@@ -168,3 +168,12 @@ Step 5: Ingesting the store manifest
 Once the data has been moved to the destination site, you will need
 to ingest the data into the librarian. This is done using the
 ``ingest_store_manifest`` endpoint:
+
+.. code:: bash
+
+    $ librarian ingest-manifest local --manifest ./test_manifest.json --store-root=/path/to/sneaker/device/store
+      Ingesting manifest: 100%|███████████████████████████████| 4/4 [00:00<00:00, 31.48it/s]
+      Successfully ingested 3/4 files, 1/4 already existed.
+
+If this fails, you can always try again (as long as the root cause is
+fixed!) as the librarian will not ingest the same file twice.
