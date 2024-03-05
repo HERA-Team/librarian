@@ -58,6 +58,9 @@ class ServerSettings(BaseSettings):
     # Top level name of the server. Should be unique.
     name: str = "librarian_server"
 
+    # Whether to enable debugging features, like the API docs and OpenAPI schema.
+    debug: bool = True
+
     # Encryption key for the server, for connecting to other librarians.
     # Don't write this in the config file, it should be set as an environment
     # variable.
