@@ -127,9 +127,24 @@ TODO: THIS SHOULD BE COMPLETED IN RESPONSE TO ISSUE #61.
 
 Once the appropriate accounts are provisioned, you will need
 to register them with their respective librarians. This can be done
-with the ``register_remote_librarian`` endpoint:
+with the ``add_librarian`` endpoint:
 
-TODO: THIS SHOULD BE COMPLETED IN RESPONSE TO ISSUE #60
+.. code::
+
+    $ librarian add-librarian local-librarian \
+      --librarian remote-librarian \
+      --url http://remote-librarian \
+      --port 5000 \
+      --authenticator username:password \ # This is encrypted by the server.
+
+This will try to ping the server. If you do not want that to happen
+(for instance, if the server is not currently available), you can use
+the ``--do-not-check-connection`` option to skip the check.
+
+You can list the librarians with ``get-librarian-list`` and remove
+a librarian with ``remove-librarian``. Transfer matching is always
+done by name, not by database row ID, so you should be more than
+able to remove and re-add librarians without any issues.
 
 Step 3: Creating a store manifest
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
