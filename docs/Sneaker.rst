@@ -153,6 +153,15 @@ record of the data that is being transferred. It should also likely
 be packaged with the SneakerNet transfer for easy ingestion on
 the other side.
 
+.. topic:: Safety Note
+    It may be worth disabling the store manually first, then
+    generating a manifest with none of the extra options turned
+    on (i.e. no ``--create-outgoing-transfers`` or
+    ``--mark-instances-as-unavailable``) at first. You can then
+    re-run the command to do these things, safe in the knowledge
+    you have an already existing backup of the store manifest.
+
+
 Step 4: Moving the data
 ^^^^^^^^^^^^^^^^^^^^^^^
 
