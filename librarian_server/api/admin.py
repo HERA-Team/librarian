@@ -12,9 +12,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from hera_librarian.deletion import DeletionPolicy
+from hera_librarian.exceptions import LibrarianHTTPError
 from hera_librarian.models.admin import (
+    AdminAddLibrarianRequest,
+    AdminAddLibrarianResponse,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
+    AdminListLibrariansRepsonse,
+    AdminListLibrariansRequest,
+    AdminRemoveLibrarianRequest,
+    AdminRemoveLibrarianResponse,
     AdminRequestFailedResponse,
     AdminStoreListItem,
     AdminStoreListResponse,
@@ -22,6 +29,7 @@ from hera_librarian.models.admin import (
     AdminStoreManifestResponse,
     AdminStoreStateChangeRequest,
     AdminStoreStateChangeResponse,
+    LibrarianListResponseItem,
     ManifestEntry,
 )
 from hera_librarian.transfer import TransferStatus
@@ -329,3 +337,140 @@ def store_manifest(
     )
 
     return response
+
+
+@router.post("/librarians/list", response_model=AdminListLibrariansRepsonse)
+def list_librarians(
+    request: AdminListLibrariansRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+):
+    """
+    Returns a list of all librarians in the database, and optionally
+    tries to ping them to verify that the connection is successful.
+    """
+
+    log.debug(f"Recieved list librarians request from {user.username}: {request}.")
+
+    librarians = session.query(Librarian).all()
+
+    responses = []
+
+    for librarian in librarians:
+        if request.ping:
+            try:
+                ping = bool(librarian.client().ping())
+            except LibrarianHTTPError:
+                log.warning(f"Librarian {librarian.name} did not respond to ping.")
+                ping = False
+
+        responses.append(
+            LibrarianListResponseItem(
+                name=librarian.name,
+                url=librarian.url,
+                port=librarian.port,
+                available=ping if request.ping else None,
+            )
+        )
+
+    return AdminListLibrariansRepsonse(librarians=responses)
+
+
+@router.post(
+    "/librarians/add",
+    response_model=AdminAddLibrarianResponse | AdminRequestFailedResponse,
+)
+def add_librarian(
+    request: AdminAddLibrarianRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+):
+    """
+    Adds a new librarian to the database. By default, it pings the librarian
+    to make sure that the connection works before accepting that connection.
+    """
+
+    log.debug(f"Recieved add librarian request from {user.username}.")
+
+    # Check if the librarian already exists.
+
+    existing_librarian = (
+        session.query(Librarian).filter_by(name=request.librarian_name).one_or_none()
+    )
+
+    if existing_librarian is not None:
+        return AdminAddLibrarianResponse(
+            success=False,
+            already_exists=True,
+            ping_success=False,
+        )
+
+    try:
+        new_librarian = Librarian.new_librarian(
+            name=request.librarian_name,
+            url=request.url,
+            port=request.port,
+            authenticator=request.authenticator,
+            check_connection=request.check_connection,
+        )
+        ping_success = True
+    except ValueError as e:
+        ping_success = False
+
+    return AdminAddLibrarianResponse(
+        success=True,
+        already_exists=False,
+        ping_success=ping_success if request.check_connection else None,
+    )
+
+
+@router.post(
+    "/librarians/remove",
+    response_model=AdminRemoveLibrarianResponse | AdminRequestFailedResponse,
+)
+def remove_librarian(
+    request: AdminRemoveLibrarianRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+):
+    """
+    Removes a librarian from the database. This will also, optionally,
+    remove all outgoing transfers to that librarian.
+    """
+
+    log.debug(f"Recieved remove librarian request from {user.username}: {request}.")
+
+    # Check if the librarian exists.
+    librarian = (
+        session.query(Librarian).filter_by(name=request.librarian_name).one_or_none()
+    )
+
+    if librarian is None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return AdminRequestFailedResponse(
+            reason=f"Librarian {request.librarian_name} does not exist.",
+            suggested_remedy="You do not need to remove it.",
+        )
+
+    # Remove the outgoing transfers if requested.
+    number_of_transfers_removed = 0
+
+    if request.remove_outgoing_transfers:
+        number_of_transfers_removed = (
+            session.query(OutgoingTransfer)
+            .filter_by(destination=librarian.name)
+            .delete()
+        )
+
+    # Remove the librarian.
+    session.delete(librarian)
+
+    session.commit()
+
+    return AdminRemoveLibrarianResponse(
+        success=True,
+        number_of_transfers_removed=number_of_transfers_removed,
+    )

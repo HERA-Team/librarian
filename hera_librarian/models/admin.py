@@ -146,3 +146,71 @@ class AdminStoreStateChangeResponse(BaseModel):
 
     success: bool
     "Whether your transaction was ultimately successful."
+
+
+class AdminListLibrariansRequest(BaseModel):
+    ping: bool = True
+    "Whether to ping the librarians or not."
+
+
+class LibrarianListResponseItem(BaseModel):
+    name: str
+    "The name of the librarian."
+
+    url: str
+    "The URL of the librarian."
+
+    port: int
+    "The port of the librarian."
+
+    available: bool | None
+    "Whether the librarian is available or not, only if ping is true."
+
+
+class AdminListLibrariansRepsonse(BaseModel):
+    librarians: list[LibrarianListResponseItem]
+    "The list of librarians."
+
+
+class AdminAddLibrarianRequest(BaseModel):
+    librarian_name: str
+    "The name of the librarian to add."
+
+    url: str
+    "The URL of the librarian to add."
+
+    port: int
+    "The port of the librarian to add."
+
+    authenticator: str
+    "The authenticator for the librarian to add."
+
+    check_connection: bool = True
+    "Whether to check the connection to the librarian before adding it. It is strongly recommended that you do this."
+
+
+class AdminAddLibrarianResponse(BaseModel):
+    success: bool
+    "Whether the librarian was added successfully."
+
+    already_exists: bool
+    "Whether the librarian already exists."
+
+    ping_success: bool
+    "Whether the ping to the librarian was successful."
+
+
+class AdminRemoveLibrarianRequest(BaseModel):
+    librarian_name: str
+    "The name of the librarian to remove."
+
+    remove_outgoing_transfers: bool = False
+    "Whether to remove outgoing transfers to this librarian."
+
+
+class AdminRemoveLibrarianResponse(BaseModel):
+    success: bool
+    "Whether it was removed sucessfully."
+
+    number_of_transfers_removed: int
+    "The number of transfers removed."
