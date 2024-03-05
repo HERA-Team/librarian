@@ -23,9 +23,14 @@ from .deletion import DeletionPolicy
 from .errors import ErrorCategory, ErrorSeverity
 from .exceptions import LibrarianError, LibrarianHTTPError
 from .models.admin import (
+    AdminAddLibrarianRequest,
+    AdminAddLibrarianResponse,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
-    AdminRequestFailedResponse,
+    AdminListLibrariansRequest,
+    AdminListLibrariansResponse,
+    AdminRemoveLibrarianRequest,
+    AdminRemoveLibrarianResponse,
     AdminStoreListItem,
     AdminStoreListResponse,
     AdminStoreManifestRequest,
@@ -1036,3 +1041,142 @@ class AdminClient(LibrarianClient):
                 raise e
 
         return True
+
+    def get_librarian_list(self, ping: bool = False) -> AdminListLibrariansResponse:
+        """
+        Get a list of librarians on this librarian.
+
+        Parameters
+        ----------
+        ping : bool, optional
+            Whether to ping the librarians before returning them, by default False
+
+        Returns
+        -------
+        AdminListLibrariansResponse
+            The list of librarians is available under .librarians.
+
+        Raises
+        ------
+
+        LibrarianError
+            If the user is not an admin or there is some other issue
+            communicating.
+        """
+
+        try:
+            response = self.post(
+                endpoint="admin/librarians/list",
+                request=AdminListLibrariansRequest(ping=ping),
+                response=AdminListLibrariansResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "User" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response
+
+    def add_librarian(
+        self,
+        name: str,
+        url: str,
+        port: int,
+        authenticator: str,
+        check_connection: bool = True,
+    ) -> bool:
+        """
+        Add a remote librarian to this librarian.
+
+        Parameters
+        ----------
+        name : str
+            The name of the librarian to add.
+        url : str
+            The URL of the librarian to add.
+        port : int
+            The port of the librarian to add.
+        authenticator : str
+            The authenticator for the librarian to add.
+        check_connection : bool, optional
+            Whether to check the connection to this librarian before
+            returning it, by default True
+
+        Returns
+        -------
+        bool
+            Whether the librarian was successfully added.
+
+        Raises
+        ------
+        LibrarianError
+            If the librarian already exists on this librarian.
+        """
+
+        try:
+            response = self.post(
+                endpoint="admin/librarians/add",
+                request=AdminAddLibrarianRequest(
+                    librarian_name=name,
+                    url=url,
+                    port=port,
+                    authenticator=authenticator,
+                    check_connection=check_connection,
+                ),
+                response=AdminAddLibrarianResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Librarian" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response.success
+
+    def remove_librarian(
+        self, name: str, remove_outgoing_transfers: bool = False
+    ) -> tuple[bool, int]:
+        """
+        Remove a remote librarian from this librarian.
+
+        Parameters
+        ----------
+        name : str
+            The name of the librarian to remove.
+        remove_outgoing_transfers : bool, optional
+            Whether to remove (mark as failed) outgoing transfers to this
+            librarian, by default False
+
+        Returns
+        -------
+        tuple[bool, int]
+            The first element is whether the librarian was successfully
+            removed, and the second is the number of transfers removed.
+
+        Raises
+        ------
+        LibrarianError
+            If the librarian does not exist on this librarian.
+        """
+
+        try:
+            response = self.post(
+                endpoint="admin/librarians/remove",
+                request=AdminRemoveLibrarianRequest(
+                    librarian_name=name,
+                    remove_outgoing_transfers=remove_outgoing_transfers,
+                ),
+                response=AdminRemoveLibrarianResponse,
+            )
+        except LibrarianHTTPError as e:
+            if (
+                e.status_code == 400
+                and "Librarian" in e.reason
+                and "does not exist" in e.reason
+            ):
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response.success, response.number_of_transfers_removed

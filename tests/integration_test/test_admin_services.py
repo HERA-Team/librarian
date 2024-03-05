@@ -153,3 +153,26 @@ def test_set_store_state(
             )
 
             assert store.enabled
+
+
+def test_add_search_remove_librarian(admin_client, librarian_client):
+    response = admin_client.add_librarian(
+        name="test_server",
+        url="http://localhost",
+        port=5000,
+        authenticator="admin:test",
+        check_connection=False,
+    )
+
+    assert response is True
+
+    response = admin_client.get_librarian_list()
+
+    assert "test_server" in [x.name for x in response.librarians]
+
+    response = admin_client.remove_librarian(name="test_server")
+
+    assert response == (True, 0)
+
+    with pytest.raises(LibrarianError):
+        response = admin_client.remove_librarian(name="test_server")

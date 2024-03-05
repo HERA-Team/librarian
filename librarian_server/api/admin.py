@@ -18,8 +18,8 @@ from hera_librarian.models.admin import (
     AdminAddLibrarianResponse,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
-    AdminListLibrariansRepsonse,
     AdminListLibrariansRequest,
+    AdminListLibrariansResponse,
     AdminRemoveLibrarianRequest,
     AdminRemoveLibrarianResponse,
     AdminRequestFailedResponse,
@@ -339,7 +339,7 @@ def store_manifest(
     return response
 
 
-@router.post("/librarians/list", response_model=AdminListLibrariansRepsonse)
+@router.post("/librarians/list", response_model=AdminListLibrariansResponse)
 def list_librarians(
     request: AdminListLibrariansRequest,
     user: AdminUserDependency,
@@ -374,7 +374,7 @@ def list_librarians(
             )
         )
 
-    return AdminListLibrariansRepsonse(librarians=responses)
+    return AdminListLibrariansResponse(librarians=responses)
 
 
 @router.post(
@@ -415,6 +415,10 @@ def add_librarian(
             authenticator=request.authenticator,
             check_connection=request.check_connection,
         )
+
+        session.add(new_librarian)
+        session.commit()
+
         ping_success = True
     except ValueError as e:
         ping_success = False
@@ -459,11 +463,12 @@ def remove_librarian(
     number_of_transfers_removed = 0
 
     if request.remove_outgoing_transfers:
-        number_of_transfers_removed = (
-            session.query(OutgoingTransfer)
-            .filter_by(destination=librarian.name)
-            .delete()
-        )
+        for transfer in session.query(OutgoingTransfer).filter_by(
+            destination=librarian.name
+        ):
+            transfer.fail_transfer(session=session)
+
+            number_of_transfers_removed += 1
 
     # Remove the librarian.
     session.delete(librarian)

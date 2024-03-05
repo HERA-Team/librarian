@@ -6,8 +6,14 @@ import shutil
 
 from hera_librarian.deletion import DeletionPolicy
 from hera_librarian.models.admin import (
+    AdminAddLibrarianRequest,
+    AdminAddLibrarianResponse,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
+    AdminListLibrariansRequest,
+    AdminListLibrariansResponse,
+    AdminRemoveLibrarianRequest,
+    AdminRemoveLibrarianResponse,
     AdminRequestFailedResponse,
     AdminStoreListResponse,
     AdminStoreManifestRequest,
@@ -304,3 +310,131 @@ def test_manifest_generation_and_extra_opts(
     store.enabled = True
 
     session.commit()
+
+
+def test_add_librarians(test_client, test_server, test_orm):
+    """
+    Tests that we can add librarians.
+    """
+
+    new_librarian = AdminAddLibrarianRequest(
+        librarian_name="our_closest_friend",
+        url="http://localhost",
+        authenticator="admin:password",
+        port=80,
+        # Pinging is testsed in the integration test.
+        check_connection=False,
+    )
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/librarians/add", content=new_librarian.model_dump_json()
+    )
+
+    assert response.status_code == 200
+
+    response = AdminAddLibrarianResponse.model_validate_json(response.content)
+
+    # Try to add it again.
+    response = test_client.post_with_auth(
+        "/api/v2/admin/librarians/add", content=new_librarian.model_dump_json()
+    )
+
+    assert response.status_code == 200
+
+    response = AdminAddLibrarianResponse.model_validate_json(response.content)
+
+    assert response.success == False
+    assert response.already_exists == True
+
+    # Now we can try the search endpoint.
+    search_request = AdminListLibrariansRequest(
+        ping=False,
+    )
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/librarians/list", content=search_request.model_dump_json()
+    )
+
+    assert response.status_code == 200
+
+    response = AdminListLibrariansResponse.model_validate_json(response.content)
+
+    found = True
+    for librarian in response.librarians:
+        if librarian.name == "our_closest_friend":
+            assert librarian.url == "http://localhost"
+            assert librarian.port == 80
+            assert librarian.available == None
+            found = True
+
+    assert found
+
+    # Generate an outgoing transfer to our closest friend.
+    with test_server[1]() as session:
+        instance = session.query(test_orm.Instance).first()
+
+        transfer = test_orm.OutgoingTransfer.new_transfer(
+            destination="our_closest_friend",
+            instance=instance,
+            file=instance.file,
+        )
+
+        session.add(transfer)
+        session.commit()
+
+        transfer_id = transfer.id
+
+    # Now try to remove it.
+
+    remove_request = AdminRemoveLibrarianRequest(
+        librarian_name="our_closest_friend",
+        remove_outgoing_transfers=True,
+    )
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/librarians/remove", content=remove_request.model_dump_json()
+    )
+
+    assert response.status_code == 200
+
+    response = AdminRemoveLibrarianResponse.model_validate_json(response.content)
+
+    assert response.success
+    assert response.number_of_transfers_removed == 1
+
+    # Check we failed transfer successfully.
+
+    with test_server[1]() as session:
+        transfer = session.get(test_orm.OutgoingTransfer, transfer_id)
+
+        assert transfer.status == test_orm.TransferStatus.FAILED
+
+    # Check we can't find that librarian in the list.
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/librarians/list", content=search_request.model_dump_json()
+    )
+
+    assert response.status_code == 200
+
+    response = AdminListLibrariansResponse.model_validate_json(response.content)
+
+    found = False
+
+    for librarian in response.librarians:
+        if librarian.name == "our_closest_friend":
+            found = True
+
+    assert not found
+
+    # Now try to remove our non-existent friend.
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/librarians/remove", content=remove_request.model_dump_json()
+    )
+
+    assert response.status_code == 400
+
+    response = AdminRequestFailedResponse.model_validate_json(response.content)
+
+    assert response.reason == "Librarian our_closest_friend does not exist."

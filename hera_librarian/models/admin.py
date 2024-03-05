@@ -167,7 +167,7 @@ class LibrarianListResponseItem(BaseModel):
     "Whether the librarian is available or not, only if ping is true."
 
 
-class AdminListLibrariansRepsonse(BaseModel):
+class AdminListLibrariansResponse(BaseModel):
     librarians: list[LibrarianListResponseItem]
     "The list of librarians."
 
@@ -196,7 +196,7 @@ class AdminAddLibrarianResponse(BaseModel):
     already_exists: bool
     "Whether the librarian already exists."
 
-    ping_success: bool
+    ping_success: bool | None
     "Whether the ping to the librarian was successful."
 
 
@@ -205,7 +205,7 @@ class AdminRemoveLibrarianRequest(BaseModel):
     "The name of the librarian to remove."
 
     remove_outgoing_transfers: bool = False
-    "Whether to remove outgoing transfers to this librarian."
+    "Whether to remove (mark as failed) outgoing transfers to this librarian."
 
 
 class AdminRemoveLibrarianResponse(BaseModel):
@@ -213,4 +213,4 @@ class AdminRemoveLibrarianResponse(BaseModel):
     "Whether it was removed sucessfully."
 
     number_of_transfers_removed: int
-    "The number of transfers removed."
+    "The number of transfers removed (marked as failed)."

@@ -27,29 +27,20 @@ def test_sneakernet_workflow(
     # a mocking capability for that yet.
 
     # Before starting, register the downstream and upstream librarians.
-    with test_server_with_many_files_and_errors[1]() as session:
-        live_server = test_orm.Librarian.new_librarian(
-            name="live_server",
-            url="http://localhost",
-            authenticator="admin:password",  # This is the default authenticator.
-            port=server.id,
-        )
+    assert mocked_admin_client.add_librarian(
+        name="live_server",
+        url="http://localhost",
+        authenticator="admin:password",  # This is the default authenticator.
+        port=server.id,
+    )
 
-        session.add(live_server)
-        session.commit()
-
-    with librarian_database_session_maker() as session:
-        # Note we will never actually access this.
-        test_server = test_orm.Librarian.new_librarian(
-            name="test_server",
-            url="http://localhost",
-            authenticator="admin:password",  # This is the default authenticator.
-            port=test_server_with_many_files_and_errors[2].id,
-            check_connection=False,
-        )
-
-        session.add(test_server)
-        session.commit()
+    assert admin_client.add_librarian(
+        name="test_server",
+        url="http://localhost",
+        authenticator="admin:password",  # This is the default authenticator.
+        port=test_server_with_many_files_and_errors[2].id,
+        check_connection=False,
+    )
 
     # First, we need to upload a bunch of files to the source server.
 
@@ -220,3 +211,8 @@ def test_sneakernet_workflow(
 
     with test_server_with_many_files_and_errors[1]() as session:
         task.core(session=session)
+
+    # Remove the librarians we added.
+
+    assert mocked_admin_client.remove_librarian(name="live_server")
+    assert admin_client.remove_librarian(name="test_server")
