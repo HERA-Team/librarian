@@ -176,7 +176,9 @@ to ingest the data into the librarian. This is done using the
       Successfully ingested 3/4 files, 1/4 already existed.
 
 If this fails, you can always try again (as long as the root cause is
-fixed!) as the librarian will not ingest the same file twice.
+fixed!) as the librarian will not ingest the same file twice. You
+will need to have the optional library ``tqdm`` installed to see the
+progress bar.
 
 Note that this does not necessarily mean that the files are available
 on the destination librarian right away. You will need to wait until the
