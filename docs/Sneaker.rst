@@ -142,7 +142,10 @@ ready for the disk to be replaced.
 
 .. code:: bash
 
-    $ librarian get-store-manifest local-librarian --store local-clone --create-outgoing-transfers --disable-store --mark-instances-as-unavailable --output /path/to/manifest.json
+    $ librarian get-store-manifest local-librarian \
+      --store local-clone --create-outgoing-transfers \
+      --disable-store --mark-instances-as-unavailable \
+      --output /path/to/manifest.json
 
 The file will be saved as a serialized json object. It is strongly
 recommended that you back up this file, as it is the only unique
