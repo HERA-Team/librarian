@@ -177,3 +177,8 @@ to ingest the data into the librarian. This is done using the
 
 If this fails, you can always try again (as long as the root cause is
 fixed!) as the librarian will not ingest the same file twice.
+
+Note that this does not necessarily mean that the files are available
+on the destination librarian right away. You will need to wait until the
+``ReceiveClone`` background task has completed, and the source librarian
+has received the callback from the destination librarian.
