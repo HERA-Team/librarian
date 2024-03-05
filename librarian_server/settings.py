@@ -65,6 +65,7 @@ class ServerSettings(BaseSettings):
     # Don't write this in the config file, it should be set as an environment
     # variable.
     encryption_key: Optional[str] = None
+    encryption_key_file: Optional[Path] = None
 
     # Database settings.
     database_driver: str = "sqlite"
@@ -97,10 +98,24 @@ class ServerSettings(BaseSettings):
     # webhook url, and by default we raise all log_to_database alerts to slack too.
     slack_webhook_enable: bool = False
     slack_webhook_url: Optional[str] = None
+    slack_webhook_url_file: Optional[Path] = None
     slack_webhook_post_error_severity: list[ErrorSeverity] = list(ErrorSeverity)
     slack_webhook_post_error_category: list[ErrorCategory] = list(ErrorCategory)
 
     model_config = SettingsConfigDict(env_prefix="librarian_server_")
+
+    def model_post_init(__context):
+        """
+        Read sensitive data from their appropriate files.
+        """
+
+        if __context.encryption_key_file is not None:
+            with open(__context.encryption_key_file, "r") as handle:
+                __context.encryption_key = handle.read().strip()
+
+        if __context.slack_webhook_url_file is not None:
+            with open(__context.slack_webhook_url_file, "r") as handle:
+                __context.slack_webhook_url = handle.read().strip()
 
     @property
     def sqlalchemy_database_uri(self) -> str:
