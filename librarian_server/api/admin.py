@@ -420,11 +420,15 @@ def add_librarian(
         session.commit()
 
         ping_success = True
+        success = True
     except ValueError as e:
+        log.error(f"Failed to add librarian {request.librarian_name}.")
+        log.error(f"Error: {e}.")
         ping_success = False
+        success = False
 
     return AdminAddLibrarianResponse(
-        success=True,
+        success=success,
         already_exists=False,
         ping_success=ping_success if request.check_connection else None,
     )

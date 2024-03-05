@@ -617,6 +617,88 @@ def ingest_manifest(args):
     return 0
 
 
+def get_librarian_list(args):
+    """
+    Get the list of librarians and print them out.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        librarian_list = client.get_librarian_list().librarians
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+    except LibrarianError as e:
+        die(f"You are not authorized to perform this action.")
+
+    if len(librarian_list) == 0:
+        print("No librarians found.")
+        return 0
+
+    for librarian in librarian_list:
+        print(
+            f"\033[1m{librarian.name}\033[0m ({librarian.url}:{librarian.port}) "
+            f"- {'Available' if librarian.available else 'Disabled' if librarian.available is not None else 'Unknown'}"
+        )
+
+    return 0
+
+
+def add_librarian(args):
+    """
+    Add a remote librarian in the database.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        res = client.add_librarian(
+            name=args.name,
+            url=args.url,
+            port=args.port,
+            authenticator=args.authenticator,
+            check_connection=not args.do_not_check_connection,
+        )
+    except LibrarianError as e:
+        die(f"Error adding librarian: {e}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if res:
+        print(f"Librarian {args.name} added.")
+    else:
+        die(
+            f"Unable to add librarian {args.name} for unknown reason. Check the server logs."
+        )
+
+    return res
+
+
+def remove_librarian(args):
+    """
+    Remove a remote librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        res = client.remove_librarian(
+            name=args.name, remove_outgoing_transfers=args.remove_outgoing_transfers
+        )
+    except LibrarianError as e:
+        die(f"Error removing librarian: {e}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if res[1] > 0:
+        print(f"Removed {res[1]} outgoing transfers to {args.name}.")
+
+    if res[0]:
+        print(f"Librarian {args.name} removed.")
+
+    return res[0]
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -664,6 +746,9 @@ def generate_parser():
     config_set_store_state_subparser(sub_parsers)
     config_get_store_manifest_subparser(sub_parsers)
     config_ingest_manifest_subparser(sub_parsers)
+    config_get_librarian_list_subparser(sub_parsers)
+    config_add_librarian_subparser(sub_parsers)
+    config_remove_librarian_subparser(sub_parsers)
 
     return ap
 
@@ -1402,6 +1487,78 @@ def config_ingest_manifest_subparser(sub_parsers):
     sp.set_defaults(func=ingest_manifest)
 
     return
+
+
+def config_get_librarian_list_subparser(sub_parsers):
+    # function documentation
+    doc = """Get a list of librarians known to the librarian.
+
+    """
+    hlp = "Get a list of librarians known to the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("get-librarian-list", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--ping", action="store_true", help="Ping the librarians to check they are up."
+    )
+    sp.set_defaults(func=get_librarian_list)
+
+    return
+
+
+def config_add_librarian_subparser(sub_parsers):
+    # function documentation
+    doc = """Add a new remote librarian to the librarian.
+
+    """
+    hlp = "Add a new remote librarian to the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("add-librarian", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--name", help="The name of the librarian to add.", type=str, required=True
+    )
+    sp.add_argument(
+        "--url", help="The URL of the librarian to add.", type=str, required=True
+    )
+    sp.add_argument(
+        "--port", help="The port of the librarian to add.", type=int, required=True
+    )
+    sp.add_argument(
+        "--authenticator",
+        help="The authenticator of the librarian to add.",
+        type=str,
+        required=True,
+    )
+    sp.add_argument(
+        "--do-not-check-connection",
+        action="store_true",
+        help="Do not check the connection to the remote librarian on ingest.",
+    )
+    sp.set_defaults(func=add_librarian)
+
+
+def config_remove_librarian_subparser(sub_parsers):
+    # function documentation
+    doc = """Remove a remote librarian from the librarian.
+
+    """
+    hlp = "Remove a remote librarian from the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("remove-librarian", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--name", help="The name of the librarian to remove.", type=str, required=True
+    )
+    sp.add_argument(
+        "--remove-outgoing-transfers",
+        action="store_true",
+        help="Remove all outgoing transfers to the librarian.",
+    )
+    sp.set_defaults(func=remove_librarian)
 
 
 def main():
