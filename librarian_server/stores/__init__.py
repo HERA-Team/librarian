@@ -17,3 +17,5 @@ StoreNames: dict[str, int] = {
     "core": 0,
     "local": 1,
 }
+
+InvertedStoreNames = {v: k for k, v in StoreNames.items()}

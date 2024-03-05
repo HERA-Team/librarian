@@ -5,6 +5,7 @@ Logging setup. Use this as 'from logger import log'
 import inspect
 import logging as log
 
+import requests
 from sqlalchemy.orm import Session
 
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
@@ -27,6 +28,34 @@ error_severity_to_logging_level = {
 }
 
 log.debug("Logging set up.")
+
+
+def post_error_to_slack(error: "Error") -> None:
+    if not server_settings.slack_webhook_enable:
+        return
+
+    if error.severity not in server_settings.slack_webhook_post_error_severity:
+        return
+
+    if error.category not in server_settings.slack_webhook_post_error_category:
+        return
+
+    requests.post(
+        server_settings.slack_webhook_url,
+        json={
+            "username": server_settings.displayed_site_name,
+            "icon_emoji": ":ledger:",
+            "text": (
+                f"*New Librarian Error at {server_settings.name}*\n"
+                f"> _Error Severity_: {error.severity.name}\n"
+                f"> _Error Category_: {error.category.name}\n"
+                f"> _Error Message_: {error.message}\n"
+                f"> _Error ID_: {error.id}\n"
+                f"> _Error Raised Time_: {error.raised_time}\n"
+                f"`{error.caller}`"
+            ),
+        },
+    )
 
 
 def log_to_database(
@@ -72,3 +101,5 @@ def log_to_database(
 
     session.add(error)
     session.commit()
+
+    post_error_to_slack(error)

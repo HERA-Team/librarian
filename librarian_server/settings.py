@@ -11,6 +11,8 @@ from pydantic import BaseModel, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
+from hera_librarian.errors import ErrorCategory, ErrorSeverity
+
 from .stores import StoreNames
 
 if TYPE_CHECKING:
@@ -53,6 +55,15 @@ class ServerSettings(BaseSettings):
     variables.
     """
 
+    # Top level name of the server. Should be unique.
+    name: str = "librarian_server"
+
+    # Encryption key for the server, for connecting to other librarians.
+    # Don't write this in the config file, it should be set as an environment
+    # variable.
+    encryption_key: Optional[str] = None
+
+    # Database settings.
     database_driver: str = "sqlite"
     database_user: Optional[str] = None
     database_password: Optional[str] = None
@@ -61,18 +72,30 @@ class ServerSettings(BaseSettings):
     database: Optional[str] = None
 
     log_level: str = "DEBUG"
+
+    # Display name and description of the site, used in UI only.
     displayed_site_name: str = "Untitled Librarian"
     displayed_site_description: str = "No description set."
 
+    # Host and port to bind to.
     host: str = "0.0.0.0"
     port: int
 
+    # Stores that the librarian should add or migrate
     add_stores: list[StoreSettings]
 
+    # Database migration settings
     alembic_config_path: str = "."
     alembic_path: str = "alembic"
 
     max_search_results: int = 64
+
+    # Slack integration; by default disable this. You will need a slack
+    # webhook url, and by default we raise all log_to_database alerts to slack too.
+    slack_webhook_enable: bool = False
+    slack_webhook_url: Optional[str] = None
+    slack_webhook_post_error_severity: list[ErrorSeverity] = list(ErrorSeverity)
+    slack_webhook_post_error_category: list[ErrorCategory] = list(ErrorCategory)
 
     model_config = SettingsConfigDict(env_prefix="librarian_server_")
 

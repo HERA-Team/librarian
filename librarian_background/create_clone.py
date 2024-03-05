@@ -6,8 +6,10 @@ within some time-frame.
 import datetime
 import logging
 from pathlib import Path
+from typing import Optional
 
 from schedule import CancelJob
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from librarian_server.database import get_session
@@ -26,10 +28,12 @@ class CreateLocalClone(Task):
 
     clone_from: str
     "Name of the store to clone from."
-    clone_to: str
-    "Name of the store to create copies on."
+    clone_to: str | list[str]
+    "Name of the store(s) to create copies on. If multiple are provided, the task will go through each one in order in case one or more stores are full."
     age_in_days: int
     "Age in days of the files to check. I.e. only check files younger than this (we assume older files are fine as they've been checked before)"
+    files_per_run: int = 1024
+    "Maximum number of files to clone in any one run. If there are more files than this, we will put off cloning them until the next run."
 
     # TODO: In the future, we could implement a _rolling_ n day clone here, i.e. only keep the last n days of files on the clone_to store.
 
@@ -46,6 +50,8 @@ class CreateLocalClone(Task):
             return self.core(session=session)
 
     def core(self, session: Session):
+        core_begin = datetime.datetime.utcnow()
+
         try:
             store_from = self.get_store(self.clone_from, session)
         except ValueError:
@@ -59,7 +65,12 @@ class CreateLocalClone(Task):
             return CancelJob
 
         try:
-            store_to = self.get_store(self.clone_to, session)
+            if isinstance(self.clone_to, list):
+                stores_to = [
+                    self.get_store(clone_to, session) for clone_to in self.clone_to
+                ]
+            else:
+                stores_to = [self.get_store(self.clone_to, session)]
         except ValueError:
             # Store doesn't exist. Cancel this job.
             log_to_database(
@@ -73,31 +84,105 @@ class CreateLocalClone(Task):
         # Now figure out what files were uploaded in the past age_in_days days.
         start_time = datetime.datetime.now() - datetime.timedelta(days=self.age_in_days)
 
-        # Now we can query the database for all files that were uploaded in the past age_in_days days.
-        instances: list[Instance] = (
-            session.query(Instance)
-            .filter(Instance.store == store_from)
-            .filter(Instance.created_time > start_time)
-            .all()
+        # Now we can query the database for all files that were uploaded in the past age_in_days days,
+        # and do not live on one of our stores.
+
+        # Step-by-step:
+        # 1. Get all filenames instances on the source store.
+        # 2. Get all filenames of instances on destination store.
+        # 3. Get the difference between the two.
+        # 4. Get all instances on the source store that are in the difference.
+        # 5. Get all instances on the source store that are in the difference and are younger than start_time.
+        # 6. Clone all of these instances to the destination store.
+
+        source_store_id = store_from.id
+        destination_store_ids = [store.id for store in stores_to]
+
+        query_all_source_instances = select(Instance.file_name).where(
+            Instance.store_id == source_store_id
         )
+
+        query_all_destination_instances = select(Instance.file_name).where(
+            Instance.store_id.in_(destination_store_ids)
+        )
+
+        query_bisection = query_all_source_instances.except_(
+            query_all_destination_instances
+        )
+
+        query_all_instances = select(Instance).where(
+            Instance.file_name.in_(query_bisection)
+        )
+
+        query_all_local_instances = query_all_instances.where(
+            Instance.store_id == source_store_id
+        )
+
+        query = query_all_local_instances.where(Instance.created_time > start_time)
+
+        instances: list[Instance] = session.execute(query).scalars().all()
 
         successful_clones = 0
         unnecessary_clones = 0
         all_transfers_successful = True
 
         for instance in instances:
+            # First, check if we have gone over time:
+            if (
+                (datetime.datetime.utcnow() - core_begin > self.soft_timeout)
+                if self.soft_timeout
+                else False
+            ):
+                logger.info(
+                    "CreateLocalClone task has gone over time. Will reschedule for later."
+                )
+                break
+
+            if successful_clones > self.files_per_run:
+                logger.info(
+                    f"CreateLocalClone task has cloned {successful_clones} files, which is over "
+                    f"the limit of {self.files_per_run}. Will reschedule for later."
+                )
+                break
+
             # Check if there is a matching instance already on our clone_to store.
             # If there is, we don't need to clone it.
-            if (
-                session.query(Instance)
-                .filter(Instance.store == store_to)
-                .filter(Instance.file == instance.file)
-                .first()
-            ):
-                unnecessary_clones += 1
-                logger.debug(
-                    f"File instance {Instance} already exists on clone_to store. Skipping."
+            for secondary_instance in instance.file.instances:
+                if secondary_instance.store in stores_to:
+                    unnecessary_clones += 1
+                    logger.debug(
+                        f"File instance {instance} already exists on clone_to store. Skipping."
+                    )
+                    continue
+
+            store_available = False
+            store_to: Optional[StoreMetadata] = None
+
+            for store in stores_to:
+                if not (store.store_manager.available and store.enabled):
+                    continue
+
+                if not store.store_manager.free_space >= instance.file.size:
+                    continue
+
+                store_available = True
+                store_to = store
+
+                break
+
+            if not store_available:
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.STORE_FULL,
+                    message=(
+                        f"File {instance.file.name} is too large to fit on any store in "
+                        f"{self.clone_to}. Skipping. (Instance {instance.id})"
+                    ),
+                    session=session,
                 )
+
+                all_transfers_successful = False
+
                 continue
 
             transfer = CloneTransfer.new_transfer(
@@ -118,12 +203,13 @@ class CreateLocalClone(Task):
                     file_name=Path(instance.file.name).name,
                 )
             except ValueError:
-                # TODO: In the future where we have multiple potential clone stores for SneakerNet we should
-                # automatically fail-over to the next store.
                 log_to_database(
                     severity=ErrorSeverity.ERROR,
                     category=ErrorCategory.STORE_FULL,
-                    message=f"File {instance.file.name} is too large to fit on store {store_to}. Skipping. (Instance {instance.id})",
+                    message=(
+                        f"File {instance.file.name} is too large to fit on store {store_to}. "
+                        f"Skipping, but this should have already have been caught. (Instance {instance.id})"
+                    ),
                     session=session,
                 )
 
@@ -257,7 +343,7 @@ class CreateLocalClone(Task):
 
         logger.info(
             f"Cloned {successful_clones}/{len(instances)} files from store {store_from} "
-            f"to store {store_to}. {unnecessary_clones}/{len(instances)} files were already "
+            f"to store(s) {stores_to}. {unnecessary_clones}/{len(instances)} files were already "
             f"present on the clone_to store. All successful: "
             f"{successful_clones + unnecessary_clones}/{len(instances)}."
         )

@@ -47,6 +47,9 @@ class File(db.Base):
     remote_instances = db.relationship("RemoteInstance", back_populates="file")
     "All remote instances of this file."
 
+    outgoing_transfers = db.relationship("OutgoingTransfer", back_populates="file")
+    "All outgoing transfers of this file"
+
     @classmethod
     def file_exists(self, filename: Path) -> bool:
         """

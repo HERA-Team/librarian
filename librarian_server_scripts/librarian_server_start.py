@@ -13,10 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from librarian_background import background
-from librarian_server.logger import log
-from librarian_server.settings import server_settings
-
 # Do this in if __name__ == "__main__" so we can spawn threads on MacOS...
 
 
@@ -39,6 +35,10 @@ args = parser.parse_args()
 
 
 def main(setup=args.setup):
+    from librarian_background import background
+    from librarian_server.logger import log
+    from librarian_server.settings import server_settings
+
     if setup:
         log.info("Running setup script.")
         subprocess.call(

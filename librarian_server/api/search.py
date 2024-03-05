@@ -27,6 +27,7 @@ from ..database import yield_session
 from ..logger import log
 from ..orm.errors import Error, ErrorCategory, ErrorSeverity
 from ..orm.file import File
+from ..orm.librarian import Librarian
 from ..settings import server_settings
 from .auth import AdminUserDependency, ReadonlyUserDependency
 
@@ -82,6 +83,12 @@ def file(
             suggested_remedy="Check that you are searching for the correct file.",
         )
 
+    # Get the mapping between librarian IDs and names.
+    librarian_id_to_name = {}
+
+    for librarian in session.query(Librarian).all():
+        librarian_id_to_name[librarian.id] = librarian.name
+
     # Build the response.
     respond_files = []
 
@@ -105,7 +112,9 @@ def file(
                 ],
                 remote_instances=[
                     RemoteInstanceSearchResponse(
-                        librarian_name=remote_instance.librarian_name,
+                        librarian_name=librarian_id_to_name[
+                            remote_instance.librarian_id
+                        ],
                         copy_time=remote_instance.copy_time,
                     )
                     for remote_instance in result.remote_instances

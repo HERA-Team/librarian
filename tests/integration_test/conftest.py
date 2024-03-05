@@ -25,7 +25,7 @@ def server(xprocess, tmp_path_factory, request) -> Server:
     Starts a single server with pytest-xprocess.
     """
 
-    setup = server_setup(tmp_path_factory)
+    setup = server_setup(tmp_path_factory, name="live_server")
 
     class Starter(ProcessStarter):
         pattern = "Uvicorn running on"
