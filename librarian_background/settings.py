@@ -36,6 +36,9 @@ class BackgroundTaskSettings(BaseModel, abc.ABC):
     every: datetime.timedelta
     "How often to run the task. You can pass in any ``datetime.timedelta`` string, e.g. HH:MM:SS (note leading zeroes are required)."
 
+    soft_timeout: datetime.timedelta | None = None
+    "A soft request to timeout the task after this amount of time."
+
     @abc.abstractproperty
     def task(self) -> "Task":  # pragma: no cover
         raise NotImplementedError
@@ -72,8 +75,10 @@ class CreateLocalCloneSettings(BackgroundTaskSettings):
     clone_from: str
     "The name of the store to clone from."
 
-    clone_to: str
+    clone_to: str | list[str]
     "The name of the store to clone to."
+
+    files_per_run: int = 1024
 
     @property
     def task(self) -> CreateLocalClone:
@@ -82,6 +87,8 @@ class CreateLocalCloneSettings(BackgroundTaskSettings):
             clone_from=self.clone_from,
             clone_to=self.clone_to,
             age_in_days=self.age_in_days,
+            files_per_run=self.files_per_run,
+            soft_timeout=self.soft_timeout,
         )
 
 
