@@ -20,4 +20,4 @@ jobs:
 
             - uses: coverallsapp/github-action@v2
               with:
-                base-path: tests/
+                file: .coverage
