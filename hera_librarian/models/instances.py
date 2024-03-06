@@ -11,7 +11,7 @@ class InstanceAdministrationDeleteRequest(BaseModel):
     """
 
     "The instance id of the instance to delete."
-    instance_id: str
+    instance_id: int
 
 
 class InstanceAdministrationChangeResponse(BaseModel):
@@ -23,4 +23,4 @@ class InstanceAdministrationChangeResponse(BaseModel):
     success: bool
 
     "The instance name of the instance that was changed."
-    instance_id: str
+    instance_id: int

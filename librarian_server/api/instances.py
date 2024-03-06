@@ -53,9 +53,9 @@ def delete_remote_instance(
 
     if instance is None:
         log.error(f"Instance does not exist: {request.instance_id}")
-        response.response_conde = status.HTTP_400_BAD_REQUEST
+        response.status_code = status.HTTP_400_BAD_REQUEST
         return InstanceAdministrationChangeResponse(
-            succes=False, instance_id=request.instance_id
+            success=False, instance_id=request.instance_id
         )
     session.delete(instance)
     session.commit()
@@ -93,9 +93,9 @@ def delete_local_instance(
 
     if instance is None:
         log.error(f"Instance does not exist: {request.instance_id}")
-        response.response_conde = status.HTTP_400_BAD_REQUEST
+        response.status_code = status.HTTP_400_BAD_REQUEST
         return InstanceAdministrationChangeResponse(
-            succes=False, instance_id=request.instance_id
+            success=False, instance_id=request.instance_id
         )
     session.delete(instance)
     session.commit()
