@@ -5,6 +5,9 @@ Core transfer manager (prototype)
 from pydantic import BaseModel
 
 
+# Cannot abstract base class this as it is used
+# as a type hint currently. But that should probably
+# be changed (ValueError during pydanctic deserialization).
 class CoreTransferManager(BaseModel):
     def transfer(self, local_path: str, remote_path: str):
         """

@@ -93,3 +93,86 @@ def test_add_file(
             ),
             store_name="local_store",
         )
+
+
+def test_store_list(server, admin_client):
+    store_list = admin_client.get_store_list()
+
+
+def test_store_manifest(server, admin_client):
+    store_list = admin_client.get_store_list()
+
+    for store in store_list:
+        manifest = admin_client.get_store_manifest(store.name)
+
+        assert manifest.store_name == store.name
+
+        for entry in manifest.store_files:
+            assert entry.name is not None
+            assert entry.create_time is not None
+            assert entry.size is not None
+            assert entry.checksum is not None
+            assert entry.uploader is not None
+            assert entry.source is not None
+            assert entry.instance_path is not None
+            assert entry.deletion_policy is not None
+            assert entry.instance_create_time is not None
+            assert entry.instance_available is not None
+
+            assert entry.size == get_size_from_path(entry.instance_path)
+
+
+def test_set_store_state(
+    server, admin_client, librarian_database_session_maker, test_orm
+):
+    store_list = admin_client.get_store_list()
+
+    for store in store_list:
+        response = admin_client.set_store_state(store.name, enabled=False)
+
+        assert response is False
+
+        with librarian_database_session_maker() as session:
+            store = (
+                session.query(test_orm.StoreMetadata)
+                .filter_by(name=store.name)
+                .one_or_none()
+            )
+
+            assert not store.enabled
+
+        response = admin_client.set_store_state(store.name, enabled=True)
+
+        assert response is True
+
+        with librarian_database_session_maker() as session:
+            store = (
+                session.query(test_orm.StoreMetadata)
+                .filter_by(name=store.name)
+                .one_or_none()
+            )
+
+            assert store.enabled
+
+
+def test_add_search_remove_librarian(admin_client, librarian_client):
+    response = admin_client.add_librarian(
+        name="test_server",
+        url="http://localhost",
+        port=5000,
+        authenticator="admin:test",
+        check_connection=False,
+    )
+
+    assert response is True
+
+    response = admin_client.get_librarian_list()
+
+    assert "test_server" in [x.name for x in response.librarians]
+
+    response = admin_client.remove_librarian(name="test_server")
+
+    assert response == (True, 0)
+
+    with pytest.raises(LibrarianError):
+        response = admin_client.remove_librarian(name="test_server")

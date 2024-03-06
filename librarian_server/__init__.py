@@ -16,7 +16,11 @@ def main() -> FastAPI:
     log.info("Starting Librarian v2.0 server.")
     log.debug("Creating FastAPI app instance.")
 
-    app = FastAPI()
+    app = FastAPI(
+        title=server_settings.displayed_site_name,
+        description=server_settings.displayed_site_description,
+        openapi_url="/api/v2/openapi.json" if server_settings.debug else None,
+    )
 
     log.debug("Adding API router.")
 

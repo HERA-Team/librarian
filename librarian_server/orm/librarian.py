@@ -11,6 +11,9 @@ from hera_librarian import LibrarianClient
 from hera_librarian.exceptions import LibrarianHTTPError
 
 from .. import database as db
+from ..encryption import decrypt_string, encrypt_string
+from ..logger import log
+from ..settings import server_settings
 
 
 class Librarian(db.Base):
@@ -32,9 +35,7 @@ class Librarian(db.Base):
     port = db.Column(db.Integer, nullable=False)
     "The port of this librarian."
     authenticator = db.Column(db.String(256), nullable=False)
-    "The authenticator so we can connect this librarian."
-    # TODO: THIS IS A MASSIVE HOLE IN SECURITY THAT ABSOLUTELY MUST BE FIXED
-    # URGENT: FIX THIS.
+    "The authenticator so we can connect this librarian. This is encrypted."
 
     last_seen = db.Column(db.DateTime, nullable=False)
     "The last time we connected to and verified this librarian exists."
@@ -42,7 +43,14 @@ class Librarian(db.Base):
     "The last time we heard from this librarian (the last time it connected to us)."
 
     @classmethod
-    def new_librarian(self, name: str, url: str, port: int) -> "Librarian":
+    def new_librarian(
+        self,
+        name: str,
+        url: str,
+        port: int,
+        authenticator: str,
+        check_connection: bool = True,
+    ) -> "Librarian":
         """
         Create a new librarian object.
 
@@ -54,20 +62,36 @@ class Librarian(db.Base):
             The URL of this librarian.
         port : int
             The port of this librarian.
+        authenticator : str
+            The authenticator so we can connect this librarian. This is passed in
+            unencrypted and will be encrypted before being stored. The authenticator
+            is a username and password separated by a colon.
+        check_connection : bool
+            Whether to check the connection to this librarian before
+            returning it (default: True, but turn this off for tests.)
 
         Returns
         -------
         Librarian
             The new librarian.
+
+        Raises
+        ------
+        ValueError
+            No encryption key is set!
         """
 
         librarian = Librarian(
             name=name,
             url=url,
             port=port,
+            authenticator=encrypt_string(authenticator),
             last_seen=datetime.utcnow(),
             last_heard=datetime.utcnow(),
         )
+
+        if not check_connection:
+            return librarian
 
         # Before returning it, we should ping it to confirm it exists.
 
@@ -97,10 +121,11 @@ class Librarian(db.Base):
             The client.
         """
 
+        decrpyted_authenticator = decrypt_string(self.authenticator)
+
         return LibrarianClient(
-            conn_name=self.name,
-            conn_config={
-                "url": f"{self.url}:{self.port}",
-                "authenticator": self.authenticator,
-            },
+            host=self.url,
+            port=self.port,
+            user=decrpyted_authenticator.split(":")[0],
+            password=decrpyted_authenticator.split(":")[1],
         )

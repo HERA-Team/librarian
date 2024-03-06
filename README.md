@@ -1,5 +1,7 @@
 # The Librarian
 
+[![Coverage Status](https://coveralls.io/repos/github/simonsobs/librarian/badge.svg?branch=librarian-v2)](https://coveralls.io/github/simonsobs/librarian?branch=librarian-v2)
+
 This system keeps track of all of the primary data products stored at a given
 site. There is a Flask-based server that keeps track of everything using a
 database and presents a nice frontend, and Python client code that can make

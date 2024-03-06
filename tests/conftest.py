@@ -14,7 +14,9 @@ from subprocess import run
 
 import pytest
 
+from hera_librarian.client import AdminClient
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
+from hera_librarian.exceptions import LibrarianHTTPError
 from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
 from .server import Server, server_setup
@@ -57,19 +59,14 @@ def test_server(tmp_path_factory):
     Starts a single 'server' using the test client.
     """
 
-    setup = server_setup(tmp_path_factory)
+    setup = server_setup(tmp_path_factory, name="test_server")
 
-    env_vars = {
-        "LIBRARIAN_CONFIG_PATH": None,
-        "LIBRARIAN_SERVER_DATABASE_DRIVER": None,
-        "LIBRARIAN_SERVER_DATABASE": None,
-        "LIBRARIAN_SERVER_PORT": None,
-        "LIBRARIAN_SERVER_ADD_STORES": None,
-    }
+    env_vars = {x: None for x in setup.env.keys()}
 
     for env_var in list(env_vars.keys()):
         env_vars[env_var] = os.environ.get(env_var, None)
-        os.environ[env_var] = getattr(setup, env_var)
+        if setup.env[env_var] is not None:
+            os.environ[env_var] = setup.env[env_var]
 
     global DATABASE_PATH
     DATABASE_PATH = str(setup.database)
@@ -122,6 +119,53 @@ def test_client(test_server):
         )
 
     client.post_with_auth = client_post_with_auth
+
+    yield client
+
+    del client
+
+
+@pytest.fixture(scope="package")
+def mocked_admin_client(test_client):
+    """
+    Returns an instance of AdminClient that is actually mocked
+    to use the test client.
+    """
+
+    client = AdminClient(
+        host=str(test_client.base_url),
+        port=80,
+        user="admin",
+        password="password",
+    )
+
+    # Now need to replace post
+
+    def new_post(endpoint: str, request, response):
+        endpoint = f"/api/v2/{endpoint}"
+        r = test_client.post_with_auth(endpoint, content=request.model_dump_json())
+
+        if str(r.status_code)[0] != "2":
+            try:
+                json = r.json()
+            except:
+                json = {}
+
+            raise LibrarianHTTPError(
+                url=endpoint,
+                status_code=r.status_code,
+                reason=json.get("reason", "<no reason provided>"),
+                suggested_remedy=json.get(
+                    "suggested_remedy", "<no suggested remedy provided>"
+                ),
+            )
+
+        if response is not None:
+            return response.model_validate_json(r.content)
+
+        return r
+
+    client.post = new_post
 
     yield client
 

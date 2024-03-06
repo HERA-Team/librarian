@@ -7,7 +7,7 @@ exclude=["*tests*"]
 [project]
 name="hera_librarian"
 requires-python = ">=3.10"
-version = "2.0.0a"
+version = "2.1.0a"
 dependencies = [
     "alembic",
     "fastapi >= 0.108.0",
@@ -22,6 +22,7 @@ dependencies = [
     "checksumdir",
     "python-dateutil",
     "argon2-cffi",
+    "cryptography",
 ]
 authors = [
     {name = "HERA Team", email = "hera@lists.berkeley.edu"},

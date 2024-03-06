@@ -16,4 +16,8 @@ jobs:
 
             - run: pip install -e ".[dev]"
 
-            - run: pytest --cov
+            - run: pytest --cov --cov-append
+
+            - uses: coverallsapp/github-action@v2
+              with:
+                file: .coverage

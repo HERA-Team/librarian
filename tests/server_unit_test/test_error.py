@@ -17,6 +17,8 @@ def test_error_to_db(test_server, test_orm):
     _, session_maker, _ = test_server
 
     with session_maker() as session:
+        starting_errors = session.query(test_orm.Error).count()
+
         log_to_database(
             ErrorSeverity.CRITICAL, ErrorCategory.DATA_AVAILABILITY, "test", session
         )
@@ -34,9 +36,9 @@ def test_error_to_db(test_server, test_orm):
     with session_maker() as session:
         errors = session.query(test_orm.Error).all()
 
-        assert len(errors) == 4
+        assert len(errors) == 4 + starting_errors
 
-        for error in errors:
+        for error in errors[starting_errors:]:
             assert error.message == "test"
             assert error.cleared is False
             assert error.cleared_time is None

@@ -485,6 +485,220 @@ def clear_error(args):
     return 0
 
 
+def get_store_list(args):
+    """
+    Get a list of stores from the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        store_list = client.get_store_list()
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if len(store_list) == 0:
+        print("No stores found.")
+        return
+
+    for store in store_list:
+        print(
+            f"\033[1m{store.name}\033[0m ({store.store_type}) [{sizeof_fmt(store.free_space)} Free] "
+            f"- {'' if store.ingestable else 'Not '}Ingestable "
+            f"- {'' if store.available else 'Not '}Available "
+            f"- {'Enabled' if store.enabled else 'Disabled'}"
+        )
+
+
+def set_store_state(args):
+    """
+    Set the state of a store on the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    enabled = args.enabled and (not args.disabled)
+
+    try:
+        state = client.set_store_state(store_name=args.store_name, enabled=enabled)
+
+        print(
+            f"Store {args.store_name} state set to {'enabled' if state else 'disabled'}."
+        )
+    except ValueError as e:
+        die(f"Unable to find or set state of store on the librarian: {e.args[0]}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    return 0
+
+
+def get_store_manifest(args):
+    """
+    Get the manifest for a store on the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        manifest = client.get_store_manifest(
+            store_name=args.store_name,
+            create_outgoing_transfers=args.destination_librarian is not None,
+            destination_librarian=args.destination_librarian,
+            disable_store=args.disable_store,
+            mark_local_instances_as_unavailable=args.mark_instances_as_unavailable,
+        )
+    except LibrarianError as e:
+        die(f"Error communicating with the librarian server: {e}")
+
+    if args.output is not None:
+        with open(args.output, "w") as f:
+            f.write(manifest.model_dump_json(indent=2))
+    else:
+        print(manifest.model_dump_json(indent=2))
+
+    return 0
+
+
+def ingest_manifest(args):
+    """
+    Ingest a manifest into the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    from hera_librarian.models.admin import AdminStoreManifestResponse
+
+    try:
+        from tqdm import tqdm
+
+        tqdm_available = True
+    except ImportError:
+        tqdm_available = False
+
+        def tqdm(x, *args, **kwargs):
+            return x
+
+    # Load the manifest
+    with open(args.manifest, "r") as f:
+        manifest = AdminStoreManifestResponse.model_validate_json(f.read())
+
+    # Now loop through each manifest entry nd ingest it.
+    already_existing = 0
+    successful = 0
+    total = len(manifest.store_files)
+
+    for item in tqdm(manifest.store_files, desc="Ingesting manifest"):
+        try:
+            client.ingest_manifest_entry(
+                name=Path(item.name),
+                create_time=item.create_time,
+                size=item.size,
+                checksum=item.checksum,
+                uploader=manifest.librarian_name,
+                source=item.source,
+                deletion_policy=item.deletion_policy,
+                source_transfer_id=item.outgoing_transfer_id,
+                local_path=args.store_root / item.name,
+            )
+
+            successful += 1
+        except LibrarianError as e:
+            if "already exists" in str(e):
+                already_existing += 1
+            else:
+                die(f"Error ingesting {item.name}: {e}")
+
+    print(
+        f"Successfully ingested {successful}/{total} files, "
+        f"{already_existing}/{total} already existed."
+    )
+
+    return 0
+
+
+def get_librarian_list(args):
+    """
+    Get the list of librarians and print them out.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        librarian_list = client.get_librarian_list().librarians
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+    except LibrarianError as e:
+        die(f"You are not authorized to perform this action.")
+
+    if len(librarian_list) == 0:
+        print("No librarians found.")
+        return 0
+
+    for librarian in librarian_list:
+        print(
+            f"\033[1m{librarian.name}\033[0m ({librarian.url}:{librarian.port}) "
+            f"- {'Available' if librarian.available else 'Disabled' if librarian.available is not None else 'Unknown'}"
+        )
+
+    return 0
+
+
+def add_librarian(args):
+    """
+    Add a remote librarian in the database.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        res = client.add_librarian(
+            name=args.name,
+            url=args.url,
+            port=args.port,
+            authenticator=args.authenticator,
+            check_connection=not args.do_not_check_connection,
+        )
+    except LibrarianError as e:
+        die(f"Error adding librarian: {e}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if res:
+        print(f"Librarian {args.name} added.")
+    else:
+        die(
+            f"Unable to add librarian {args.name} for unknown reason. Check the server logs."
+        )
+
+    return res
+
+
+def remove_librarian(args):
+    """
+    Remove a remote librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        res = client.remove_librarian(
+            name=args.name, remove_outgoing_transfers=args.remove_outgoing_transfers
+        )
+    except LibrarianError as e:
+        die(f"Error removing librarian: {e}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    if res[1] > 0:
+        print(f"Removed {res[1]} outgoing transfers to {args.name}.")
+
+    if res[0]:
+        print(f"Librarian {args.name} removed.")
+
+    return res[0]
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -528,6 +742,13 @@ def generate_parser():
     config_upload_subparser(sub_parsers)
     config_search_errors_subparser(sub_parsers)
     config_clear_error_subparser(sub_parsers)
+    config_get_store_list_subparser(sub_parsers)
+    config_set_store_state_subparser(sub_parsers)
+    config_get_store_manifest_subparser(sub_parsers)
+    config_ingest_manifest_subparser(sub_parsers)
+    config_get_librarian_list_subparser(sub_parsers)
+    config_add_librarian_subparser(sub_parsers)
+    config_remove_librarian_subparser(sub_parsers)
 
     return ap
 
@@ -1137,6 +1358,207 @@ def config_clear_error_subparser(sub_parsers):
     )
 
     sp.set_defaults(func=clear_error)
+
+
+def config_get_store_list_subparser(sub_parsers):
+    # function documentation
+    doc = """Get a list of stores known to the librarian.
+
+    """
+    hlp = "Get a list of stores known to the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("get-store-list", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.set_defaults(func=get_store_list)
+
+    return
+
+
+def config_set_store_state_subparser(sub_parsers):
+    # function documentation
+    doc = """Set the state of a store on the librarian.
+
+    """
+    hlp = "Set the state of a store on the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("set-store-state", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--store",
+        dest="store_name",
+        help="The name of the store to set the state of.",
+    )
+    sp.add_argument(
+        "--enabled",
+        dest="enabled",
+        action="store_true",
+        help="Set the store to enabled.",
+    )
+    sp.add_argument(
+        "--disabled",
+        dest="disabled",
+        action="store_true",
+        help="Set the store to disabled.",
+    )
+    sp.set_defaults(func=set_store_state)
+
+    return
+
+
+def config_get_store_manifest_subparser(sub_parsers):
+    # function documentation
+    doc = """Get a list of files known to the librarian on a given store.
+
+    """
+    hlp = "Get a list of files known to the librarian on a given store"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("get-store-manifest", description=doc, help=hlp)
+
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+
+    sp.add_argument(
+        "--store",
+        dest="store_name",
+        help="The name of the store to get the manifest of.",
+    )
+
+    sp.add_argument(
+        "--destination-librarian",
+        help=(
+            "The name of the librarian that the manifest will be copied to and "
+            "ingested into. This option will create outgoing transfers to this "
+            "librarian, awaiting a callback, and is an optional parameter."
+        ),
+        default=None,
+    )
+
+    sp.add_argument(
+        "--disable-store",
+        action="store_true",
+        help=(
+            "If specified, the store will be disabled once the manifest is generated."
+        ),
+    )
+
+    sp.add_argument(
+        "--mark-instances-as-unavailable",
+        action="store_true",
+        help=(
+            "If specified, the instances of the files will be marked as "
+            "unavailable once the manifest is generated."
+        ),
+    )
+
+    sp.add_argument(
+        "--output",
+        help=("If specified, the manifest will be written to the given file."),
+    )
+
+    sp.set_defaults(func=get_store_manifest)
+
+
+def config_ingest_manifest_subparser(sub_parsers):
+    # function documentation
+    doc = """Ingest a manifest into the librarian.
+
+    """
+    hlp = "Ingest a manifest into the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("ingest-manifest", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+
+    sp.add_argument(
+        "--manifest",
+        help="The path to the manifest file to ingest.",
+        type=Path,
+    )
+
+    sp.add_argument(
+        "--store-root",
+        metavar="STORE-ROOT",
+        help="The root of the store to ingest the manifest into.",
+        type=Path,
+    )
+
+    sp.set_defaults(func=ingest_manifest)
+
+    return
+
+
+def config_get_librarian_list_subparser(sub_parsers):
+    # function documentation
+    doc = """Get a list of librarians known to the librarian.
+
+    """
+    hlp = "Get a list of librarians known to the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("get-librarian-list", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--ping", action="store_true", help="Ping the librarians to check they are up."
+    )
+    sp.set_defaults(func=get_librarian_list)
+
+    return
+
+
+def config_add_librarian_subparser(sub_parsers):
+    # function documentation
+    doc = """Add a new remote librarian to the librarian.
+
+    """
+    hlp = "Add a new remote librarian to the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("add-librarian", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--name", help="The name of the librarian to add.", type=str, required=True
+    )
+    sp.add_argument(
+        "--url", help="The URL of the librarian to add.", type=str, required=True
+    )
+    sp.add_argument(
+        "--port", help="The port of the librarian to add.", type=int, required=True
+    )
+    sp.add_argument(
+        "--authenticator",
+        help="The authenticator of the librarian to add.",
+        type=str,
+        required=True,
+    )
+    sp.add_argument(
+        "--do-not-check-connection",
+        action="store_true",
+        help="Do not check the connection to the remote librarian on ingest.",
+    )
+    sp.set_defaults(func=add_librarian)
+
+
+def config_remove_librarian_subparser(sub_parsers):
+    # function documentation
+    doc = """Remove a remote librarian from the librarian.
+
+    """
+    hlp = "Remove a remote librarian from the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("remove-librarian", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--name", help="The name of the librarian to remove.", type=str, required=True
+    )
+    sp.add_argument(
+        "--remove-outgoing-transfers",
+        action="store_true",
+        help="Remove all outgoing transfers to the librarian.",
+    )
+    sp.set_defaults(func=remove_librarian)
 
 
 def main():

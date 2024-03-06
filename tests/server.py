@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from subprocess import run
 
+from cryptography.fernet import Fernet
 from pydantic import BaseModel
 
 
@@ -20,8 +21,11 @@ class Server(BaseModel):
     staging_directory: Path
     store_directory: Path
     database: Path
+    LIBRARIAN_SERVER_NAME: str
+    LIBRARIAN_SERVER_DISPLAYED_SITE_NAME: str
     LIBRARIAN_CONFIG_PATH: str
     LIBRARIAN_SERVER_DATABASE_DRIVER: str
+    LIBRARIAN_SERVER_ENCRYPTION_KEY: str
     LIBRARIAN_SERVER_DATABASE: str
     LIBRARIAN_SERVER_PORT: str
     LIBRARIAN_SERVER_ADD_STORES: str
@@ -34,7 +38,10 @@ class Server(BaseModel):
     @property
     def env(self) -> dict[str, str]:
         return {
+            "LIBRARIAN_SERVER_NAME": self.LIBRARIAN_SERVER_NAME,
+            "LIBRARIAN_SERVER_DISPLAYED_SITE_NAME": self.LIBRARIAN_SERVER_DISPLAYED_SITE_NAME,
             "LIBRARIAN_CONFIG_PATH": self.LIBRARIAN_CONFIG_PATH,
+            "LIBRARIAN_SERVER_ENCRYPTION_KEY": self.LIBRARIAN_SERVER_ENCRYPTION_KEY,
             "LIBRARIAN_SERVER_DATABASE_DRIVER": self.LIBRARIAN_SERVER_DATABASE_DRIVER,
             "LIBRARIAN_SERVER_DATABASE": self.LIBRARIAN_SERVER_DATABASE,
             "LIBRARIAN_SERVER_PORT": self.LIBRARIAN_SERVER_PORT,
@@ -48,7 +55,7 @@ class Server(BaseModel):
         }
 
 
-def server_setup(tmp_path_factory) -> Server:
+def server_setup(tmp_path_factory, name="librarian_server") -> Server:
     """
     Sets up a server.
     """
@@ -83,6 +90,18 @@ def server_setup(tmp_path_factory) -> Server:
     store_directory_clone = tmp_path / f"store_clone_{server_id_and_port}"
     store_directory_clone.mkdir()
 
+    staging_directory_empty = tmp_path / f"staging_empty_{server_id_and_port}"
+    staging_directory_empty.mkdir()
+
+    store_directory_empty = tmp_path / f"store_empty_{server_id_and_port}"
+    store_directory_empty.mkdir()
+
+    staging_directory_sneaker = tmp_path / f"staging_sneaker_{server_id_and_port}"
+    staging_directory_sneaker.mkdir()
+
+    store_directory_sneaker = tmp_path / f"store_sneaker_{server_id_and_port}"
+    store_directory_sneaker.mkdir()
+
     store_config = [
         {
             "store_name": "local_store",
@@ -106,6 +125,40 @@ def server_setup(tmp_path_factory) -> Server:
             "store_data": {
                 "staging_path": str(staging_directory_clone),
                 "store_path": str(store_directory_clone),
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostnames": [socket.gethostname()],
+                }
+            },
+        },
+        {
+            # A store that will _always_ report as empty!
+            "store_name": "local_empty",
+            "store_type": "local",
+            "ingestable": False,
+            "store_data": {
+                "staging_path": str(staging_directory_empty),
+                "store_path": str(store_directory_empty),
+                "report_full_fraction": 0.0,
+            },
+            "transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostnames": [socket.gethostname()],
+                }
+            },
+        },
+        {
+            # A store that we will use for sneaker transfers.
+            "store_name": "local_sneaker",
+            "store_type": "local",
+            "ingestable": False,
+            "store_data": {
+                "staging_path": str(staging_directory_sneaker),
+                "store_path": str(store_directory_sneaker),
+                "report_full_fraction": 0.9,
             },
             "transfer_manager_data": {
                 "local": {
@@ -147,6 +200,9 @@ def server_setup(tmp_path_factory) -> Server:
         staging_directory=staging_directory,
         store_directory=store_directory,
         database=database,
+        LIBRARIAN_SERVER_NAME=name,
+        LIBRARIAN_SERVER_DISPLAYED_SITE_NAME=name.replace("_", " ").title(),
+        LIBRARIAN_SERVER_ENCRYPTION_KEY=Fernet.generate_key().decode(),
         LIBRARIAN_CONFIG_PATH=librarian_config_path,
         LIBRARIAN_SERVER_DATABASE_DRIVER="sqlite",
         LIBRARIAN_SERVER_DATABASE=str(database),

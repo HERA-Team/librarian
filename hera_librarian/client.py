@@ -9,14 +9,34 @@ from typing import TYPE_CHECKING, Optional, Literal
 import requests
 from pydantic import BaseModel
 
+from hera_librarian.models.clone import (
+    CloneCompleteRequest,
+    CloneCompleteResponse,
+    CloneInitiationRequest,
+    CloneInitiationResponse,
+    CloneOngoingRequest,
+    CloneOngoingResponse,
+)
+
 from .authlevel import AuthLevel
 from .deletion import DeletionPolicy
 from .errors import ErrorCategory, ErrorSeverity
 from .exceptions import LibrarianError, LibrarianHTTPError
 from .models.admin import (
+    AdminAddLibrarianRequest,
+    AdminAddLibrarianResponse,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
-    AdminRequestFailedResponse,
+    AdminListLibrariansRequest,
+    AdminListLibrariansResponse,
+    AdminRemoveLibrarianRequest,
+    AdminRemoveLibrarianResponse,
+    AdminStoreListItem,
+    AdminStoreListResponse,
+    AdminStoreManifestRequest,
+    AdminStoreManifestResponse,
+    AdminStoreStateChangeRequest,
+    AdminStoreStateChangeResponse,
 )
 from .models.errors import (
     ErrorClearRequest,
@@ -237,6 +257,62 @@ class LibrarianClient:
 
         return response
 
+    def _copy_file(
+        self,
+        transfer_managers: dict[str, "CoreTransferManager"],
+        local_path: Path,
+        remote_path: Path,
+    ) -> str:
+        """
+        Copy a file to the librarian. Used by the underlying upload and
+        cloning functions.
+
+        Parameters
+        ----------
+        transfer_managers : dict[str, CoreTransferManager]
+            The transfer managers to use.
+        local_path : Path
+            The path of the local file.
+        remote_path : Path
+            The path of the remote file.
+
+        Returns
+        -------
+        str
+            The name of the transfer manager that was used.
+
+        Raises
+        ------
+        LibrarianError
+            If no valid transfer managers are found.
+        """
+
+        # Now try all the transfer managers. If they're valid, we try to use them.
+        # If they fail, we should probably catch the exception.
+        # TODO: Catch the exception on failure.
+        used_transfer_manager_name: Optional[str] = None
+
+        # TODO: Should probably have some manual ordering here.
+        for name, transfer_manager in transfer_managers.items():
+            if transfer_manager.valid:
+                try:
+                    transfer_manager.transfer(
+                        local_path=local_path, remote_path=remote_path
+                    )
+
+                    # We used this.
+                    used_transfer_manager_name = name
+                    break
+                except PermissionError:
+                    raise LibrarianError(f"Could not set permissions on {remote_path}")
+            else:
+                print(f"Warning: transfer manager {name} is not valid.")
+
+        if used_transfer_manager_name is None:
+            raise LibrarianError("No valid transfer managers found.")
+
+        return used_transfer_manager_name
+
     def upload(
         self,
         local_path: Path,
@@ -293,33 +369,11 @@ class LibrarianClient:
 
         transfer_managers = response.transfer_providers
 
-        # Now try all the transfer managers. If they're valid, we try to use them.
-        # If they fail, we should probably catch the exception.
-        # TODO: Catch the exception on failure.
-        used_transfer_manager: Optional["CoreTransferManager"] = None
-        used_transfer_manager_name: Optional[str] = None
-
-        # TODO: Should probably have some manual ordering here.
-        for name, transfer_manager in transfer_managers.items():
-            if transfer_manager.valid:
-                try:
-                    transfer_manager.transfer(
-                        local_path=local_path, remote_path=response.staging_location
-                    )
-
-                    # We used this.
-                    used_transfer_manager = transfer_manager
-                    used_transfer_manager_name = name
-                    break
-                except PermissionError:
-                    raise LibrarianError(
-                        f"Could not set permissions on {response.staging_location}"
-                    )
-            else:
-                print(f"Warning: transfer manager {name} is not valid.")
-
-        if used_transfer_manager is None:
-            raise LibrarianError("No valid transfer managers found.")
+        used_transfer_manager_name = self._copy_file(
+            transfer_managers=transfer_managers,
+            local_path=local_path,
+            remote_path=response.staging_location,
+        )
 
         # If we made it here, the file is successfully on the store!
         request = UploadCompletionRequest(
@@ -329,7 +383,7 @@ class LibrarianClient:
             upload_name=response.upload_name,
             destination_location=dest_path,
             transfer_provider_name=used_transfer_manager_name,
-            transfer_provider=used_transfer_manager,
+            transfer_provider=transfer_managers[used_transfer_manager_name],
             # Note: meta_mode is used in current status
             meta_mode="infer",
             deletion_policy=deletion_policy,
@@ -775,3 +829,396 @@ class AdminClient(LibrarianClient):
                 raise LibrarianError(f"Unknown error. {e}")
 
         return response
+
+    def get_store_list(
+        self,
+    ) -> list[AdminStoreListItem]:
+        """
+        Get the list of stores on this librarian.
+
+        Returns
+        -------
+        list[AdminStoreListResponse]
+            The list of stores.
+        """
+
+        response: AdminStoreListResponse = self.post(
+            endpoint="admin/stores/list",
+            response=AdminStoreListResponse,
+        )
+
+        return response.root
+
+    def set_store_state(
+        self,
+        store_name: str,
+        enabled: bool,
+    ) -> bool:
+        """
+        Sets the enabled (or disabled) state of a store on this librarian.
+
+        Parameters
+        ----------
+        store_name : str
+            The name of the store to change the state of.
+        enabled : bool
+            The new state of the store.
+
+        Returns
+        -------
+        bool
+            The new (confirmed) state of the store.
+
+        Raises
+        ------
+        LibrarianError
+            If the store does not exist.
+        """
+
+        try:
+            response: AdminStoreStateChangeResponse = self.post(
+                endpoint="admin/stores/state_change",
+                request=AdminStoreStateChangeRequest(
+                    store_name=store_name,
+                    enabled=enabled,
+                ),
+                response=AdminStoreStateChangeResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Store" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response.enabled
+
+    def get_store_manifest(
+        self,
+        store_name: str,
+        create_outgoing_transfers: bool = False,
+        destination_librarian: str | None = None,
+        disable_store: bool = False,
+        mark_local_instances_as_unavailable: bool = False,
+    ) -> AdminStoreManifestResponse:
+        """
+        Get the manifest of a store on this librarian.
+
+        Parameters
+        ----------
+        store_name : str
+            The name of the store to get the manifest for.
+        create_outgoing_transfers : bool, optional
+            Whether to create outgoing transfers for the files in the
+            manifest, by default False
+        destination_librarian : str, optional
+            The name of the librarian to send the files to, if
+            create_outgoing_transfers is true, by default None
+        disable_store : bool, optional
+            Whether to disable the store after creating the outgoing
+            transfers, by default False
+        mark_local_instances_as_unavailable : bool, optional
+            Mark the local instances as unavailable after creating the
+            outgoing transfers, by default False
+
+        Returns
+        -------
+        AdminStoreManifestResponse
+            The manifest of the store.
+        """
+
+        try:
+            response: AdminStoreManifestResponse = self.post(
+                endpoint="admin/stores/manifest",
+                request=AdminStoreManifestRequest(
+                    store_name=store_name,
+                    create_outgoing_transfers=create_outgoing_transfers,
+                    destination_librarian=(
+                        destination_librarian
+                        if destination_librarian is not None
+                        else ""
+                    ),
+                    disable_store=disable_store,
+                    mark_local_instances_as_unavailable=mark_local_instances_as_unavailable,
+                ),
+                response=AdminStoreManifestResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Store" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response
+
+    def ingest_manifest_entry(
+        self,
+        name: Path,
+        create_time: datetime,
+        size: int,
+        checksum: str,
+        uploader: str,
+        source: str,
+        deletion_policy: DeletionPolicy,
+        source_transfer_id: int,
+        local_path: Path,
+    ):
+        """
+        Ingest a manifest entry into the librarian. This is used for
+        sneakernet transfers, and aims to be a lossless process. You should
+        use the same user as the original librarian for this to be
+        entirely seamless.
+
+        Parameters
+        ----------
+
+        name : Path
+            The name of the file.
+        create_time : datetime
+            The time the file was created.
+        size : int
+            The size of the file in bytes.
+        checksum : str
+            The checksum of the file.
+        uploader : str
+            The uploader of the file.
+        source : str
+            The source of the file.
+        deletion_policy : DeletionPolicy
+            The deletion policy of the instance.
+        source_transfer_id : int
+            The ID of the outgoing transfer.
+        local_path : Path
+            The path to the instance on the store.
+
+        """
+
+        # We will use the clone endpoints on the server for this process, as
+        # it is effectively a self-managed clone.
+
+        initiation_request = CloneInitiationRequest(
+            upload_size=size,
+            upload_checksum=checksum,
+            upload_name=name.name,
+            destination_location=name,
+            # Uploader is SPECIFICALLY kept as a param here because it is the
+            # source librarian, not us doing the ingestion.
+            uploader=uploader,
+            source=source,
+            source_transfer_id=source_transfer_id,
+        )
+
+        try:
+            initiaton_response: CloneInitiationResponse = self.post(
+                endpoint="clone/stage",
+                request=initiation_request,
+                response=CloneInitiationResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 409 and "already exists on librarian" in e.reason:
+                # This is ok, but that person needs to know so they can callback
+                # to the source librarian.
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        # Because this is a clone and is async, we need to set
+        # the status as ongoing on the server.
+
+        ongoing_request = CloneOngoingRequest(
+            source_transfer_id=initiaton_response.source_transfer_id,
+            destination_transfer_id=initiaton_response.destination_transfer_id,
+        )
+
+        ongoing_reponse = self.post(
+            endpoint="clone/ongoing",
+            request=ongoing_request,
+            response=CloneOngoingResponse,
+        )
+
+        transfer_managers = initiaton_response.transfer_providers
+
+        used_transfer_manager_name = self._copy_file(
+            transfer_managers=transfer_managers,
+            local_path=local_path,
+            remote_path=initiaton_response.staging_location,
+        )
+
+        return
+
+    def complete_outgoing_transfer(
+        self,
+        outgoing_transfer_id: int,
+        store_id: int,
+    ) -> bool:
+        """
+        Complete a transfer on this librarian.
+
+        Parameters
+        ----------
+        outgoing_transfer_id : int
+            The ID of the outgoing transfer to complete.
+        store_id: int
+            The ID of the store that the transfer ended up on.
+
+        Returns
+        -------
+        bool
+            Whether or not the transfer was completed.
+        """
+
+        try:
+            response = self.post(
+                endpoint="clone/complete",
+                request=CloneCompleteRequest(
+                    source_transfer_id=outgoing_transfer_id,
+                    destination_transfer_id=-1,
+                    store_id=store_id,
+                ),
+                response=CloneCompleteResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Transfer" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return True
+
+    def get_librarian_list(self, ping: bool = False) -> AdminListLibrariansResponse:
+        """
+        Get a list of librarians on this librarian.
+
+        Parameters
+        ----------
+        ping : bool, optional
+            Whether to ping the librarians before returning them, by default False
+
+        Returns
+        -------
+        AdminListLibrariansResponse
+            The list of librarians is available under .librarians.
+
+        Raises
+        ------
+
+        LibrarianError
+            If the user is not an admin or there is some other issue
+            communicating.
+        """
+
+        try:
+            response = self.post(
+                endpoint="admin/librarians/list",
+                request=AdminListLibrariansRequest(ping=ping),
+                response=AdminListLibrariansResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "User" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response
+
+    def add_librarian(
+        self,
+        name: str,
+        url: str,
+        port: int,
+        authenticator: str,
+        check_connection: bool = True,
+    ) -> bool:
+        """
+        Add a remote librarian to this librarian.
+
+        Parameters
+        ----------
+        name : str
+            The name of the librarian to add.
+        url : str
+            The URL of the librarian to add.
+        port : int
+            The port of the librarian to add.
+        authenticator : str
+            The authenticator for the librarian to add.
+        check_connection : bool, optional
+            Whether to check the connection to this librarian before
+            returning it, by default True
+
+        Returns
+        -------
+        bool
+            Whether the librarian was successfully added.
+
+        Raises
+        ------
+        LibrarianError
+            If the librarian already exists on this librarian.
+        """
+
+        try:
+            response = self.post(
+                endpoint="admin/librarians/add",
+                request=AdminAddLibrarianRequest(
+                    librarian_name=name,
+                    url=url,
+                    port=port,
+                    authenticator=authenticator,
+                    check_connection=check_connection,
+                ),
+                response=AdminAddLibrarianResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Librarian" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response.success
+
+    def remove_librarian(
+        self, name: str, remove_outgoing_transfers: bool = False
+    ) -> tuple[bool, int]:
+        """
+        Remove a remote librarian from this librarian.
+
+        Parameters
+        ----------
+        name : str
+            The name of the librarian to remove.
+        remove_outgoing_transfers : bool, optional
+            Whether to remove (mark as failed) outgoing transfers to this
+            librarian, by default False
+
+        Returns
+        -------
+        tuple[bool, int]
+            The first element is whether the librarian was successfully
+            removed, and the second is the number of transfers removed.
+
+        Raises
+        ------
+        LibrarianError
+            If the librarian does not exist on this librarian.
+        """
+
+        try:
+            response = self.post(
+                endpoint="admin/librarians/remove",
+                request=AdminRemoveLibrarianRequest(
+                    librarian_name=name,
+                    remove_outgoing_transfers=remove_outgoing_transfers,
+                ),
+                response=AdminRemoveLibrarianResponse,
+            )
+        except LibrarianHTTPError as e:
+            if (
+                e.status_code == 400
+                and "Librarian" in e.reason
+                and "does not exist" in e.reason
+            ):
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response.success, response.number_of_transfers_removed

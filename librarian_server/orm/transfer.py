@@ -71,6 +71,9 @@ class IncomingTransfer(db.Base):
     transfer_data = db.Column(db.PickleType)
     "Serialized transfer data, likely from the transfer manager. For instance, this could include the Globus data."
 
+    source_transfer_id: int = db.Column(db.Integer)
+    "The ID of the corresponding OutgoingTransfer on a remote system."
+
     @classmethod
     def new_transfer(
         self,
@@ -122,6 +125,13 @@ class OutgoingTransfer(db.Base):
     end_time = db.Column(db.DateTime)
     "The time at which this interaction was ended."
 
+    file_name = db.Column(db.String(256), db.ForeignKey("files.name"), nullable=False)
+    "The name of the file that is being uploaded."
+    file = db.relationship(
+        "File", primaryjoin="File.name == OutgoingTransfer.file_name"
+    )
+    "The file that is being uploaded."
+
     instance_id = db.Column(db.Integer, db.ForeignKey("instances.id"), nullable=False)
     "The ID of the instance that this transfer is copying."
     instance = db.relationship(
@@ -152,6 +162,7 @@ class OutgoingTransfer(db.Base):
             destination=destination,
             transfer_size=file.size,
             transfer_checksum=file.checksum,
+            file_name=file.name,
             instance_id=instance.id,
             start_time=datetime.datetime.utcnow(),
         )

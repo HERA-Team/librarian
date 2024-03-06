@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, status
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,8 @@ from hera_librarian.models.clone import (
 from ..database import yield_session
 from ..logger import log
 from ..orm.file import File
+from ..orm.instance import RemoteInstance
+from ..orm.librarian import Librarian
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import IncomingTransfer, OutgoingTransfer, TransferStatus
 from .auth import CallbackUserDependency, ReadappendUserDependency
@@ -182,12 +185,17 @@ def stage(
     # No existing transfer.
 
     transfer = IncomingTransfer.new_transfer(
-        source=user.username,
+        source=request.source,
         uploader=request.uploader,
-        upload_name=str(request.upload_name),
+        # A little confusing, but upload_name here is the file name
+        # as it should be ingested (incl. extra path), but upload_name is the
+        # actual 'file name'
+        upload_name=str(request.destination_location),
         transfer_size=request.upload_size,
         transfer_checksum=request.upload_checksum,
     )
+
+    transfer.source_transfer_id = request.source_transfer_id
 
     session.add(transfer)
     session.commit()
@@ -195,7 +203,7 @@ def stage(
     use_store: Optional[StoreMetadata] = None
 
     for store in session.query(StoreMetadata).filter_by(ingestable=True).all():
-        if not store.store_manager.available:
+        if not (store.store_manager.available and store.enabled):
             continue
 
         if store.store_manager.free_space > request.upload_size:
@@ -226,6 +234,9 @@ def stage(
 
     transfer.store_id = use_store.id
     transfer.staging_path = str(file_location)
+
+    # Set store path now as it will not change.
+    transfer.store_path = str(request.destination_location)
 
     session.commit()
 
@@ -277,7 +288,6 @@ def ongoing(
         session.query(IncomingTransfer)
         .filter_by(
             id=request.destination_transfer_id,
-            source=user.username,
         )
         .first()
     )
@@ -335,31 +345,36 @@ def complete(
 ):
     """
     The callback from librarian B to librarian A that it has completed the
-    transfer. Used to update anything in our OutgiongTransfers that needs it.
+    transfer. Used to update anything in our OutgiongTransfers that needs it,
+    as well as create the appropriate remote instances.
+
+    Administrator only: can complete other user's transfers.
 
     Possible response codes:
 
     200 - OK. Transfer status updated.
-    404 - Not found. Could not find transfer.
+    400 - Not found. Could not find transfer.
+    400 - Bad request. Could not find librarian.
     406 - Not acceptable. Transfer is not in STAGED status.
     """
 
     log.debug(f"Received clone complete request from {user.username}: {request}")
 
-    transfer = (
-        session.query(OutgoingTransfer)
-        .filter_by(
-            id=request.source_transfer_id,
-        )
-        .first()
-    )
+    query = select(OutgoingTransfer)
+
+    query = query.where(OutgoingTransfer.id == request.source_transfer_id)
+
+    if not user.is_admin:
+        query = query.where(OutgoingTransfer.uploader == user.username)
+
+    transfer = session.execute(query).scalars().one_or_none()
 
     if transfer is None:
         log.debug(
             f"Could not find transfer with ID {request.source_transfer_id}. Returning error."
         )
 
-        response.status_code = status.HTTP_404_NOT_FOUND
+        response.status_code = status.HTTP_400_BAD_REQUEST
         return CloneFailedResponse(
             reason="Could not find transfer.",
             suggested_remedy=(
@@ -387,7 +402,34 @@ def complete(
             destination_transfer_id=request.destination_transfer_id,
         )
 
+    librarian = session.query(Librarian).filter_by(name=transfer.destination).first()
+
+    if librarian is None:
+        log.debug(f"Could not find librarian {transfer.destination}. Returning error.")
+
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return CloneFailedResponse(
+            reason=f"Could not find librarian {transfer.destination}.",
+            suggested_remedy=(
+                f"Check your librarian configuration. The librarian {transfer.destination} needs "
+                "to be an entry in this database. No remote instances will be created, and the "
+                "transfer status will not be updated, so you can try again afterwards."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
     transfer.status = TransferStatus.COMPLETED
+
+    # Create new remote instance for this file that was just completed.
+    remote_instance = RemoteInstance.new_instance(
+        file=transfer.file,
+        store_id=request.store_id,
+        librarian=librarian,
+    )
+
+    session.add(remote_instance)
+
     session.commit()
 
     response.status_code = status.HTTP_200_OK
@@ -407,7 +449,8 @@ def fail(
     """
     Endpoint to send to if you would like to fail a specific IncomingTransfer.
 
-    You must have the correct username to update the transfer.
+    You must have the correct username to update the transfer if you are not an
+    administrator of this instance.
 
     Possible response codes:
 
@@ -417,13 +460,17 @@ def fail(
 
     log.debug(f"Received clone fail request from {user.username}: {request}")
 
-    transfer = (
-        session.query(IncomingTransfer)
-        .filter_by(
-            id=request.destination_transfer_id,
-            source=user.username,
-        )
-        .first()
+    query = select(IncomingTransfer)
+
+    query = query.where(IncomingTransfer.id == request.destination_transfer_id)
+
+    if not user.is_admin:
+        query = query.where(IncomingTransfer.uploader == user.username)
+
+    transfer = session.execute(query).scalars().one_or_none()
+
+    log.debug(
+        f"Result of transfer query for ID {request.destination_transfer_id}: {transfer}"
     )
 
     if transfer is None:

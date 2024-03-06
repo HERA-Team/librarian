@@ -307,8 +307,20 @@ def test_incoming_transfer_endpoints(
         session.add(transfer)
         session.commit()
 
+        librarian = test_orm.Librarian.new_librarian(
+            name="test2",
+            url="http://localhost",
+            port=5000,
+            check_connection=False,
+            authenticator="admin:password",
+        )
+        librarian.authenticator = "does_not_authenticate"
+        session.add(librarian)
+        session.commit()
+
         transfer_id = transfer.id
         instance_id = instance.id
+        store_id = store.id
 
     # We will first test the failure case where we have not set the transfer to be ongoing
 
@@ -317,6 +329,7 @@ def test_incoming_transfer_endpoints(
     request = CloneCompleteRequest(
         source_transfer_id=transfer_id,
         destination_transfer_id=transfer_id,
+        store_id=store_id,
     )
 
     response = test_client.post_with_auth(
@@ -350,10 +363,11 @@ def test_incoming_transfer_endpoints(
 
         assert transfer.status == test_orm.TransferStatus.COMPLETED
 
-        instance = session.get(test_orm.Instance, instance_id)
         file = session.get(test_orm.File, str(garbage_filename))
 
-        session.delete(instance)
+        session.delete(*file.instances)
+        session.delete(*file.remote_instances)
+        session.delete(transfer)
         session.delete(file)
         session.commit()
 
@@ -366,13 +380,14 @@ def test_complete_no_transfer(test_client, test_server, test_orm):
     request = CloneCompleteRequest(
         source_transfer_id=-1,
         destination_transfer_id=-1,
+        store_id=-1,
     )
 
     response = test_client.post_with_auth(
         "/api/v2/clone/complete", content=request.model_dump_json()
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 400
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
@@ -426,15 +441,17 @@ def test_set_ongoing_with_different_status(test_client, test_server, test_orm):
 
     decoded_response = CloneFailedResponse.model_validate_json(response.content)
 
-    response = test_client.post_with_auth(
-        "/api/v2/clone/ongoing",
-        content=CloneOngoingRequest(
-            source_transfer_id=transfer_fail_id,
-            destination_transfer_id=transfer_fail_id,
-        ).model_dump_json(),
-    )
+    # TODO: Fix this. For sneakernet, we no longer test that you are trying
+    #       to modify your own transfers...
+    # response = test_client.post_with_auth(
+    #     "/api/v2/clone/ongoing",
+    #     content=CloneOngoingRequest(
+    #         source_transfer_id=transfer_fail_id,
+    #         destination_transfer_id=transfer_fail_id,
+    #     ).model_dump_json(),
+    # )
 
-    assert response.status_code == 404
+    # assert response.status_code == 404
 
 
 def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename):
