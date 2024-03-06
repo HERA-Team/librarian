@@ -129,12 +129,20 @@ def store_list(
 
     stores = session.query(StoreMetadata).all()
 
+    def get_free_space(store: StoreMetadata) -> int:
+        "Get the free space for a store."
+        try:
+            return store.store_manager.free_space
+        except FileNotFoundError:
+            # Store is actually not available!
+            return -1
+
     return AdminStoreListResponse(
         [
             AdminStoreListItem(
                 name=store.name,
                 store_type=InvertedStoreNames[store.store_type],
-                free_space=store.store_manager.free_space,
+                free_space=get_free_space(store),
                 ingestable=store.ingestable,
                 available=store.store_manager.available,
                 enabled=store.enabled,
