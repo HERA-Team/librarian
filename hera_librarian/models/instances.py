@@ -2,14 +2,12 @@
 Models for instance administration.
 """
 
-from typing import Literal
-
 from pydantic import BaseModel
 
 
 class InstanceAdministrationDeleteRequest(BaseModel):
     """
-    A request to delete a user.
+    A request to delete a instance.
     """
 
     "The instance id of the instance to delete."
@@ -26,6 +24,3 @@ class InstanceAdministrationChangeResponse(BaseModel):
 
     "The instance name of the instance that was changed."
     instance_id: str
-
-    "The instance type to delete"
-    instance_type: Literal["local", "remote"]

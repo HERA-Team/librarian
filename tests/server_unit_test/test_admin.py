@@ -78,7 +78,7 @@ def test_add_file(test_client, test_server, garbage_file, test_orm):
         assert instance.store.name == "local_store"
 
 
-def test_add_flie_no_file_exists(test_client, test_server, test_orm):
+def test_add_file_no_file_exists(test_client, test_server, test_orm):
     """
     Tests that we can't add a file if the file doesn't exist.
     """
