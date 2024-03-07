@@ -32,7 +32,6 @@ def main() -> FastAPI:
         search_router,
         upload_router,
         users_router,
-        instances_router,
     )
 
     app.include_router(upload_router)
@@ -42,6 +41,5 @@ def main() -> FastAPI:
     app.include_router(error_router)
     app.include_router(users_router)
     app.include_router(admin_router)
-    app.include_router(instances_router)
 
     return app

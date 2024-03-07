@@ -15,17 +15,17 @@ from subprocess import run
 import pytest
 
 from hera_librarian.authlevel import AuthLevel
-from hera_librarian.models.instances import (
-    InstanceAdministrationDeleteRequest,
-    InstanceAdministrationChangeResponse,
+from hera_librarian.models.admin import (
+    AdminDeleteInstanceResponse,
+    AdminDeleteInstanceRequest,
 )
 
 
 def test_delete_local_instance(test_server, test_orm, test_client):
 
-    request = InstanceAdministrationDeleteRequest(instance_id=293472397249)
+    request = AdminDeleteInstanceRequest(instance_id=293472397249)
     response = test_client.post_with_auth(
-        "api/v2/instances/delete_local_instance", content=request.model_dump_json()
+        "api/v2/admin/instance" "/delete_local", content=request.model_dump_json()
     )
 
     assert response.status_code == 400
@@ -63,9 +63,9 @@ def test_delete_local_instance(test_server, test_orm, test_client):
     instance_id = instance.id
 
     session.close()
-    request = InstanceAdministrationDeleteRequest(instance_id=instance_id)
+    request = AdminDeleteInstanceRequest(instance_id=instance_id, delete_file=True)
 
     response = test_client.post_with_auth(
-        "api/v2/instances/delete_local_instance", content=request.model_dump_json()
+        "api/v2/admin/instance/delete_local", content=request.model_dump_json()
     )
     assert response.status_code == 200

@@ -37,6 +37,8 @@ from .models.admin import (
     AdminStoreManifestResponse,
     AdminStoreStateChangeRequest,
     AdminStoreStateChangeResponse,
+    AdminDeleteInstanceResponse,
+    AdminDeleteInstanceRequest,
 )
 from .models.errors import (
     ErrorClearRequest,
@@ -62,10 +64,7 @@ from .models.users import (
     UserAdministrationPasswordChange,
     UserAdministrationUpdateRequest,
 )
-from .models.instances import (
-    InstanceAdministrationChangeResponse,
-    InstanceAdministrationDeleteRequest,
-)
+
 from .settings import ClientInfo
 from .utils import get_md5_from_path, get_size_from_path
 
@@ -794,7 +793,7 @@ class AdminClient(LibrarianClient):
 
     def delete_instance(
         self, instance_id: str, instance_type: Literal["local", "remote"] = "local"
-    ) -> InstanceAdministrationChangeResponse:
+    ) -> AdminDeleteInstanceResponse:
         """
         Deletes an instance.
 
@@ -807,9 +806,9 @@ class AdminClient(LibrarianClient):
             remote. Default is local.
         """
         if instance_type == "local":
-            endpoint = "admin/delete_local_instance"
+            endpoint = "admin/instance/delete_local"
         elif instance_type == "remote":
-            endpoint = "admin/delete_remote_instance"
+            endpoint = "admin/instance/delete_remote"
         else:
             raise LibrarianError(
                 f"Instance type {instance_type} not supported."
@@ -817,10 +816,10 @@ class AdminClient(LibrarianClient):
             )
 
         try:
-            response: InstanceAdministrationChangeResponse = self.post(
+            response: AdminDeleteInstanceResponse = self.post(
                 endpoint=endpoint,
-                request=InstanceAdministrationDeleteRequest(instance_id=instance_id),
-                response=InstanceAdministrationChangeResponse,
+                request=AdminDeleteInstanceRequest(instance_id=instance_id),
+                response=AdminDeleteInstanceResponse,
             )
         except LibrarianHTTPError as e:
             if e.status_code == 400 and "Instance does not exist" in e.reason:

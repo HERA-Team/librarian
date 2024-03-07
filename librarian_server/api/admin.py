@@ -29,6 +29,8 @@ from hera_librarian.models.admin import (
     AdminStoreManifestResponse,
     AdminStoreStateChangeRequest,
     AdminStoreStateChangeResponse,
+    AdminDeleteInstanceRequest,
+    AdminDeleteInstanceResponse,
     LibrarianListResponseItem,
     ManifestEntry,
 )
@@ -491,3 +493,90 @@ def remove_librarian(
         success=True,
         number_of_transfers_removed=number_of_transfers_removed,
     )
+
+
+@router.post(path="/instance/delete_remote", response_model=AdminDeleteInstanceResponse)
+def delete_remote_instance(
+    request: AdminDeleteInstanceRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+) -> AdminDeleteInstanceResponse:
+    """
+    Delete a remote instance.
+
+    Must be an admin to use this endpoint
+
+    Possible responses codes:
+    - 201: The instance has been deleted
+    - 400: The instance does not exist
+    """
+
+    log.info(
+        f"Request from {user.username} to delete remote "
+        f"instance {request.instance_id}"
+    )
+
+    instance = session.get(RemoteInstance, request.instance_id)
+
+    if instance is None:
+        log.error(f"Instance does not exist: {request.instance_id}")
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return AdminDeleteInstanceResponse(
+            success=False, instance_id=request.instance_id
+        )
+
+    session.delete(instance)
+    session.commit()
+
+    return AdminDeleteInstanceResponse(success=True, instance_id=request.instance_id)
+
+
+@router.post(path="/instance/delete_local", response_model=AdminDeleteInstanceResponse)
+def delete_local_instance(
+    request: AdminDeleteInstanceRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+) -> AdminDeleteInstanceResponse:
+    """
+    Delete a local instance.
+
+    Must be an admin to use this endpoint
+
+    Possible responses codes:
+    - 201: The instance has been deleted
+    - 400: The instance does not exist
+    """
+
+    log.info(
+        f"Request from {user.username} to delete remote "
+        f"instance {request.instance_id}"
+    )
+
+    instance = session.get(Instance, request.instance_id)
+
+    if instance is None:
+        log.error(f"Instance does not exist: {request.instance_id}")
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return AdminDeleteInstanceResponse(
+            success=False, instance_id=request.instance_id
+        )
+
+    session.delete(instance)
+    session.commit()
+    # If the file is not associated with anything and marked for deletion
+    # then delete it. If there is a local instance or remote instance, leave the file
+    instance_file = session.get(File, instance.file_name)
+
+    if (
+        not instance_file.instances
+        and not instance_file.remote_instances
+        and request.delete_file
+    ):
+        store = session.get(StoreMetadata, instance.store_id)
+        store.store_manager.delete(Path(instance.path))
+        session.delete(instance_file)
+        session.commit()
+
+    return AdminDeleteInstanceResponse(success=True, instance_id=request.instance_id)

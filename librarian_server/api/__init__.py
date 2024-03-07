@@ -12,4 +12,3 @@ from .ping import router as ping_router
 from .search import router as search_router
 from .upload import router as upload_router
 from .users import router as users_router
-from .instances import router as instances_router
