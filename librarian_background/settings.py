@@ -79,6 +79,10 @@ class CreateLocalCloneSettings(BackgroundTaskSettings):
     "The name of the store to clone to."
 
     files_per_run: int = 1024
+    "The number of files to clone per run."
+
+    disable_store_on_full: bool = False
+    "If true, will disable the store if it cannot fit a new file. If false, will just skip the file and keep trying."
 
     @property
     def task(self) -> CreateLocalClone:
@@ -89,6 +93,7 @@ class CreateLocalCloneSettings(BackgroundTaskSettings):
             age_in_days=self.age_in_days,
             files_per_run=self.files_per_run,
             soft_timeout=self.soft_timeout,
+            disable_store_on_full=self.disable_store_on_full,
         )
 
 
