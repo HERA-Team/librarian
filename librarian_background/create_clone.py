@@ -34,6 +34,8 @@ class CreateLocalClone(Task):
     "Age in days of the files to check. I.e. only check files younger than this (we assume older files are fine as they've been checked before)"
     files_per_run: int = 1024
     "Maximum number of files to clone in any one run. If there are more files than this, we will put off cloning them until the next run."
+    disable_store_on_full: bool = False
+    "If true, will disable the store if it cannot fit a new file. If false, will just skip the file and keep trying."
 
     # TODO: In the future, we could implement a _rolling_ n day clone here, i.e. only keep the last n days of files on the clone_to store.
 
@@ -80,6 +82,19 @@ class CreateLocalClone(Task):
                 session=session,
             )
             return CancelJob
+
+        all_disabled = False
+        for store in stores_to:
+            all_disabled = all_disabled and not store.enabled
+
+        if all_disabled:
+            log_to_database(
+                severity=ErrorSeverity.CRITICAL,
+                category=ErrorCategory.CONFIGURATION,
+                message=f"All stores in {self.clone_to} are disabled. It is likely that all stores are full.",
+                session=session,
+            )
+            return
 
         # Now figure out what files were uploaded in the past age_in_days days.
         start_time = datetime.datetime.now() - datetime.timedelta(days=self.age_in_days)
@@ -163,6 +178,16 @@ class CreateLocalClone(Task):
                     continue
 
                 if not store.store_manager.free_space >= instance.file.size:
+                    # Store is full.
+                    if self.disable_store_on_full:
+                        store.enabled = False
+                        session.commit()
+                        log_to_database(
+                            severity=ErrorSeverity.WARNING,
+                            category=ErrorCategory.STORE_FULL,
+                            message=f"Store {store} is full. Disabling; please replace the disk.",
+                            session=session,
+                        )
                     continue
 
                 store_available = True
@@ -183,7 +208,7 @@ class CreateLocalClone(Task):
 
                 all_transfers_successful = False
 
-                continue
+                break
 
             transfer = CloneTransfer.new_transfer(
                 source_store_id=store_from.id,
