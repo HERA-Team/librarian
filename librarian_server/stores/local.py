@@ -36,11 +36,22 @@ class LocalStore(CoreStore):
 
     @property
     def available(self) -> bool:
-        # Look, if we don't have a filesystem we have tons of problems.
+        try:
+            if not self.staging_path.exists():
+                return False  # We don't have a staging area.
+
+            if not self.store_path.exists():
+                return False
+        except (OSError, FileNotFoundError):
+            return False
+
         return True
 
     @property
     def free_space(self) -> int:
+        if not self.available:
+            return -1
+
         store = shutil.disk_usage(self.store_path)
         staging = shutil.disk_usage(self.staging_path)
 
