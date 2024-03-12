@@ -98,10 +98,10 @@ class RemoteInstanceSearchResponse(BaseModel):
     "The name of the librarian that this instance lives on."
     copy_time: datetime
     "The time at which this instance was copied to the remote librarian."
-    id: Optional[int]
-    file_name: Optional[str]
-    store_id: Optional[int]
-    sender: Optional[str]
+    id: Optional[int] = None
+    file_name: Optional[str] = None
+    store_id: Optional[int] = None
+    sender: Optional[str] = None
 
 
 RemoteInstanceSearchResponses = RootModel[list[RemoteInstanceSearchResponse]]
