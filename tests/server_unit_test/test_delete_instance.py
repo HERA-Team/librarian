@@ -71,3 +71,9 @@ def test_delete_local_instance(test_server, test_orm, test_client):
 
     assert response.status_code == 200
     assert not Path.exists(path)
+
+    with test_server[1]() as session:
+        session.delete(
+            session.get(test_orm.File, "example_file_test_delete_local_instance.txt")
+        )
+        session.commit()
