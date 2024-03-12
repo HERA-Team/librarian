@@ -2,8 +2,6 @@
 Contains endpoints for searching the files uploaded to the librarian.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -14,18 +12,29 @@ from hera_librarian.models.errors import (
     ErrorSearchResponse,
     ErrorSearchResponses,
 )
+
+from hera_librarian.models.instances import (
+    InstanceSearchRequest,
+    InstanceSearchResponse,
+    InstanceSearchResponses,
+    InstanceSearchFailedResponse,
+    RemoteInstanceSearchResponse,
+    RemoteInstanceSearchResponses,
+    RemoteInstanceSearchRequest,
+    RemoteInstanceSearchFailedResponse,
+)
+
 from hera_librarian.models.search import (
     FileSearchFailedResponse,
     FileSearchRequest,
     FileSearchResponse,
     FileSearchResponses,
-    InstanceSearchResponse,
-    RemoteInstanceSearchResponse,
 )
 
 from ..database import yield_session
 from ..logger import log
-from ..orm.errors import Error, ErrorCategory, ErrorSeverity
+from ..orm.errors import Error
+from ..orm.instance import Instance, RemoteInstance
 from ..orm.file import File
 from ..orm.librarian import Librarian
 from ..settings import server_settings
@@ -195,3 +204,160 @@ def error(
         )
 
     return ErrorSearchResponses(respond_errors)
+
+
+@router.post(
+    "/instance_local",
+    response_model=InstanceSearchResponses | InstanceSearchFailedResponse,
+)
+def instance_local(
+    request: InstanceSearchRequest,
+    response: Response,
+    user: AdminUserDependency,
+    session: Session = Depends(yield_session),
+):
+    """
+    Searches for instances based upon the InstanceSearchRequest.
+
+    Possible response codes:
+
+    200 - OK. Search completed successfully.
+    404 - No file found to match search criteria.
+    """
+
+    log.debug(f"Received instance search request from {user.username}: {request}")
+
+    # Start to build our query.
+    query = select(Instance)
+
+    if request.id is not None:
+        query = query.where(Instance.id == request.id)
+
+    if request.path is not None:
+        query = query.where(Instance.path == request.path)
+
+    if request.deletion_policy is not None:
+        query = query.where(Instance.deletion_policy == request.deletion_policy)
+
+    if request.created_time is not None:
+        query = query.where(Instance.created_time == request.created_time)
+
+    if request.file_name is not None:
+        query = query.where(Instance.file_name == request.file_name)
+
+    if request.store_id is not None:
+        query = query.where(Instance.store_id == request.store_id)
+
+    if request.available is not None:
+        query = query.where(Instance.available == request.available)
+
+    query = query.order_by(desc(Instance.created_time))
+    max_results = max(min(request.max_results, server_settings.max_search_results), 0)
+    query = query.limit(max_results)
+
+    results = session.execute(query).scalars().all()
+
+    if len(results) == 0:
+        log.debug("No isntances found. Returning 'error'.")
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return InstanceSearchFailedResponse(
+            reason="No instances found.",
+            suggested_remedy="Check that you are searching for existing instances",
+        )
+
+    # Build the response.
+    respond_instances = []
+
+    for result in results:
+        respond_instances.append(
+            InstanceSearchResponse(
+                id=result.id,
+                path=result.path,
+                deletion_policy=result.deletion_policy,
+                created_time=result.created_time,
+                file_name=result.file_name,
+                store_id=result.store_id,
+                available=result.available,
+            )
+        )
+
+    return InstanceSearchResponses(respond_instances)
+
+
+@router.post(
+    "/instance_remote",
+    response_model=RemoteInstanceSearchResponses | RemoteInstanceSearchFailedResponse,
+)
+def instance_remote(
+    request: RemoteInstanceSearchRequest,
+    response: Response,
+    user: AdminUserDependency,
+    session: Session = Depends(yield_session),
+):
+    """
+    Searches for instances based upon the RemoteInstanceSearchRequest.
+
+    Possible response codes:
+
+    200 - OK. Search completed successfully.
+    404 - No file found to match search criteria.
+    """
+
+    log.debug(f"Received instance search request from {user.username}: {request}")
+
+    # Start to build our query.
+    query = select(RemoteInstance)
+
+    if request.id is not None:
+        query = query.where(RemoteInstance.id == request.id)
+
+    if request.file_name is not None:
+        query = query.where(RemoteInstance.file_name == request.file_name)
+
+    if request.store_id is not None:
+        query = query.where(RemoteInstance.store_id == request.store_id)
+
+    if request.librarian_id is not None:
+        query = query.where(RemoteInstance.librarian_id == request.librarian_id)
+
+    if request.copy_time is not None:
+        query = query.where(RemoteInstance.deletion_policy == request.copy_time)
+
+    if request.sender is not None:
+        query = query.where(RemoteInstance.sender == request.sender)
+
+    query = query.order_by(desc(RemoteInstance.copy_time))
+    max_results = max(min(request.max_results, server_settings.max_search_results), 0)
+    query = query.limit(max_results)
+
+    results = session.execute(query).scalars().all()
+
+    if len(results) == 0:
+        log.debug("No isntances found. Returning 'error'.")
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return RemoteInstanceSearchFailedResponse(
+            reason="No instances found.",
+            suggested_remedy="Check that you are searching for existing remote instances",
+        )
+
+    librarian_id_to_name = {}
+
+    for librarian in session.query(Librarian).all():
+        librarian_id_to_name[librarian.id] = librarian.name
+
+    # Build the response.
+    respond_instances = []
+
+    for result in results:
+        respond_instances.append(
+            RemoteInstanceSearchResponse(
+                librarian_name=librarian_id_to_name[result.librarian_id],
+                copy_time=result.copy_time,
+                id=result.id,
+                file_name=result.file_name,
+                store_id=result.store_id,
+                sender=result.sender,
+            )
+        )
+
+    return RemoteInstanceSearchResponses(respond_instances)

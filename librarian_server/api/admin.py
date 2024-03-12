@@ -38,7 +38,14 @@ from hera_librarian.transfer import TransferStatus
 
 from ..database import yield_session
 from ..logger import log
-from ..orm import File, Instance, Librarian, OutgoingTransfer, StoreMetadata
+from ..orm import (
+    File,
+    Instance,
+    Librarian,
+    OutgoingTransfer,
+    StoreMetadata,
+    RemoteInstance,
+)
 from ..settings import server_settings
 from ..stores import InvertedStoreNames, StoreNames
 from .auth import AdminUserDependency
@@ -569,14 +576,8 @@ def delete_local_instance(
     # then delete it. If there is a local instance or remote instance, leave the file
     instance_file = session.get(File, instance.file_name)
 
-    if (
-        not instance_file.instances
-        and not instance_file.remote_instances
-        and request.delete_file
-    ):
+    if not instance_file.instances and request.delete_file:
         store = session.get(StoreMetadata, instance.store_id)
         store.store_manager.delete(Path(instance.path))
-        session.delete(instance_file)
-        session.commit()
 
     return AdminDeleteInstanceResponse(success=True, instance_id=request.instance_id)

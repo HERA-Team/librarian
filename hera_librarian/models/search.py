@@ -9,6 +9,10 @@ from typing import Optional
 from pydantic import BaseModel, Field, RootModel
 
 from hera_librarian.deletion import DeletionPolicy
+from hera_librarian.models.instances import (
+    InstanceSearchResponse,
+    RemoteInstanceSearchResponse,
+)
 
 
 class FileSearchRequest(BaseModel):
@@ -28,32 +32,6 @@ class FileSearchRequest(BaseModel):
     "The source to search for."
     max_results: int = 64
     "The maximum number of results to return."
-
-
-class InstanceSearchResponse(BaseModel):
-    """
-    Represents an instance in the file search response.
-    """
-
-    path: Path
-    "The path of the instance."
-    deletion_policy: DeletionPolicy
-    "The deletion policy of the instance."
-    created_time: datetime
-    "The time the instance was created."
-    available: bool
-    "Whether or not the instance is available."
-
-
-class RemoteInstanceSearchResponse(BaseModel):
-    """
-    Represents a remote instance in the file search response.
-    """
-
-    librarian_name: str
-    "The name of the librarian that this instance lives on."
-    copy_time: datetime
-    "The time at which this instance was copied to the remote librarian."
 
 
 class FileSearchResponse(BaseModel):
