@@ -4,7 +4,7 @@ The public-facing LibrarianClient object.
 
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 import requests
 from pydantic import BaseModel
@@ -27,6 +27,8 @@ from .models.admin import (
     AdminAddLibrarianResponse,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
+    AdminDeleteInstanceRequest,
+    AdminDeleteInstanceResponse,
     AdminListLibrariansRequest,
     AdminListLibrariansResponse,
     AdminRemoveLibrarianRequest,
@@ -782,6 +784,44 @@ class AdminClient(LibrarianClient):
             if e.status_code == 400 and "Store" in e.reason:
                 raise LibrarianError(e.reason)
             if e.status_code == 400 and "File" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise LibrarianError(f"Unknown error. {e}")
+
+        return response
+
+    def delete_instance(
+        self, instance_id: str, instance_type: Literal["local", "remote"] = "local"
+    ) -> AdminDeleteInstanceResponse:
+        """
+        Deletes an instance.
+
+        Parameters
+        ----------
+        instance_id : str
+            The unique instance identifier of this instance
+        instance_type : str
+            The type of the instance to delete. Accepted values are local and
+            remote. Default is local.
+        """
+        if instance_type == "local":
+            endpoint = "admin/instance/delete_local"
+        elif instance_type == "remote":
+            endpoint = "admin/instance/delete_remote"
+        else:
+            raise LibrarianError(
+                f"Instance type {instance_type} not supported."
+                "Please choose either 'local' or 'remote'."
+            )
+
+        try:
+            response: AdminDeleteInstanceResponse = self.post(
+                endpoint=endpoint,
+                request=AdminDeleteInstanceRequest(instance_id=instance_id),
+                response=AdminDeleteInstanceResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Instance does not exist" in e.reason:
                 raise LibrarianError(e.reason)
             else:
                 raise LibrarianError(f"Unknown error. {e}")

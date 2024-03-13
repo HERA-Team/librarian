@@ -3,6 +3,7 @@ Pydantic modems for the admin endpoints
 """
 
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, RootModel
 
@@ -214,3 +215,26 @@ class AdminRemoveLibrarianResponse(BaseModel):
 
     number_of_transfers_removed: int
     "The number of transfers removed (marked as failed)."
+
+
+class AdminDeleteInstanceRequest(BaseModel):
+    """
+    A request to delete a instance.
+    """
+
+    "The instance id of the instance to delete."
+    instance_id: int
+    "Delete the associated file"
+    delete_file: Optional[bool] = False
+
+
+class AdminDeleteInstanceResponse(BaseModel):
+    """
+    A response to a user change request.
+    """
+
+    "Whether the change was successful."
+    success: bool
+
+    "The instance name of the instance that was changed."
+    instance_id: int

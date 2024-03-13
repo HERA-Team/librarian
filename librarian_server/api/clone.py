@@ -1,6 +1,6 @@
 """
 API endpoint for cloning data from one librarian to another.
-This endpoint is by construction asynchrnous; the two different
+This endpoint is by construction asynchronous; the two different
 librarians' background tasks will call different instances of these APIs
 to communicate with each other.
 

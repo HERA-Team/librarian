@@ -97,6 +97,18 @@ class CoreStore(BaseModel, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def delete(self, path: Path):
+        """
+        Delete a file from the store.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the file in the store to delete.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def store(self, path: Path) -> Path:
         """
         Get an absolute path for a deposit with name path.
