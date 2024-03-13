@@ -8,7 +8,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from hera_librarian.models.uploads import (
@@ -23,6 +22,7 @@ from ..logger import log
 from ..orm.file import File
 from ..orm.storemetadata import StoreMetadata
 from ..orm.transfer import IncomingTransfer, TransferStatus
+from ..settings import server_settings
 from .auth import ReadappendUserDependency, UnauthorizedError
 
 router = APIRouter(prefix="/api/v2/upload")
@@ -45,7 +45,8 @@ def stage(
 
     400 - Bad request. Upload size is negative.
     409 - Conflict. File already exists on librarian.
-    413 - Request entity too large. No stores available for upload.
+    413 - Request entity too large. No stores available for upload, or it is
+          larger than the requested maximum by the server.
     201 - Created staging area.
     """
 
@@ -58,6 +59,17 @@ def stage(
         return UploadFailedResponse(
             reason="Upload size must be positive.",
             suggested_remedy="Check you are trying to upload a valid file.",
+        )
+
+    if request.upload_size > server_settings.maximal_upload_size_bytes:
+        log.debug(f"Upload size is too large. Returning error.")
+        response.status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+        return UploadFailedResponse(
+            reason="Upload size is too large.",
+            suggested_remedy=(
+                "Try again later, or try to upload a smaller file. Contact "
+                "the administrator of this librarian instance."
+            ),
         )
 
     # Check that the upload is not already on the librarian.

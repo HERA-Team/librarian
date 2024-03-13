@@ -92,7 +92,9 @@ class ServerSettings(BaseSettings):
     alembic_config_path: str = "."
     alembic_path: str = "alembic"
 
+    # Client restraints
     max_search_results: int = 64
+    maximal_upload_size_bytes: int = 50_000_000_000  # 50 GB
 
     # Slack integration; by default disable this. You will need a slack
     # webhook url, and by default we raise all log_to_database alerts to slack too.

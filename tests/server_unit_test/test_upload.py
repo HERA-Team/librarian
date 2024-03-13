@@ -46,6 +46,42 @@ def test_negative_upload_size(test_client: TestClient):
     }
 
 
+def test_intermediate_upload_size(
+    test_client: TestClient,
+    test_server: tuple[FastAPI, callable, Server],
+    test_orm: Any,
+):
+    """
+    Tests an upload larger than the server settings maximum size,
+    but small enough that it should still fit on disk.
+    """
+
+    request = UploadInitiationRequest(
+        destination_location="test.txt",
+        upload_size=10 * test_server[2].LIBRARIAN_SERVER_MAXIMAL_UPLOAD_SIZE,
+        upload_checksum="",
+        uploader="test",
+        upload_name="test.txt",
+    )
+
+    response = test_client.post_with_auth(
+        "/api/v2/upload/stage", content=request.model_dump_json()
+    )
+
+    assert response.status_code == 413
+
+    assert "is too large" in str(response.content)
+
+    # Check we put the stuff in the database!
+    _, get_session, _ = test_server
+
+    with get_session() as session:
+        assert (
+            session.query(test_orm.IncomingTransfer).first().status
+            == test_orm.TransferStatus.FAILED
+        )
+
+
 def test_extreme_upload_size(
     test_client: TestClient,
     test_server: tuple[FastAPI, callable, Server],
