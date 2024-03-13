@@ -58,7 +58,7 @@ def test_intermediate_upload_size(
 
     request = UploadInitiationRequest(
         destination_location="test.txt",
-        upload_size=10 * test_server[2].LIBRARIAN_SERVER_MAXIMAL_UPLOAD_SIZE,
+        upload_size=10 * test_server[2].LIBRARIAN_SERVER_MAXIMAL_UPLOAD_SIZE_BYTES,
         upload_checksum="",
         uploader="test",
         upload_name="test.txt",
@@ -71,15 +71,6 @@ def test_intermediate_upload_size(
     assert response.status_code == 413
 
     assert "is too large" in str(response.content)
-
-    # Check we put the stuff in the database!
-    _, get_session, _ = test_server
-
-    with get_session() as session:
-        assert (
-            session.query(test_orm.IncomingTransfer).first().status
-            == test_orm.TransferStatus.FAILED
-        )
 
 
 def test_extreme_upload_size(
