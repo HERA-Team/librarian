@@ -1,5 +1,0 @@
-LIBRARIAN_CONFIG_PATH="/container/server_config.json"
-LIBRARIAN_BACKGROUND_CONFIG="/container/background_config.json"
-LIBRARIAN_SERVER_DATABASE_DRIVER="sqlite"
-LIBRARIAN_SERVER_DATABASE="/volumes/database/database.db"
-LIBRARIAN_SERVER_PORT=21108
