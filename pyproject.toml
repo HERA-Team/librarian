@@ -23,6 +23,7 @@ dependencies = [
     "python-dateutil",
     "argon2-cffi",
     "cryptography",
+    "sysrsync == 1.1.1",
 ]
 authors = [
     {name = "HERA Team", email = "hera@lists.berkeley.edu"},
