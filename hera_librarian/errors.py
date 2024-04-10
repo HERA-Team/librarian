@@ -49,5 +49,8 @@ class ErrorCategory(Enum):
     LIBRARIAN_NETWORK_AVAILABILITY = "librarian_network_availability"
     "Librarian network availability errors are those that indicate that the network connection to other librarians is not available."
 
+    TRANSFER = "transfer"
+    "Transfer errors are those that indicate that a transfer has failed at least once."
+
     def __str__(self):
         return self.value
