@@ -21,12 +21,14 @@ The following flow occurs when cloning data from librarian A to librarian B:
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from hera_librarian.models.clone import (
+    CloneBatchInitiationRequest,
+    CloneBatchInitiationResponse,
+    CloneBatchInitiationResponseFileItem,
     CloneCompleteRequest,
     CloneCompleteResponse,
     CloneFailedResponse,
@@ -36,6 +38,8 @@ from hera_librarian.models.clone import (
     CloneInitiationResponse,
     CloneOngoingRequest,
     CloneOngoingResponse,
+    CloneStagedRequest,
+    CloneStagedResponse,
 )
 
 from ..database import yield_session
@@ -48,6 +52,178 @@ from ..orm.transfer import IncomingTransfer, OutgoingTransfer, TransferStatus
 from .auth import CallbackUserDependency, ReadappendUserDependency
 
 router = APIRouter(prefix="/api/v2/clone")
+
+
+def validate_staging(
+    session: Session, upload_size: int, source_transfer_id: int, response: Response
+) -> StoreMetadata:
+    """
+    Validates the upload size and returns a valid store that can fit
+    the requested data size.
+    """
+    # Figure out which store to use.
+    if upload_size < 0:
+        log.debug(f"Upload size is negative. Returning error.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=CloneFailedResponse(
+                reason="Upload size must be positive.",
+                suggested_remedy="Check you are trying to upload a valid file.",
+                source_transfer_id=source_transfer_id,
+                destination_transfer_id=-1,
+            ),
+        )
+
+    use_store: Optional[StoreMetadata] = None
+
+    for store in session.query(StoreMetadata).filter_by(ingestable=True).all():
+        if not (store.store_manager.available and store.enabled):
+            continue
+
+        if store.store_manager.free_space > upload_size:
+            use_store = store
+            break
+
+    if use_store is None:
+        log.debug(
+            f"No stores available for upload, they are all full!. Returning error."
+        )
+
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=CloneFailedResponse(
+                reason="No stores available for upload. Your upload is too large.",
+                suggested_remedy="Check that the disk is not full.",
+                source_transfer_id=source_transfer_id,
+                destination_transfer_id=-1,
+            ),
+        )
+
+    return use_store
+
+
+def de_duplicate_file_and_transfer(
+    session: Session,
+    source_transfer_id: int,
+    source: str,
+    uploader: str,
+    upload_size: int,
+    upload_checksum: str,
+    destination_location: str,
+) -> IncomingTransfer:
+    """
+    Search for already-existing files and transfers, and de-duplicate
+    them as necessary.
+    """
+
+    # First, check if we already have this file; if we do, then cancel
+    # the whole business.
+    if session.get(File, destination_location):
+        log.debug(
+            "File {destination_location} already exists on librarian. Returning error."
+        )
+
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=CloneFailedResponse(
+                reason="File already exists on librarian.",
+                suggested_remedy=(
+                    "Error in sharing logic. Your librarain should "
+                    "never have tried to copy this. Check the background task ordering."
+                ),
+                source_transfer_id=source_transfer_id,
+                destination_transfer_id=-1,
+            ),
+        )
+
+    # Reaching here, we do NOT already have the file. But maybe there is already
+    # an existing transfer to us!
+
+    stmt = select(IncomingTransfer)
+    stmt = stmt.filter_by(transfer_checksum=upload_checksum)
+    stmt = stmt.filter(
+        IncomingTransfer.status.not_in(
+            [TransferStatus.FAILED, TransferStatus.CANCELLED, TransferStatus.COMPLETED]
+        )
+    )
+
+    existing_transfer = session.execute(stmt).scalars().one_or_none()
+
+    if existing_transfer is not None:
+        log.info(
+            f"Found an existing transfers with checksum "
+            f"{upload_checksum}. Checking existing transfer status."
+        )
+
+        if existing_transfer.status == TransferStatus.ONGOING:
+            log.info(f"Found existing transfer with status ONGOING. Returning error.")
+
+            raise HTTPException(
+                status.HTTP_425_TOO_EARLY,
+                detail=CloneFailedResponse(
+                    reason="Transfer is ongoing.",
+                    suggested_remedy=(
+                        "Error in sharing logic. Your librarain is trying to send us a copy of "
+                        "a file with an ONGOING transfer. Check the background task ordering."
+                    ),
+                    source_transfer_id=source_transfer_id,
+                    destination_transfer_id=existing_transfer.id,
+                ),
+            )
+
+        # Alternative is status' of STAGED and INITIATED. Unlike with uploads, this is a
+        # more dangerous situation - the other librarian will probably have an
+        # OutgoingTransfer that matches! So we need to fail the existing transfer,
+        # and tell them to fail theirs too.
+
+        log.info(
+            f"Found existing transfer with status {existing_transfer.status}. "
+            "Failing existing transfer."
+        )
+
+        # Unstage the files.
+        if existing_transfer.store_id is not None:
+            if (
+                store := session.get(StoreMetadata, existing_transfer.store_id)
+                is not None
+            ):
+                store.store_manager.unstage(Path(existing_transfer.staging_path))
+
+        existing_transfer.status = TransferStatus.FAILED
+        session.commit()
+
+        raise HTTPException(
+            status.HTTP_406_NOT_ACCEPTABLE,
+            detail=CloneFailedResponse(
+                reason="Transfer was already initiated or staged.",
+                suggested_remedy=(
+                    "Your librarian tried to upload a file again that we thought was already "
+                    "coming to us. You should fail your outgoing transfer, we have failed ours."
+                ),
+                source_transfer_id=source_transfer_id,
+                destination_transfer_id=existing_transfer.id,
+            ),
+        )
+
+    # Ok, we don't have an existing transfer. We need to make a new one.
+
+    transfer = IncomingTransfer.new_transfer(
+        source=source,
+        uploader=uploader,
+        # A little confusing, but upload_name here is the file name
+        # as it should be ingested (incl. extra path), but upload_name is the
+        # actual 'file name'
+        upload_name=str(destination_location),
+        transfer_size=upload_size,
+        transfer_checksum=upload_checksum,
+    )
+
+    transfer.source_transfer_id = source_transfer_id
+
+    session.add(transfer)
+    session.commit()
+
+    return transfer
 
 
 @router.post("/stage", response_model=CloneInitiationResponse | CloneFailedResponse)
@@ -82,157 +258,29 @@ def stage(
 
     log.debug(f"Received clone initiation request from {user.username}: {request}")
 
-    # Figure out which store to use.
-    if request.upload_size < 0:
-        log.debug(f"Upload size is negative. Returning error.")
-        response.status_code = status.HTTP_400_BAD_REQUEST
-        return CloneFailedResponse(
-            reason="Upload size must be positive.",
-            suggested_remedy="Check you are trying to upload a valid file.",
-            source_transfer_id=request.source_transfer_id,
-            destination_transfer_id=-1,
-        )
-
-    # Check that the upload is not already on the librarian.
-    # For clone operations, this should never happen. They should have already
-    # checked if we have the files or not using a different operation.
-    if File.file_exists(request.destination_location):
-        log.debug(
-            f"File {request.destination_location} already exists on librarian. Returning error."
-        )
-        response.status_code = status.HTTP_409_CONFLICT
-        return CloneFailedResponse(
-            reason="File already exists on librarian.",
-            suggested_remedy=(
-                "Error in sharing logic. Your librarain should "
-                "never have tried to copy this. Check the background task ordering."
-            ),
-            source_transfer_id=request.source_transfer_id,
-            destination_transfer_id=-1,
-        )
-
-    # Check for an existing transfer. If we find one with a status of ONGOING, that is
-    # again a logic error. They should not have tried to send us that again! It's already
-    # on its way.
-
-    existing_transfer = (
-        session.query(IncomingTransfer)
-        .filter(
-            (IncomingTransfer.transfer_checksum == request.upload_checksum)
-            & (IncomingTransfer.status != TransferStatus.FAILED)
-            & (IncomingTransfer.status != TransferStatus.COMPLETED)
-            & (IncomingTransfer.status != TransferStatus.CANCELLED)
-        )
-        .all()
+    store = validate_staging(
+        session=session,
+        upload_size=request.upload_size,
+        source_transfer_id=request.source_transfer_id,
     )
 
-    if len(existing_transfer) != 0:
-        log.info(
-            f"Found {len(existing_transfer)} existing transfers with checksum "
-            f"{request.upload_checksum}. Checking existing transfer status."
-        )
-
-        for transfer in existing_transfer:
-            if transfer.status == TransferStatus.ONGOING:
-                log.info(
-                    f"Found existing transfer with status ONGOING. Returning error."
-                )
-
-                response.status_code = status.HTTP_425_TOO_EARLY
-                return CloneFailedResponse(
-                    reason="Transfer is ongoing.",
-                    suggested_remedy=(
-                        "Error in sharing logic. Your librarain is trying to send us a copy of "
-                        "a file with an ONGOING transfer. Check the background task ordering."
-                    ),
-                    source_transfer_id=request.source_transfer_id,
-                    destination_transfer_id=transfer.id,
-                )
-
-            # Alternative is status' of STAGED and INITIATED. Unlike with uploads, this is a
-            # more dangerous situation - the other librarian will probably have an
-            # OutgoingTransfer that matches! So we need to fail the existing transfer,
-            # and tell them to fail theirs too.
-
-            log.info(
-                f"Found existing transfer with status {transfer.status}. Failing existing transfer."
-            )
-
-            # Unstage the files.
-            if transfer.store_id is not None:
-                store = session.get(StoreMetadata, transfer.store_id)
-            else:
-                store = None
-
-            if store is not None:
-                store.store_manager.unstage(Path(transfer.staging_path))
-
-            transfer.status = TransferStatus.FAILED
-            session.commit()
-
-            response.status_code = status.HTTP_406_NOT_ACCEPTABLE
-
-            return CloneFailedResponse(
-                reason="Transfer was already initiated or staged.",
-                suggested_remedy=(
-                    "Your librarian tried to upload a file again that we thought was already "
-                    "coming to us. You should fail your outgoing transfer, we have failed ours."
-                ),
-                source_transfer_id=request.source_transfer_id,
-                destination_transfer_id=transfer.id,
-            )
-
-    # No existing transfer.
-
-    transfer = IncomingTransfer.new_transfer(
+    transfer = de_duplicate_file_and_transfer(
+        session=session,
+        source_transfer_id=request.source_transfer_id,
         source=request.source,
-        uploader=request.uploader,
-        # A little confusing, but upload_name here is the file name
-        # as it should be ingested (incl. extra path), but upload_name is the
-        # actual 'file name'
-        upload_name=str(request.destination_location),
-        transfer_size=request.upload_size,
-        transfer_checksum=request.upload_checksum,
+        uploader=user.username,
+        upload_size=request.upload_size,
+        upload_checksum=request.upload_checksum,
+        destination_location=request.destination_location,
     )
-
-    transfer.source_transfer_id = request.source_transfer_id
-
-    session.add(transfer)
-    session.commit()
-
-    use_store: Optional[StoreMetadata] = None
-
-    for store in session.query(StoreMetadata).filter_by(ingestable=True).all():
-        if not (store.store_manager.available and store.enabled):
-            continue
-
-        if store.store_manager.free_space > request.upload_size:
-            use_store = store
-            break
-
-    if use_store is None:
-        log.debug(
-            f"No stores available for upload, they are all full!. Returning error."
-        )
-
-        transfer.status = TransferStatus.FAILED
-        session.commit()
-
-        response.status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
-        return CloneFailedResponse(
-            reason="No stores available for upload. Your upload is too large.",
-            suggested_remedy="Check that the disk is not full.",
-            source_transfer_id=request.source_transfer_id,
-            destination_transfer_id=transfer.id,
-        )
 
     # We have a store! Create the staging area.
 
-    file_name, file_location = use_store.store_manager.stage(
+    file_name, file_location = store.store_manager.stage(
         file_size=request.upload_size, file_name=request.upload_name
     )
 
-    transfer.store_id = use_store.id
+    transfer.store_id = store.id
     transfer.staging_path = str(file_location)
 
     # Set store path now as it will not change.
@@ -242,22 +290,122 @@ def stage(
 
     response.status_code = status.HTTP_201_CREATED
 
-    # TODO: Figure out what to do when we have lots of incoming transfers
-    # where sum(sizes) for all those transfers > store_manager.free_space.
-
     model_response = CloneInitiationResponse(
-        available_bytes_on_store=use_store.store_manager.free_space,
-        store_name=use_store.name,
+        available_bytes_on_store=store.store_manager.free_space,
+        store_name=store.name,
         staging_name=file_name,
         staging_location=file_location,
         upload_name=request.upload_name,
         destination_location=request.destination_location,
         source_transfer_id=request.source_transfer_id,
         destination_transfer_id=transfer.id,
-        transfer_providers=use_store.transfer_managers,
+        transfer_providers=store.transfer_managers,
     )
 
     log.debug(f"Returning clone initiation response: {model_response}")
+
+    return model_response
+
+
+@router.post("/batch_stage", response_model=CloneBatchInitiationResponse)
+def batch_stage(
+    request: CloneBatchInitiationRequest,
+    response: Response,
+    user: ReadappendUserDependency,
+    session: Session = Depends(yield_session),
+):
+    """
+    Recieved from a remote librarian to initiate a clone.
+
+    This is somewhat similar to upload/stage, but that is a synchronous
+    operation and the data transfer performed here is actually asynchrounous.
+
+    Possible response codes:
+
+    400 - Bad request. Upload size is negative.
+        -> Make sure that the logic is correctly computing the size.
+    406 - Not acceptable. You have already initiated or staged this transfer.
+        -> You should fail your outgoing transfer. We failed ours.
+    409 - Conflict. File already exists on librarian.
+        -> You have a logic error, you should never have tried to upload this.
+    413 - Request entity too large. No stores available for upload.
+        -> There's a disk problem. Check the disk.
+    425 - Too early. There is an active ongoing transfer with this checksum.
+        -> You have a logic error, you should never have tried to re-upload this.
+           Either fail the ongoing transfer, or wait for it to complete.
+    201 - Created staging area.
+        -> Success! Please stage the file.
+    """
+
+    log.debug(
+        f"Recieved a batch clone initiation request for {len(request.uploads)} "
+        f"({request.total_size} B) from {user.username}"
+    )
+
+    store = validate_staging(
+        session=session,
+        upload_size=request.total_size,
+        # TODO: Figure out how to deal with this source_transfer_id being a single number
+        # for bach uploads.
+        source_transfer_id=-1,
+    )
+
+    clones = []
+
+    for upload in request.uploads:
+        # This may raise a HTTPException. But that's ok; if we fail out after having
+        # created other 'incoming' transfers, they can just be cancelled by this same
+        # function later down the line when the offending file has been removed
+        # from the batch.
+        transfer = de_duplicate_file_and_transfer(
+            session=session,
+            source_transfer_id=upload.source_transfer_id,
+            source=request.source,
+            uploader=upload.uploader,
+            upload_size=upload.upload_size,
+            upload_checksum=upload.upload_checksum,
+            destination_location=upload.destination_location,
+        )
+
+        # Now we have a handle on the transfer, let's stage it.
+        file_name, file_location = store.store_manager.stage(
+            file_size=upload.upload_size,
+            file_name=upload.upload_name,
+        )
+
+        transfer.store_id = store.id
+        transfer.staging_path = str(file_location)
+
+        # Set store path now as it will not change.
+        transfer.store_path = str(request.destination_location)
+
+        # Don't bother comitting every time, that's a waste as the next
+        # transfer creation will commit the session anyway.
+
+        clones.append(
+            CloneBatchInitiationResponseFileItem(
+                staging_name=file_name,
+                staging_location=file_location,
+                upload_name=upload.upload_name,
+                destination_location=upload.destination_location,
+                source_transfer_id=upload.source_transfer_id,
+                destination_transfer_id=transfer.id,
+            )
+        )
+
+    # One final commit to make sure we got that last store ID in there.
+    session.commit()
+
+    log.debug(f"Returning batch clone initiation response for {len(clones)}.")
+
+    response.status_code = status.HTTP_201_CREATED
+
+    model_response = CloneBatchInitiationResponse(
+        available_bytes_on_store=store.store_manager.free_space,
+        store_name=store.name,
+        uploads=clones,
+        async_transfer_providers=store.async_transfer_managers,
+    )
 
     return model_response
 
@@ -331,6 +479,79 @@ def ongoing(
 
     response.status_code = status.HTTP_200_OK
     return CloneOngoingResponse(
+        source_transfer_id=request.source_transfer_id,
+        destination_transfer_id=request.destination_transfer_id,
+    )
+
+
+@router.post("/staged", response_model=CloneStagedResponse | CloneFailedResponse)
+def staged(
+    request: CloneStagedRequest,
+    response: Response,
+    user: CallbackUserDependency,
+    session: Session = Depends(yield_session),
+):
+    """
+    Called when the remote librarian has completed the transfer. We should
+    update the status of the transfer to STAGED.
+
+    You must have the correct username to update the transfer.
+
+    Possible response codes:
+
+    200 - OK. Transfer status updated.
+    404 - Not found. Could not find transfer.
+    406 - Not acceptable. Transfer is not in ONGOING status.
+    """
+    log.debug(f"Received clone staged request from {user.username}: {request}")
+
+    transfer = (
+        session.query(IncomingTransfer)
+        .filter_by(
+            id=request.destination_transfer_id,
+        )
+        .first()
+    )
+
+    if transfer is None:
+        log.debug(
+            f"Could not find transfer with ID {request.destination_transfer_id}. Returning error."
+        )
+
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return CloneFailedResponse(
+            reason="Could not find transfer.",
+            suggested_remedy=(
+                "Your librarian is trying to tell us that a transfer is ongoing, but we cannot "
+                "find the transfer. Check the background task ordering and that you have the correct "
+                "username in the request."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
+    if transfer.status != TransferStatus.ONGOING:
+        log.debug(
+            f"Transfer with ID {request.source_transfer_id} has status {transfer.status}."
+            f"Trying to set it to STAGED. Returning error."
+        )
+
+        response.status_code = status.HTTP_406_NOT_ACCEPTABLE
+        return CloneFailedResponse(
+            reason="Transfer is not in ONGOING status.",
+            suggested_remedy=(
+                "Your librarian is trying to tell us that a transfer is STAGED, but the transfer "
+                "is not in ONGOING status. Check the background task ordering."
+            ),
+            source_transfer_id=request.source_transfer_id,
+            destination_transfer_id=request.destination_transfer_id,
+        )
+
+    transfer.status = TransferStatus.STAGED
+    session.commit()
+
+    response.status_code = status.HTTP_200_OK
+    return CloneStagedResponse(
         source_transfer_id=request.source_transfer_id,
         destination_transfer_id=request.destination_transfer_id,
     )

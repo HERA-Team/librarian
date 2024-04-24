@@ -142,6 +142,8 @@ class BackgroundSettings(BaseSettings):
     Background task settings, configurable.
     """
 
+    # Individual background task settings:
+
     check_integrity: list[CheckIntegritySettings] = []
     "Settings for the integrity check task."
 
@@ -153,6 +155,10 @@ class BackgroundSettings(BaseSettings):
 
     recieve_clone: list[RecieveCloneSettings] = []
     "Settings for the clone receiving task."
+
+    # Global settings:
+
+    max_rsync_retries: int = 8
 
     model_config = SettingsConfigDict(env_prefix="librarian_background_")
 

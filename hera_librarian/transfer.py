@@ -13,7 +13,7 @@ class TransferStatus(Enum):
     INITIATED = 0
     "Transfer has been initiated, but client has not yet started moving data"
     ONGOING = 1
-    "Client is currently (asynchronously) moving data to us. This is not possible with all transfer managers."
+    "Client is currently (asynchronously) moving data to or from us. This is not possible with all transfer managers."
     STAGED = 2
     "Transfer has been staged, server is ready to complete the transfer."
     COMPLETED = 3

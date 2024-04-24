@@ -2,13 +2,13 @@
 Core transfer manager (prototype)
 """
 
+import abc
+
 from pydantic import BaseModel
 
 
-# Cannot abstract base class this as it is used
-# as a type hint currently. But that should probably
-# be changed (ValueError during pydanctic deserialization).
-class CoreTransferManager(BaseModel):
+class CoreTransferManager(BaseModel, abc.ABC):
+    @abc.abstractmethod
     def transfer(self, local_path: str, remote_path: str):
         """
         Transfer a file from the local machine to the store.
@@ -22,6 +22,7 @@ class CoreTransferManager(BaseModel):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     @property
     def valid(self) -> bool:
         """

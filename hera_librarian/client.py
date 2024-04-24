@@ -16,6 +16,8 @@ from hera_librarian.models.clone import (
     CloneInitiationResponse,
     CloneOngoingRequest,
     CloneOngoingResponse,
+    CloneStagedRequest,
+    CloneStagedResponse,
 )
 
 from .authlevel import AuthLevel

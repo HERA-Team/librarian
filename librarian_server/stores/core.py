@@ -26,7 +26,7 @@ class CoreStore(BaseModel, abc.ABC):
 
     name: str
 
-    @abc.abstractproperty
+    @abc.abstractmethod
     @property
     def available(self) -> bool:
         """
@@ -34,7 +34,7 @@ class CoreStore(BaseModel, abc.ABC):
         """
         raise NotImplementedError
 
-    @abc.abstractproperty
+    @abc.abstractmethod
     @property
     def free_space(self) -> int:
         """

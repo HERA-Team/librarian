@@ -7,12 +7,17 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from hera_librarian.transfer import TransferStatus
+
 from ..queues import Queue
 
 
 class CoreAsyncTransferManager(BaseModel, abc.ABC):
-    queue: Queue
-    "The type of queue that this transfer manager is associated with."
+    """
+    The core async transfer manager. This is the base class for all
+    async transfer managers. It provides the basic interface for
+    transferring data asynchronously.
+    """
 
     @abc.abstractmethod
     def batch_transfer(self, paths: list[tuple[Path]]):
@@ -55,5 +60,18 @@ class CoreAsyncTransferManager(BaseModel, abc.ABC):
         """
         Whether or not this transfer manager is valid for the
         current system we are running on.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    @property
+    def transfer_status(self) -> TransferStatus:
+        """
+        Gets the current in-flight status of the transfer. For some
+        methods, this is simple (they are synchronous from the perspective
+        of the AsyncTransferManager!), but for others (e.g. GLOBUS) this will
+        require interaction with an external API. Note that this is only
+        valid for BATCH transfers, individual transfers are not guaranteed
+        to set (e.g.) internal flags as required.
         """
         raise NotImplementedError

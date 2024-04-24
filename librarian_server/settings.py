@@ -35,6 +35,8 @@ class StoreSettings(BaseModel):
     "Data for the store that is specific to the store type."
     transfer_manager_data: dict[str, dict]
     "Transfer managers for this store."
+    async_transfer_managers_data: dict[str, dict] | None = None
+    "Asyncronous transfer managers for this store."
 
     @field_validator("store_type", mode="before")
     def store_type_is_valid(cls, v: str) -> int:

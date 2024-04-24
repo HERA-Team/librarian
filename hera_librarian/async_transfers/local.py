@@ -7,13 +7,17 @@ import shutil
 from pathlib import Path
 from socket import gethostname
 
+from hera_librarian.transfer import TransferStatus
+
 from ..queues import Queue
 from .core import CoreAsyncTransferManager
 
 
 class LocalAsyncTransferManager(CoreAsyncTransferManager):
-    queue: Queue = Queue.LOCAL
     hostnames: list[str]
+
+    transfer_attempted: bool = False
+    transfer_complete: bool = False
 
     def batch_transfer(self, paths: list[tuple[Path]]):
         copy_success = True
@@ -22,6 +26,10 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
             copy_success = copy_success and self.transfer(
                 local_path=local_path, remote_path=remote_path
             )
+
+        # Set local
+        self.transfer_attempted = True
+        self.transfer_complete = copy_success
 
         return copy_success
 
@@ -35,6 +43,7 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
         PermissionError
             If the permissions cannot be set.
         """
+
         # Need to make sure that the the permissions are correctly
         # set on all files and directories that we copy over.
         # They should have rw-rw-r-- and rwxrwxr-x permissions.
@@ -81,3 +90,13 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
     @property
     def valid(self) -> bool:
         return gethostname() in self.hostnames
+
+    @property
+    def transfer_status(self) -> TransferStatus:
+        if self.transfer_complete:
+            return TransferStatus.COMPLETED
+        else:
+            if not self.transfer_attempted:
+                return TransferStatus.INITIATED
+            else:
+                return TransferStatus.FAILED

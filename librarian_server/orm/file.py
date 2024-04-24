@@ -55,6 +55,8 @@ class File(db.Base):
         """
         Checks whether the file exists already in the database.
 
+        If you have a session already, just use the get() yourself.
+
         Parameters
         ----------
         filename : Path
