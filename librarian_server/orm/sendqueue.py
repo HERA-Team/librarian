@@ -49,9 +49,7 @@ class SendQueue(db.Base):
     "The priority of this item in the queue. Lower is higher priority."
     created_time: datetime.datetime = db.Column(db.DateTime, nullable=False)
     "The time that this item was added to the queue."
-    transfers: list[OutgoingTransfer] = db.relationship(
-        "OutgoingTransfer", back_populates="send_queue"
-    )
+    transfers = db.relationship("OutgoingTransfer", back_populates="send_queue")
     "The transfers this item is associated with."
     retries = db.Column(db.Integer, nullable=False)
     "The number of times this item has been tried to be sent."
@@ -77,7 +75,7 @@ class SendQueue(db.Base):
         cls,
         priority: int,
         destination: str,
-        transfers: list[OutgoingTransfer],
+        transfers: list["OutgoingTransfer"],
         async_transfer_manager: CoreAsyncTransferManager,
     ) -> "SendQueue":
         """
@@ -109,7 +107,7 @@ class SendQueue(db.Base):
 
     def update_transfer_status(
         self,
-        new_status: TransferStatus.ONGOING | TransferStatus.STAGED,
+        new_status: TransferStatus,
         session: Session,
     ) -> CheckinUpdateResponse:
         """
