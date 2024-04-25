@@ -140,7 +140,11 @@ class SendQueue(db.Base):
 
         client = librarian.client()
 
-        destination_ids = [t.remote_transfer_id for t in self.transfers]
+        destination_ids = [
+            t.remote_transfer_id
+            for t in self.transfers
+            if t.remote_transfer_id is not None
+        ]
 
         request = CheckinUpdateRequest(
             source_transfer_ids=[],
@@ -150,7 +154,7 @@ class SendQueue(db.Base):
 
         try:
             response: CheckinUpdateResponse = client.post(
-                endpoint="/api/v2/checkin/update",
+                endpoint="checkin/update",
                 request=request,
                 response=CheckinUpdateResponse,
             )

@@ -158,7 +158,9 @@ def consume_queue_item(session_maker: Callable[[], "Session"]):
         transfer_list = [
             (Path(x.source_path), Path(x.dest_path)) for x in queue_item.transfers
         ]
-        transfer_manager = queue_item.async_transfer_manager
+        # Need to create a copy here in case there is an internal state
+        # change. Otherwise SQLAlchemy won't write it back.
+        transfer_manager = queue_item.async_transfer_manager.copy()
         success = transfer_manager.batch_transfer(transfer_list)
 
         if success:

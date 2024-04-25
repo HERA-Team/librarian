@@ -85,7 +85,7 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
                 for x in dirs + files:
                     set_for_file(Path(root) / x)
 
-        return copy_success
+        return True
 
     @property
     def valid(self) -> bool:

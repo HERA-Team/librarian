@@ -24,9 +24,10 @@ class NoCopyAsyncTransferManager(CoreAsyncTransferManager):
         return self.complete_transfer_status
 
 
-def test_create_queue_item(test_server, test_orm):
+def test_create_queue_item(test_server_with_valid_file, test_orm):
     """
-    Manually create a new queue item and see if it works.
+    Manually create a new queue item and see if it works when trying
+    to send it.
 
     Delete this, everybody is asking you to delete this, please,
     people are crying
@@ -34,7 +35,7 @@ def test_create_queue_item(test_server, test_orm):
 
     SendQueue = test_orm.SendQueue
 
-    get_session = test_server[1]
+    get_session = test_server_with_valid_file[1]
 
     with get_session() as session:
         queue_item = SendQueue.new_item(
@@ -47,9 +48,18 @@ def test_create_queue_item(test_server, test_orm):
         )
 
         session.add(queue_item)
+        session.commit()
 
     with get_session() as session:
-        for x in session.query(SendQueue).filter_by(destination="nowhere").all():
+        available_queues = (
+            session.query(SendQueue).filter_by(destination="nowhere").all()
+        )
+
+        assert len(available_queues) > 0
+
+        for x in available_queues:
             session.delete(x)
+
+        session.commit()
 
     return
