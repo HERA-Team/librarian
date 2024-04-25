@@ -142,7 +142,7 @@ class SendClone(Task):
             log_to_database(
                 severity=ErrorSeverity.CRITICAL,
                 category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                description=(
+                message=(
                     f"Librarian {self.destination_librarian} does not exist within database. "
                     "Cancelling job. Please update the configuration (and re-start the librarian)."
                 ),
@@ -158,7 +158,7 @@ class SendClone(Task):
             log_to_database(
                 severity=ErrorSeverity.ERROR,
                 category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                description=(
+                message=(
                     f"Librarian {self.destination_librarian} is unreachable. Skipping sending clones."
                 ),
                 session=session,
@@ -208,7 +208,7 @@ class SendClone(Task):
                 log_to_database(
                     severity=ErrorSeverity.CRITICAL,
                     category=ErrorCategory.CONFIGURATION,
-                    description=(
+                    message=(
                         f"Store {self.store_preference} does not exist. Cancelling job. "
                         "Please update the configuration."
                     ),
@@ -265,15 +265,15 @@ class SendClone(Task):
             try:
                 response: CloneBatchInitiationResponse = client.post(
                     endpoint="/api/v2/clone/batch_stage",
-                    request_model=batch,
-                    response_model=CloneBatchInitiationResponse,
+                    request=batch,
+                    response=CloneBatchInitiationResponse,
                 )
             except Exception as e:
                 # Oh no, we can't call up the librarian!
                 log_to_database(
                     severity=ErrorSeverity.ERROR,
                     category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                    description=(
+                    message=(
                         f"Unable to communicate with remote librarian for batch "
                         f"to stage clone with exception {e}."
                     ),

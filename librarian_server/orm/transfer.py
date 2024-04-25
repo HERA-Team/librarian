@@ -225,8 +225,8 @@ class OutgoingTransfer(db.Base):
         try:
             response: CloneFailResponse = client.post(
                 path="/api/v2/clone/fail",
-                request_model=request,
-                response_model=CloneFailResponse,
+                request=request,
+                response=CloneFailResponse,
             )
 
             if not response.success:
@@ -276,8 +276,8 @@ class OutgoingTransfer(db.Base):
         try:
             response: CloneStagedResponse = client.post(
                 path="/api/v2/clone/staged",
-                request_model=request,
-                response_model=CloneStagedResponse,
+                request=request,
+                response=CloneStagedResponse,
             )
 
             if not response.success:

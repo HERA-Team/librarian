@@ -151,15 +151,15 @@ class SendQueue(db.Base):
         try:
             response: CheckinUpdateResponse = client.post(
                 endpoint="/api/v2/checkin/update",
-                request_model=request,
-                response_model=CheckinUpdateResponse,
+                request=request,
+                response=CheckinUpdateResponse,
             )
         except Exception as e:
             # Oh no, we can't call up the librarian!
             log_to_database(
                 severity=ErrorSeverity.ERROR,
                 category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                description=(
+                message=(
                     f"Unable to communicate with remote librarian for batch "
                     f"status update, recieved response {e}."
                 ),
