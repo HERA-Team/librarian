@@ -109,8 +109,6 @@ class StoreMetadata(db.Base):
             if data.get("available", False)
         }
 
-        self.asy
-
     def ingest_staged_file(
         self,
         request: UploadCompletionRequest,
