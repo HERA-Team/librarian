@@ -82,7 +82,7 @@ def modify_transfers_by_id(
             reasons.add("You are not authorized to modify the transfer.")
             continue
 
-        if transfer.status not in ALLOWED_UPDATES.get(new_status, {}):
+        if new_status not in ALLOWED_UPDATES.get(transfer.status, {}):
             unprocessed.append(transfer_id)
             reasons.add(
                 f"Transition from {transfer.status} to {new_status} "
@@ -91,7 +91,7 @@ def modify_transfers_by_id(
             continue
 
         transfer.status = new_status
-        processed.append()
+        processed.append(transfer_id)
 
     session.commit()
 
@@ -143,6 +143,7 @@ def update(
         transfer_type=IncomingTransfer,
         new_status=request.new_status,
         session=session,
+        user=user,
     )
 
     processed_outgoing, unprocessed_outgoing, reasons_outgoing = modify_transfers_by_id(
@@ -150,6 +151,7 @@ def update(
         transfer_type=OutgoingTransfer,
         new_status=request.new_status,
         session=session,
+        user=user,
     )
 
     response = CheckinUpdateResponse(
@@ -182,12 +184,14 @@ def status(
         transfer_ids=request.destination_transfer_ids,
         transfer_type=IncomingTransfer,
         session=session,
+        user=user,
     )
 
     source_status = get_status_by_id(
         transfer_ids=request.source_transfer_ids,
         transfer_type=OutgoingTransfer,
         session=session,
+        user=user,
     )
 
     response = CheckinStatusResponse(
