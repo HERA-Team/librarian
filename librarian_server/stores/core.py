@@ -26,16 +26,16 @@ class CoreStore(BaseModel, abc.ABC):
 
     name: str
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def available(self) -> bool:
         """
         Is the store available?
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def free_space(self) -> int:
         """
         How much free space is available on the store?
