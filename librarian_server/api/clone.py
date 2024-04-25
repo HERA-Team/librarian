@@ -71,7 +71,7 @@ def validate_staging(
                 suggested_remedy="Check you are trying to upload a valid file.",
                 source_transfer_id=source_transfer_id,
                 destination_transfer_id=-1,
-            ),
+            ).model_dump_json(),
         )
 
     use_store: Optional[StoreMetadata] = None
@@ -96,7 +96,7 @@ def validate_staging(
                 suggested_remedy="Check that the disk is not full.",
                 source_transfer_id=source_transfer_id,
                 destination_transfer_id=-1,
-            ),
+            ).model_dump_json(),
         )
 
     return use_store
@@ -118,7 +118,7 @@ def de_duplicate_file_and_transfer(
 
     # First, check if we already have this file; if we do, then cancel
     # the whole business.
-    if session.get(File, destination_location):
+    if session.get(File, str(destination_location)):
         log.debug(
             "File {destination_location} already exists on librarian. Returning error."
         )
@@ -133,7 +133,7 @@ def de_duplicate_file_and_transfer(
                 ),
                 source_transfer_id=source_transfer_id,
                 destination_transfer_id=-1,
-            ),
+            ).model_dump_json(),
         )
 
     # Reaching here, we do NOT already have the file. But maybe there is already
@@ -168,7 +168,7 @@ def de_duplicate_file_and_transfer(
                     ),
                     source_transfer_id=source_transfer_id,
                     destination_transfer_id=existing_transfer.id,
-                ),
+                ).model_dump_json(),
             )
 
         # Alternative is status' of STAGED and INITIATED. Unlike with uploads, this is a
@@ -183,10 +183,8 @@ def de_duplicate_file_and_transfer(
 
         # Unstage the files.
         if existing_transfer.store_id is not None:
-            if (
-                store := session.get(StoreMetadata, existing_transfer.store_id)
-                is not None
-            ):
+            store = session.get(StoreMetadata, existing_transfer.store_id)
+            if store is not None:
                 store.store_manager.unstage(Path(existing_transfer.staging_path))
 
         existing_transfer.status = TransferStatus.FAILED
@@ -202,7 +200,7 @@ def de_duplicate_file_and_transfer(
                 ),
                 source_transfer_id=source_transfer_id,
                 destination_transfer_id=existing_transfer.id,
-            ),
+            ).model_dump_json(),
         )
 
     # Ok, we don't have an existing transfer. We need to make a new one.
@@ -262,6 +260,7 @@ def stage(
         session=session,
         upload_size=request.upload_size,
         source_transfer_id=request.source_transfer_id,
+        response=response,
     )
 
     transfer = de_duplicate_file_and_transfer(
@@ -348,6 +347,7 @@ def batch_stage(
         # TODO: Figure out how to deal with this source_transfer_id being a single number
         # for bach uploads.
         source_transfer_id=-1,
+        response=response,
     )
 
     clones = []

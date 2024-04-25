@@ -119,7 +119,7 @@ def test_simple_real_send(
     get_session = test_server_with_valid_file[1]
 
     with get_session() as session:
-        file = session.query(File).one()
+        file = session.query(File).first()
 
         transfer = OutgoingTransfer.new_transfer(
             destination="liver_server",
@@ -159,6 +159,7 @@ def test_simple_real_send(
 
             for transfer in x.transfers:
                 assert Path(transfer.dest_path).exists()
+                session.delete(transfer)
 
             session.delete(x)
 

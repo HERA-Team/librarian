@@ -160,7 +160,7 @@ def consume_queue_item(session_maker: Callable[[], "Session"]):
         ]
         # Need to create a copy here in case there is an internal state
         # change. Otherwise SQLAlchemy won't write it back.
-        transfer_manager = queue_item.async_transfer_manager.copy()
+        transfer_manager = queue_item.async_transfer_manager.model_copy()
         success = transfer_manager.batch_transfer(transfer_list)
 
         if success:

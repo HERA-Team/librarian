@@ -23,7 +23,7 @@ def test_checkin_endpoints(test_client, test_server_with_valid_file, test_orm):
 
     with test_server_with_valid_file[1]() as session:
         # Grab a useful file...
-        file = session.query(File).one()
+        file = session.query(File).first()
 
         out = OutgoingTransfer.new_transfer(
             destination="nowhere",
