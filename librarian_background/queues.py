@@ -11,7 +11,7 @@ synchronous communication. There are two main tasks:
 
 import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from sqlalchemy import select
 
@@ -25,8 +25,6 @@ from .settings import background_settings
 from .task import Task
 
 if TYPE_CHECKING:
-    from typing import Callable
-
     from sqlalchemy.orm import Session
 
 
@@ -69,7 +67,7 @@ class CheckConsumedQueue(Task):
 
 
 def check_on_consumed(
-    session_maker: Callable[[], Session],
+    session_maker: Callable[[], "Session"],
     complete_status: TransferStatus = TransferStatus.STAGED,
 ):
     """
@@ -141,7 +139,7 @@ def check_on_consumed(
     return
 
 
-def consume_queue_item(session_maker: Callable[[], Session]):
+def consume_queue_item(session_maker: Callable[[], "Session"]):
     """
     Consume the current, oldest, and highest priority item.
     """
