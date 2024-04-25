@@ -38,8 +38,25 @@ def upgrade():
         sa.Column("completed_time", sa.DateTime(), nullable=True),
     )
 
+    with op.batch_alter_table("outgoing_transfers") as batch_op:
+        batch_op.add_column(sa.Column("send_queue_id", sa.Integer))
+
+        batch_op.add_column(sa.Column("source_path", sa.String(length=256)))
+        batch_op.add_column(sa.Column("dest_path", sa.String(length=256)))
+
+        batch_op.create_foreign_key(
+            "fk_outgoing_transfers_id_send_queue",
+            "send_queue",
+            ["send_queue_id"],
+            ["id"],
+        )
+
 
 def downgrade():
+    op.drop_column("outgoing_transfers", "dest_path")
+    op.drop_column("outgoing_transfers", "source_path")
+    op.drop_column("outgoing_transfers", "send_queue_id")
+
     op.drop_table("send_queue")
 
     op.drop_column("store_metadata", "async_transfer_manager_data")
