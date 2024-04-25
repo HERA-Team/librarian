@@ -22,8 +22,8 @@ class CoreTransferManager(BaseModel, abc.ABC):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def valid(self) -> bool:
         """
         Whether or not this transfer manager is valid for the

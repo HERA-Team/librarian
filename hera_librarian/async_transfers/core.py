@@ -54,8 +54,8 @@ class CoreAsyncTransferManager(BaseModel, abc.ABC):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def valid(self) -> bool:
         """
         Whether or not this transfer manager is valid for the
@@ -63,8 +63,8 @@ class CoreAsyncTransferManager(BaseModel, abc.ABC):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def transfer_status(self) -> TransferStatus:
         """
         Gets the current in-flight status of the transfer. For some
