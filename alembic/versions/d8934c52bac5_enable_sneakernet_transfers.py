@@ -9,6 +9,7 @@ Create Date: 2024-02-28 15:48:44.705721
 
 """
 import sqlalchemy as sa
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm.session import Session
 
 from alembic import op
@@ -37,12 +38,18 @@ def upgrade():
     # Now perform data migration
     session = Session(bind=op.get_bind())
 
-    for store in session.query(StoreMetadata).all():
+    for store in (
+        session.query(StoreMetadata).options(load_only(StoreMetadata.enabled)).all()
+    ):
         store.enabled = True
         session.commit()
 
-    for transfer in session.query(OutgoingTransfer).all():
-        file = session.query(File).get(transfer.file_name)
+    for transfer in (
+        session.query(OutgoingTransfer)
+        .options(load_only(OutgoingTransfer.file_name))
+        .all()
+    ):
+        file = session.query(File).options(load_only(File.name)).get(transfer.file_name)
         transfer.file_name = file.name
         transfer.file = file
         session.commit()
