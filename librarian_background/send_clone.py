@@ -64,7 +64,7 @@ def process_batch(
         valid_stores.add(store_preference)
 
     outgoing_transfers: list[OutgoingTransfer] = []
-    outgoing_information: list[dict[str, Any]]
+    outgoing_information: list[dict[str, Any]] = []
 
     for file in files:
         use_instance: Optional[Instance] = None
@@ -105,7 +105,7 @@ def process_batch(
             }
         )
 
-    return outgoing_transfers
+    return outgoing_transfers, outgoing_information
 
 
 class SendClone(Task):
@@ -150,7 +150,7 @@ class SendClone(Task):
             )
             return CancelJob
 
-        client: "LibrarianClient" = librarian.get_client()
+        client: "LibrarianClient" = librarian.client()
 
         try:
             client.ping()
@@ -171,26 +171,31 @@ class SendClone(Task):
         age_in_days = datetime.timedelta(days=self.age_in_days)
         oldest_file_age = current_time - age_in_days
 
-        stmt = select(File).filter(File.create_time > oldest_file_age)
-        stmt = stmt.filter(
-            File.remote_instances.any(RemoteInstance.librarian_id != librarian.id)
+        file_stmt = select(File).filter(File.create_time > oldest_file_age)
+        remote_instances_stmt = select(RemoteInstance.file_name).filter(
+            RemoteInstance.librarian_id == librarian.id
         )
-
-        ongoing_transfer_stmt = select(OutgoingTransfer.file_name).filter(
-            OutgoingTransfer.status.in_(
-                [
-                    TransferStatus.INITIATED,
-                    TransferStatus.ONGOING,
-                    TransferStatus.STAGED,
-                ]
+        outgoing_transfer_stmt = (
+            select(OutgoingTransfer.file_name)
+            .filter(OutgoingTransfer.destination == librarian.name)
+            .filter(
+                OutgoingTransfer.status.in_(
+                    [
+                        TransferStatus.INITIATED,
+                        TransferStatus.ONGOING,
+                        TransferStatus.STAGED,
+                    ]
+                )
             )
         )
 
-        stmt = stmt.filter(File.name.not_in(ongoing_transfer_stmt))
+        file_stmt = file_stmt.where(
+            File.name.not_in(remote_instances_stmt).not_in(outgoing_transfer_stmt)
+        )
 
-        files_without_remote_instances = list[File] = session.execute(
-            stmt
-        ).scalars.all()
+        files_without_remote_instances: list[File] = (
+            session.execute(file_stmt).scalars().all()
+        )
 
         logger.info(
             f"Found {len(files_without_remote_instances)} files without remote instances, "
@@ -230,7 +235,7 @@ class SendClone(Task):
 
         files_tried = 0
 
-        while files_tried <= len(files_without_remote_instances):
+        while files_tried < len(files_without_remote_instances):
             left_to_send = len(files_without_remote_instances) - files_tried
             this_batch_size = min(left_to_send, self.send_batch_size)
 
@@ -264,7 +269,7 @@ class SendClone(Task):
 
             try:
                 response: CloneBatchInitiationResponse = client.post(
-                    endpoint="/api/v2/clone/batch_stage",
+                    endpoint="clone/batch_stage",
                     request=batch,
                     response=CloneBatchInitiationResponse,
                 )
@@ -333,7 +338,25 @@ class SendClone(Task):
             # Clean list of outoging transfers that have matching incoming transfers on
             # the destination librarian.
 
-            for transfer_provider in response.transfer_providers.values():
+            if len(response.async_transfer_providers) == 0:
+                # No transfer providers are available at all for that librarian.
+                log_to_database(
+                    severity=ErrorSeverity.WARNING,
+                    category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                    message=(
+                        f"No transfer providers to send to {librarian}, "
+                        f"were provided. Failing all associated transfers."
+                    ),
+                    session=session,
+                )
+
+                for transfer in outgoing_transfers:
+                    transfer.fail_transfer(session=session, commit=False)
+
+                session.commit()
+                break
+
+            for transfer_provider in response.async_transfer_providers.values():
                 if transfer_provider.valid:
                     break
 
@@ -344,9 +367,10 @@ class SendClone(Task):
                     category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
                     message=(
                         f"No valid transfer manager found for transfer to {librarian}, "
-                        f"was provided {list(response.transfer_providers.keys())}. Failing "
+                        f"was provided {list(response.async_transfer_providers.keys())}. Failing "
                         "all associated transfers."
                     ),
+                    session=session,
                 )
 
                 for transfer in outgoing_transfers:
