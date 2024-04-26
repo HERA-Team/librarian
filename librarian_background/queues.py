@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Callable
 
 from sqlalchemy import select
 
+from hera_librarian.exceptions import LibrarianError
 from hera_librarian.queues import Queue
 from hera_librarian.transfer import TransferStatus
 from librarian_server.database import get_session
@@ -106,11 +107,37 @@ def check_on_consumed(
                 continue
             elif current_status == TransferStatus.COMPLETED:
                 if complete_status == TransferStatus.STAGED:
-                    # TODO: Error handling.
-                    queue_item.update_transfer_status(
-                        new_status=complete_status,
-                        session=session,
-                    )
+                    try:
+                        queue_item.update_transfer_status(
+                            new_status=complete_status,
+                            session=session,
+                        )
+                    except LibrarianError as e:
+                        log_to_database(
+                            severity=ErrorSeverity.WARNING,
+                            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                            message=(
+                                f"Librarian {queue_item.destination} was not available for "
+                                f"contact, returning error {e}. We will try again later."
+                            ),
+                            session=session,
+                        )
+
+                        continue
+                    except AttributeError as e:
+                        # This is a larger problem; we are missing the associated
+                        # librarian in the database. Better ping!
+                        log_to_database(
+                            severity=ErrorSeverity.CRITICAL,
+                            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                            message=(
+                                f"Librarian {queue_item.destination} was not found in "
+                                f"the database, returning error {e}. Will try again later "
+                                "to ocmplete this transfer, but remedy is suggested."
+                            ),
+                        )
+
+                        continue
                 else:
                     raise ValueError(
                         "No other status than STAGED is supported for checking on consumed"
