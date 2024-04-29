@@ -132,7 +132,7 @@ class CloneBatchInitiationResponse(BaseModel):
     "Number of bytes available on the store, for information."
     store_name: str
     "Name of the store that will be used."
-    uploads: list[CloneBatchInitiationRequestFileItem]
+    uploads: list[CloneBatchInitiationResponseFileItem]
     "Each individual upload is tagged with its own {Outgoing,Incoming}Transfer ID."
     async_transfer_providers: dict[
         str, Union[RsyncAsyncTransferManager, LocalAsyncTransferManager]

@@ -140,7 +140,10 @@ def de_duplicate_file_and_transfer(
     # an existing transfer to us!
 
     stmt = select(IncomingTransfer)
-    stmt = stmt.filter_by(transfer_checksum=upload_checksum)
+    stmt = stmt.filter_by(
+        transfer_checksum=upload_checksum,
+        upload_name=str(destination_location),
+    )
     stmt = stmt.filter(
         IncomingTransfer.status.not_in(
             [TransferStatus.FAILED, TransferStatus.CANCELLED, TransferStatus.COMPLETED]
@@ -377,7 +380,7 @@ def batch_stage(
         transfer.staging_path = str(file_location)
 
         # Set store path now as it will not change.
-        transfer.store_path = str(request.destination_location)
+        transfer.store_path = str(upload.destination_location)
 
         # Don't bother comitting every time, that's a waste as the next
         # transfer creation will commit the session anyway.
@@ -399,6 +402,9 @@ def batch_stage(
     log.debug(f"Returning batch clone initiation response for {len(clones)}.")
 
     response.status_code = status.HTTP_201_CREATED
+
+    if store.async_transfer_managers == {}:
+        log.error("Request to stage to a store that has no async transfer managers.")
 
     model_response = CloneBatchInitiationResponse(
         available_bytes_on_store=store.store_manager.free_space,

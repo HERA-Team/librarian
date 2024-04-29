@@ -169,3 +169,66 @@ def test_simple_real_send(
     mocked_admin_client.remove_librarian(name="live_server")
 
     return
+
+
+def test_send_from_existing_file_row(
+    test_server_with_many_files_and_errors,
+    test_orm,
+    mocked_admin_client,
+    server,
+    admin_client,
+    librarian_database_session_maker,
+    tmp_path,
+):
+    # This more complex test actually fully simulates an interaction
+    # with the second 'live' server, in a similar way to the sneaker net
+    # test.
+
+    # Before starting, register the downstream and upstream librarians.
+    assert mocked_admin_client.add_librarian(
+        name="live_server",
+        url="http://localhost",
+        authenticator="admin:password",  # This is the default authenticator.
+        port=server.id,
+    )
+
+    source_session_maker = test_server_with_many_files_and_errors[1]
+
+    assert admin_client.add_librarian(
+        name="test_server",
+        url="http://localhost",
+        authenticator="admin:password",  # This is the default authenticator.
+        port=test_server_with_many_files_and_errors[2].id,
+        check_connection=False,
+    )
+
+    from librarian_background.queues import check_on_consumed, consume_queue_item
+    from librarian_background.send_clone import SendClone
+
+    # Execute the send tasks.
+    generate_task = SendClone(
+        name="generate_queues",
+        destination_librarian="live_server",
+        age_in_days=7,
+        store_preference=None,
+    )
+
+    with source_session_maker() as session:
+        generate_task.core(session=session)
+
+    # Now there _should_ be a pending task queue item. Let's check up on it,
+    # and if we succeed, send it off.
+
+    with source_session_maker() as session:
+        assert (
+            len(
+                session.query(test_orm.SendQueue)
+                .filter_by(destination="live_server", completed=False)
+                .all()
+            )
+            > 0
+        )
+
+    # Remove the librarians we added.
+    assert mocked_admin_client.remove_librarian(name="live_server")
+    assert admin_client.remove_librarian(name="test_server")

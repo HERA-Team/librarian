@@ -2,6 +2,7 @@
 The public-facing LibrarianClient object.
 """
 
+import json as jsonlib
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Optional
@@ -206,6 +207,13 @@ class LibrarianClient:
                 json = r.json()
             except requests.exceptions.JSONDecodeError:
                 json = {}
+
+            # HTTPException
+            if "detail" in json:
+                try:
+                    json = jsonlib.loads(json["detail"])
+                except jsonlib.JSONDecodeError:
+                    json = {}
 
             raise LibrarianHTTPError(
                 url=endpoint,

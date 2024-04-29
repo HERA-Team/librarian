@@ -121,6 +121,12 @@ def server_setup(tmp_path_factory, name="librarian_server") -> Server:
                     "hostnames": [socket.gethostname()],
                 }
             },
+            "async_transfer_manager_data": {
+                "local": {
+                    "available": "true",
+                    "hostnames": [socket.gethostname()],
+                }
+            },
         },
         {
             "store_name": "local_clone",

@@ -77,7 +77,7 @@ def process_batch(
             if instance.available:
                 use_instance = instance
 
-                if instance.store_name in valid_stores:
+                if instance.store.name in valid_stores:
                     break
 
         if use_instance is None:
@@ -86,8 +86,8 @@ def process_batch(
 
         # If we really have to, we can add the store here.
         # But hopefully everything comes from our primary!
-        if instance.store_name not in valid_stores:
-            valid_stores.add(instance.store_name)
+        if instance.store.name not in valid_stores:
+            valid_stores.add(instance.store.name)
 
         outgoing_transfers.append(
             OutgoingTransfer.new_transfer(
@@ -298,7 +298,7 @@ class SendClone(Task):
             # - Update the transfers with their information.
 
             transfer_map: dict[int:CloneBatchInitiationRequestFileItem] = {
-                x.outgoing_transfer_id: x for x in response.uploads
+                x.source_transfer_id: x for x in response.uploads
             }
 
             # Our response may not have successfully staged all files.
@@ -420,8 +420,8 @@ class SendClone(Task):
                 transfer.transfer_data = transfer_provider
                 transfer.send_queue = send
                 transfer.send_queue_id = send.id
-                transfer.source_path = transfer.instance.path
-                transfer.dest_path = remote_transfer_info.staging_location
+                transfer.source_path = str(transfer.instance.path)
+                transfer.dest_path = str(remote_transfer_info.staging_location)
 
             session.commit()
 
