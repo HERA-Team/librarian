@@ -104,9 +104,6 @@ class File(db.Base):
             The new file object.
         """
 
-        if self.file_exists(filename):
-            raise FileExistsError(f"File {filename} already exists in database.")
-
         return File(
             name=str(filename),
             create_time=datetime.utcnow(),

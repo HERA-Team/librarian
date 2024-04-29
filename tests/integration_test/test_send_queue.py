@@ -194,14 +194,6 @@ def test_send_from_existing_file_row(
 
     source_session_maker = test_server_with_many_files_and_errors[1]
 
-    assert admin_client.add_librarian(
-        name="test_server",
-        url="http://localhost",
-        authenticator="admin:password",  # This is the default authenticator.
-        port=test_server_with_many_files_and_errors[2].id,
-        check_connection=False,
-    )
-
     from librarian_background.queues import check_on_consumed, consume_queue_item
     from librarian_background.send_clone import SendClone
 
@@ -229,6 +221,89 @@ def test_send_from_existing_file_row(
             > 0
         )
 
+    # Now we try the actual send.
+    consume_queue_item(session_maker=source_session_maker)
+
+    # Check the queue item to see if it was successfuly consumed.
+    # Also check on the associated transfers.
+
+    with source_session_maker() as session:
+        queue_item = (
+            session.query(test_orm.SendQueue)
+            .filter_by(destination="live_server", completed=False)
+            .first()
+        )
+
+        assert queue_item.consumed
+
+        for transfer in queue_item.transfers:
+            assert transfer.status == TransferStatus.ONGOING
+
+            assert Path(transfer.dest_path).exists()
+
+    check_on_consumed(session_maker=source_session_maker)
+
+    with source_session_maker() as session:
+        queue_item = (
+            session.query(test_orm.SendQueue)
+            .filter_by(destination="live_server", completed=True)
+            .first()
+        )
+
+        assert queue_item.consumed
+        assert queue_item.completed
+
+        for transfer in queue_item.transfers:
+            assert transfer.status == TransferStatus.STAGED
+
+    # Check on the downstream that they actually got there...
+    with librarian_database_session_maker() as session:
+        incoming_transfers = (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(source="test_server")
+            .all()
+        )
+
+        for transfer in incoming_transfers:
+            assert Path(transfer.staging_path).exists()
+
+    # Force downstream to execute their background tasks.
+    from librarian_background.recieve_clone import RecieveClone
+
+    task = RecieveClone(
+        name="recv_clone",
+    )
+
+    with librarian_database_session_maker() as session:
+        task.core(session=session)
+
+    # Now check the downstream librarian that it got all those files!
+    with source_session_maker() as session:
+        sent_filenames = [
+            tf.file_name for tf in session.query(test_orm.OutgoingTransfer).all()
+        ]
+
+    missing_files = []
+    with librarian_database_session_maker() as session:
+        for file_name in sent_filenames:
+            if session.get(test_orm.File, file_name) is None:
+                missing_files.append(file_name)
+
+        # Check that all the transfers we intiaited are now set to
+        # COMPLETE
+        incoming_transfers = (
+            session.query(test_orm.IncomingTransfer)
+            .filter_by(source="test_server")
+            .all()
+        )
+
+        for transfer in incoming_transfers:
+            # They should have been deleted
+            assert not Path(transfer.staging_path).exists()
+            assert transfer.status == TransferStatus.COMPLETED
+
+    if missing_files != []:
+        raise ValueError(f"Missing files: " + missing_files)
+
     # Remove the librarians we added.
     assert mocked_admin_client.remove_librarian(name="live_server")
-    assert admin_client.remove_librarian(name="test_server")

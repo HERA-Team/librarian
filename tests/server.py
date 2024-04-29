@@ -204,6 +204,17 @@ def server_setup(tmp_path_factory, name="librarian_server") -> Server:
         ]
     )
 
+    recv_clone = json.dumps(
+        [
+            {
+                "task_name": "recv_clones",
+                "every": "00:01:00",
+                "age_in_days": 7,
+                "deletion_policy": 0,
+            }
+        ]
+    )
+
     return Server(
         id=server_id_and_port,
         base_path=tmp_path,
@@ -221,8 +232,8 @@ def server_setup(tmp_path_factory, name="librarian_server") -> Server:
         LIBRARIAN_SERVER_ADD_STORES=add_stores,
         LIBRARIAN_BACKGROUND_CHECK_INTEGRITY=check_integrity,
         LIBRARIAN_BACKGROUND_CREATE_LOCAL_CLONE=create_local_clone,
+        LIBRARIAN_BACKGROUND_RECIEVE_CLONE=recv_clone,
         LIBRARIAN_BACKGROUND_SEND_CLONE="[]",
-        LIBRARIAN_BACKGROUND_RECIEVE_CLONE="[]",
     )
 
 

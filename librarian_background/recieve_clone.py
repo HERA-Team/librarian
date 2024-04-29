@@ -51,10 +51,10 @@ class RecieveClone(Task):
 
         core_begin = datetime.datetime.utcnow()
 
-        # Find incoming transfers that are ONGOING
+        # Find incoming transfers that are STAGED
         ongoing_transfers: list[IncomingTransfer] = (
             session.query(IncomingTransfer)
-            .filter_by(status=TransferStatus.ONGOING)
+            .filter_by(status=TransferStatus.STAGED)
             .all()
         )
 
