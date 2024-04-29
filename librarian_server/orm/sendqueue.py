@@ -97,7 +97,7 @@ class SendQueue(db.Base):
         item = cls(
             priority=priority,
             destination=destination,
-            created_time=datetime.datetime.now(datetime.UTC),
+            created_time=datetime.datetime.now(datetime.timezone.utc),
             transfers=transfers,
             retries=0,
             async_transfer_manager=async_transfer_manager,

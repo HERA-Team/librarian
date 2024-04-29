@@ -36,7 +36,7 @@ class CheckClone(Task):
         Loop through all valid OutgoingTransfers and check their status.
         """
 
-        core_begin = datetime.datetime.now(datetime.UTC)
+        core_begin = datetime.datetime.now(datetime.timezone.utc)
 
         ongoing_transfers = list[OutgoingTransfer] = (
             session.query(OutgoingTransfer)
@@ -52,7 +52,7 @@ class CheckClone(Task):
         transfers_processed = 0
 
         for transfer in ongoing_transfers:
-            current_time = datetime.datetime.now(datetime.UTC)
+            current_time = datetime.datetime.now(datetime.timezone.utc)
             elapsed_time = current_time - core_begin
             over_time = elapsed_time > self.soft_timeout if self.soft_timeout else False
 

@@ -167,7 +167,7 @@ class SendClone(Task):
             # No point canceling job, our freind could just be down for a while.
             return
 
-        current_time = datetime.datetime.now(datetime.UTC)
+        current_time = datetime.datetime.now(datetime.timezone.utc)
         age_in_days = datetime.timedelta(days=self.age_in_days)
         oldest_file_age = current_time - age_in_days
 

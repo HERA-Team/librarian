@@ -36,10 +36,10 @@ class ConsumeQueue(Task):
     """
 
     def on_call(self):
-        current_time = datetime.datetime.now(datetime.UTC)
+        current_time = datetime.datetime.now(datetime.timezone.utc)
         timeout_after = current_time + self.soft_timeout
 
-        while datetime.datetime.now(datetime.UTC) <= timeout_after:
+        while datetime.datetime.now(datetime.timezone.utc) <= timeout_after:
             consume_queue_item(session_maker=get_session)
 
         return
@@ -55,10 +55,10 @@ class CheckConsumedQueue(Task):
     "The status to set the completed items to. Leave this as default if you are doing typical inter-librarian transfers"
 
     def on_call(self):
-        current_time = datetime.datetime.now(datetime.UTC)
+        current_time = datetime.datetime.now(datetime.timezone.utc)
         timeout_after = current_time + self.soft_timeout
 
-        while datetime.datetime.now(datetime.UTC) <= timeout_after:
+        while datetime.datetime.now(datetime.timezone.utc) <= timeout_after:
             check_on_consumed(
                 session_maker=get_session,
                 complete_status=self.complete_status,
@@ -159,7 +159,7 @@ def check_on_consumed(
 
             # If we got down here, we can mark the transfer as consumed.
             queue_item.completed = True
-            queue_item.completed_time = datetime.datetime.now(datetime.UTC)
+            queue_item.completed_time = datetime.datetime.now(datetime.timezone.utc)
 
             session.commit()
 
@@ -192,7 +192,7 @@ def consume_queue_item(session_maker: Callable[[], "Session"]):
 
         if success:
             queue_item.consumed = True
-            queue_item.consumed_time = datetime.datetime.now(datetime.UTC)
+            queue_item.consumed_time = datetime.datetime.now(datetime.timezone.utc)
 
             # Be careful, the internal state of the async transfer manager
             # may have changed. Send it back.

@@ -190,7 +190,7 @@ class OutgoingTransfer(db.Base):
         """
 
         self.status = TransferStatus.FAILED
-        self.end_time = datetime.datetime.now(datetime.UTC)
+        self.end_time = datetime.datetime.now(datetime.timezone.utc)
 
         if commit:
             session.commit()
@@ -248,7 +248,7 @@ class OutgoingTransfer(db.Base):
         """
 
         self.status = TransferStatus.STAGED
-        self.end_time = datetime.datetime.now(datetime.UTC)
+        self.end_time = datetime.datetime.now(datetime.timezone.utc)
 
         if commit:
             session.commit()
