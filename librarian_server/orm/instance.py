@@ -7,6 +7,8 @@ what files have instances on remote librarians that we are aware about.
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
 from hera_librarian.deletion import DeletionPolicy
 
 from .. import database as db
@@ -83,6 +85,35 @@ class Instance(db.Base):
             created_time=datetime.utcnow(),
             available=True,
         )
+
+    def delete(
+        self,
+        session: Session,
+        commit: bool = True,
+        force: bool = False,
+    ):
+        """
+        Delete this instance.
+
+        Parameters
+        ----------
+        session : Session
+            The session to use for the deletion.
+        commit : bool
+            Whether or not to commit the deletion.
+        force : bool
+            Whether or not to force the deletion (i.e. ignore DeletionPolicy)
+        """
+
+        if self.deletion_policy == DeletionPolicy.ALLOWED or force:
+            self.store.store_manager.delete(Path(self.path))
+
+        session.delete(self)
+
+        if commit:
+            session.commit()
+
+        return
 
 
 class RemoteInstance(db.Base):

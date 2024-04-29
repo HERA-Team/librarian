@@ -127,13 +127,15 @@ class RecieveClone(Task):
                     f"Transfer {transfer.id} has completed. Moving file to store and creating instance."
                 )
 
+                store_path = store.store_manager.store(Path(transfer.store_path))
+
                 # Move the file to the store.
                 try:
                     # Annoyingly staging_path is absolute and store path is relative.
                     # TODO: Fix that!
                     store.store_manager.commit(
                         Path(transfer.staging_path),
-                        store.store_manager.store(Path(transfer.store_path)),
+                        store_path,
                     )
                 except Exception as e:
                     log_to_database(
@@ -161,7 +163,7 @@ class RecieveClone(Task):
 
                 # Create an instance for this file.
                 instance = Instance.new_instance(
-                    path=path_info.path,
+                    path=store_path,
                     file=file,
                     store=store,
                     deletion_policy=self.deletion_policy,

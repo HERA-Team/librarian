@@ -203,6 +203,9 @@ def test_send_from_existing_file_row(
         destination_librarian="live_server",
         age_in_days=7,
         store_preference=None,
+        # Need to set this to be big to make sure we send _everything_ for ease of testing
+        # there are 128 fake files created but there may be more in the test server...
+        send_batch_size=512,
     )
 
     with source_session_maker() as session:
@@ -284,10 +287,13 @@ def test_send_from_existing_file_row(
         ]
 
     missing_files = []
+    copied_files = []
     with librarian_database_session_maker() as session:
         for file_name in sent_filenames:
             if session.get(test_orm.File, file_name) is None:
                 missing_files.append(file_name)
+            else:
+                copied_files.append(file_name)
 
         # Check that all the transfers we intiaited are now set to
         # COMPLETE
@@ -303,7 +309,16 @@ def test_send_from_existing_file_row(
             assert transfer.status == TransferStatus.COMPLETED
 
     if missing_files != []:
-        raise ValueError(f"Missing files: " + missing_files)
+        raise ValueError(f"Missing files: " + str(missing_files))
 
     # Remove the librarians we added.
     assert mocked_admin_client.remove_librarian(name="live_server")
+
+    # Remove all the files we just copied over!
+    with librarian_database_session_maker() as session:
+        for file_name in copied_files:
+            file = session.get(test_orm.File, file_name)
+
+            file.delete(session=session, commit=False, force=True)
+
+        session.commit()

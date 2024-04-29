@@ -7,6 +7,8 @@ be a path, e.g. abcd/efgh/ijkl.txt).
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
 from .. import database as db
 from .instance import Instance
 
@@ -112,3 +114,34 @@ class File(db.Base):
             uploader=uploader,
             source=source,
         )
+
+    def delete(
+        self,
+        session: Session,
+        commit: bool = True,
+        force: bool = False,
+    ):
+        """
+        Delete this file.
+
+        Parameters
+        ----------
+        session : Session
+            The session to use for the deletion.
+        commit : bool
+            Whether or not to commit the deletion.
+        force : bool
+            Whether or not to force the deletion. If False, will raise an error if the file has instances.
+        """
+
+        for instance in self.instances:
+            instance.delete(session=session, commit=False, force=force)
+
+        for instance in self.remote_instances:
+            # TODO: Something more complete may be needed here...
+            session.delete(instance)
+
+        session.delete(self)
+
+        if commit:
+            session.commit()

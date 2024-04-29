@@ -4,6 +4,7 @@ Unit tests for endpoints in librarian_server/api/clone.py.
 
 import shutil
 from hashlib import md5
+from pathlib import Path
 
 from hera_librarian.models.clone import (
     CloneCompleteRequest,
@@ -295,8 +296,15 @@ def test_incoming_transfer_endpoints(
 
         store = session.query(test_orm.StoreMetadata).first()
 
+        # Move the file into the destination area
+
+        store_path = store.store_manager.store(
+            Path("garbage_file_test_incoming_transfer_endpoints.txt")
+        )
+        shutil.copy2(garbage_file, store_path)
+
         instance = test_orm.Instance.new_instance(
-            path=garbage_file,
+            path=store_path,
             file=file,
             store=store,
             deletion_policy="DISALLOWED",
@@ -371,10 +379,8 @@ def test_incoming_transfer_endpoints(
 
         file = session.get(test_orm.File, str(garbage_filename))
 
-        session.delete(*file.instances)
-        session.delete(*file.remote_instances)
-        session.delete(transfer)
-        session.delete(file)
+        file.delete(session=session, commit=False, force=True)
+
         session.commit()
 
 
@@ -503,6 +509,4 @@ def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename)
     # Clean up that garbage
     with get_session() as session:
         file = session.get(test_orm.File, str(garbage_filename))
-
-        session.delete(file)
-        session.commit()
+        file.delete(session=session, commit=True, force=True)

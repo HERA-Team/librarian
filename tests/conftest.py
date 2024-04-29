@@ -38,7 +38,10 @@ def garbage_file(tmp_path) -> Path:
     yield path
 
     # Delete the file for good measure.
-    path.unlink()
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 @pytest.fixture
@@ -241,13 +244,10 @@ def test_server_with_valid_file(test_server, test_orm):
     instance = session.get(test_orm.Instance, instance_id)
     file = session.get(test_orm.File, "example_file.txt")
 
-    session.delete(instance)
-    session.delete(file)
+    file.delete(session=session, commit=False, force=True)
 
     session.commit()
     session.close()
-
-    path.unlink()
 
 
 @pytest.fixture(scope="function")
@@ -300,13 +300,10 @@ def test_server_with_invalid_file(test_server, test_orm):
     instance = session.get(test_orm.Instance, instance_id)
     file = session.get(test_orm.File, "example_file.txt")
 
-    session.delete(instance)
-    session.delete(file)
+    file.delete(session=session, commit=False, force=True)
 
     session.commit()
     session.close()
-
-    path.unlink()
 
 
 @pytest.fixture(scope="function")
@@ -360,8 +357,7 @@ def test_server_with_missing_file(test_server, test_orm):
     instance = session.get(test_orm.Instance, instance_id)
     file = session.get(test_orm.File, "example_file.txt")
 
-    session.delete(instance)
-    session.delete(file)
+    file.delete(session=session, commit=False, force=True)
 
     session.commit()
     session.close()
@@ -438,10 +434,7 @@ def test_server_with_many_files_and_errors(test_server, test_orm):
 
     for file_name in file_names:
         file = session.get(test_orm.File, file_name)
-        instance = file.instances[0]
-
-        session.delete(file)
-        session.delete(instance)
+        file.delete(session=session, commit=False, force=True)
 
     for error_id in error_ids:
         error = session.get(test_orm.Error, error_id)
@@ -450,5 +443,3 @@ def test_server_with_many_files_and_errors(test_server, test_orm):
 
     session.commit()
     session.close()
-
-    path.unlink()

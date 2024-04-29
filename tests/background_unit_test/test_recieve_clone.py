@@ -89,4 +89,9 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
         == info.md5
     )
 
+    session.get(test_orm.File, "garbage_file.txt").delete(
+        session=session, commit=False, force=True
+    )
+
+    session.commit()
     session.close()

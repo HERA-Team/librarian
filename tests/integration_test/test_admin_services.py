@@ -94,6 +94,15 @@ def test_add_file(
             store_name="local_store",
         )
 
+    # Clean up after ourselves.
+    with librarian_database_session_maker() as session:
+        # Check we got the correct file.
+        file = session.get(test_orm.File, "test_upload_without_uploading.txt")
+
+        file.delete(session=session, commit=False, force=True)
+
+        session.commit()
+
 
 def test_store_list(server, admin_client):
     store_list = admin_client.get_store_list()
