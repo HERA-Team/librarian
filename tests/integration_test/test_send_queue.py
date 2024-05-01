@@ -194,7 +194,7 @@ def test_send_from_existing_file_row(
 
     source_session_maker = test_server_with_many_files_and_errors[1]
 
-    from librarian_background.queues import check_on_consumed, consume_queue_item
+    from librarian_background.queues import CheckConsumedQueue, ConsumeQueue
     from librarian_background.send_clone import SendClone
 
     # Execute the send tasks.
@@ -225,7 +225,8 @@ def test_send_from_existing_file_row(
         )
 
     # Now we try the actual send.
-    consume_queue_item(session_maker=source_session_maker)
+    consume_queue = ConsumeQueue(name="queue_consumer")
+    consume_queue.core(session_maker=source_session_maker)
 
     # Check the queue item to see if it was successfuly consumed.
     # Also check on the associated transfers.
@@ -244,7 +245,8 @@ def test_send_from_existing_file_row(
 
             assert Path(transfer.dest_path).exists()
 
-    check_on_consumed(session_maker=source_session_maker)
+    check_on_consumed = CheckConsumedQueue(name="check_on_consumed")
+    check_on_consumed.core(session_maker=source_session_maker)
 
     with source_session_maker() as session:
         queue_item = (

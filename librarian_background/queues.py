@@ -35,14 +35,25 @@ class ConsumeQueue(Task):
     or the time is up.
     """
 
-    def on_call(self):
+    def core(self, session_maker):
         current_time = datetime.datetime.now(datetime.timezone.utc)
-        timeout_after = current_time + self.soft_timeout
+        timeout_after = current_time + (
+            self.soft_timeout
+            if self.soft_timeout is not None
+            else datetime.timedelta(days=100)
+        )
 
         while datetime.datetime.now(datetime.timezone.utc) <= timeout_after:
-            consume_queue_item(session_maker=get_session)
+            ret = consume_queue_item(session_maker=session_maker)
+
+            if not ret:
+                break
 
         return
+
+    # pragma: no cover
+    def on_call(self):
+        self.core(session_maker=get_session)
 
 
 class CheckConsumedQueue(Task):
@@ -54,23 +65,34 @@ class CheckConsumedQueue(Task):
     complete_status: TransferStatus = TransferStatus.STAGED
     "The status to set the completed items to. Leave this as default if you are doing typical inter-librarian transfers"
 
-    def on_call(self):
+    def core(self, session_maker):
         current_time = datetime.datetime.now(datetime.timezone.utc)
-        timeout_after = current_time + self.soft_timeout
+        timeout_after = current_time + (
+            self.soft_timeout
+            if self.soft_timeout is not None
+            else datetime.timedelta(days=100)
+        )
 
         while datetime.datetime.now(datetime.timezone.utc) <= timeout_after:
-            check_on_consumed(
-                session_maker=get_session,
+            ret = check_on_consumed(
+                session_maker=session_maker,
                 complete_status=self.complete_status,
             )
 
+            if not ret:
+                break
+
         return
+
+    # pragma: no cover
+    def on_call(self):
+        self.core(session_maker=get_session)
 
 
 def check_on_consumed(
     session_maker: Callable[[], "Session"],
     complete_status: TransferStatus = TransferStatus.STAGED,
-):
+) -> bool:
     """
     Check on the 'consumed' SendQueue items. Loop through everything with
     consumed = True, and ask to see if their transfers have gone through.
@@ -93,12 +115,22 @@ def check_on_consumed(
         The status to mark the transfer as if it is complete. By default, this
         is STAGED. All OutgoingTransfer objects will have their status' updated
         in this case.
+
+    Returns
+    -------
+
+    status: bool
+        If we return False, then there was nothing to consume. A return value of
+        True indicates that we consmed an item.
     """
 
     with session_maker() as session:
         stmt = select(SendQueue).with_for_update(skip_locked=True)
         stmt = stmt.filter_by(consumed=True).filter_by(completed=False)
         queue_items = session.execute(stmt).scalars().all()
+
+        if len(queue_items) == 0:
+            return False
 
         for queue_item in queue_items:
             current_status = queue_item.async_transfer_manager.transfer_status
@@ -163,12 +195,15 @@ def check_on_consumed(
 
             session.commit()
 
-    return
+    return True
 
 
-def consume_queue_item(session_maker: Callable[[], "Session"]):
+def consume_queue_item(session_maker: Callable[[], "Session"]) -> bool:
     """
     Consume the current, oldest, and highest priority item.
+
+    If we return False, then there was nothing to consume. A return value of
+    True indicates that we consmed an item.
     """
 
     with session_maker() as session:
@@ -179,7 +214,7 @@ def consume_queue_item(session_maker: Callable[[], "Session"]):
 
         if queue_item is None:
             # Nothing to do!
-            return
+            return False
 
         # Otherwise, we are free to consume this item.
         transfer_list = [
@@ -202,4 +237,4 @@ def consume_queue_item(session_maker: Callable[[], "Session"]):
 
         session.commit()
 
-    return
+    return True

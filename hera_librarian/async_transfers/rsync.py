@@ -3,6 +3,7 @@ A transfer manager for rsync transfers.
 """
 
 from pathlib import Path
+from socket import gethostname
 
 import sysrsync
 
@@ -20,7 +21,9 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
 
     @property
     def valid(self) -> bool:
-        # TODO: figure out how to check we can rsync to a hostname.
+        if self.hostname == gethostname():
+            return True
+
         return False
 
     def transfer(self, local_path: Path, remote_path: Path):
@@ -28,7 +31,9 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
             sysrsync.run(
                 source=local_path,
                 destination=remote_path,
-                destination_ssh=self.hostname,
+                destination_ssh=(
+                    self.hostname if self.hostname != gethostname() else None
+                ),
                 strict=True,
             )
 
