@@ -2,7 +2,7 @@
 The public-facing LibrarianClient object.
 """
 
-import json as jsonlib
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Optional
@@ -204,22 +204,22 @@ class LibrarianClient:
 
         if str(r.status_code)[0] != "2":
             try:
-                json = r.json()
+                response_json = r.json()
             except requests.exceptions.JSONDecodeError:
-                json = {}
+                response_json = {}
 
             # HTTPException
-            if "detail" in json:
+            if "detail" in response_json:
                 try:
-                    json = jsonlib.loads(json["detail"])
-                except jsonlib.JSONDecodeError:
-                    json = {}
+                    response_json = json.loads(response_json["detail"])
+                except json.JSONDecodeError:
+                    response_json = {}
 
             raise LibrarianHTTPError(
                 url=endpoint,
                 status_code=r.status_code,
-                reason=json.get("reason", "<no reason provided>"),
-                suggested_remedy=json.get(
+                reason=response_json.get("reason", "<no reason provided>"),
+                suggested_remedy=response_json.get(
                     "suggested_remedy", "<no suggested remedy provided>"
                 ),
             )
@@ -1000,7 +1000,8 @@ class AdminClient(LibrarianClient):
 
         """
 
-        # TODO: Use the batch clone endpoints now to do this.
+        # TODO: Use the batch clone endpoints now to perform this ingestion
+        # as we can dramatically reduce the number of requests.
 
         # We will use the clone endpoints on the server for this process, as
         # it is effectively a self-managed clone.
@@ -1059,7 +1060,8 @@ class AdminClient(LibrarianClient):
         )
 
         # Because this is a syncronous transfer from now on, we need to set
-        # the status as "staged" on the server.
+        # the status as "staged" on the server so that it can be found by the
+        # recv_clone task.
 
         try:
             staged_request = CloneStagedRequest(

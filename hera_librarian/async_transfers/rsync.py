@@ -14,6 +14,12 @@ from .core import CoreAsyncTransferManager
 
 
 class RsyncAsyncTransferManager(CoreAsyncTransferManager):
+    """
+    A transfer manager that uses rsync. For now, this only
+    allows for transfers on the current hostname (as it is
+    not currently intended to be used in production).
+    """
+
     hostname: str
 
     transfer_attempted: bool = False
@@ -44,13 +50,16 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
     def batch_transfer(self, paths: list[tuple[Path]]):
         copy_success = True
 
+        self.transfer_attempted = True
+
+        # This is a syncronous loop over these, but the transfers
+        # are performed in an entirely separate thread.
         for local_path, remote_path in paths:
             copy_success = copy_success and self.transfer(
                 local_path=local_path, remote_path=remote_path
             )
 
         # Set local
-        self.transfer_attempted = True
         self.transfer_complete = copy_success
 
         return copy_success

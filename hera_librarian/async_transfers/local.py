@@ -69,6 +69,8 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
         copy_success = False
 
         if local_path.is_dir():
+            # Note that dirs_exist_ok is not acceptable here for the
+            # case where there is a folder that is being used as the File.
             copy_success = shutil.copytree(local_path, remote_path)
         else:
             # Copy2 copies more metadata.

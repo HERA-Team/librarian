@@ -7,9 +7,11 @@ from typing import Union
 
 from pydantic import BaseModel, Field
 
-from hera_librarian.async_transfers.local import LocalAsyncTransferManager
-from hera_librarian.async_transfers.rsync import RsyncAsyncTransferManager
-from hera_librarian.transfers.local import LocalTransferManager
+from hera_librarian.async_transfers import (
+    LocalAsyncTransferManager,
+    RsyncAsyncTransferManager,
+)
+from hera_librarian.transfers import LocalTransferManager
 
 
 class CloneInitiationRequest(BaseModel):
