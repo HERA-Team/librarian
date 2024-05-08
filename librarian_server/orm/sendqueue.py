@@ -46,7 +46,7 @@ class SendQueue(db.Base):
     id = db.Column(db.Integer, primary_key=True)
     "The unique identifier for this item in the queue."
     priority = db.Column(db.Integer, nullable=False)
-    "The priority of this item in the queue. Lower is higher priority."
+    "The priority of this item in the queue. Higher is higher priority."
     created_time: datetime.datetime = db.Column(db.DateTime, nullable=False)
     "The time that this item was added to the queue."
     transfers = db.relationship("OutgoingTransfer", back_populates="send_queue")
