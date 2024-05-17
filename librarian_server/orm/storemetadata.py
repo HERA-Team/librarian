@@ -45,7 +45,8 @@ class StoreMetadata(db.Base):
     # store_manager: CoreStore
     # The transfer managers that can be used by this store.
     # transfer_managers: dict[str, CoreTransferManager]
-    # The async transfer managers that can be used by this store.
+    # The async transfer managers that can be used by this store. These are the ones
+    # known to this librarian about itself, which are sent to other librarians.
     # async_transfer_managers: dict[str, AsyncCoreTransferManager]
 
     __tablename__ = "store_metadata"

@@ -42,6 +42,8 @@ ALLOWED_UPDATES = {
         # Complete is a special status that must be handled
         # by other endpoints. You can never complete something
         # because it would require syncronous file moves, etc.
+        # This is handled by the RecieveClone background task
+        # or truly sychronously during uploads.
         # TransferStatus.COMPLETED,
         TransferStatus.FAILED,
         TransferStatus.CANCELLED,

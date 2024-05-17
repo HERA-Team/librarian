@@ -113,14 +113,16 @@ def de_duplicate_file_and_transfer(
 ) -> IncomingTransfer:
     """
     Search for already-existing files and transfers, and de-duplicate
-    them as necessary.
+    them as necessary. This is important in case somebody tries to upload
+    a file twice, or they start an upload and the actual file transfer is
+    cut-off, meaning they then try again.
     """
 
     # First, check if we already have this file; if we do, then cancel
     # the whole business.
     if session.get(File, str(destination_location)):
         log.debug(
-            "File {destination_location} already exists on librarian. Returning error."
+            f"File {destination_location} already exists on librarian. Returning error."
         )
 
         raise HTTPException(
@@ -154,7 +156,7 @@ def de_duplicate_file_and_transfer(
 
     if existing_transfer is not None:
         log.info(
-            f"Found an existing transfers with checksum "
+            "Found an existing transfers with checksum "
             f"{upload_checksum}. Checking existing transfer status."
         )
 
@@ -211,9 +213,9 @@ def de_duplicate_file_and_transfer(
     transfer = IncomingTransfer.new_transfer(
         source=source,
         uploader=uploader,
-        # A little confusing, but upload_name here is the file name
-        # as it should be ingested (incl. extra path), but upload_name is the
-        # actual 'file name'
+        # A little confusing, but upload_name as provided in the request model is the file name
+        # as it should be ingested (incl. extra path), but upload_name in the transfer
+        # is the actual 'file name', the end of the path.
         upload_name=str(destination_location),
         transfer_size=upload_size,
         transfer_checksum=upload_checksum,

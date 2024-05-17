@@ -165,7 +165,7 @@ def check_on_consumed(
                             message=(
                                 f"Librarian {queue_item.destination} was not found in "
                                 f"the database, returning error {e}. Will try again later "
-                                "to ocmplete this transfer, but remedy is suggested."
+                                "to complete this transfer, but remedy is suggested."
                             ),
                         )
 

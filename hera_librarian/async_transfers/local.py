@@ -35,6 +35,15 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
 
     def transfer(self, local_path: Path, remote_path: Path):
         """
+        Transfer a file from the local filesystem to the remote filesystem.
+
+        Parameters
+        ----------
+        local_path : Path
+            The path to the local file.
+        remote_path : Path
+            The path to the file on the remote machine.
+
         Raises
         ------
 

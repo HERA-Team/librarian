@@ -1032,7 +1032,7 @@ class AdminClient(LibrarianClient):
             else:
                 raise e
 
-        # Now set as ongoign...
+        # Now set as ongoing...
 
         ongoing_request = CloneOngoingRequest(
             source_transfer_id=initiaton_response.source_transfer_id,

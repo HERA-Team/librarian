@@ -17,7 +17,8 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
     """
     A transfer manager that uses rsync. For now, this only
     allows for transfers on the current hostname (as it is
-    not currently intended to be used in production).
+    not intended to be used in production; for that Globus
+    is the main supported method).
     """
 
     hostname: str
