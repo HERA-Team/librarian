@@ -26,11 +26,11 @@ dependencies = [
     "sysrsync == 1.1.1",
 ]
 authors = [
-    {name = "HERA Team", email = "hera@lists.berkeley.edu"},
-    {name = "Simons Observatory"},
-    {name = "Peter Williams"},
-    {name = "Paul La Plante"},
     {name = "Josh Borrow"},
+    {name = "Simons Observatory"},
+    {name = "Paul La Plante"},
+    {name = "HERA Team", email = "hera@lists.berkeley.edu"},
+    {name = "Peter Williams"},
 ]
 maintainers = [
     {name = "Simons Observatory"},
