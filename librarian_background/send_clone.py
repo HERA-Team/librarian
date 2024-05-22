@@ -124,7 +124,7 @@ class SendClone(Task):
     "Name of the store to prefer when sending files. If None, we will use whatever store is available for sending that file."
     send_batch_size: int = 128
 
-    def on_call(self):
+    def on_call(self):  # pragma: no cover
         with get_session() as session:
             return self.core(session=session)
 
@@ -138,7 +138,8 @@ class SendClone(Task):
             session.query(Librarian).filter_by(name=self.destination_librarian).first()
         )
 
-        if librarian is None:
+        # Only used when there is a botched config.
+        if librarian is None:  # pragma: no cover
             log_to_database(
                 severity=ErrorSeverity.CRITICAL,
                 category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
@@ -209,7 +210,8 @@ class SendClone(Task):
                 .first()
             )
 
-            if use_store is None:
+            # Botched configuration!
+            if use_store is None:  # pragma: no cover
                 log_to_database(
                     severity=ErrorSeverity.CRITICAL,
                     category=ErrorCategory.CONFIGURATION,

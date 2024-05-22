@@ -197,12 +197,25 @@ def test_send_from_existing_file_row(
     from librarian_background.queues import CheckConsumedQueue, ConsumeQueue
     from librarian_background.send_clone import SendClone
 
+    # First things first - remove the instances from one file, and mark one file
+    # as having no available instances.
+    with source_session_maker() as session:
+        files = session.query(test_orm.File).limit(2)
+
+        for instance in files[0].instances:
+            instance.delete(session=session, commit=False)
+
+        for instance in files[1].instances:
+            instance.available = False
+
+        session.commit()
+
     # Execute the send tasks.
     generate_task = SendClone(
         name="generate_queues",
         destination_librarian="live_server",
         age_in_days=7,
-        store_preference=None,
+        store_preference="local_store",
         # Need to set this to be big to make sure we send _everything_ for ease of testing
         # there are 128 fake files created but there may be more in the test server...
         send_batch_size=512,

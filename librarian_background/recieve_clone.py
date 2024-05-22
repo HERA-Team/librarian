@@ -40,7 +40,7 @@ class RecieveClone(Task):
     files_per_run: int = 1024
     "The number of files to process per run."
 
-    def on_call(self):
+    def on_call(self):  # pragma: no cover
         with get_session() as session:
             return self.core(session=session)
 
