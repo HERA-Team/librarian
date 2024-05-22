@@ -4,15 +4,14 @@ Sends clones of files to a remote librarian.
 
 import datetime
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 from schedule import CancelJob
 from sqlalchemy import select
 
+from hera_librarian.client import LibrarianClient
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
 from hera_librarian.exceptions import LibrarianError
-from hera_librarian.models.checkin import CheckinUpdateRequest, CheckinUpdateResponse
 from hera_librarian.models.clone import (
     CloneBatchInitiationRequest,
     CloneBatchInitiationRequestFileItem,
@@ -106,6 +105,233 @@ def process_batch(
         )
 
     return outgoing_transfers, outgoing_information
+
+
+def use_batch_to_call_librarian(
+    outgoing_transfers: list[OutgoingTransfer],
+    outgoing_information: list[dict[str, Any]],
+    client: LibrarianClient,
+    session: Session,
+) -> bool | CloneBatchInitiationResponse:
+    """
+    Use the batch to call the librarian and stage the clone.
+    Returns a boolean; if this call was unsucessful, the transfers
+    are failed and we return False.
+
+    Parameters
+    ----------
+    outgoing_transfers : list[OutgoingTransfer]
+        List of outgoing transfers to send.
+    outgoing_information : list[dict[str, Any]]
+        List of information about the outgoing transfers. (from process_batch)
+    client : LibrarianClient
+        Client connection to the remote librarian.
+    session : Session
+        SQLAlchemy session to use.
+
+    Returns
+    -------
+    bool | CloneBatchInitiationResponse
+        Truthy if the call was successful, False otherwise.
+
+    """
+    # Now the outgoing transfers all have IDs! We can create the batch
+    # items.
+    batch_items = [
+        CloneBatchInitiationRequestFileItem(source_transfer_id=x.id, **y)
+        for x, y in zip(outgoing_transfers, outgoing_information)
+    ]
+
+    batch = CloneBatchInitiationRequest(
+        uploads=batch_items,
+        source=server_settings.name,
+        total_size=sum((x["upload_size"] for x in outgoing_information)),
+    )
+
+    try:
+        response: CloneBatchInitiationResponse = client.post(
+            endpoint="clone/batch_stage",
+            request=batch,
+            response=CloneBatchInitiationResponse,
+        )
+    except Exception as e:
+        # Oh no, we can't call up the librarian!
+        log_to_database(
+            severity=ErrorSeverity.ERROR,
+            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+            message=(
+                f"Unable to communicate with remote librarian for batch "
+                f"to stage clone with exception {e}."
+            ),
+            session=session,
+        )
+
+        # What a waste...
+        for transfer in outgoing_transfers:
+            transfer.fail_transfer(session=session, commit=False)
+
+        session.commit()
+
+        return False
+
+    return response
+
+
+def call_destination_and_state_ongoing(send: SendQueue, session: Session):
+    """
+    Call the destination librarian and state the transfer as ongoing.
+    """
+
+    try:
+        send.update_transfer_status(
+            new_status=TransferStatus.ONGOING,
+            session=session,
+        )
+    except AttributeError as e:
+        # Incorrect downstream librarian. This is a weird programming error,
+        # that is only reachable if someone deleted the librarian in the
+        # database between this process starting and ending.
+        log_to_database(
+            severity=ErrorSeverity.CRITICAL,
+            category=ErrorCategory.PROGRAMMING,
+            message=e.message,
+            session=session,
+        )
+    except LibrarianError as e:
+        # Can't call up downstream librarian. Already been called in.
+        pass
+    except Exception as e:
+        # Unhandled!!!
+        pass
+
+
+def create_send_queue_item(
+    response: CloneBatchInitiationResponse,
+    outgoing_transfers: list[OutgoingTransfer],
+    librarian: Librarian,
+    session: Session,
+) -> tuple[SendQueue | bool, Any, dict[int, CloneBatchInitiationRequestFileItem]]:
+    """
+    Create the send queue item for the transfers.
+
+    Parameters
+    ----------
+    response : CloneBatchInitiationResponse
+        Response from the librarian for the batch upload.
+    outgoing_transfers : list[OutgoingTransfer]
+        List of outgoing transfers that were sent.
+    librarian : Librarian
+        Librarian that we are sending to.
+    session : Session
+        SQLAlchemy session to use.
+
+    Returns
+    -------
+    SendQueue | bool
+        The send queue item that was created, or False if it was not created.
+    Any
+        Transfer provider that was used.
+    dict[int, CloneBatchInitiationRequestFileItem]
+        Mapping of source transfer IDs to the remote transfer information.
+    """
+
+    transfer_map: dict[int:CloneBatchInitiationRequestFileItem] = {
+        x.source_transfer_id: x for x in response.uploads
+    }
+
+    # Our response may not have successfully staged all files.
+    # What can we do in that scenario..? I guess we just drop any
+    # failed transfers. This likely won't happen in practice,
+    # but it does not hurt to guard against it.
+
+    created_transfers = {x.id for x in outgoing_transfers}
+    remote_accepted_transfers = set(transfer_map.keys())
+
+    not_accepted_transfers = created_transfers ^ remote_accepted_transfers
+
+    # In all liklehood, this loop will never run. If it does, that's probably a bug.
+    for tid in not_accepted_transfers:
+        log_to_database(
+            severity=ErrorSeverity.ERROR,
+            category=ErrorCategory.TRANSFER,
+            message=(
+                f"Transfer ID {tid} was not returned from the batch upload process. "
+                "Failing this transfer internally, and continuing, but this "
+                "should not happen."
+            ),
+            session=session,
+        )
+
+        # Because we want to re-use the list, need to iterate through it.
+        matches = lambda x: x.id == tid
+
+        for index, transfer in enumerate(outgoing_transfers):
+            if matches(transfer):
+                transfer.fail_transfer(session=session, commit=True)
+
+                outgoing_transfers.pop(index)
+
+                break
+
+    # Clean list of outoging transfers that have matching incoming transfers on
+    # the destination librarian.
+
+    if len(response.async_transfer_providers) == 0:
+        # No transfer providers are available at all for that librarian.
+        log_to_database(
+            severity=ErrorSeverity.WARNING,
+            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+            message=(
+                f"No transfer providers to send to {librarian}, "
+                f"were provided. Failing all associated transfers."
+            ),
+            session=session,
+        )
+
+        for transfer in outgoing_transfers:
+            transfer.fail_transfer(session=session, commit=False)
+
+        session.commit()
+
+        # Break out of the loop.
+        return False, None, None
+
+    for transfer_provider in response.async_transfer_providers.values():
+        if transfer_provider.valid:
+            break
+
+    if not transfer_provider.valid:
+        # We couldn't find a valid transfer manager. We will have to fail it all.
+        log_to_database(
+            severity=ErrorSeverity.WARNING,
+            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+            message=(
+                f"No valid transfer manager found for transfer to {librarian}, "
+                f"was provided {list(response.async_transfer_providers.keys())}. Failing "
+                "all associated transfers."
+            ),
+            session=session,
+        )
+
+        for transfer in outgoing_transfers:
+            transfer.fail_transfer(session=session, commit=False)
+
+        session.commit()
+
+        # Break out of the loop.
+        return False, None, None
+
+    send = SendQueue.new_item(
+        priority=0,
+        destination=librarian.name,
+        transfers=outgoing_transfers,
+        async_transfer_manager=transfer_provider,
+    )
+
+    session.add(send)
+    session.commit()
+
+    return send, transfer_provider, transfer_map
 
 
 class SendClone(Task):
@@ -256,150 +482,43 @@ class SendClone(Task):
             session.add_all(outgoing_transfers)
             session.commit()
 
-            # Now the outgoing transfers all have IDs! We can create the batch
-            # items.
-            batch_items = [
-                CloneBatchInitiationRequestFileItem(source_transfer_id=x.id, **y)
-                for x, y in zip(outgoing_transfers, outgoing_information)
-            ]
-
-            batch = CloneBatchInitiationRequest(
-                uploads=batch_items,
-                source=server_settings.name,
-                total_size=sum((x["upload_size"] for x in outgoing_information)),
+            response = use_batch_to_call_librarian(
+                outgoing_transfers=outgoing_transfers,
+                outgoing_information=outgoing_information,
+                client=client,
+                session=session,
             )
 
-            try:
-                response: CloneBatchInitiationResponse = client.post(
-                    endpoint="clone/batch_stage",
-                    request=batch,
-                    response=CloneBatchInitiationResponse,
-                )
-            except Exception as e:
-                # Oh no, we can't call up the librarian!
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                    message=(
-                        f"Unable to communicate with remote librarian for batch "
-                        f"to stage clone with exception {e}."
-                    ),
-                    session=session,
-                )
-
-                # What a waste...
-                for transfer in outgoing_transfers:
-                    transfer.fail_transfer(session=session, commit=False)
-
-                session.commit()
-
+            # We were unable to speak to the librarian, and have had our
+            # transfers cancelled for us. Time to move on to the next
+            # batch and hope for the best.
+            if not response:
                 continue
 
             # Ok, they got out stuff. Need to do two things now:
             # - Create the queue send item
             # - Update the transfers with their information.
 
-            transfer_map: dict[int:CloneBatchInitiationRequestFileItem] = {
-                x.source_transfer_id: x for x in response.uploads
-            }
-
-            # Our response may not have successfully staged all files.
-            # What can we do in that scenario..? I guess we just drop any
-            # failed transfers. This likely won't happen in practice,
-            # but it does not hurt to guard against it.
-
-            created_transfers = {x.id for x in outgoing_transfers}
-            remote_accepted_transfers = set(transfer_map.keys())
-
-            not_accepted_transfers = created_transfers ^ remote_accepted_transfers
-
-            # In all liklehood, this loop will never run. If it does, that's probably a bug.
-            for tid in not_accepted_transfers:
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.TRANSFER,
-                    message=(
-                        f"Transfer ID {tid} was not returned from the batch upload process. "
-                        "Failing this transfer internally, and continuing, but this "
-                        "should not happen."
-                    ),
-                    session=session,
-                )
-
-                # Because we want to re-use the list, need to iterate through it.
-                matches = lambda x: x.id == tid
-
-                for index, transfer in enumerate(outgoing_transfers):
-                    if matches(transfer):
-                        transfer.fail_transfer(session=session, commit=True)
-
-                        outgoing_transfers.pop(index)
-
-                        break
-
-            # Clean list of outoging transfers that have matching incoming transfers on
-            # the destination librarian.
-
-            if len(response.async_transfer_providers) == 0:
-                # No transfer providers are available at all for that librarian.
-                log_to_database(
-                    severity=ErrorSeverity.WARNING,
-                    category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                    message=(
-                        f"No transfer providers to send to {librarian}, "
-                        f"were provided. Failing all associated transfers."
-                    ),
-                    session=session,
-                )
-
-                for transfer in outgoing_transfers:
-                    transfer.fail_transfer(session=session, commit=False)
-
-                session.commit()
-                break
-
-            for transfer_provider in response.async_transfer_providers.values():
-                if transfer_provider.valid:
-                    break
-
-            if not transfer_provider.valid:
-                # We couldn't find a valid transfer manager. We will have to fail it all.
-                log_to_database(
-                    severity=ErrorSeverity.WARNING,
-                    category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                    message=(
-                        f"No valid transfer manager found for transfer to {librarian}, "
-                        f"was provided {list(response.async_transfer_providers.keys())}. Failing "
-                        "all associated transfers."
-                    ),
-                    session=session,
-                )
-
-                for transfer in outgoing_transfers:
-                    transfer.fail_transfer(session=session, commit=False)
-
-                session.commit()
-                break
-
-            send = SendQueue.new_item(
-                priority=0,
-                destination=self.destination_librarian,
-                transfers=outgoing_transfers,
-                async_transfer_manager=transfer_provider,
+            send, transfer_provider, transfer_map = create_send_queue_item(
+                response=response,
+                outgoing_transfers=outgoing_transfers,
+                librarian=librarian,
+                session=session,
             )
 
-            session.add(send)
-            session.commit()
+            # Send is falsey if there was a problem in creating the send
+            # queue item. In that, case we've failed everything, and should break
+            # and come back later.
+            if not send:
+                break
 
             # Now update the outgoing transfers with their information.
-
-            destination_transfer_ids = []
             for transfer in outgoing_transfers:
                 remote_transfer_info: CloneBatchInitiationRequestFileItem = (
                     transfer_map.get(transfer.id, None)
                 )
 
-                if remote_transfer_info is None:
+                if remote_transfer_info is None:  # pragma: no cover
                     # This is an unreachable state; we already purged these
                     # scenarios.
                     log_to_database(
@@ -430,26 +549,6 @@ class SendClone(Task):
             # Finally, call up the destination again and tell them everything is on its
             # way.
 
-            try:
-                send.update_transfer_status(
-                    new_status=TransferStatus.ONGOING,
-                    session=session,
-                )
-            except AttributeError as e:
-                # Incorrect downstream librarian. This is a weird programming error,
-                # that is only reachable if someone deleted the librarian in the
-                # database between this process starting and ending.
-                log_to_database(
-                    severity=ErrorSeverity.CRITICAL,
-                    category=ErrorCategory.PROGRAMMING,
-                    message=e.message,
-                    session=session,
-                )
-            except LibrarianError as e:
-                # Can't call up downstream librarian. Already been called in.
-                pass
-            except Exception as e:
-                # Unhandled!!!
-                pass
+            call_destination_and_state_ongoing(send=send, session=session)
 
         return
