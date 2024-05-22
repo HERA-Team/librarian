@@ -177,34 +177,6 @@ def use_batch_to_call_librarian(
     return response
 
 
-def call_destination_and_state_ongoing(send: SendQueue, session: Session):
-    """
-    Call the destination librarian and state the transfer as ongoing.
-    """
-
-    try:
-        send.update_transfer_status(
-            new_status=TransferStatus.ONGOING,
-            session=session,
-        )
-    except AttributeError as e:
-        # Incorrect downstream librarian. This is a weird programming error,
-        # that is only reachable if someone deleted the librarian in the
-        # database between this process starting and ending.
-        log_to_database(
-            severity=ErrorSeverity.CRITICAL,
-            category=ErrorCategory.PROGRAMMING,
-            message=e.message,
-            session=session,
-        )
-    except LibrarianError as e:
-        # Can't call up downstream librarian. Already been called in.
-        pass
-    except Exception as e:
-        # Unhandled!!!
-        pass
-
-
 def create_send_queue_item(
     response: CloneBatchInitiationResponse,
     outgoing_transfers: list[OutgoingTransfer],
@@ -332,6 +304,31 @@ def create_send_queue_item(
     session.commit()
 
     return send, transfer_provider, transfer_map
+
+
+def call_destination_and_state_ongoing(send: SendQueue, session: Session):
+    """
+    Call the destination librarian and state the transfer as ongoing.
+    """
+
+    try:
+        send.update_transfer_status(
+            new_status=TransferStatus.ONGOING,
+            session=session,
+        )
+    except AttributeError as e:
+        # Incorrect downstream librarian. This is a weird programming error,
+        # that is only reachable if someone deleted the librarian in the
+        # database between this process starting and ending.
+        log_to_database(
+            severity=ErrorSeverity.CRITICAL,
+            category=ErrorCategory.PROGRAMMING,
+            message=e.message,
+            session=session,
+        )
+    except LibrarianError as e:
+        # Can't call up downstream librarian. Already been called in.
+        pass
 
 
 class SendClone(Task):
@@ -492,7 +489,9 @@ class SendClone(Task):
             # We were unable to speak to the librarian, and have had our
             # transfers cancelled for us. Time to move on to the next
             # batch and hope for the best.
-            if not response:
+
+            # Tested outside of the main loop.
+            if not response:  # pragma: no cover
                 continue
 
             # Ok, they got out stuff. Need to do two things now:
@@ -509,7 +508,9 @@ class SendClone(Task):
             # Send is falsey if there was a problem in creating the send
             # queue item. In that, case we've failed everything, and should break
             # and come back later.
-            if not send:
+
+            # Tested outside of the main loop.
+            if not send:  # pragma: no cover
                 break
 
             # Now update the outgoing transfers with their information.

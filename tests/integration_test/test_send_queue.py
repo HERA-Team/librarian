@@ -2,6 +2,7 @@
 Tests for the send queue and associated checks.
 """
 
+from datetime import datetime
 from pathlib import Path
 from socket import gethostname
 
@@ -337,3 +338,257 @@ def test_send_from_existing_file_row(
             file.delete(session=session, commit=False, force=True)
 
         session.commit()
+
+
+def test_use_batch_to_call_librarian(
+    test_server_with_many_files_and_errors,
+    test_orm,
+):
+    # A specific test to check the scenario where we can't call up a
+    # downstream librarian because it's missing.
+
+    # Make a bunch of outgoing transfers.
+    session_maker = test_server_with_many_files_and_errors[1]
+
+    from hera_librarian import LibrarianClient
+
+    fake_client = LibrarianClient(
+        host="http://nowhere.com", port=12345, user="404", password="notfound"
+    )
+
+    from librarian_background.send_clone import use_batch_to_call_librarian
+
+    with session_maker() as session:
+        transfers = []
+        outgoing_information = []
+        for file in session.query(test_orm.File).limit(32):
+            if len(file.instances) == 0:
+                continue
+
+            transfers.append(
+                test_orm.OutgoingTransfer.new_transfer(
+                    destination="nowhere",
+                    instance=file.instances[0],
+                    file=file,
+                )
+            )
+            outgoing_information.append(
+                {
+                    "upload_size": file.size,
+                    "upload_checksum": file.checksum,
+                    "upload_name": file.name,
+                    "destination_location": file.name,
+                    "uploader": file.uploader,
+                }
+            )
+
+        session.add_all(transfers)
+        session.commit()
+
+        assert (
+            use_batch_to_call_librarian(
+                outgoing_transfers=transfers,
+                outgoing_information=outgoing_information,
+                client=fake_client,
+                session=session,
+            )
+            is False
+        )
+
+        for transfer in transfers:
+            assert transfer.status == TransferStatus.FAILED
+
+    return
+
+
+def test_create_send_queue_item_no_transfer_providers(
+    test_server_with_many_files_and_errors,
+    test_orm,
+):
+    # This tests the failure cases of calling up a destination
+    # and setting the status as ongoing.
+
+    # Make a bunch of outgoing transfers.
+    session_maker = test_server_with_many_files_and_errors[1]
+
+    from hera_librarian import LibrarianClient
+
+    fake_client = LibrarianClient(
+        host="http://nowhere.com", port=12345, user="404", password="notfound"
+    )
+
+    from librarian_background.send_clone import use_batch_to_call_librarian
+
+    with session_maker() as session:
+        transfers = []
+        outgoing_information = []
+        for file in session.query(test_orm.File).limit(32):
+            if len(file.instances) == 0:
+                continue
+
+            transfers.append(
+                test_orm.OutgoingTransfer.new_transfer(
+                    destination="nowhere",
+                    instance=file.instances[0],
+                    file=file,
+                )
+            )
+            outgoing_information.append(
+                {
+                    "upload_size": file.size,
+                    "upload_checksum": file.checksum,
+                    "upload_name": file.name,
+                    "destination_location": file.name,
+                    "uploader": file.uploader,
+                }
+            )
+
+        session.add_all(transfers)
+        session.commit()
+
+        # We can now mock up the response from the librarian
+        from hera_librarian.models.clone import (
+            CloneBatchInitiationResponse,
+            CloneBatchInitiationResponseFileItem,
+        )
+
+        # But make sure we omit one...
+        items = []
+        for transfer in transfers[:-1]:
+            items.append(
+                CloneBatchInitiationResponseFileItem(
+                    staging_name=transfer.file_name,
+                    staging_location=f"nowhere/{transfer.file_name}",
+                    upload_name=transfer.file_name,
+                    destination_location=f"nowhere/{transfer.file_name}",
+                    source_transfer_id=transfer.id,
+                    destination_transfer_id=transfer.id,
+                )
+            )
+
+        fake_response = CloneBatchInitiationResponse(
+            available_bytes_on_store=10000000000,
+            store_name="fake_store",
+            uploads=items,
+            async_transfer_providers={},
+        )
+
+        from librarian_background.send_clone import create_send_queue_item
+
+        test, _, _ = create_send_queue_item(
+            response=fake_response,
+            outgoing_transfers=transfers,
+            librarian=test_orm.Librarian(
+                name="non_existent",
+                url=fake_client.host,
+                port=fake_client.port,
+                authenticator="none:none",
+                last_seen=datetime.utcnow(),
+                last_heard=datetime.utcnow(),
+            ),
+            session=session,
+        )
+
+        assert test == False
+
+    return
+
+
+def test_create_send_queue_item_no_availability_of_transfer_manager(
+    test_server_with_many_files_and_errors,
+    test_orm,
+):
+    # This tests the failure cases of calling up a destination
+    # and setting the status as ongoing.
+
+    # Make a bunch of outgoing transfers.
+    session_maker = test_server_with_many_files_and_errors[1]
+
+    from hera_librarian import LibrarianClient
+
+    fake_client = LibrarianClient(
+        host="http://nowhere.com", port=12345, user="404", password="notfound"
+    )
+
+    from librarian_background.send_clone import use_batch_to_call_librarian
+
+    with session_maker() as session:
+        transfers = []
+        outgoing_information = []
+        for file in session.query(test_orm.File).limit(32):
+            if len(file.instances) == 0:
+                continue
+
+            transfers.append(
+                test_orm.OutgoingTransfer.new_transfer(
+                    destination="nowhere",
+                    instance=file.instances[0],
+                    file=file,
+                )
+            )
+            outgoing_information.append(
+                {
+                    "upload_size": file.size,
+                    "upload_checksum": file.checksum,
+                    "upload_name": file.name,
+                    "destination_location": file.name,
+                    "uploader": file.uploader,
+                }
+            )
+
+        session.add_all(transfers)
+        session.commit()
+
+        # We can now mock up the response from the librarian
+        from hera_librarian.models.clone import (
+            CloneBatchInitiationResponse,
+            CloneBatchInitiationResponseFileItem,
+        )
+
+        # But make sure we omit one...
+        items = []
+        for transfer in transfers[:-1]:
+            items.append(
+                CloneBatchInitiationResponseFileItem(
+                    staging_name=transfer.file_name,
+                    staging_location=f"nowhere/{transfer.file_name}",
+                    upload_name=transfer.file_name,
+                    destination_location=f"nowhere/{transfer.file_name}",
+                    source_transfer_id=transfer.id,
+                    destination_transfer_id=transfer.id,
+                )
+            )
+
+        from unittest.mock import MagicMock
+
+        from hera_librarian.async_transfers import LocalAsyncTransferManager
+
+        fake_transfer_manager = MagicMock(LocalAsyncTransferManager)
+        fake_transfer_manager.valid = False
+
+        fake_response = CloneBatchInitiationResponse(
+            available_bytes_on_store=10000000000,
+            store_name="fake_store",
+            uploads=items,
+            async_transfer_providers={"fake": fake_transfer_manager},
+        )
+
+        from librarian_background.send_clone import create_send_queue_item
+
+        test, _, _ = create_send_queue_item(
+            response=fake_response,
+            outgoing_transfers=transfers,
+            librarian=test_orm.Librarian(
+                name="non_existent",
+                url=fake_client.host,
+                port=fake_client.port,
+                authenticator="none:none",
+                last_seen=datetime.utcnow(),
+                last_heard=datetime.utcnow(),
+            ),
+            session=session,
+        )
+
+        assert test == False
+
+    return
