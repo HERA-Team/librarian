@@ -10,20 +10,21 @@ requires-python = ">=3.10"
 version = "2.1.0a"
 dependencies = [
     "alembic",
+    "argon2-cffi",
+    "checksumdir",
+    "cryptography",
     "fastapi >= 0.108.0",
-    "sqlalchemy >= 2",
+    "globus-sdk",
     "httpx",
-    "uvicorn",
     "pydantic >= 2",
     "pydantic-settings >= 2",
+    "python-dateutil",
     "pyyaml",
     "requests >= 2.27.0",
     "schedule >= 1.2.1",
-    "checksumdir",
-    "python-dateutil",
-    "argon2-cffi",
-    "cryptography",
+    "sqlalchemy >= 2",
     "sysrsync == 1.1.1",
+    "uvicorn",
 ]
 authors = [
     {name = "Josh Borrow"},
