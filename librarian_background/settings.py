@@ -194,6 +194,12 @@ class BackgroundSettings(BaseSettings):
     recieve_clone: list[RecieveCloneSettings] = []
     "Settings for the clone receiving task."
 
+    consume_queue: list[ConsumeQueueSettings] = []
+    "Settings for the consume queue task."
+
+    check_consumed_queue: list[CheckConsumedQueueSettings] = []
+    "Settings for the check consumed queue task."
+
     # Global settings:
 
     max_rsync_retries: int = 8
