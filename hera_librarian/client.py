@@ -2,6 +2,7 @@
 The public-facing LibrarianClient object.
 """
 
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Optional
@@ -16,6 +17,8 @@ from hera_librarian.models.clone import (
     CloneInitiationResponse,
     CloneOngoingRequest,
     CloneOngoingResponse,
+    CloneStagedRequest,
+    CloneStagedResponse,
 )
 
 from .authlevel import AuthLevel
@@ -201,15 +204,22 @@ class LibrarianClient:
 
         if str(r.status_code)[0] != "2":
             try:
-                json = r.json()
+                response_json = r.json()
             except requests.exceptions.JSONDecodeError:
-                json = {}
+                response_json = {}
+
+            # HTTPException
+            if "detail" in response_json:
+                try:
+                    response_json = json.loads(response_json["detail"])
+                except json.JSONDecodeError:
+                    response_json = {}
 
             raise LibrarianHTTPError(
                 url=endpoint,
                 status_code=r.status_code,
-                reason=json.get("reason", "<no reason provided>"),
-                suggested_remedy=json.get(
+                reason=response_json.get("reason", "<no reason provided>"),
+                suggested_remedy=response_json.get(
                     "suggested_remedy", "<no suggested remedy provided>"
                 ),
             )
@@ -990,6 +1000,9 @@ class AdminClient(LibrarianClient):
 
         """
 
+        # TODO: Use the batch clone endpoints now to perform this ingestion
+        # as we can dramatically reduce the number of requests.
+
         # We will use the clone endpoints on the server for this process, as
         # it is effectively a self-managed clone.
 
@@ -1019,19 +1032,24 @@ class AdminClient(LibrarianClient):
             else:
                 raise e
 
-        # Because this is a clone and is async, we need to set
-        # the status as ongoing on the server.
+        # Now set as ongoing...
 
         ongoing_request = CloneOngoingRequest(
             source_transfer_id=initiaton_response.source_transfer_id,
             destination_transfer_id=initiaton_response.destination_transfer_id,
         )
 
-        ongoing_reponse = self.post(
-            endpoint="clone/ongoing",
-            request=ongoing_request,
-            response=CloneOngoingResponse,
-        )
+        try:
+            ongoing_response: CloneOngoingResponse = self.post(
+                endpoint="clone/ongoing",
+                request=ongoing_request,
+                response=CloneOngoingResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Transfer" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
 
         transfer_managers = initiaton_response.transfer_providers
 
@@ -1039,6 +1057,27 @@ class AdminClient(LibrarianClient):
             transfer_managers=transfer_managers,
             local_path=local_path,
             remote_path=initiaton_response.staging_location,
+        )
+
+        # Because this is a syncronous transfer from now on, we need to set
+        # the status as "staged" on the server so that it can be found by the
+        # recv_clone task.
+
+        try:
+            staged_request = CloneStagedRequest(
+                source_transfer_id=initiaton_response.source_transfer_id,
+                destination_transfer_id=initiaton_response.destination_transfer_id,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Transfer" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        staged_response = self.post(
+            endpoint="clone/staged",
+            request=staged_request,
+            response=CloneStagedResponse,
         )
 
         return

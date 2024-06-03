@@ -40,7 +40,7 @@ class RecieveClone(Task):
     files_per_run: int = 1024
     "The number of files to process per run."
 
-    def on_call(self):
+    def on_call(self):  # pragma: no cover
         with get_session() as session:
             return self.core(session=session)
 
@@ -51,10 +51,10 @@ class RecieveClone(Task):
 
         core_begin = datetime.datetime.utcnow()
 
-        # Find incoming transfers that are ONGOING
+        # Find incoming transfers that are STAGED
         ongoing_transfers: list[IncomingTransfer] = (
             session.query(IncomingTransfer)
-            .filter_by(status=TransferStatus.ONGOING)
+            .filter_by(status=TransferStatus.STAGED)
             .all()
         )
 
@@ -127,13 +127,15 @@ class RecieveClone(Task):
                     f"Transfer {transfer.id} has completed. Moving file to store and creating instance."
                 )
 
+                store_path = store.store_manager.store(Path(transfer.store_path))
+
                 # Move the file to the store.
                 try:
                     # Annoyingly staging_path is absolute and store path is relative.
                     # TODO: Fix that!
                     store.store_manager.commit(
                         Path(transfer.staging_path),
-                        store.store_manager.store(Path(transfer.store_path)),
+                        store_path,
                     )
                 except Exception as e:
                     log_to_database(
@@ -161,7 +163,7 @@ class RecieveClone(Task):
 
                 # Create an instance for this file.
                 instance = Instance.new_instance(
-                    path=path_info.path,
+                    path=store_path,
                     file=file,
                     store=store,
                     deletion_policy=self.deletion_policy,

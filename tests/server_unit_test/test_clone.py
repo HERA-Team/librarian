@@ -4,6 +4,7 @@ Unit tests for endpoints in librarian_server/api/clone.py.
 
 import shutil
 from hashlib import md5
+from pathlib import Path
 
 from hera_librarian.models.clone import (
     CloneCompleteRequest,
@@ -39,7 +40,9 @@ def test_stage_negative_clone(test_client):
 
     assert response.status_code == 400
 
-    decoded_response = CloneFailedResponse.model_validate_json(response.content)
+    decoded_response = CloneFailedResponse.model_validate_json(
+        response.json()["detail"]
+    )
 
 
 def test_extreme_clone_size(test_client, test_server, test_orm):
@@ -64,7 +67,9 @@ def test_extreme_clone_size(test_client, test_server, test_orm):
     assert response.status_code == 413
 
     # Check we can decode the response
-    decoded_response = CloneFailedResponse.model_validate_json(response.content)
+    decoded_response = CloneFailedResponse.model_validate_json(
+        response.json()["detail"]
+    )
 
 
 def test_valid_stage_and_fail(test_client, test_server, test_orm):
@@ -107,7 +112,9 @@ def test_valid_stage_and_fail(test_client, test_server, test_orm):
 
     assert response.status_code == 406
 
-    decoded_response_new = CloneFailedResponse.model_validate_json(response.content)
+    decoded_response_new = CloneFailedResponse.model_validate_json(
+        response.json()["detail"]
+    )
 
     # Now fail that original transfer.
 
@@ -246,7 +253,7 @@ def test_ongoing_transfer(
     assert response.status_code == 425
 
     decoded_response_ongoing_fail = CloneFailedResponse.model_validate_json(
-        response.content
+        response.json()["detail"]
     )
 
     # Let's fail the transfer
@@ -289,8 +296,15 @@ def test_incoming_transfer_endpoints(
 
         store = session.query(test_orm.StoreMetadata).first()
 
+        # Move the file into the destination area
+
+        store_path = store.store_manager.store(
+            Path("garbage_file_test_incoming_transfer_endpoints.txt")
+        )
+        shutil.copy2(garbage_file, store_path)
+
         instance = test_orm.Instance.new_instance(
-            path=garbage_file,
+            path=store_path,
             file=file,
             store=store,
             deletion_policy="DISALLOWED",
@@ -365,10 +379,8 @@ def test_incoming_transfer_endpoints(
 
         file = session.get(test_orm.File, str(garbage_filename))
 
-        session.delete(*file.instances)
-        session.delete(*file.remote_instances)
-        session.delete(transfer)
-        session.delete(file)
+        file.delete(session=session, commit=False, force=True)
+
         session.commit()
 
 
@@ -490,11 +502,11 @@ def test_clone_file_exists(test_client, test_server, test_orm, garbage_filename)
     assert response.status_code == 409
 
     # Check we can decode the response
-    decoded_response = CloneFailedResponse.model_validate_json(response.content)
+    decoded_response = CloneFailedResponse.model_validate_json(
+        response.json()["detail"]
+    )
 
     # Clean up that garbage
     with get_session() as session:
         file = session.get(test_orm.File, str(garbage_filename))
-
-        session.delete(file)
-        session.commit()
+        file.delete(session=session, commit=True, force=True)

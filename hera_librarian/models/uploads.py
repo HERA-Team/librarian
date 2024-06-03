@@ -58,7 +58,7 @@ class UploadInitiationResponse(BaseModel):
     # Note that transfer_providers will be tried in  the order specified here. So
     # you should put the one that requires the most arguments _first_ (otherwise everything
     # will come out as a CoreTransferManager!)
-    transfer_providers: dict[str, Union[LocalTransferManager, CoreTransferManager]]
+    transfer_providers: dict[str, Union[LocalTransferManager]]
     "The available transfer providers for the client to communicate with the store."
     transfer_id: int
     "The ID of the transfer. This is used to identify the transfer when completing it."
@@ -84,7 +84,7 @@ class UploadCompletionRequest(BaseModel):
     transfer_provider_name: str
     "Name of the transfer provider that was used to upload the file."
     # See note on ordering in UploadInitiationResponse.
-    transfer_provider: Union[LocalTransferManager, CoreTransferManager]
+    transfer_provider: Union[LocalTransferManager]
     "Transfer provider that was used to upload the file."
 
     meta_mode: str

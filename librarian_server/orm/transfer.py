@@ -5,7 +5,12 @@ ORM for incoming and outgoing transfers.
 import datetime
 from typing import TYPE_CHECKING
 
-from hera_librarian.models.clone import CloneFailRequest, CloneFailResponse
+from hera_librarian.models.clone import (
+    CloneFailRequest,
+    CloneFailResponse,
+    CloneStagedRequest,
+    CloneStagedResponse,
+)
 from hera_librarian.transfer import TransferStatus
 
 from .. import database as db
@@ -145,7 +150,19 @@ class OutgoingTransfer(db.Base):
     "Name of the transfer manager that the client is using/used to upload the file."
 
     transfer_data = db.Column(db.PickleType)
-    "Serialized transfer manager data, likely from the transfer manager. For instance, this could include the Globus data."
+    "Serialized transfer manager data, likely from the transfer manager. For instance, this could include the Globus data. In practice, though, most outbound transfers are done asynchronously and this is empty."
+
+    send_queue_id = db.Column(db.Integer, db.ForeignKey("send_queue.id"))
+    "The send queue ID for this transfer, if it has one."
+    send_queue = db.relationship(
+        "SendQueue", primaryjoin="OutgoingTransfer.send_queue_id == SendQueue.id"
+    )
+    "The send queue that we are using to transfer this OutgoingTransfer."
+
+    source_path = db.Column(db.String(256))
+    "The source path of the transfer. If doing a simple 'cp', this is the first argument."
+    dest_path = db.Column(db.String(256))
+    "The destination path of the transfer. If doing a simple 'cp', this is the second argument."
 
     @classmethod
     def new_transfer(
@@ -167,14 +184,16 @@ class OutgoingTransfer(db.Base):
             start_time=datetime.datetime.utcnow(),
         )
 
-    def fail_transfer(self, session: "Session"):
+    def fail_transfer(self, session: "Session", commit: bool = True):
         """
-        Fail the transfer and commit to the database.
+        Fail the transfer and (optionally) commit to the database.
         """
 
         self.status = TransferStatus.FAILED
-        self.end_time = datetime.datetime.utcnow()
-        session.commit()
+        self.end_time = datetime.datetime.now(datetime.timezone.utc)
+
+        if commit:
+            session.commit()
 
         if self.remote_transfer_id is None:
             # No remote transfer ID, so we can't do anything.
@@ -204,13 +223,13 @@ class OutgoingTransfer(db.Base):
         )
 
         try:
-            response = client.do_pydantic_http_post(
+            response: CloneFailResponse = client.post(
                 path="/api/v2/clone/fail",
-                request_model=request,
-                response_model=CloneFailResponse,
+                request=request,
+                response=CloneFailResponse,
             )
 
-            if not response.succeeded:
+            if not response.success:
                 raise Exception(
                     "Remote librarian refused or failed to set transfer status to FAILED."
                 )
@@ -223,12 +242,61 @@ class OutgoingTransfer(db.Base):
 
         return
 
+    def staged_transfer(self, session: "Session", commit: bool = True):
+        """
+        Stage the transfer and (optionally) commit to the database.
+        """
+
+        self.status = TransferStatus.STAGED
+        self.end_time = datetime.datetime.now(datetime.timezone.utc)
+
+        if commit:
+            session.commit()
+
+        # Again, the interesting part - we need to communicate to the remote
+        # librarian that the transfer made it, and ask it to check!
+
+        librarian: Librarian = (
+            session.query(Librarian).filter_by(name=self.destination).first()
+        )
+
+        if not librarian:
+            log.error(
+                "Remote librarian does not exist when trying to fail transfer. "
+                "This state should be entirely unreachable."
+            )
+
+        client = librarian.client()
+
+        request = CloneStagedRequest(
+            source_transfer_id=self.id,
+            destination_transfer_id=self.remote_transfer_id,
+        )
+
+        try:
+            response: CloneStagedResponse = client.post(
+                path="/api/v2/clone/staged",
+                request=request,
+                response=CloneStagedResponse,
+            )
+
+            if not response.success:
+                raise Exception(
+                    "Remote librarian refused or failed to set transfer status to STAGED",
+                )
+        except Exception as e:
+            log.error(
+                f"Failed to communicate to remote librarian that transfer {self.id} "
+                f"was staged with exception {e}. It is likely that there is a stale transfer "
+                f"on remote librarian {self.destination} with id {self.remote_transfer_id}."
+            )
+
+        return
+
 
 class CloneTransfer(db.Base):
     """
     A record of a clone transfer. This is a local transfer between two stores.
-
-    TODO: Integrate this into a SneakerNet implementation.
     """
 
     __tablename__ = "clone_transfers"

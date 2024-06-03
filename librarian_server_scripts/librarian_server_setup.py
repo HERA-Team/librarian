@@ -110,7 +110,10 @@ def main():
                         "name": store_config.store_name,
                     }
                     current_store.transfer_manager_data = (
-                        store_config.transfer_manager_data
+                        (store_config.transfer_manager_data),
+                    )
+                    current_store.async_transfer_manager_data = (
+                        store_config.async_transfer_manager_data
                     )
                     migrated += 1
 
@@ -124,6 +127,7 @@ def main():
                 ingestable=store_config.ingestable,
                 store_data={**store_config.store_data, "name": store_config.store_name},
                 transfer_manager_data=store_config.transfer_manager_data,
+                async_transfer_manager_data=store_config.async_transfer_manager_data,
             )
 
             session.add(store)

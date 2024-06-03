@@ -15,6 +15,7 @@ from hera_librarian.deletion import DeletionPolicy
 
 from .check_integrity import CheckIntegrity
 from .create_clone import CreateLocalClone
+from .queues import CheckConsumedQueue, ConsumeQueue, TransferStatus
 from .recieve_clone import RecieveClone
 from .send_clone import SendClone
 
@@ -111,6 +112,9 @@ class SendCloneSettings(BackgroundTaskSettings):
     store_preference: Optional[str]
     "The store to send. If None, send all stores."
 
+    send_batch_size: int = 128
+    "The number of files to send per batch."
+
     @property
     def task(self) -> SendClone:
         return SendClone(
@@ -118,6 +122,7 @@ class SendCloneSettings(BackgroundTaskSettings):
             destination_librarian=self.destination_librarian,
             age_in_days=self.age_in_days,
             store_preference=self.store_preference,
+            send_batch_size=self.send_batch_size,
         )
 
 
@@ -129,6 +134,9 @@ class RecieveCloneSettings(BackgroundTaskSettings):
     deletion_policy: DeletionPolicy
     "The deletion policy for the incoming files."
 
+    files_per_run: int = 1024
+    "The number of files to process per run."
+
     @property
     def task(self) -> RecieveClone:
         return RecieveClone(
@@ -137,10 +145,42 @@ class RecieveCloneSettings(BackgroundTaskSettings):
         )
 
 
+class ConsumeQueueSettings(BackgroundTaskSettings):
+    """
+    Settings for the consume queue task.
+    """
+
+    @property
+    def task(self) -> ConsumeQueue:
+        return ConsumeQueue(
+            name=self.task_name,
+            soft_timeout=self.soft_timeout,
+        )
+
+
+class CheckConsumedQueueSettings(BackgroundTaskSettings):
+    """
+    Settings for the check consumed queue task.
+    """
+
+    complete_status: TransferStatus = TransferStatus.STAGED
+    "The status to set the completed items to."
+
+    @property
+    def task(self) -> CheckConsumedQueue:
+        return CheckConsumedQueue(
+            name=self.task_name,
+            complete_status=self.complete_status,
+            soft_timeout=self.soft_timeout,
+        )
+
+
 class BackgroundSettings(BaseSettings):
     """
     Background task settings, configurable.
     """
+
+    # Individual background task settings:
 
     check_integrity: list[CheckIntegritySettings] = []
     "Settings for the integrity check task."
@@ -153,6 +193,16 @@ class BackgroundSettings(BaseSettings):
 
     recieve_clone: list[RecieveCloneSettings] = []
     "Settings for the clone receiving task."
+
+    consume_queue: list[ConsumeQueueSettings] = []
+    "Settings for the consume queue task."
+
+    check_consumed_queue: list[CheckConsumedQueueSettings] = []
+    "Settings for the check consumed queue task."
+
+    # Global settings:
+
+    max_rsync_retries: int = 8
 
     model_config = SettingsConfigDict(env_prefix="librarian_background_")
 

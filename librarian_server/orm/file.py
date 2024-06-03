@@ -7,6 +7,8 @@ be a path, e.g. abcd/efgh/ijkl.txt).
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
 from .. import database as db
 from .instance import Instance
 
@@ -47,13 +49,17 @@ class File(db.Base):
     remote_instances = db.relationship("RemoteInstance", back_populates="file")
     "All remote instances of this file."
 
-    outgoing_transfers = db.relationship("OutgoingTransfer", back_populates="file")
-    "All outgoing transfers of this file"
+    outgoing_transfers = db.relationship(
+        "OutgoingTransfer", back_populates="file", cascade="all, delete-orphan"
+    )
+    "All outgoing transfers of this file. Automatically deleted when file is deleted."
 
     @classmethod
     def file_exists(self, filename: Path) -> bool:
         """
         Checks whether the file exists already in the database.
+
+        If you have a session already, just use the get() yourself.
 
         Parameters
         ----------
@@ -100,9 +106,6 @@ class File(db.Base):
             The new file object.
         """
 
-        if self.file_exists(filename):
-            raise FileExistsError(f"File {filename} already exists in database.")
-
         return File(
             name=str(filename),
             create_time=datetime.utcnow(),
@@ -111,3 +114,34 @@ class File(db.Base):
             uploader=uploader,
             source=source,
         )
+
+    def delete(
+        self,
+        session: Session,
+        commit: bool = True,
+        force: bool = False,
+    ):
+        """
+        Delete this file.
+
+        Parameters
+        ----------
+        session : Session
+            The session to use for the deletion.
+        commit : bool
+            Whether or not to commit the deletion.
+        force : bool
+            Whether or not to force the deletion. If False, will raise an error if the file has instances.
+        """
+
+        for instance in self.instances:
+            instance.delete(session=session, commit=False, force=force)
+
+        for instance in self.remote_instances:
+            # TODO: Something more complete may be needed here...
+            session.delete(instance)
+
+        session.delete(self)
+
+        if commit:
+            session.commit()

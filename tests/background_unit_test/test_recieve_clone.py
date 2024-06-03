@@ -48,7 +48,7 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
         transfer_checksum=info.md5,
     )
 
-    incoming_transfer.status = test_orm.TransferStatus.ONGOING
+    incoming_transfer.status = test_orm.TransferStatus.STAGED
     incoming_transfer.store = store
     incoming_transfer.staging_path = str(resolved_path)
     incoming_transfer.store_path = str(
@@ -89,4 +89,9 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
         == info.md5
     )
 
+    session.get(test_orm.File, "garbage_file.txt").delete(
+        session=session, commit=False, force=True
+    )
+
+    session.commit()
     session.close()

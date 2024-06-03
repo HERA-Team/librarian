@@ -88,6 +88,10 @@ def test_add_file(test_client, test_server, garbage_file, test_orm):
         assert instance.path == str(full_path)
         assert instance.store.name == "local_store"
 
+        file.delete(session=session, commit=False, force=True)
+
+        session.commit()
+
 
 def test_add_file_no_file_exists(test_client, test_server, test_orm):
     """
@@ -312,10 +316,12 @@ def test_manifest_generation_and_extra_opts(
     session.commit()
 
 
-def test_add_librarians(test_client, test_server, test_orm):
+def test_add_librarians(test_client, test_server_with_valid_file, test_orm):
     """
     Tests that we can add librarians.
     """
+
+    test_server = test_server_with_valid_file
 
     new_librarian = AdminAddLibrarianRequest(
         librarian_name="our_closest_friend",

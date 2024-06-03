@@ -12,6 +12,10 @@ from typing import Optional
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, reconstructor
 
+from hera_librarian.async_transfers import (
+    CoreAsyncTransferManager,
+    async_transfer_manager_from_name,
+)
 from hera_librarian.deletion import DeletionPolicy
 from hera_librarian.models.uploads import UploadCompletionRequest
 from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
@@ -41,6 +45,9 @@ class StoreMetadata(db.Base):
     # store_manager: CoreStore
     # The transfer managers that can be used by this store.
     # transfer_managers: dict[str, CoreTransferManager]
+    # The async transfer managers that can be used by this store. These are the ones
+    # known to this librarian about itself, which are sent to other librarians.
+    # async_transfer_managers: dict[str, AsyncCoreTransferManager]
 
     __tablename__ = "store_metadata"
 
@@ -57,7 +64,9 @@ class StoreMetadata(db.Base):
     store_data = db.Column(db.PickleType)
     "The data required for this store."
     transfer_manager_data = db.Column(db.PickleType)
-    "The transfer managers that are valid for this store."
+    "The transfer managers that are valid for this store. Used for e.g. Clone transfers and Uploads"
+    async_transfer_manager_data = db.Column(db.PickleType)
+    "The async transfer managers that are valid for this store. User for inter-librarian transfers."
 
     def __init__(
         self,
@@ -66,6 +75,7 @@ class StoreMetadata(db.Base):
         store_type: int,
         store_data: dict,
         transfer_manager_data: dict[str, dict],
+        async_transfer_manager_data: dict[str, dict] | None = None,
     ):
         super().__init__()
 
@@ -74,6 +84,11 @@ class StoreMetadata(db.Base):
         self.store_type = store_type
         self.store_data = store_data
         self.transfer_manager_data = transfer_manager_data
+
+        if async_transfer_manager_data is None:
+            async_transfer_manager_data = {}
+
+        self.async_transfer_manager_data = async_transfer_manager_data
 
         self.__init_on_load__()
 
@@ -86,6 +101,12 @@ class StoreMetadata(db.Base):
         self.transfer_managers: dict[str, CoreTransferManager] = {
             name: transfer_manager_from_name(name)(**data)
             for name, data in self.transfer_manager_data.items()
+            if data.get("available", False)
+        }
+
+        self.async_transfer_managers: dict[str, CoreAsyncTransferManager] = {
+            name: async_transfer_manager_from_name(name)(**data)
+            for name, data in self.async_transfer_manager_data.items()
             if data.get("available", False)
         }
 
