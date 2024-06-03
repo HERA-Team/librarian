@@ -15,6 +15,7 @@ from hera_librarian.deletion import DeletionPolicy
 
 from .check_integrity import CheckIntegrity
 from .create_clone import CreateLocalClone
+from .queues import CheckConsumedQueue, ConsumeQueue, TransferStatus
 from .recieve_clone import RecieveClone
 from .send_clone import SendClone
 
@@ -111,6 +112,9 @@ class SendCloneSettings(BackgroundTaskSettings):
     store_preference: Optional[str]
     "The store to send. If None, send all stores."
 
+    send_batch_size: int = 128
+    "The number of files to send per batch."
+
     @property
     def task(self) -> SendClone:
         return SendClone(
@@ -118,6 +122,7 @@ class SendCloneSettings(BackgroundTaskSettings):
             destination_librarian=self.destination_librarian,
             age_in_days=self.age_in_days,
             store_preference=self.store_preference,
+            send_batch_size=self.send_batch_size,
         )
 
 
@@ -129,11 +134,44 @@ class RecieveCloneSettings(BackgroundTaskSettings):
     deletion_policy: DeletionPolicy
     "The deletion policy for the incoming files."
 
+    files_per_run: int = 1024
+    "The number of files to process per run."
+
     @property
     def task(self) -> RecieveClone:
         return RecieveClone(
             name=self.task_name,
             deletion_policy=self.deletion_policy,
+        )
+
+
+class ConsumeQueueSettings(BackgroundTaskSettings):
+    """
+    Settings for the consume queue task.
+    """
+
+    @property
+    def task(self) -> ConsumeQueue:
+        return ConsumeQueue(
+            name=self.task_name,
+            soft_timeout=self.soft_timeout,
+        )
+
+
+class CheckConsumedQueueSettings(BackgroundTaskSettings):
+    """
+    Settings for the check consumed queue task.
+    """
+
+    complete_status: TransferStatus = TransferStatus.STAGED
+    "The status to set the completed items to."
+
+    @property
+    def task(self) -> CheckConsumedQueue:
+        return CheckConsumedQueue(
+            name=self.task_name,
+            complete_status=self.complete_status,
+            soft_timeout=self.soft_timeout,
         )
 
 
