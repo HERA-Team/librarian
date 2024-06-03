@@ -17,8 +17,9 @@ command takes a single argument, which is the path to the file to
 upload. The file will be uploaded to the librarian, and the command
 will block until the upload is complete.
 
-.. code-block::
-    $ librarian upload $LIBRARIAN_NAME /path/to/file name/on/librarian/file
+.. code-block:: bash
+    
+    librarian upload $LIBRARIAN_NAME /path/to/file name/on/librarian/file
 
 There are two important paths here: the first one (the source path), and
 the second one (the destination path). The first one is the path to the

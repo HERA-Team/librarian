@@ -21,7 +21,8 @@ likewise.
 More documentation will be added in the future noting how to set up
 the asynchronous transfers and details of transfer managers.
 
-.. code:: json
+.. code-block:: json
+
     "add_stores": [
         {
             "store_name": "store",

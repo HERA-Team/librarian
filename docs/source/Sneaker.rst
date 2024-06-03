@@ -64,7 +64,7 @@ the librarian command-line interface.
 Step 1: Adding or enabling a store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information on adding a store, see :ref:`Stores`. It is crucial
+For more information on adding a store, see `Stores <./Stores.rst>`_. It is crucial
 to mark SneakerNet stores as 'non-ingestible' (i.e. set ``ingestible: false``
 in the configuration file), otherwise they themselves will ingest new
 data passed to the librarian.
@@ -113,8 +113,8 @@ There are two core background tasks that are used in SneakerNet transfers:
 ``CreateLocalClone`` and ``ReceiveClone``. The first is used at the source site
 to create a complete clone of the data ingested into the librarian, and the
 latter is used to ingest the data into the destination librarian. More
-information on background task scheduling is available in the :ref:`Background`
-section.
+information on background task scheduling is available in the
+`Background Tasks <./Background.rst>`_ section.
 
 At each librarian site, you will also need to register the remote librarian
 using the command-line tools. This will also generally involve account

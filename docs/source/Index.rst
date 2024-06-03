@@ -1,5 +1,10 @@
-Librarian
-=========
+.. Librarian documentation master file, created by
+   sphinx-quickstart on Mon Jun  3 15:48:39 2024.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to Librarian's documentation!
+=====================================
 
 The librarian is a tool for data transfer orchestration. The librarian uses a unified,
 global, namespace for file storage (i.e. filenames are unique across the entire system),
@@ -19,14 +24,18 @@ The librarian is made up of four main parts:
   things like checking the integrity of files, recieving and sending clones to
   other librarians or drives, and any other recurring task that needs to be performed.
 
-Contents
---------
+Indices and tables
+==================
 
-- `Client <./Client.rst>`_
-- `Uploading Files <./Uploading.rst>`_
-- `Provisioning Accounts <./Provisioning.rst>`_
-- `Deployment <./Deployment.rst>`_
-- `Background Tasks <./BackgroundTasks.rst>`_
-- `Stores <./Stores.rst>`_
-- `SneakerNet <./Sneaker.rst>`_
-- `Connections <./Connections.rst>`_
+.. toctree::
+    :maxdepth: 2
+
+    Client
+    Uploading
+    Provisioning
+    Deployment
+    Stores
+    Background
+    Sneaker
+    Connections
+

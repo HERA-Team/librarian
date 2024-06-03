@@ -23,8 +23,7 @@ Each background task is configured using a small json
 object. The following two configurations are required,
 for example, for a SneakerNet transfer:
 
-.. code::json
-
+.. code-block::json
     {
       "create_local_clone": [
           {
@@ -68,10 +67,12 @@ The following background tasks are available:
   frequently accessing or transfering the files (as the integrity check is done
   on transfers anyway). This task is configured with the following additional
   parameters:
+
   * ``age_in_days``: The number of days back to check for files to verify (integer).
   * ``store_name``: The store to check the integrity of (string).
 - ``create_local_clone``: Create a local clone of the files in the librarian. This
   task is configured with the following additional parameters:
+
   * ``age_in_days``: The number of days back to check for files to clone (ineger).
   * ``clone_from``: The store to clone from (string).
   * ``clone_to``: The stores to clone to (a list of strings); only one copy is created
@@ -86,6 +87,7 @@ The following background tasks are available:
 - ``send_clone``: Send a clone of the files in the librarian to a destination librarian.
   This generates tasks in a queue that are picked up by other background tasks for
   the actual egress. This task is configured with the following additional parameters:
+
   * ``destination_librarian``: The name of the destination librarian in the internal
     database (string)
   * ``age_in_days``: The number of days back to check for files to send (integer).
@@ -96,6 +98,7 @@ The following background tasks are available:
 - ``receive_clone``: Receive a clone of the files in the librarian from a source librarian.
   This ingests copies of files from the staging area to the store area.
   This task is configured with the following additional parameters:
+
   * ``deletion_policy``: Whether new files can be deleted from the store or not.
     Can be one of ``DISALLOWED`` or ``ALLOWED`` (string).
   * ``files_per_run``: The number of files to receive in each run (integer).
@@ -113,85 +116,88 @@ Background Task Configuration Examples
 Below, we provide some examples of background task configurations for various
 scenarios.
 
-### SneakerNet Transfer (Source)
+SneakerNet Transfer (Source)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following configuration will create a local clone of the files in the librarian
 every hour, and will clone files that are up to 7 days old. The clone will be created
 in the ``clone`` store, and will clone from the ``store`` store. The system will clone
 256 files per run, and will disable the ``clone`` store if it is full.
 
-.. code::json
+.. code-block:: json
 
-    {
-      "create_local_clone": [
-          {
-              "task_name": "Local cloner",
-              "soft_timeout": "00:30:00",
-              "every": "01:00:00",
-              "age_in_days": 7,
-              "clone_from": "store",
-              "clone_to": ["clone"],
-              "files_per_run": 256,
-              "disable_store_on_full": true
-          }
-      ]
-    }
+  {
+    "create_local_clone": [
+        {
+            "task_name": "Local cloner",
+            "soft_timeout": "00:30:00",
+            "every": "01:00:00",
+            "age_in_days": 7,
+            "clone_from": "store",
+            "clone_to": ["clone"],
+            "files_per_run": 256,
+            "disable_store_on_full": true
+        }
+    ]
+  }
 
-### Inter-Librarian Transfer (Source)
+Inter-Librarian Transfer (Source)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following configuration will send a clone of the files in the librarian to a
 destination librarian every hour, and will send files that are up to 7 days old.
 The system will send 128 files per batch, and will prefer to send from the ``store``
 store. The destination librarian is called ``destination``.
 
-.. code::json
-    
-    {
-        "send_clone": [
-            {
-                "task_name": "Clone sender",
-                "soft_timeout": "00:30:00",
-                "every": "01:00:00",
-                "age_in_days": 7,
-                "store_preference": "store",
-                "send_batch_size": 128,
-                "destination_librarian": "destination"
-            }
-        ],
-        "consume_queue": [
-            {
-                "task_name": "Queue consumer",
-                "soft_timeout": "00:30:00",
-                "every": "01:00:00"
-            }
-        ],
-        "check_consumed_queue": [
-            {
-                "task_name": "Queue checker",
-                "soft_timeout": "00:30:00",
-                "every": "01:00:00"
-            }
-        ]
-    }
+.. code-block:: json
+
+  {
+    "send_clone": [
+        {
+            "task_name": "Clone sender",
+            "soft_timeout": "00:30:00",
+            "every": "01:00:00",
+            "age_in_days": 7,
+            "store_preference": "store",
+            "send_batch_size": 128,
+            "destination_librarian": "destination"
+        }
+    ],
+    "consume_queue": [
+        {
+            "task_name": "Queue consumer",
+            "soft_timeout": "00:30:00",
+            "every": "01:00:00"
+        }
+    ],
+    "check_consumed_queue": [
+        {
+            "task_name": "Queue checker",
+            "soft_timeout": "00:30:00",
+            "every": "01:00:00"
+        }
+    ]
+  }
     
 
-### Inter-Librarian Transfer (Destination)
+Inter-Librarian Transfer (Destination)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following configuration will receive a clone of the files in the librarian from a
 source librarian every hour, and this can be via SneakerNet or via the network.
 The system will receive 1024 files per batch, and will not allow new files to be
 deleted from the store.
 
-.. code::json
+.. code-block:: json
 
-    {
-        "receive_clone": [
-            {
-                "task_name": "Clone receiver",
-                "soft_timeout": "00:30:00",
-                "every": "01:00:00",
-                "deletion_policy": "DISALLOWED",
-                "files_per_run": 1024
-            }
-        ]
-    }
+  {
+      "receive_clone": [
+          {
+              "task_name": "Clone receiver",
+              "soft_timeout": "00:30:00",
+              "every": "01:00:00",
+              "deletion_policy": "DISALLOWED",
+              "files_per_run": 1024
+          }
+      ]
+  }

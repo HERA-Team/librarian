@@ -2,7 +2,7 @@ Deployment
 ==========
 
 Deploying the librarian is a relatively simple task thanks to containerisation.
-We currently _strongly_ recommend that librarian instances are deployed using
+We currently *strongly* recommend that librarian instances are deployed using
 Docker, rather than running on 'bare metal'. You will need at least two containers.
 
 1. A container running the librarian application
@@ -41,6 +41,7 @@ The configuration variables are as follows:
   be a Fernet key and is used for encrypting and decrypting the data stored
   about other librarians in the database.
 - Database settings:
+
   * ``database_driver``: The database driver to use. This should be one of the
     SQLAlchemy-supported database drivers. We recommend ``postgresql+psycopg``.
   * ``database_user``: The username to use to connect to the database.
@@ -67,6 +68,7 @@ The configuration variables are as follows:
 - ``maximal_upload_size_bytes``: The maximum size of a file that can be uploaded
   to the librarian. This is in bytes. By default, this is 50 GB.
 - Slack integration:
+
   * ``slack_webhook_enable``: Whether to use the slack hook.
   * ``slack_webhook_url_file``: The path to the file contianing the
      URL of the Slack webhook to send messages to.

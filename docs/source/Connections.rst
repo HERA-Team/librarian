@@ -111,4 +111,3 @@ On the destination librarian, you will need to add the source librarian:
                                             --authenticator=destination_librarian:$destination_librarian_password
 
 Once these accounts are setup, you can begin the background transfers.
-

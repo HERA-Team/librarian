@@ -14,3 +14,5 @@ eggs/
 container/secrets
 env*/*
 *.DS_Store*
+
+docs/build/*
