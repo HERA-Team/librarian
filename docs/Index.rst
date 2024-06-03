@@ -18,3 +18,15 @@ The librarian is made up of four main parts:
   on a different server, depending on deployment details) and are responsible for
   things like checking the integrity of files, recieving and sending clones to
   other librarians or drives, and any other recurring task that needs to be performed.
+
+Contents
+--------
+
+- `Client <./Client.rst>`_
+- `Uploading Files <./Uploading.rst>`_
+- `Provisioning Accounts <./Provisioning.rst>`_
+- `Deployment <./Deployment.rst>`_
+- `Background Tasks <./BackgroundTasks.rst>`_
+- `Stores <./Stores.rst>`_
+- `SneakerNet <./Sneaker.rst>`_
+- `Connections <./Connections.rst>`_
