@@ -16,13 +16,11 @@ from typing import TYPE_CHECKING, Callable
 from sqlalchemy import select
 
 from hera_librarian.exceptions import LibrarianError
-from hera_librarian.queues import Queue
 from hera_librarian.transfer import TransferStatus
 from librarian_server.database import get_session
-from librarian_server.logger import ErrorCategory, ErrorSeverity, log, log_to_database
+from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm.sendqueue import SendQueue
 
-from .settings import background_settings
 from .task import Task
 
 if TYPE_CHECKING:
