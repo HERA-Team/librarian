@@ -1,0 +1,15 @@
+name: Formatting
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: psf/black@stable
+        continue-on-error: true
+        with:
+          options: "--check --verbose"
+      - uses: isort/isort-action@master
+        continue-on-error: true
