@@ -4,6 +4,8 @@ A transfer manager for Globus transfers.
 
 import os
 from pathlib import Path
+from typing import Union
+from pydantic import ConfigDict
 
 import globus_sdk
 
@@ -18,36 +20,34 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     local endpoint, the destiation endpoint, and the secret
     for authentication.
     """
+    # We need the following to save the `authorizer` attribute without having
+    # to build our own pydantic model for Globus-provided classes.
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     client_id: str
+    # The client UUID associated with the entity initiating a transfer.
+    # Note that this is NOT an endpoint ID, and instead is tied either to
+    # a "thick client" or a "service account" used for authentication.
+
     secret: str
-    native_app: bool
+    # The secret associated with the client. This should be either a
+    # "refresh token" (for a thick client) or a "client secret" (for a
+    # service account).
+
+    native_app: bool = False
+    # Whether to use a Native App (true) or a Confidential App (false,
+    # default) for authorizing the client.
 
     transfer_attempted: bool = False
     transfer_complete: bool = False
     task_id: str = ""
 
-    def __init__(self, client_id, secret, native_app=False):
-        """
-        Create an asynchronous transfer manager for interacting with Globus.
-
-        See the `authorize` method for more details on how authorization is
-        performed.
-
-        Parameters
-        ----------
-        client_id : str
-            The client UUID associated with the entity initiating a transfer.
-            Note that this is NOT an endpoint ID, and instead is tied either to
-            a "thick client" or a "service account" used for authentication.
-        secret : str
-            The secret associated with the client. This should be either a
-            "refresh token" (for a thick client) or a "client secret" (for a
-            service account).
-        native_app : bool, optional
-            Whether to use a Native App (true) or a Confidential App (false,
-            default) for authorizing the client.
-        """
+    authorizer: Union[
+        globus_sdk.RefreshTokenAuthorizer,
+        globus_sdk.AccessTokenAuthorizer,
+        None,
+    ] = None
+    # Default to `None`, but allow us to save Authorizer objects on the object
 
     def authorize(self):
         """
@@ -74,18 +74,20 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         to provide the user with nicer error messages, though we may not have
         caught all possible failure modes.
         """
-        if not hasattr(self, authorizer):
+        if self.authorizer is None:
             if self.native_app:
                 try:
                     client = globus_sdk.NativeAppAuthClient(self.client_id)
                     self.authorizer = globus_sdk.RefreshTokenAuthorizer(
-                        secret, client
+                        self.secret, client
                     )
                 except globus_sdk.AuthAPIError as e:
                     return False
             else:
                 try:
-                    client = globus_sdk.ConfidentialAppAuthClient(self.client_id)
+                    client = globus_sdk.ConfidentialAppAuthClient(
+                        self.client_id, self.secret
+                    )
                     tokens = client.oauth2_client_credentials_tokens()
                     transfer_tokens_info = (
                         tokens.by_resource_server["transfer.api.globus.org"]
@@ -132,7 +134,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         remote_path: Path,
         local_endpoint: str,
         remote_endpoint: str,
-    ) -> str:
+    ) -> bool:
         """
         Attempt to transfer a book using Globus.
 
@@ -167,15 +169,15 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
         # get a TaskData object
-        task_data = _get_task_data(local_endpoint, remote_endpoint, label)
+        task_data = self._get_task_data(local_endpoint, remote_endpoint, label)
 
         # We need to figure out if the local path is actually a directory or a
         # flat file, which annoyingly requires different handling as part of the
         # Globus transfer.
         if local_path.is_dir():
-            task_data.add_item(local_path, remote_path, recursive=True)
+            task_data.add_item(str(local_path), str(remote_path), recursive=True)
         else:
-            task_data.add_item(local_path, remote_path, recursive=False)
+            task_data.add_item(str(local_path), str(remote_path), recursive=False)
 
         # try to submit the task
         try:
@@ -191,7 +193,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         paths: list[tuple[Path]],
         local_endpoint,
         remote_endpoint,
-    ):
+    ) -> bool:
         self.transfer_attempted = True
 
         # We have to do a lot of the same legwork as above for a single
@@ -210,7 +212,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
         # get a TaskData object
-        task_data = _get_task_data(local_endpoint, remote_endpoint, label)
+        task_data = self._get_task_data(local_endpoint, remote_endpoint, label)
 
         # add each of our books to our task
         for local_path, remote_path in paths:
@@ -218,9 +220,13 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             # flat file, which annoyingly requires different handling as part of the
             # Globus transfer.
             if local_path.is_dir():
-                task_data.add_item(local_path, remote_path, recursive=True)
+                task_data.add_item(
+                    str(local_path), str(remote_path), recursive=True
+                )
             else:
-                task_data.add_item(local_path, remote_path, recursive=True)
+                task_data.add_item(
+                    str(local_path), str(remote_path), recursive=True
+                )
 
         # submit the transfer
         try:
@@ -252,7 +258,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
                 return TransferStatus.FAILED
         else:
             # start talking to Globus
-            transfer_client = globus_sdk.transfer_client(
+            transfer_client = globus_sdk.TransferClient(
                 authorizer=self.authorizer
             )
             task_doc = transfer_client.get_task(self.task_id)
