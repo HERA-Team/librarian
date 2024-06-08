@@ -112,13 +112,13 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         """
         return True
 
-    def _get_task_data(self, local_endpoint, remote_endpoint, label):
+    def _get_transfer_data(self, local_endpoint, remote_endpoint, label):
         """
-        This is a helper function to create a TaskData object, which is needed
+        This is a helper function to create a TransferData object, which is needed
         both for single-book transfers and batch transfers.
         """
         # create a TransferData object that contains options for the transfer
-        task_data = globus_sdk.TransferData(
+        transfer_data = globus_sdk.TransferData(
             source_endpoint=local_endpoint,
             destination_endpoint=remote_endpoint,
             label=label,
@@ -128,7 +128,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             notify_on_succeeded=False,
         )
 
-        return task_data
+        return transfer_data
 
     def transfer(
         self,
@@ -170,20 +170,20 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         # create a transfer client to handle the transfer
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
-        # get a TaskData object
-        task_data = self._get_task_data(local_endpoint, remote_endpoint, label)
+        # get a TransferData object
+        transfer_data = self._get_transfer_data(local_endpoint, remote_endpoint, label)
 
         # We need to figure out if the local path is actually a directory or a
         # flat file, which annoyingly requires different handling as part of the
         # Globus transfer.
         if local_path.is_dir():
-            task_data.add_item(str(local_path), str(remote_path), recursive=True)
+            transfer_data.add_item(str(local_path), str(remote_path), recursive=True)
         else:
-            task_data.add_item(str(local_path), str(remote_path), recursive=False)
+            transfer_data.add_item(str(local_path), str(remote_path), recursive=False)
 
         # try to submit the task
         try:
-            task_doc = transfer_client.submit_transfer(task_data)
+            task_doc = transfer_client.submit_transfer(transfer_data)
         except globus_sdk.TransferAPIError as e:
             return False
 
@@ -200,7 +200,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
 
         # We have to do a lot of the same legwork as above for a single
         # transfer, with the biggest change being that we can add multiple items
-        # to a single TaskData object. This is effectively how we "batch" books
+        # to a single TransferData object. This is effectively how we "batch" books
         # using Globus.
 
         # start by authorizing
@@ -213,8 +213,8 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         # create a transfer client to handle the transfer
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
-        # get a TaskData object
-        task_data = self._get_task_data(local_endpoint, remote_endpoint, label)
+        # get a TransferData object
+        transfer_data = self._get_transfer_data(local_endpoint, remote_endpoint, label)
 
         # add each of our books to our task
         for local_path, remote_path in paths:
@@ -222,13 +222,17 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             # flat file, which annoyingly requires different handling as part of the
             # Globus transfer.
             if local_path.is_dir():
-                task_data.add_item(str(local_path), str(remote_path), recursive=True)
+                transfer_data.add_item(
+                    str(local_path), str(remote_path), recursive=True
+                )
             else:
-                task_data.add_item(str(local_path), str(remote_path), recursive=True)
+                transfer_data.add_item(
+                    str(local_path), str(remote_path), recursive=True
+                )
 
         # submit the transfer
         try:
-            task_doc = transfer_client.submit_transfer(task_data)
+            task_doc = transfer_client.submit_transfer(transfer_data)
         except globus_sdk.TransferAPIError as e:
             return False
 
