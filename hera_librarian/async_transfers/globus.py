@@ -5,14 +5,15 @@ A transfer manager for Globus transfers.
 import os
 from pathlib import Path
 from typing import Union
-from pydantic import ConfigDict
 
 import globus_sdk
+from pydantic import ConfigDict
 
 from hera_librarian.transfer import TransferStatus
 
 from ..queues import Queue
 from .core import CoreAsyncTransferManager
+
 
 class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     """
@@ -20,6 +21,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     local endpoint, the destiation endpoint, and the secret
     for authentication.
     """
+
     # We need the following to save the `authorizer` attribute without having
     # to build our own pydantic model for Globus-provided classes.
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -89,9 +91,9 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
                         self.client_id, self.secret
                     )
                     tokens = client.oauth2_client_credentials_tokens()
-                    transfer_tokens_info = (
-                        tokens.by_resource_server["transfer.api.globus.org"]
-                    )
+                    transfer_tokens_info = tokens.by_resource_server[
+                        "transfer.api.globus.org"
+                    ]
                     transfer_token = transfer_tokens_info["access_token"]
                     self.authorizer = globus_sdk.AccessTokenAuthorizer(transfer_token)
                 except globus_sdk.AuthAPIError as e:
@@ -220,13 +222,9 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             # flat file, which annoyingly requires different handling as part of the
             # Globus transfer.
             if local_path.is_dir():
-                task_data.add_item(
-                    str(local_path), str(remote_path), recursive=True
-                )
+                task_data.add_item(str(local_path), str(remote_path), recursive=True)
             else:
-                task_data.add_item(
-                    str(local_path), str(remote_path), recursive=True
-                )
+                task_data.add_item(str(local_path), str(remote_path), recursive=True)
 
         # submit the transfer
         try:
@@ -258,9 +256,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
                 return TransferStatus.FAILED
         else:
             # start talking to Globus
-            transfer_client = globus_sdk.TransferClient(
-                authorizer=self.authorizer
-            )
+            transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
             task_doc = transfer_client.get_task(self.task_id)
 
             if task_doc["status"] == "SUCCEEDED":

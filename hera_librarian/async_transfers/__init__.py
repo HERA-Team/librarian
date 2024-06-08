@@ -4,9 +4,9 @@ really need to know about the stores.
 """
 
 from .core import CoreAsyncTransferManager
+from .globus import GlobusAsyncTransferManager
 from .local import LocalAsyncTransferManager
 from .rsync import RsyncAsyncTransferManager
-from .globus import GlobusAsyncTransferManager
 
 AsyncTransferManagers: dict[int, CoreAsyncTransferManager] = {
     0: CoreAsyncTransferManager,
