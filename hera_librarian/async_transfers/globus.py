@@ -36,9 +36,15 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     # "refresh token" (for a thick client) or a "client secret" (for a
     # service account).
 
+    local_endpoint: str
+    # The Globus endpoint UUID for the local librarian.
+
+    remote_endpoint: str
+    # The Globus endpoint UUID for the remote librarian.
+
     native_app: bool = False
-    # Whether to use a Native App (true) or a Confidential App (false,
-    # default) for authorizing the client.
+    # Whether to use a Native App (true) or a Confidential App (false, default)
+    # for authorizing the client.
 
     transfer_attempted: bool = False
     transfer_complete: bool = False
@@ -104,23 +110,24 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     @property
     def valid(self) -> bool:
         """
-        This is easy to check if we're using a system with a Globus Connect
-        Personal (GCP) endpoint, but harder to verify for environments with
-        Globus Connect Server endpoints (e.g., NERSC). For now, we're lazy and
-        assume we can always use Globus (though this is obviously NOT always
-        true).
-        """
-        return True
+        Test whether it's valid to use Globus or not.
 
-    def _get_transfer_data(self, local_endpoint, remote_endpoint, label):
+        Technically this only checks that we can authenticate with Globus and
+        does not verify that we can copy files between specific endpoints.
+        However, this is an important starting point and can fail for reasons of
+        network connectivity, Globus as a service being down, etc.
+        """
+        return self.authorize()
+
+    def _get_transfer_data(self, label):
         """
         This is a helper function to create a TransferData object, which is needed
         both for single-book transfers and batch transfers.
         """
         # create a TransferData object that contains options for the transfer
         transfer_data = globus_sdk.TransferData(
-            source_endpoint=local_endpoint,
-            destination_endpoint=remote_endpoint,
+            source_endpoint=self.local_endpoint,
+            destination_endpoint=self.remote_endpoint,
             label=label,
             sync_level="exists",
             verify_checksum=False,  # we do this ourselves
@@ -134,8 +141,6 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         self,
         local_path: Path,
         remote_path: Path,
-        local_endpoint: str,
-        remote_endpoint: str,
     ) -> bool:
         """
         Attempt to transfer a book using Globus.
@@ -153,10 +158,6 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         remote_path : Path
             The remote path for the transfer relative to the root Globus
             directory, which is generally not the same as /.
-        local_endpoint : str
-            The Globus endpoint UUID for the local librarian.
-        remote_endpoint : str
-            The Globus endpoint UUID for the remote librarian.
         """
         self.transfer_attempted = True
 
@@ -171,7 +172,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
         # get a TransferData object
-        transfer_data = self._get_transfer_data(local_endpoint, remote_endpoint, label)
+        transfer_data = self._get_transfer_data(label)
 
         # We need to figure out if the local path is actually a directory or a
         # flat file, which annoyingly requires different handling as part of the
@@ -193,15 +194,13 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     def batch_transfer(
         self,
         paths: list[tuple[Path]],
-        local_endpoint,
-        remote_endpoint,
     ) -> bool:
         self.transfer_attempted = True
 
         # We have to do a lot of the same legwork as above for a single
         # transfer, with the biggest change being that we can add multiple items
-        # to a single TransferData object. This is effectively how we "batch" books
-        # using Globus.
+        # to a single TransferData object. This is effectively how we "batch"
+        # books using Globus.
 
         # start by authorizing
         if not self.authorize():
@@ -214,7 +213,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
         # get a TransferData object
-        transfer_data = self._get_transfer_data(local_endpoint, remote_endpoint, label)
+        transfer_data = self._get_transfer_data(label)
 
         # add each of our books to our task
         for local_path, remote_path in paths:
