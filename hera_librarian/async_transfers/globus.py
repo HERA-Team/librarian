@@ -25,8 +25,8 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     # to build our own pydantic model for Globus-provided classes.
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    local_endpoint: str
-    # The Globus endpoint UUID for the local librarian.
+    destination_endpoint: str
+    # The Globus endpoint UUID for the destination, entered in the configuration.
 
     native_app: bool = False
     # Whether to use a Native App (true) or a Confidential App (false, default)
@@ -68,19 +68,22 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         to provide the user with nicer error messages, though we may not have
         caught all possible failure modes.
         """
+        if settings.globus_enable is False:
+            return False
+
         if self.authorizer is None:
             if self.native_app:
                 try:
-                    client = globus_sdk.NativeAppAuthClient(self.client_id)
+                    client = globus_sdk.NativeAppAuthClient(settings.globus_client_id)
                     self.authorizer = globus_sdk.RefreshTokenAuthorizer(
-                        self.secret, client
+                        settings.globus_client_secret, client
                     )
                 except globus_sdk.AuthAPIError as e:
                     return False
             else:
                 try:
                     client = globus_sdk.ConfidentialAppAuthClient(
-                        self.client_id, self.secret
+                        self.globus_client_id, self.globus_client_secret
                     )
                     tokens = client.oauth2_client_credentials_tokens()
                     transfer_tokens_info = tokens.by_resource_server[
@@ -88,7 +91,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
                     ]
                     transfer_token = transfer_tokens_info["access_token"]
                     self.authorizer = globus_sdk.AccessTokenAuthorizer(transfer_token)
-                except globus_sdk.AuthAPIError as e:
+                except globus_sdk.AuthAPIError:
                     return False
 
         return True
@@ -102,17 +105,17 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         However, this is an important starting point and can fail for reasons of
         network connectivity, Globus as a service being down, etc.
         """
-        return self.authorize()
+        return self.authorize(settings=settings)
 
-    def _get_transfer_data(self, label):
+    def _get_transfer_data(self, label: str, settings: "ServerSettings"):
         """
         This is a helper function to create a TransferData object, which is needed
         both for single-book transfers and batch transfers.
         """
         # create a TransferData object that contains options for the transfer
         transfer_data = globus_sdk.TransferData(
-            source_endpoint=self.local_endpoint,
-            destination_endpoint=self.remote_endpoint,
+            source_endpoint=settings.globus_local_endpoint_id,
+            destination_endpoint=self.destination_endpoint,
             label=label,
             sync_level="exists",
             verify_checksum=False,  # we do this ourselves
@@ -148,7 +151,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         self.transfer_attempted = True
 
         # start by authorizing
-        if not self.authorize(settings):
+        if not self.authorize(settings=settings):
             return False
 
         # create a label from the name of the book
@@ -158,7 +161,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
         # get a TransferData object
-        transfer_data = self._get_transfer_data(label)
+        transfer_data = self._get_transfer_data(label=label, settings=settings)
 
         # We need to figure out if the local path is actually a directory or a
         # flat file, which annoyingly requires different handling as part of the
@@ -190,7 +193,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         # books using Globus.
 
         # start by authorizing
-        if not self.authorize(settings):
+        if not self.authorize(settings=settings):
             return False
 
         # make a label from the first book
@@ -200,7 +203,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         transfer_client = globus_sdk.TransferClient(authorizer=self.authorizer)
 
         # get a TransferData object
-        transfer_data = self._get_transfer_data(label)
+        transfer_data = self._get_transfer_data(label=label, settings=settings)
 
         # add each of our books to our task
         for local_path, remote_path in paths:
@@ -229,7 +232,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         """
         Query Globus to see if our transfer has finished yet.
         """
-        if not self.authorize(settings):
+        if not self.authorize(settings=settings):
             # We *should* be able to just assume that we have already
             # authenticated and should be able to query the status of our
             # transfer. However, if for whatever reason we're not able to talk

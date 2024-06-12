@@ -109,8 +109,8 @@ class ServerSettings(BaseSettings):
     # Globus integration; by default disable this. This contains a client ID and
     # login secret (for authenticating with Globus as a service), whether this
     # client is a "native app" or not, as well as the UUID for the local Globus
-    # endpoint. Note that the UUID will be sent to remote librarian servers when
-    # initiating a transfer. We also save the "local root" for the Globus
+    # endpoint. That endpoint ID should be duplicated in any async transfer manager
+    # definitions we want to use a source. We also save the "local root" for the Globus
     # endpoint, which is the root directory presented to the Globus endpoint and
     # all file transfers using Globus are relative to. For example, if the
     # endpoint is configured so that `/mnt/globus` is the local root, then the
@@ -118,10 +118,12 @@ class ServerSettings(BaseSettings):
     # important for forming paths that Globus can understand.
     globus_enable: bool = False
     globus_client_id: str = ""
-    globus_client_secret: str = ""
     globus_client_native_app: bool = False
     globus_local_endpoint_id: str = ""
     globus_local_root: str = ""
+
+    globus_client_secret: Optional[str] = None
+    globus_client_secret_file: Optional[Path] = None
 
     model_config = SettingsConfigDict(env_prefix="librarian_server_")
 
@@ -137,6 +139,10 @@ class ServerSettings(BaseSettings):
         if __context.slack_webhook_url_file is not None:
             with open(__context.slack_webhook_url_file, "r") as handle:
                 __context.slack_webhook_url = handle.read().strip()
+
+        if __context.globus_client_secret_file is not None:
+            with open(__context.globus_client_secret_file, "r") as handle:
+                __context.globus_client_secret = handle.read().strip()
 
     @property
     def sqlalchemy_database_uri(self) -> str:
