@@ -55,7 +55,7 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
         # are performed in an entirely separate thread.
         for local_path, remote_path in paths:
             copy_success = copy_success and self.transfer(
-                local_path=local_path, remote_path=remote_path
+                local_path=local_path, remote_path=remote_path, settings=settings
             )
 
         # Set local
