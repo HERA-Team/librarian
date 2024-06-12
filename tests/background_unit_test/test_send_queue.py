@@ -15,11 +15,9 @@ class NoCopyAsyncTransferManager(CoreAsyncTransferManager):
     def transfer(self, *args, **kwargs):
         return True
 
-    @property
     def valid(self):
         return True
 
-    @property
     def transfer_status(self):
         return self.complete_transfer_status
 
