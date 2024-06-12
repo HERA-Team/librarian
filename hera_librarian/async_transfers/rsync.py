@@ -9,7 +9,6 @@ import sysrsync
 
 from hera_librarian.transfer import TransferStatus
 
-from ..queues import Queue
 from .core import CoreAsyncTransferManager
 
 

@@ -9,8 +9,6 @@ from pydantic import BaseModel
 
 from hera_librarian.transfer import TransferStatus
 
-from ..queues import Queue
-
 
 class CoreAsyncTransferManager(BaseModel, abc.ABC):
     """

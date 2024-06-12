@@ -9,7 +9,6 @@ from socket import gethostname
 
 from hera_librarian.transfer import TransferStatus
 
-from ..queues import Queue
 from .core import CoreAsyncTransferManager
 
 
