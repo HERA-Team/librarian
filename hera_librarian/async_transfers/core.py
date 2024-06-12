@@ -18,7 +18,7 @@ class CoreAsyncTransferManager(BaseModel, abc.ABC):
     """
 
     @abc.abstractmethod
-    def batch_transfer(self, paths: list[tuple[Path]]):
+    def batch_transfer(self, paths: list[tuple[Path]], settings: "ServerSettings"):
         """
         Perform a batch transfer of many paths simultaneously.
 
@@ -38,7 +38,7 @@ class CoreAsyncTransferManager(BaseModel, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def transfer(self, local_path: Path, remote_path: Path):
+    def transfer(self, local_path: Path, remote_path: Path, settings: "ServerSettings"):
         """
         Transfer a single file from the local machine to the store. This
         function can be handled synchronously or asynchronously.
@@ -52,18 +52,16 @@ class CoreAsyncTransferManager(BaseModel, abc.ABC):
         """
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
-    def valid(self) -> bool:
+    def valid(self, settings: "ServerSettings") -> bool:
         """
         Whether or not this transfer manager is valid for the
         current system we are running on.
         """
         raise NotImplementedError
 
-    @property
     @abc.abstractmethod
-    def transfer_status(self) -> TransferStatus:
+    def transfer_status(self, settings: "ServerSettings") -> TransferStatus:
         """
         Gets the current in-flight status of the transfer. For some
         methods, this is simple (they are synchronous from the perspective

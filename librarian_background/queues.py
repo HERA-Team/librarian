@@ -121,6 +121,7 @@ def check_on_consumed(
         If we return False, then there was nothing to consume. A return value of
         True indicates that we consmed an item.
     """
+    settings = ...
 
     with session_maker() as session:
         stmt = select(SendQueue).with_for_update(skip_locked=True)
@@ -131,7 +132,7 @@ def check_on_consumed(
             return False
 
         for queue_item in queue_items:
-            current_status = queue_item.async_transfer_manager.transfer_status
+            current_status = queue_item.async_transfer_manager.transfer_status(settings)
 
             if current_status == TransferStatus.INITIATED:
                 continue

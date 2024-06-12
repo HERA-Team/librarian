@@ -25,21 +25,8 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     # to build our own pydantic model for Globus-provided classes.
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    client_id: str
-    # The client UUID associated with the entity initiating a transfer.
-    # Note that this is NOT an endpoint ID, and instead is tied either to
-    # a "thick client" or a "service account" used for authentication.
-
-    secret: str
-    # The secret associated with the client. This should be either a
-    # "refresh token" (for a thick client) or a "client secret" (for a
-    # service account).
-
     local_endpoint: str
     # The Globus endpoint UUID for the local librarian.
-
-    remote_endpoint: str
-    # The Globus endpoint UUID for the remote librarian.
 
     native_app: bool = False
     # Whether to use a Native App (true) or a Confidential App (false, default)
@@ -56,7 +43,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     ] = None
     # Default to `None`, but allow us to save Authorizer objects on the object
 
-    def authorize(self):
+    def authorize(self, settings: "ServerSettings"):
         """
         Attempt to authorize using the Globus service.
 
@@ -106,8 +93,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
 
         return True
 
-    @property
-    def valid(self) -> bool:
+    def valid(self, settings: "ServerSettings") -> bool:
         """
         Test whether it's valid to use Globus or not.
 
@@ -140,6 +126,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         self,
         local_path: Path,
         remote_path: Path,
+        settings: "ServerSettings",
     ) -> bool:
         """
         Attempt to transfer a book using Globus.
@@ -161,7 +148,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         self.transfer_attempted = True
 
         # start by authorizing
-        if not self.authorize():
+        if not self.authorize(settings):
             return False
 
         # create a label from the name of the book
@@ -193,6 +180,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
     def batch_transfer(
         self,
         paths: list[tuple[Path]],
+        settings: "ServerSettings",
     ) -> bool:
         self.transfer_attempted = True
 
@@ -202,7 +190,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         # books using Globus.
 
         # start by authorizing
-        if not self.authorize():
+        if not self.authorize(settings):
             return False
 
         # make a label from the first book
@@ -237,12 +225,11 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         self.task_id = task_doc["task_id"]
         return True
 
-    @property
-    def transfer_status(self) -> TransferStatus:
+    def transfer_status(self, settings: "ServerSettings") -> TransferStatus:
         """
         Query Globus to see if our transfer has finished yet.
         """
-        if not self.authorize():
+        if not self.authorize(settings):
             # We *should* be able to just assume that we have already
             # authenticated and should be able to query the status of our
             # transfer. However, if for whatever reason we're not able to talk
