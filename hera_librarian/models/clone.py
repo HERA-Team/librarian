@@ -8,6 +8,7 @@ from typing import Union
 from pydantic import BaseModel, Field
 
 from hera_librarian.async_transfers import (
+    GlobusAsyncTransferManager,
     LocalAsyncTransferManager,
     RsyncAsyncTransferManager,
 )
@@ -137,7 +138,12 @@ class CloneBatchInitiationResponse(BaseModel):
     uploads: list[CloneBatchInitiationResponseFileItem]
     "Each individual upload is tagged with its own {Outgoing,Incoming}Transfer ID."
     async_transfer_providers: dict[
-        str, Union[RsyncAsyncTransferManager, LocalAsyncTransferManager]
+        str,
+        Union[
+            GlobusAsyncTransferManager,
+            RsyncAsyncTransferManager,
+            LocalAsyncTransferManager,
+        ],
     ]
     "The transfer managers/providers for the batch of uploads. They should all use this same transfer manager."
 
