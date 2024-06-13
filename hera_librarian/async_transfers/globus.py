@@ -72,7 +72,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             return False
 
         if self.authorizer is None:
-            if self.native_app:
+            if settings.globus_client_native_app:
                 try:
                     client = globus_sdk.NativeAppAuthClient(settings.globus_client_id)
                     self.authorizer = globus_sdk.RefreshTokenAuthorizer(
@@ -83,7 +83,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             else:
                 try:
                     client = globus_sdk.ConfidentialAppAuthClient(
-                        self.globus_client_id, self.globus_client_secret
+                        settings.globus_client_id, settings.globus_client_secret
                     )
                     tokens = client.oauth2_client_credentials_tokens()
                     transfer_tokens_info = tokens.by_resource_server[
