@@ -166,10 +166,9 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
         # We need to figure out if the local path is actually a directory or a
         # flat file, which annoyingly requires different handling as part of the
         # Globus transfer.
-        if local_path.is_dir():
-            transfer_data.add_item(str(local_path), str(remote_path), recursive=True)
-        else:
-            transfer_data.add_item(str(local_path), str(remote_path), recursive=False)
+        transfer_data.add_item(
+            str(local_path), str(remote_path), recursive=local_path.is_dir()
+        )
 
         # try to submit the task
         try:
@@ -210,14 +209,9 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             # We need to figure out if the local path is actually a directory or a
             # flat file, which annoyingly requires different handling as part of the
             # Globus transfer.
-            if local_path.is_dir():
-                transfer_data.add_item(
-                    str(local_path), str(remote_path), recursive=True
-                )
-            else:
-                transfer_data.add_item(
-                    str(local_path), str(remote_path), recursive=True
-                )
+            transfer_data.add_item(
+                str(local_path), str(remote_path), recursive=local_path.is_dir()
+            )
 
         # submit the transfer
         try:
