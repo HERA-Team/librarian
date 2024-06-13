@@ -20,6 +20,7 @@ from hera_librarian.transfer import TransferStatus
 from librarian_server.database import get_session
 from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm.sendqueue import SendQueue
+from librarian_server.settings import server_settings
 
 from .task import Task
 
@@ -131,7 +132,9 @@ def check_on_consumed(
             return False
 
         for queue_item in queue_items:
-            current_status = queue_item.async_transfer_manager.transfer_status
+            current_status = queue_item.async_transfer_manager.transfer_status(
+                settings=server_settings
+            )
 
             if current_status == TransferStatus.INITIATED:
                 continue
@@ -221,7 +224,9 @@ def consume_queue_item(session_maker: Callable[[], "Session"]) -> bool:
         # Need to create a copy here in case there is an internal state
         # change. Otherwise SQLAlchemy won't write it back.
         transfer_manager = queue_item.async_transfer_manager.model_copy()
-        success = transfer_manager.batch_transfer(transfer_list)
+        success = transfer_manager.batch_transfer(
+            transfer_list, settings=server_settings
+        )
 
         if success:
             queue_item.consumed = True

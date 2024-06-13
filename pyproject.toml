@@ -7,23 +7,24 @@ exclude=["*tests*"]
 [project]
 name="hera_librarian"
 requires-python = ">=3.10"
-version = "2.1.0a"
+version = "2.2.0b"
 dependencies = [
     "alembic",
+    "argon2-cffi",
+    "checksumdir",
+    "cryptography",
     "fastapi >= 0.108.0",
-    "sqlalchemy >= 2",
+    "globus-sdk",
     "httpx",
-    "uvicorn",
     "pydantic >= 2",
     "pydantic-settings >= 2",
+    "python-dateutil",
     "pyyaml",
     "requests >= 2.27.0",
     "schedule >= 1.2.1",
-    "checksumdir",
-    "python-dateutil",
-    "argon2-cffi",
-    "cryptography",
+    "sqlalchemy >= 2",
     "sysrsync == 1.1.1",
+    "uvicorn",
 ]
 authors = [
     {name = "Josh Borrow"},
@@ -40,7 +41,7 @@ maintainers = [
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 2 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",

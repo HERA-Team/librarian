@@ -9,7 +9,6 @@ from socket import gethostname
 
 from hera_librarian.transfer import TransferStatus
 
-from ..queues import Queue
 from .core import CoreAsyncTransferManager
 
 
@@ -19,12 +18,12 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
     transfer_attempted: bool = False
     transfer_complete: bool = False
 
-    def batch_transfer(self, paths: list[tuple[Path]]):
+    def batch_transfer(self, paths: list[tuple[Path]], settings: "ServerSettings"):
         copy_success = True
 
         for local_path, remote_path in paths:
             copy_success = copy_success and self.transfer(
-                local_path=local_path, remote_path=remote_path
+                local_path=local_path, remote_path=remote_path, settings=settings
             )
 
         # Set local
@@ -33,7 +32,7 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
 
         return copy_success
 
-    def transfer(self, local_path: Path, remote_path: Path):
+    def transfer(self, local_path: Path, remote_path: Path, settings: "ServerSettings"):
         """
         Transfer a file from the local filesystem to the remote filesystem.
 
@@ -98,12 +97,10 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
 
         return True
 
-    @property
-    def valid(self) -> bool:
+    def valid(self, settings: "ServerSettings") -> bool:
         return gethostname() in self.hostnames
 
-    @property
-    def transfer_status(self) -> TransferStatus:
+    def transfer_status(self, settings: "ServerSettings") -> TransferStatus:
         if self.transfer_complete:
             return TransferStatus.COMPLETED
         else:

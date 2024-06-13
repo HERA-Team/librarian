@@ -9,7 +9,6 @@ import sysrsync
 
 from hera_librarian.transfer import TransferStatus
 
-from ..queues import Queue
 from .core import CoreAsyncTransferManager
 
 
@@ -26,14 +25,13 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
     transfer_attempted: bool = False
     transfer_complete: bool = False
 
-    @property
-    def valid(self) -> bool:
+    def valid(self, settings: "ServerSettings") -> bool:
         if self.hostname == gethostname():
             return True
 
         return False
 
-    def transfer(self, local_path: Path, remote_path: Path):
+    def transfer(self, local_path: Path, remote_path: Path, settings: "ServerSettings"):
         try:
             sysrsync.run(
                 source=local_path,
@@ -48,7 +46,7 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
         except sysrsync.RsyncError as e:
             return False
 
-    def batch_transfer(self, paths: list[tuple[Path]]):
+    def batch_transfer(self, paths: list[tuple[Path]], settings: "ServerSettings"):
         copy_success = True
 
         self.transfer_attempted = True
@@ -57,7 +55,7 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
         # are performed in an entirely separate thread.
         for local_path, remote_path in paths:
             copy_success = copy_success and self.transfer(
-                local_path=local_path, remote_path=remote_path
+                local_path=local_path, remote_path=remote_path, settings=settings
             )
 
         # Set local
@@ -65,8 +63,7 @@ class RsyncAsyncTransferManager(CoreAsyncTransferManager):
 
         return copy_success
 
-    @property
-    def transfer_status(self) -> TransferStatus:
+    def transfer_status(self, settings: "ServerSettings") -> TransferStatus:
         if self.transfer_complete:
             return TransferStatus.COMPLETED
         else:

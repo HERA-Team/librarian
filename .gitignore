@@ -4,6 +4,7 @@ __pycache__
 *.egg-info
 /build
 /dist
+docs/build/*
 *~
 .coverage
 *coverage.xml
@@ -14,5 +15,3 @@ eggs/
 container/secrets
 env*/*
 *.DS_Store*
-
-docs/build/*
