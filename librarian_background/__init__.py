@@ -10,9 +10,7 @@ This module should be invoked as a separate process.
 
 import time
 
-from .check_integrity import CheckIntegrity
 from .core import SafeScheduler
-from .create_clone import CreateLocalClone
 from .settings import background_settings
 
 
@@ -25,6 +23,8 @@ def background(run_once: bool = False):
         + background_settings.create_local_clone
         + background_settings.send_clone
         + background_settings.recieve_clone
+        + background_settings.consume_queue
+        + background_settings.check_consumed_queue
     )
 
     for task in all_tasks:

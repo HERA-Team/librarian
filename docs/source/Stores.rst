@@ -18,9 +18,11 @@ ingress and egress. Documentation on how to configure the stores
 is available under the stores themselves, and the transfer managers
 likewise.
 
-More documentation will be added in the future.
+More documentation will be added in the future noting how to set up
+the asynchronous transfers and details of transfer managers.
 
-.. code:: json
+.. code-block:: json
+
     "add_stores": [
         {
             "store_name": "store",
