@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 if TYPE_CHECKING:
@@ -68,10 +68,18 @@ def load_settings() -> ClientSettings:
             continue
 
         if path.exists():
-            _settings = ClientSettings.from_file(path)
+            try:
+                _settings = ClientSettings.from_file(path)
+            except ValidationError as e:
+                print(f"Error loading settings from {path}: {e}")
+                raise e
             return _settings
 
-    _settings = ClientSettings()
+    try:
+        _settings = ClientSettings()
+    except ValidationError as e:
+        print(f"Not all settings have defaults: {e}")
+        raise e
 
     return _settings
 

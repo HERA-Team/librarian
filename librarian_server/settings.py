@@ -193,10 +193,18 @@ def load_settings() -> ServerSettings:
             continue
 
         if path.exists():
-            _settings = ServerSettings.from_file(path)
-            return _settings
+            try:
+                _settings = ServerSettings.from_file(path)
+            except ValidationError as e:
+                print(f"Error loading settings from {path}: {e}")
+                raise e
 
-    _settings = ServerSettings()
+            return _settings
+    try:
+        _settings = ServerSettings()
+    except ValidationError as e:
+        print(f"Not all settings have defaults: {e}")
+        raise e
 
     return _settings
 

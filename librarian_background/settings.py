@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from hera_librarian.deletion import DeletionPolicy
@@ -239,10 +239,18 @@ def load_settings() -> BackgroundSettings:
             continue
 
         if path.exists():
-            _settings = BackgroundSettings.from_file(path)
+            try:
+                _settings = BackgroundSettings.from_file(path)
+            except ValidationError as e:
+                print(f"Error loading settings from {path}: {e}")
+                raise e
             return _settings
 
-    _settings = BackgroundSettings()
+    try:
+        _settings = BackgroundSettings()
+    except ValidationError as e:
+        print(f"Not all settings have defaults: {e}")
+        raise e
 
     return _settings
 
