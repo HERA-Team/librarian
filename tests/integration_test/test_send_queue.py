@@ -2,7 +2,7 @@
 Tests for the send queue and associated checks.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from socket import gethostname
 
@@ -69,7 +69,10 @@ def test_create_simple_queue_item_and_send(
     from librarian_background.queues import check_on_consumed, consume_queue_item
 
     consume_queue_item(session_maker=get_session)
-    check_on_consumed(session_maker=get_session)
+    check_on_consumed(
+        session_maker=get_session,
+        timeout_after=datetime.now(timezone.utc) + timedelta(days=7),
+    )
 
     with get_session() as session:
         available_queues = (
@@ -143,7 +146,10 @@ def test_simple_real_send(
     from librarian_background.queues import check_on_consumed, consume_queue_item
 
     consume_queue_item(session_maker=get_session)
-    check_on_consumed(session_maker=get_session)
+    check_on_consumed(
+        session_maker=get_session,
+        timeout_after=datetime.now(timezone.utc) + timedelta(days=7),
+    )
 
     with get_session() as session:
         available_queues = (
@@ -481,8 +487,8 @@ def test_create_send_queue_item_no_transfer_providers(
                 url=fake_client.host,
                 port=fake_client.port,
                 authenticator="none:none",
-                last_seen=datetime.utcnow(),
-                last_heard=datetime.utcnow(),
+                last_seen=datetime.now(timezone.utc),
+                last_heard=datetime.now(timezone.utc),
             ),
             session=session,
         )
@@ -581,8 +587,8 @@ def test_create_send_queue_item_no_availability_of_transfer_manager(
                 url=fake_client.host,
                 port=fake_client.port,
                 authenticator="none:none",
-                last_seen=datetime.utcnow(),
-                last_heard=datetime.utcnow(),
+                last_seen=datetime.now(timezone.utc),
+                last_heard=datetime.now(timezone.utc),
             ),
             session=session,
         )
