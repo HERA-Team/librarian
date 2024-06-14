@@ -36,6 +36,7 @@ def upgrade():
         sa.Column("consumed_time", sa.DateTime(), nullable=True),
         sa.Column("completed", sa.Boolean(), default=False),
         sa.Column("completed_time", sa.DateTime(), nullable=True),
+        sa.Column("failed", sa.Boolean(), default=False),
     )
 
     with op.batch_alter_table("outgoing_transfers") as batch_op:

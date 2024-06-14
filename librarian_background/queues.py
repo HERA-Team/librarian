@@ -43,6 +43,7 @@ class ConsumeQueue(Task):
         )
 
         while datetime.datetime.now(datetime.timezone.utc) <= timeout_after:
+            # Controlled by retries.
             ret = consume_queue_item(session_maker=session_maker)
 
             if not ret:
@@ -72,15 +73,11 @@ class CheckConsumedQueue(Task):
             else datetime.timedelta(days=100)
         )
 
-        while datetime.datetime.now(datetime.timezone.utc) <= timeout_after:
-            ret = check_on_consumed(
-                session_maker=session_maker,
-                complete_status=self.complete_status,
-            )
-
-            if not ret:
-                break
-
+        check_on_consumed(
+            session_maker=session_maker,
+            timeout_after=timeout_after,
+            complete_status=self.complete_status,
+        )
         return
 
     # pragma: no cover
@@ -90,6 +87,7 @@ class CheckConsumedQueue(Task):
 
 def check_on_consumed(
     session_maker: Callable[[], "Session"],
+    timeout_after: datetime.datetime,
     complete_status: TransferStatus = TransferStatus.STAGED,
 ) -> bool:
     """
@@ -132,6 +130,10 @@ def check_on_consumed(
             return False
 
         for queue_item in queue_items:
+            if datetime.datetime.now(datetime.timezone.utc) > timeout_after:
+                # We are out of time.
+                return False
+
             current_status = queue_item.async_transfer_manager.transfer_status(
                 settings=server_settings
             )
@@ -237,6 +239,9 @@ def consume_queue_item(session_maker: Callable[[], "Session"]) -> bool:
             queue_item.async_transfer_manager = transfer_manager
         else:
             queue_item.retries += 1
+
+            if queue_item.retries > server_settings.max_async_send_retries:
+                queue_item.fail(session=session)
 
         session.commit()
 

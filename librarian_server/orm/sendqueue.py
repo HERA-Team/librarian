@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 class SendQueue(db.Base):
     """
-    The priority queue for sending data to other stores, librarians, and clinets
+    The priority queue for sending data to other stores, librarians, and clients
     using a simple local copy.
     """
 
@@ -69,6 +69,9 @@ class SendQueue(db.Base):
     "Whether this queue item has been entirely completed."
     completed_time: datetime = db.Column(db.DateTime)
     "The time at which the queue item was marked as completed."
+
+    failed: bool = db.Column(db.Boolean, default=False)
+    "Whether this queue item failed, and that is the reason for completed status."
 
     @classmethod
     def new_item(
@@ -104,6 +107,31 @@ class SendQueue(db.Base):
         )
 
         return item
+
+    def fail(self, session: Session):
+        """
+        Mark this queue item as failed. This will also try to call up
+        the downstream librarian to fail their transfers too.
+
+        Parameters
+        ----------
+        session : Session
+            The database session to use.
+        """
+
+        # First, mark all of the transfers as failed (including calling up the
+        # downstream librarian).
+        for t in self.transfers:
+            t.fail_transfer(session, commit=False)
+
+        # Set our own state!
+        self.failed = True
+        self.completed = True
+        self.completed_time = datetime.datetime.now(datetime.timezone.utc)
+
+        session.commit()
+
+        return
 
     def update_transfer_status(
         self,

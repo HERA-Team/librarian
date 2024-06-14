@@ -98,6 +98,9 @@ class ServerSettings(BaseSettings):
     max_search_results: int = 64
     maximal_upload_size_bytes: int = 50_000_000_000  # 50 GB
 
+    # Transfer constraints
+    max_async_send_retries: int = 3
+
     # Slack integration; by default disable this. You will need a slack
     # webhook url, and by default we raise all log_to_database alerts to slack too.
     slack_webhook_enable: bool = False
