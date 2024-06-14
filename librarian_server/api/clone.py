@@ -366,7 +366,7 @@ def batch_stage(
             session=session,
             source_transfer_id=upload.source_transfer_id,
             source=request.source,
-            uploader=upload.uploader,
+            uploader=user.username,
             upload_size=upload.upload_size,
             upload_checksum=upload.upload_checksum,
             destination_location=upload.destination_location,
