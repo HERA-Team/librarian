@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from hera_librarian.deletion import DeletionPolicy
 from hera_librarian.models.uploads import (
     UploadCompletionRequest,
     UploadFailedResponse,
@@ -232,6 +233,7 @@ def commit(
         store.ingest_staged_file(
             transfer=transfer,
             session=session,
+            deletion_policy=DeletionPolicy.from_str(request.deletion_policy),
         )
     except FileNotFoundError:
         log.error(

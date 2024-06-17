@@ -288,7 +288,7 @@ def test_send_from_existing_file_row(
         )
 
         for transfer in incoming_transfers:
-            assert Path(transfer.staging_path).exists()
+            assert transfer.status == TransferStatus.STAGED
 
     # Force downstream to execute their background tasks.
     from librarian_background.recieve_clone import RecieveClone

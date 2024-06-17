@@ -50,10 +50,8 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
 
     incoming_transfer.status = test_orm.TransferStatus.STAGED
     incoming_transfer.store = store
-    incoming_transfer.staging_path = str(resolved_path)
-    incoming_transfer.store_path = str(
-        store.store_manager.store(Path(garbage_file.name))
-    )
+    incoming_transfer.staging_path = str(stage_path)
+    incoming_transfer.store_path = str(garbage_file.name)
     incoming_transfer.upload_name = garbage_file.name
 
     session.add(incoming_transfer)
@@ -78,16 +76,19 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
 
     assert incoming_transfer.status == test_orm.TransferStatus.COMPLETED
 
-    # Check the file is in the right place.
+    # Find the file...
+    file = session.query(test_orm.File).filter_by(name="garbage_file.txt").one_or_none()
 
-    assert Path(incoming_transfer.store_path).exists()
+    # Check the file is in the right place.
+    expected_path = incoming_transfer.store.store_manager.resolve_path_store(
+        incoming_transfer.store_path
+    )
+    assert str(expected_path) == file.instances[0].path
+
+    assert expected_path.exists()
 
     # Check the file is in the store.
-
-    assert (
-        store.store_manager.path_info(Path(incoming_transfer.store_path)).md5
-        == info.md5
-    )
+    assert store.store_manager.path_info(file.instances[0].path).md5 == info.md5
 
     session.get(test_orm.File, "garbage_file.txt").delete(
         session=session, commit=False, force=True

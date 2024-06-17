@@ -6,6 +6,7 @@ to see if they have completed.
 
 import datetime
 import logging
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -101,15 +102,16 @@ class RecieveClone(Task):
                 continue
 
             try:
-                path_info = store.store_manager.path_info(Path(transfer.staging_path))
-            except TypeError:
+                store.ingest_staged_file(
+                    transfer=transfer,
+                    session=session,
+                    deletion_policy=self.deletion_policy,
+                )
+            except (FileNotFoundError, FileExistsError, ValueError) as e:
                 log_to_database(
                     severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.DATA_AVAILABILITY,
-                    message=(
-                        f"Transfer {transfer.id}: cannot get information about staging "
-                        f"path: {transfer.staging_path}. Skipping for now."
-                    ),
+                    category=ErrorCategory.PROGRAMMING,
+                    message=traceback.format_exc(),
                     session=session,
                 )
 
@@ -117,120 +119,56 @@ class RecieveClone(Task):
 
                 continue
 
-            # TODO: Make this check more robust? Could have transfer managers provide checks?
-            if (
-                path_info.md5 == transfer.transfer_checksum
-                and path_info.size == transfer.transfer_size
-            ):
-                # The transfer has completed. Create an instance for this file.
+            # Mark the transfer as completed.
+            transfer.status = TransferStatus.COMPLETED
+            transfer.end_time = datetime.datetime.now(datetime.timezone.utc)
+
+            # Commit the changes.
+            session.commit()
+
+            # Callback to the source librarian.
+            librarian: Optional[Librarian] = (
+                session.query(Librarian).filter_by(name=transfer.source).first()
+            )
+
+            if librarian:
+                # Need to call back
                 logger.info(
-                    f"Transfer {transfer.id} has completed. Moving file to store and creating instance."
+                    f"Transfer {transfer.id} has completed. Calling back to librarian {librarian.name}."
                 )
 
-                store_path = store.store_manager.store(Path(transfer.store_path))
+                request = CloneCompleteRequest(
+                    source_transfer_id=transfer.source_transfer_id,
+                    destination_transfer_id=transfer.id,
+                    store_id=store.id,
+                )
 
-                # Move the file to the store.
+                logger.debug(f"Request to send: {request}")
+
+                downstream_client = librarian.client()
+
                 try:
-                    # Annoyingly staging_path is absolute and store path is relative.
-                    # TODO: Fix that!
-                    store.store_manager.commit(
-                        Path(transfer.staging_path),
-                        store_path,
+                    logger.info("Sending clone complete request.")
+                    response: CloneCompleteResponse = downstream_client.post(
+                        endpoint="clone/complete",
+                        request=request,
+                        response=CloneCompleteResponse,
                     )
-                except Exception as e:
+                except LibrarianHTTPError as e:
                     log_to_database(
                         severity=ErrorSeverity.ERROR,
-                        category=ErrorCategory.PROGRAMMING,
+                        category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
                         message=(
-                            f"Failed to move file {transfer.staging_path} to store "
-                            f"{store.name} at {transfer.store_path}. Exception: {e}. Skipping for now."
+                            f"Failed to call back to librarian {librarian.name} "
+                            f"with exception {e}."
                         ),
                         session=session,
                     )
-
-                    all_transfers_succeeded = False
-
-                    continue
-
-                # Create a new File object
-                file = File.new_file(
-                    filename=transfer.upload_name,
-                    checksum=transfer.transfer_checksum,
-                    size=transfer.transfer_size,
-                    uploader=transfer.uploader,
-                    source=transfer.source,
-                )
-
-                # Create an instance for this file.
-                instance = Instance.new_instance(
-                    path=store_path,
-                    file=file,
-                    store=store,
-                    deletion_policy=self.deletion_policy,
-                )
-
-                session.add(file)
-                session.add(instance)
-
-                # Mark the transfer as completed.
-                transfer.status = TransferStatus.COMPLETED
-                transfer.end_time = datetime.datetime.utcnow()
-
-                # Commit the changes.
-                session.commit()
-
-                # Callback to the source librarian.
-                librarian: Optional[Librarian] = (
-                    session.query(Librarian).filter_by(name=transfer.source).first()
-                )
-
-                if librarian:
-                    # Need to call back
-                    logger.info(
-                        f"Transfer {transfer.id} has completed. Calling back to librarian {librarian.name}."
-                    )
-
-                    request = CloneCompleteRequest(
-                        source_transfer_id=transfer.source_transfer_id,
-                        destination_transfer_id=transfer.id,
-                        store_id=store.id,
-                    )
-
-                    logger.debug(f"Request to send: {request}")
-
-                    downstream_client = librarian.client()
-
-                    try:
-                        logger.info("Sending clone complete request.")
-                        response: CloneCompleteResponse = downstream_client.post(
-                            endpoint="clone/complete",
-                            request=request,
-                            response=CloneCompleteResponse,
-                        )
-                    except LibrarianHTTPError as e:
-                        log_to_database(
-                            severity=ErrorSeverity.ERROR,
-                            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                            message=(
-                                f"Failed to call back to librarian {librarian.name} "
-                                f"with exception {e}."
-                            ),
-                            session=session,
-                        )
-                else:
-                    logger.error(
-                        f"Transfer {transfer.id} has no source librarian "
-                        f"(source is {transfer.source}) - cannot callback."
-                    )
-
-                # Can now delete the file
-                logger.info(
-                    f"Transfer {transfer.id} has completed. Deleting staged file."
-                )
-                store.store_manager.unstage(Path(transfer.staging_path))
             else:
-                logger.info(f"Transfer {transfer.id} has not yet completed. Skipping.")
-                continue
+                logger.error(
+                    f"Transfer {transfer.id} has no source librarian "
+                    f"(source is {transfer.source}) - cannot callback."
+                )
 
             transfers_processed += 1
 

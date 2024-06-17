@@ -109,6 +109,7 @@ def de_duplicate_file_and_transfer(
     uploader: str,
     upload_size: int,
     upload_checksum: str,
+    upload_name: str,
     destination_location: str,
 ) -> IncomingTransfer:
     """
@@ -144,7 +145,7 @@ def de_duplicate_file_and_transfer(
     stmt = select(IncomingTransfer)
     stmt = stmt.filter_by(
         transfer_checksum=upload_checksum,
-        upload_name=str(destination_location),
+        store_path=str(destination_location),
     )
     stmt = stmt.filter(
         IncomingTransfer.status.not_in(
@@ -213,10 +214,7 @@ def de_duplicate_file_and_transfer(
     transfer = IncomingTransfer.new_transfer(
         source=source,
         uploader=uploader,
-        # A little confusing, but upload_name as provided in the request model is the file name
-        # as it should be ingested (incl. extra path), but upload_name in the transfer
-        # is the actual 'file name', the end of the path.
-        upload_name=str(destination_location),
+        upload_name=str(upload_name),
         transfer_size=upload_size,
         transfer_checksum=upload_checksum,
     )
@@ -276,6 +274,7 @@ def stage(
         upload_size=request.upload_size,
         upload_checksum=request.upload_checksum,
         destination_location=request.destination_location,
+        upload_name=request.upload_name,
     )
 
     # We have a store! Create the staging area.
@@ -285,7 +284,8 @@ def stage(
     )
 
     transfer.store_id = store.id
-    transfer.staging_path = str(file_location)
+    # Crucial to have this be the staging name, as is in the upload.
+    transfer.staging_path = str(file_name)
 
     # Set store path now as it will not change.
     transfer.store_path = str(request.destination_location)
@@ -370,6 +370,7 @@ def batch_stage(
             upload_size=upload.upload_size,
             upload_checksum=upload.upload_checksum,
             destination_location=upload.destination_location,
+            upload_name=upload.upload_name,
         )
 
         # Now we have a handle on the transfer, let's stage it.
@@ -379,7 +380,8 @@ def batch_stage(
         )
 
         transfer.store_id = store.id
-        transfer.staging_path = str(file_location)
+        # Crucial to have this be the staging name, as is in the upload.
+        transfer.staging_path = str(file_name)
 
         # Set store path now as it will not change.
         transfer.store_path = str(upload.destination_location)

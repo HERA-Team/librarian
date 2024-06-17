@@ -114,6 +114,7 @@ class StoreMetadata(db.Base):
         self,
         transfer: IncomingTransfer,
         session: "Session",
+        deletion_policy: DeletionPolicy = DeletionPolicy.DISALLOWED,
     ) -> Instance:
         """
         Ingests a file into the store. Creates a new File and associated file Instance.
@@ -122,8 +123,10 @@ class StoreMetadata(db.Base):
         ----------
         request : UploadCompletionRequest
             The request object containing information about the file upload.
-        transfer : IncomingTransfer
-            The transfer object containing information about the file transfer.
+        session : Session
+            The database session to use.
+        deletion_policy : DeletionPolicy
+            The deletion policy to use for this file.
 
         Returns
         -------
@@ -153,7 +156,6 @@ class StoreMetadata(db.Base):
         )
         staged_path = staging_directory / upload_name
         store_path = self.store_manager.resolve_path_store(transfer.store_path)
-        deletion_policy = DeletionPolicy.from_str(request.deletion_policy)
 
         # First up, check that we got what we expected!
         try:
@@ -171,7 +173,7 @@ class StoreMetadata(db.Base):
             or info.md5 != transfer.transfer_checksum
         ):
             # We have a problem! The file is not what we expected. Delete it quickly!
-            self.store_manager.unstage(staged_path)
+            self.store_manager.unstage(staging_directory)
 
             transfer.status = TransferStatus.FAILED
             session.commit()
@@ -188,7 +190,7 @@ class StoreMetadata(db.Base):
         except FileExistsError:
             # We have a problem! The file already exists on the store, or the namespace
             # is reserved.
-            self.store_manager.unstage(staged_path)
+            self.store_manager.unstage(staging_directory)
 
             transfer.status = TransferStatus.FAILED
             session.commit()
@@ -201,7 +203,7 @@ class StoreMetadata(db.Base):
 
         # Now create the File in the database.
         file = File.new_file(
-            filename=upload_name,
+            filename=transfer.store_path,
             size=transfer.transfer_size,
             checksum=transfer.transfer_checksum,
             uploader=transfer.uploader,
