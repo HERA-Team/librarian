@@ -230,7 +230,6 @@ def commit(
         # that needs to happen. All we need to do is return the appropriate
         # HTTP response code and data.
         store.ingest_staged_file(
-            request=request,
             transfer=transfer,
             session=session,
         )

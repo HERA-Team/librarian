@@ -112,7 +112,6 @@ class StoreMetadata(db.Base):
 
     def ingest_staged_file(
         self,
-        request: UploadCompletionRequest,
         transfer: IncomingTransfer,
         session: "Session",
     ) -> Instance:
