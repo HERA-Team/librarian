@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from hera_librarian.client import LibrarianClient
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
-from hera_librarian.exceptions import LibrarianError
+from hera_librarian.exceptions import LibrarianError, LibrarianHTTPError
 from hera_librarian.models.clone import (
     CloneBatchInitiationRequest,
     CloneBatchInitiationRequestFileItem,
@@ -111,6 +111,7 @@ def use_batch_to_call_librarian(
     outgoing_transfers: list[OutgoingTransfer],
     outgoing_information: list[dict[str, Any]],
     client: LibrarianClient,
+    librarian: Librarian | None,
     session: Session,
 ) -> bool | CloneBatchInitiationResponse:
     """
@@ -126,6 +127,9 @@ def use_batch_to_call_librarian(
         List of information about the outgoing transfers. (from process_batch)
     client : LibrarianClient
         Client connection to the remote librarian.
+    librarian : Librarian | None
+        Librarian that we are sending to. If this is None, you won't be able
+        to handle existing files on the downstream.
     session : Session
         SQLAlchemy session to use.
 
@@ -154,19 +158,44 @@ def use_batch_to_call_librarian(
             request=batch,
             response=CloneBatchInitiationResponse,
         )
-    except Exception as e:
-        # Oh no, we can't call up the librarian!
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-            message=(
-                f"Unable to communicate with remote librarian for batch "
-                f"to stage clone with exception {e}."
-            ),
-            session=session,
-        )
+    except LibrarianHTTPError as e:
+        remedy_success = False
 
-        # What a waste...
+        if e.status_code == 409:
+            # The librarian already has the file... Potentially.
+            potential_id = e.full_response.get("source_transfer_id", None)
+
+            if potential_id is None:
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.PROGRAMMING,
+                    message=(
+                        "Librarian told us that they have a file, but did not provide "
+                        "the source transfer ID."
+                    ),
+                    session=session,
+                )
+            else:
+                remedy_success = handle_existing_file(
+                    session=session,
+                    source_transfer_id=potential_id,
+                    librarian=librarian,
+                )
+
+        # Oh no, we can't call up the librarian!
+        if not remedy_success:
+            log_to_database(
+                severity=ErrorSeverity.ERROR,
+                category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+                message=(
+                    f"Unable to communicate with remote librarian for batch "
+                    f"to stage clone with exception {e}."
+                ),
+                session=session,
+            )
+
+        # What a waste... Even if we did remedy the problem with the
+        # already-existent file, we need to fail this over.
         for transfer in outgoing_transfers:
             transfer.fail_transfer(session=session, commit=False)
 
@@ -331,6 +360,128 @@ def call_destination_and_state_ongoing(send: SendQueue, session: Session):
         pass
 
 
+def handle_existing_file(
+    session: Session,
+    source_transfer_id: int,
+    librarian: Librarian,
+) -> bool:
+    """
+    Handles the case where the clone tells us that they already have
+    the file.
+
+    Does this buy calling up the downsteram librarian and asking for
+    the checksum. If it has the file, and the checksum matches, we
+    register a remote instance.
+
+    NOTE: This may leave dangling STAGED files.
+    """
+
+    log_to_database(
+        severity=ErrorSeverity.INFO,
+        category=ErrorCategory.TRANSFER,
+        message=(
+            f"Librarian {librarian.name} told us that they already have the file "
+            f"from transfer {source_transfer_id}, attempting to handle and create "
+            "remote instance."
+        ),
+        session=session,
+    )
+
+    client = librarian.client()
+
+    # Extract name and checksum from ongoing transfer.
+    transfer = session.get(OutgoingTransfer, source_transfer_id)
+
+    file_name = transfer.file.name
+    file_checksum = transfer.file.checksum
+
+    try:
+        potential_files = client.search_files(name=file_name)
+
+        if len(potential_files) == 0:
+            # They don't have the file; this _really_ doesn't make sense.
+            log_to_database(
+                severity=ErrorSeverity.ERROR,
+                category=ErrorCategory.PROGRAMMING,
+                message=(
+                    f"Librarian {librarian.name} told us that they have file {file_name}, "
+                    "but we can't find it in their database."
+                ),
+                session=session,
+            )
+            return False
+        else:
+            # We have the file; we need to check the checksum.
+            for potential_file in potential_files:
+                if potential_file.checksum == file_checksum:
+                    # We have a match; we can register the remote instance.
+                    try:
+                        potential_store_id = potential_file.instances[0].store_id
+
+                        if potential_store_id is None:
+                            raise ValueError
+                    except (IndexError, ValueError):
+                        # So, you're telling me, that you have a file but it doesn't
+                        # have any instances..?
+                        log_to_database(
+                            severity=ErrorSeverity.ERROR,
+                            category=ErrorCategory.PROGRAMMING,
+                            message=(
+                                f"Librarian {librarian.name} told us that they have file {file_name}, "
+                                "but it has no instances."
+                            ),
+                            session=session,
+                        )
+                        return False
+
+                    remote_instance = RemoteInstance.new_instance(
+                        file=transfer.file,
+                        store_id=potential_store_id,
+                        librarian=librarian,
+                    )
+
+                    session.add(remote_instance)
+                    session.commit()
+
+                    log_to_database(
+                        severity=ErrorSeverity.INFO,
+                        category=ErrorCategory.TRANSFER,
+                        message=(
+                            f"Successfully registered remote instance for {librarian.name} and "
+                            f"transfer {source_transfer_id}."
+                        ),
+                        session=session,
+                    )
+
+                    return True
+                else:
+                    # Checksums do not match; this is a problem.
+                    log_to_database(
+                        severity=ErrorSeverity.ERROR,
+                        category=ErrorCategory.TRANSFER,
+                        message=(
+                            f"Librarian {librarian.name} told us that they have file {file_name}, "
+                            "but the checksums do not match."
+                        ),
+                        session=session,
+                    )
+
+                    return False
+    except Exception as e:
+        log_to_database(
+            severity=ErrorSeverity.ERROR,
+            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+            message=(
+                f"Unacceptable error when trying to check if librarian {librarian.name} "
+                f"has file {file_name} with exception {e}."
+            ),
+            session=session,
+        )
+        return False
+
+    return True
+
+
 class SendClone(Task):
     """
     Launches clones of files to a remote librarian.
@@ -483,6 +634,7 @@ class SendClone(Task):
                 outgoing_transfers=outgoing_transfers,
                 outgoing_information=outgoing_information,
                 client=client,
+                librarian=librarian,
                 session=session,
             )
 

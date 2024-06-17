@@ -4,7 +4,7 @@ Exceptions for the hera_librarian client library.
 
 
 class LibrarianHTTPError(Exception):
-    def __init__(self, url, status_code, reason, suggested_remedy):
+    def __init__(self, url, status_code, reason, suggested_remedy, full_response=None):
         super(LibrarianHTTPError, self).__init__(
             f"HTTP request to {url} failed with status code {status_code} and reason {reason}."
         )
@@ -12,6 +12,7 @@ class LibrarianHTTPError(Exception):
         self.status_code = status_code
         self.reason = reason
         self.suggested_remedy = suggested_remedy
+        self.full_response = full_response
 
 
 class LibrarianError(Exception):

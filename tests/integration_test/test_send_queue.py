@@ -331,6 +331,23 @@ def test_send_from_existing_file_row(
     if missing_files != []:
         raise ValueError(f"Missing files: " + str(missing_files))
 
+    # Ok, now try to execute the send loop again. We should 409 and
+    # register a new remote instance internally.
+    with source_session_maker() as session:
+        generate_task.core(session=session)
+
+    # Check we correctly registered remote instances on the source.
+    # There will be only one...
+    found_remote_instanace = False
+    with source_session_maker() as session:
+        for file_name in copied_files:
+            file = session.get(test_orm.File, file_name)
+            if len(file.remote_instances) == 1:
+                found_remote_instanace = True
+                break
+
+    assert found_remote_instanace
+
     # Remove the librarians we added.
     assert mocked_admin_client.remove_librarian(name="live_server")
 
@@ -394,6 +411,7 @@ def test_use_batch_to_call_librarian(
                 outgoing_transfers=transfers,
                 outgoing_information=outgoing_information,
                 client=fake_client,
+                librarian=None,
                 session=session,
             )
             is False

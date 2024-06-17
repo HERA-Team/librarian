@@ -111,6 +111,7 @@ def file(
                 instances=[
                     InstanceSearchResponse(
                         path=instance.path,
+                        store_id=instance.store_id,
                         deletion_policy=instance.deletion_policy,
                         created_time=instance.created_time,
                         available=instance.available,

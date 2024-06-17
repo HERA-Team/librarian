@@ -222,6 +222,7 @@ class LibrarianClient:
                 suggested_remedy=response_json.get(
                     "suggested_remedy", "<no suggested remedy provided>"
                 ),
+                full_response=response_json,
             )
 
         if response is None:
