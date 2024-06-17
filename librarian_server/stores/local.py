@@ -87,6 +87,12 @@ class LocalStore(CoreStore):
 
         return complete_path
 
+    def resolve_path_store(self, path: Path | str) -> Path:
+        return self._resolved_path_store(Path(path))
+
+    def resolve_path_staging(self, path: Path | str) -> Path:
+        return self._resolved_path_staging(Path(path))
+
     def stage(self, file_size: int, file_name: Path) -> tuple[Path]:
         if file_size > self.free_space:
             raise ValueError("Not enough free space on store")

@@ -235,7 +235,7 @@ def commit(
             session=session,
         )
     except FileNotFoundError:
-        log.debug(
+        log.error(
             f"File {request.staging_location} not found in staging area. Returning error"
         )
         response.status_code = status.HTTP_404_NOT_FOUND
@@ -246,7 +246,7 @@ def commit(
             "contact the administrator of this librarian instance.",
         )
     except FileExistsError:
-        log.debug(
+        log.error(
             f"File {request.destination_location} already exists on store. Returning error."
         )
         response.status_code = status.HTTP_409_CONFLICT
@@ -258,10 +258,10 @@ def commit(
                 "unique filename that does not already exist."
             ),
         )
-    except ValueError:
-        log.debug(
+    except ValueError as e:
+        log.error(
             f"File {request.destination_location} does not have a valid "
-            "checksum or size. Returning error."
+            f"checksum or size. Returning error: {e}"
         )
         response.status_code = status.HTTP_406_NOT_ACCEPTABLE
         return UploadFailedResponse(
@@ -272,7 +272,7 @@ def commit(
     except Exception as e:
         import traceback
 
-        log.debug(
+        log.error(
             "Extremely bad internal server error. Likley a database communication issue. "
             f"Error: {e}, Traceback:\n{traceback.format_exc()}"
         )

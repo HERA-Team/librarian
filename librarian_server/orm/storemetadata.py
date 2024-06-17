@@ -146,8 +146,14 @@ class StoreMetadata(db.Base):
         if not self.enabled:
             raise ValueError(f"Store {self.name} is not enabled.")
 
-        staged_path = request.staging_location
-        store_path = request.destination_location
+        # Do not trust the second request; get our original information from the
+        # database. Could validate against the request?
+        upload_name = transfer.upload_name
+        staging_directory = self.store_manager.resolve_path_staging(
+            transfer.staging_path
+        )
+        staged_path = staging_directory / upload_name
+        store_path = self.store_manager.resolve_path_store(transfer.store_path)
         deletion_policy = DeletionPolicy.from_str(request.deletion_policy)
 
         # First up, check that we got what we expected!
@@ -161,7 +167,6 @@ class StoreMetadata(db.Base):
                 f"File {staged_path} not found in staging area. "
                 "It is likely there was a problem with the file upload. "
             )
-
         if (
             info.size != transfer.transfer_size
             or info.md5 != transfer.transfer_checksum
@@ -197,7 +202,7 @@ class StoreMetadata(db.Base):
 
         # Now create the File in the database.
         file = File.new_file(
-            filename=request.destination_location,
+            filename=upload_name,
             size=transfer.transfer_size,
             checksum=transfer.transfer_checksum,
             uploader=transfer.uploader,
@@ -225,10 +230,10 @@ class StoreMetadata(db.Base):
             self.store_manager.commit(
                 staging_path=staged_path, store_path=resolved_store_path
             )
-            self.store_manager.unstage(request.staging_name)
+            self.store_manager.unstage(staging_directory)
         except SQLAlchemyError as e:
             # Need to rollback everything. The upload failed...
-            self.store_manager.unstage(request.staging_name)
+            self.store_manager.unstage(staging_directory)
 
             session.rollback()
 

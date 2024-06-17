@@ -26,6 +26,40 @@ class CoreStore(BaseModel, abc.ABC):
 
     name: str
 
+    @abc.abstractmethod
+    def resolve_path_store(self, path: Path | str) -> Path:
+        """
+        Resolve a path relative to the store.
+
+        Parameters
+        ----------
+        path : Path
+            Path to resolve.
+
+        Returns
+        -------
+        Path
+            Resolved path.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def resolve_path_staging(self, path: Path | str) -> Path:
+        """
+        Resolve a path relative to the staging area.
+
+        Parameters
+        ----------
+        path : Path
+            Path to resolve.
+
+        Returns
+        -------
+        Path
+            Resolved path.
+        """
+        raise NotImplementedError
+
     @property
     @abc.abstractmethod
     def available(self) -> bool:
