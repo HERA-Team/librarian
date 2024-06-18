@@ -25,6 +25,7 @@ def background(run_once: bool = False):
         + background_settings.recieve_clone
         + background_settings.consume_queue
         + background_settings.check_consumed_queue
+        + background_settings.outgoing_transfer_hypervisor
     )
 
     for task in all_tasks:

@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from hera_librarian.deletion import DeletionPolicy
+from librarian_background.hypervisor import OutgoingTransferHypervisor
 
 from .check_integrity import CheckIntegrity
 from .create_clone import CreateLocalClone
@@ -175,6 +176,23 @@ class CheckConsumedQueueSettings(BackgroundTaskSettings):
         )
 
 
+class OutgoingTransferHypevrisorSettings(BackgroundTaskSettings):
+    """
+    Settings for the hypervisor task.
+    """
+
+    age_in_days: int
+    "The age of the items to check, in days."
+
+    @property
+    def task(self) -> OutgoingTransferHypervisor:
+        return OutgoingTransferHypervisor(
+            name=self.task_name,
+            age_in_days=self.age_in_days,
+            soft_timeout=self.soft_timeout,
+        )
+
+
 class BackgroundSettings(BaseSettings):
     """
     Background task settings, configurable.
@@ -199,6 +217,8 @@ class BackgroundSettings(BaseSettings):
 
     check_consumed_queue: list[CheckConsumedQueueSettings] = []
     "Settings for the check consumed queue task."
+
+    outgoing_transfer_hypervisor: list[OutgoingTransferHypevrisorSettings] = []
 
     # Global settings:
 

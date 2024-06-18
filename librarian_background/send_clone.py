@@ -35,6 +35,7 @@ from librarian_server.orm import (
 )
 from librarian_server.settings import server_settings
 
+from .hypervisor import handle_stale_outgoing_transfer
 from .task import Task
 
 if TYPE_CHECKING:
@@ -396,7 +397,8 @@ def handle_existing_file(
     the checksum. If it has the file, and the checksum matches, we
     register a remote instance.
 
-    NOTE: This may leave dangling STAGED files.
+    NOTE: This may leave dangling STAGED files, but those can be cleaned
+    up later by the hypervisor task
     """
 
     log_to_database(
@@ -410,99 +412,27 @@ def handle_existing_file(
         session=session,
     )
 
-    client = librarian.client()
+    transfer: OutgoingTransfer = session.get(OutgoingTransfer, source_transfer_id)
 
-    # Extract name and checksum from ongoing transfer.
-    transfer = session.get(OutgoingTransfer, source_transfer_id)
-
-    file_name = transfer.file.name
-    file_checksum = transfer.file.checksum
-
-    try:
-        potential_files = client.search_files(name=file_name)
-
-        if len(potential_files) == 0:
-            # They don't have the file; this _really_ doesn't make sense.
-            log_to_database(
-                severity=ErrorSeverity.ERROR,
-                category=ErrorCategory.PROGRAMMING,
-                message=(
-                    f"Librarian {librarian.name} told us that they have file {file_name}, "
-                    "but we can't find it in their database."
-                ),
-                session=session,
-            )
-            return False
-        else:
-            # We have the file; we need to check the checksum.
-            for potential_file in potential_files:
-                if potential_file.checksum == file_checksum:
-                    # We have a match; we can register the remote instance.
-                    try:
-                        potential_store_id = potential_file.instances[0].store_id
-
-                        if potential_store_id is None:
-                            raise ValueError
-                    except (IndexError, ValueError):
-                        # So, you're telling me, that you have a file but it doesn't
-                        # have any instances..?
-                        log_to_database(
-                            severity=ErrorSeverity.ERROR,
-                            category=ErrorCategory.PROGRAMMING,
-                            message=(
-                                f"Librarian {librarian.name} told us that they have file {file_name}, "
-                                "but it has no instances."
-                            ),
-                            session=session,
-                        )
-                        return False
-
-                    remote_instance = RemoteInstance.new_instance(
-                        file=transfer.file,
-                        store_id=potential_store_id,
-                        librarian=librarian,
-                    )
-
-                    session.add(remote_instance)
-                    session.commit()
-
-                    log_to_database(
-                        severity=ErrorSeverity.INFO,
-                        category=ErrorCategory.TRANSFER,
-                        message=(
-                            f"Successfully registered remote instance for {librarian.name} and "
-                            f"transfer {source_transfer_id}."
-                        ),
-                        session=session,
-                    )
-
-                    return True
-                else:
-                    # Checksums do not match; this is a problem.
-                    log_to_database(
-                        severity=ErrorSeverity.ERROR,
-                        category=ErrorCategory.TRANSFER,
-                        message=(
-                            f"Librarian {librarian.name} told us that they have file {file_name}, "
-                            "but the checksums do not match."
-                        ),
-                        session=session,
-                    )
-
-                    return False
-    except Exception as e:
+    if transfer is None:
         log_to_database(
             severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+            category=ErrorCategory.PROGRAMMING,
             message=(
-                f"Unacceptable error when trying to check if librarian {librarian.name} "
-                f"has file {file_name} with exception {e}."
+                f"Transfer {source_transfer_id} does not exist, but we were told "
+                "by the downstream librarian that it does. There must be another "
+                "librarian that sent them the file, and the DAG nature of the "
+                "librarian is being violated."
             ),
             session=session,
         )
-        return False
 
-    return True
+        return False
+    else:
+        return handle_stale_outgoing_transfer(
+            session=session,
+            transfer=transfer,
+        )
 
 
 class SendClone(Task):
