@@ -11,7 +11,11 @@ from sqlalchemy import select
 
 from hera_librarian.client import LibrarianClient
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
-from hera_librarian.exceptions import LibrarianError, LibrarianHTTPError
+from hera_librarian.exceptions import (
+    LibrarianError,
+    LibrarianHTTPError,
+    LibrarianTimeoutError,
+)
 from hera_librarian.models.clone import (
     CloneBatchInitiationRequest,
     CloneBatchInitiationRequestFileItem,
@@ -196,6 +200,25 @@ def use_batch_to_call_librarian(
 
         # What a waste... Even if we did remedy the problem with the
         # already-existent file, we need to fail this over.
+        for transfer in outgoing_transfers:
+            transfer.fail_transfer(session=session, commit=False)
+
+        session.commit()
+
+        return False
+    except LibrarianTimeoutError as e:
+        # Can't connect to the librarian. Log and move on...
+
+        log_to_database(
+            severity=ErrorSeverity.ERROR,
+            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
+            message=(
+                f"Timeout when trying to communicate with remote librarian for batch "
+                f"to stage clone with exception {e}."
+            ),
+            session=session,
+        )
+
         for transfer in outgoing_transfers:
             transfer.fail_transfer(session=session, commit=False)
 

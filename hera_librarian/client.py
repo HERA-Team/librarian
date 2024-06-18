@@ -24,7 +24,7 @@ from hera_librarian.models.clone import (
 from .authlevel import AuthLevel
 from .deletion import DeletionPolicy
 from .errors import ErrorCategory, ErrorSeverity
-from .exceptions import LibrarianError, LibrarianHTTPError
+from .exceptions import LibrarianError, LibrarianHTTPError, LibrarianTimeoutError
 from .models.admin import (
     AdminAddLibrarianRequest,
     AdminAddLibrarianResponse,
@@ -195,12 +195,15 @@ class LibrarianClient:
 
         data = None if request is None else request.model_dump_json()
 
-        r = requests.post(
-            self.resolve(endpoint),
-            data=data,
-            headers={"Content-Type": "application/json"},
-            auth=(self.user, self.password),
-        )
+        try:
+            r = requests.post(
+                self.resolve(endpoint),
+                data=data,
+                headers={"Content-Type": "application/json"},
+                auth=(self.user, self.password),
+            )
+        except (TimeoutError, requests.exceptions.ConnectionError):
+            raise LibrarianTimeoutError(url=self.resolve(endpoint))
 
         if str(r.status_code)[0] != "2":
             try:

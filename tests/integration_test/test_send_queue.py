@@ -374,7 +374,10 @@ def test_use_batch_to_call_librarian(
     from hera_librarian import LibrarianClient
 
     fake_client = LibrarianClient(
-        host="http://nowhere.com", port=12345, user="404", password="notfound"
+        host="http://localhost",
+        port=test_server_with_many_files_and_errors[2].id,
+        user="404",
+        password="notfound",
     )
 
     from librarian_background.send_clone import use_batch_to_call_librarian
@@ -436,7 +439,10 @@ def test_create_send_queue_item_no_transfer_providers(
     from hera_librarian import LibrarianClient
 
     fake_client = LibrarianClient(
-        host="http://nowhere.com", port=12345, user="404", password="notfound"
+        host="http://localhost",
+        port=test_server_with_many_files_and_errors[2].id,
+        user="404",
+        password="notfound",
     )
 
     from librarian_background.send_clone import use_batch_to_call_librarian
@@ -529,7 +535,10 @@ def test_create_send_queue_item_no_availability_of_transfer_manager(
     from hera_librarian import LibrarianClient
 
     fake_client = LibrarianClient(
-        host="http://nowhere.com", port=12345, user="404", password="notfound"
+        host="http://localhost",
+        port=test_server_with_many_files_and_errors[2].id,
+        user="404",
+        password="notfound",
     )
 
     from librarian_background.send_clone import use_batch_to_call_librarian

@@ -15,6 +15,14 @@ class LibrarianHTTPError(Exception):
         self.full_response = full_response
 
 
+class LibrarianTimeoutError(Exception):
+    def __init__(self, url):
+        super(LibrarianTimeoutError, self).__init__(
+            f"HTTP request to {url} timed out or took too many retries."
+        )
+        self.url = url
+
+
 class LibrarianError(Exception):
     def __init__(self, message):
         super(LibrarianError, self).__init__(message)
