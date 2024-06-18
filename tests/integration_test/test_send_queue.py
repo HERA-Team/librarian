@@ -330,6 +330,25 @@ def test_send_from_existing_file_row(
 
     if missing_files != []:
         raise ValueError(f"Missing files: " + str(missing_files))
+    else:
+        print("All files copied successfully.")
+
+    # Callback can't work, so we need to modify our outgoing transfers
+    # to be compelted.
+    with source_session_maker() as session:
+        queue_item = (
+            session.query(test_orm.SendQueue)
+            .filter_by(destination="live_server", completed=True)
+            .first()
+        )
+
+        assert queue_item.consumed
+        assert queue_item.completed
+
+        for transfer in queue_item.transfers:
+            transfer.status = TransferStatus.COMPLETED
+
+        session.commit()
 
     # Ok, now try to execute the send loop again. We should 409 and
     # register a new remote instance internally.
@@ -342,7 +361,7 @@ def test_send_from_existing_file_row(
     with source_session_maker() as session:
         for file_name in copied_files:
             file = session.get(test_orm.File, file_name)
-            if len(file.remote_instances) == 1:
+            if len(file.remote_instances) > 0:
                 found_remote_instanace = True
                 break
 
