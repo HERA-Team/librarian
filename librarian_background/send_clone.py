@@ -591,10 +591,6 @@ class SendClone(Task):
 
         file_stmt = file_stmt.where(File.name.not_in(outgoing_transfer_stmt))
 
-        import pdb
-
-        pdb.set_trace()
-
         files_without_remote_instances: list[File] = (
             session.execute(file_stmt).scalars().all()
         )
