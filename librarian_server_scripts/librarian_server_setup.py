@@ -5,6 +5,8 @@ Checks whether you have an empty database, unless you have the `--migrate` flag.
 """
 
 import argparse as ap
+import secrets
+import string
 import subprocess
 
 from sqlalchemy import inspect, text
@@ -15,6 +17,17 @@ from librarian_server.database import engine, get_session
 from librarian_server.logger import log
 from librarian_server.orm import StoreMetadata
 from librarian_server.settings import server_settings
+
+GRAFANA_TABLES = [
+    "clone_transfers",
+    "errors",
+    "files",
+    "incoming_transfers",
+    "instances",
+    "outgoing_transfers",
+    "remote_instances",
+    "send_queue",
+]
 
 parser = ap.ArgumentParser(
     description=(
@@ -46,18 +59,10 @@ parser.add_argument(
     default="password",
 )
 
-parser.add_argument(
-    "--librarian-db-user",
-    type=str,
-    help="Set the database user for the librarian database.",
-    default="librarian",
-)
-
-parser.add_argument(
-    "--librarian-db-password",
-    type=str,
-    help="Set the database password for the librarian database.",
-    default="password",
+parser.add_arugment(
+    "--create-grafana-user",
+    action="store_true",
+    help="Create user for grafana with only 'read' privaleges. You should read the output for the password.",
 )
 
 args = parser.parse_args()
@@ -67,18 +72,18 @@ def main():
     log.info("Librarian-server-setup settings: " + str(server_settings))
 
     if (not inspect(engine).has_table("store_metadata")) or args.migrate:
-        log.debug("Creating the database.")
+        log.debug("Creating the database")
         return_value = subprocess.call(
             f"cd {server_settings.alembic_config_path}; {server_settings.alembic_path} upgrade head",
             shell=True,
         )
         if return_value != 0:
-            log.debug("Error creating or updating the database. Exiting.")
+            log.debug("Error creating or updating the database. Exiting")
             exit(1)
         else:
-            log.debug("Successfully created or updated the database.")
+            log.debug("Successfully created or updated the database")
 
-    log.debug("Adding any new store metadata to database.")
+    log.debug("Adding any new store metadata to database")
 
     stores_added = 0
     already_present = 0
@@ -96,9 +101,7 @@ def main():
             )
 
             if current_store is not None:
-                log.debug(
-                    f"Store {store_config.store_name} already exists in database."
-                )
+                log.debug(f"Store {store_config.store_name} already exists in database")
                 already_present += 1
 
                 if args.migrate:
@@ -119,7 +122,7 @@ def main():
 
                 continue
 
-            log.debug(f"Adding store {store_config.store_name} to database.")
+            log.debug(f"Adding store {store_config.store_name} to database")
 
             store = StoreMetadata(
                 name=store_config.store_name,
@@ -137,14 +140,14 @@ def main():
 
     log.debug(
         f"Added {stores_added} store to the database. {already_present} already "
-        f"present out of {total}, and {migrated} were migrated."
+        f"present out of {total}, and {migrated} were migrated"
     )
 
     if args.migrate:
-        log.debug("Database migration complete. Exiting.")
+        log.debug("Database migration complete. Exiting")
         exit(0)
 
-    log.debug("Creating initial user.")
+    log.debug("Creating initial user")
 
     from librarian_server.orm import User
 
@@ -158,16 +161,45 @@ def main():
             session.add(user)
             session.commit()
         except IntegrityError:
-            log.debug(f"User {args.initial_user} already exists in database.")
+            log.debug(f"User {args.initial_user} already exists in database")
             session.rollback()
 
-    log.debug(f"Initial user {args.initial_user} created.")
+    log.debug(f"Initial user {args.initial_user} created")
 
     if "postgres" not in server_settings.sqlalchemy_database_uri:
         log.debug(
-            "Database is not postgres; SQLite does not play as nicely with roles. Exiting."
+            "Database is not postgres; SQLite does not play as nicely with roles, so we are done"
         )
         exit(0)
+
+    if args.create_grafana_user:
+        log.debug("Creating new database user, role, and password for grafana")
+
+        with engine.begin() as conn:
+            try:
+                conn.execute(text("CREATE ROLE grafanausers"))
+
+                conn.execute(
+                    text(f"GRANT SELECT ON {','.join(GRAFANA_TABLES)} TO grafanausers")
+                )
+            except ProgrammingError:
+                log.error("Role grafanausers likely already exists; continuing")
+
+            try:
+                alphabet = string.ascii_letters + string.digits
+                GRAFANA_PASSWORD = "".join(secrets.choice(alphabet) for i in range(64))
+
+                print(f"Creating user grafana with password {GRAFANA_PASSWORD}")
+
+                conn.execute(
+                    text(f"CREATE USER grafana WITH PASSWORD '{GRAFANA_PASSWORD}'")
+                )
+                conn.execute(text("GRANT grafanausers TO grafana"))
+            except InternalError:
+                log.error("User grafana already exists.")
+                exit(1)
+
+        log.debug("Created new user grafana and role grafanausers")
 
     # log.debug("Creating new database user, role, and password.")
 
