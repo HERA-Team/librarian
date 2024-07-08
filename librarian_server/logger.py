@@ -30,6 +30,22 @@ error_severity_to_logging_level = {
 log.debug("Logging set up.")
 
 
+def post_text_event_to_slack(text: str) -> None:
+    log.info(text)
+
+    if not server_settings.slack_webhook_enable:
+        return
+
+    requests.post(
+        server_settings.slack_webhook_enable,
+        json={
+            "username": server_settings.displayed_site_name,
+            "icon_emoji": ":ledger:",
+            "text": text,
+        },
+    )
+
+
 def post_error_to_slack(error: "Error") -> None:
     if not server_settings.slack_webhook_enable:
         return
