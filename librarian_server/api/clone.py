@@ -616,18 +616,19 @@ def complete(
             destination_transfer_id=request.destination_transfer_id,
         )
 
-    if transfer.status != TransferStatus.ONGOING:
+    if transfer.status not in [TransferStatus.ONGOING, TransferStatus.STAGED]:
         log.debug(
             f"Transfer with ID {request.source_transfer_id} has status {transfer.status}."
-            f"Trying to set it from ONGOING to COMPLETED. Returning error."
+            f"Trying to set it from ONGOING/STAGED to COMPLETED. Returning error."
         )
 
         response.status_code = status.HTTP_406_NOT_ACCEPTABLE
         return CloneFailedResponse(
-            reason="Transfer is not in ONGOING status.",
+            reason="Transfer is not in ONGOING or STAGED status.",
             suggested_remedy=(
                 "We are trying to update the status of a transfer, but the transfer is not in ONGOING "
-                "status. Check the background task ordering. We should have already updated this status."
+                "or STAGED status. Check the background task ordering. "
+                "We should have already updated this status."
             ),
             source_transfer_id=request.source_transfer_id,
             destination_transfer_id=request.destination_transfer_id,
