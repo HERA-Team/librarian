@@ -5,9 +5,24 @@ We have moved from Flask to FastAPI to ensure that web requests can be performed
 asynchronously, and that background tasks can work on any available ASGI server.
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from .settings import server_settings
+
+
+@asynccontextmanager
+def slack_post_at_startup_shutdown(app: FastAPI):
+    """
+    Lifespan event that posts to the slack hook once
+    the FastAPI server starts up and shuts down.
+    """
+    from .logger import post_text_event_to_slack
+
+    post_text_event_to_slack("Librarian server starting up")
+    yield
+    post_text_event_to_slack("Librarian shutting down")
 
 
 def main() -> FastAPI:
@@ -20,6 +35,7 @@ def main() -> FastAPI:
         title=server_settings.displayed_site_name,
         description=server_settings.displayed_site_description,
         openapi_url="/api/v2/openapi.json" if server_settings.debug else None,
+        lifespan=slack_post_at_startup_shutdown,
     )
 
     log.debug("Adding API router.")
