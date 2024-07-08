@@ -35,7 +35,7 @@ def main() -> FastAPI:
         title=server_settings.displayed_site_name,
         description=server_settings.displayed_site_description,
         openapi_url="/api/v2/openapi.json" if server_settings.debug else None,
-        # lifespan=slack_post_at_startup_shutdown,
+        lifespan=slack_post_at_startup_shutdown,
     )
 
     log.debug("Adding API router.")
