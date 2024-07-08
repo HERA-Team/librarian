@@ -596,7 +596,7 @@ def complete(
     query = query.where(OutgoingTransfer.id == request.source_transfer_id)
 
     if not user.is_admin:
-        query = query.where(OutgoingTransfer.uploader == user.username)
+        query = query.where(OutgoingTransfer.destination == user.username)
 
     transfer = session.execute(query).scalars().one_or_none()
 
