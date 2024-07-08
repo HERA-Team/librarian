@@ -59,7 +59,7 @@ parser.add_argument(
     default="password",
 )
 
-parser.add_arugment(
+parser.add_argument(
     "--create-grafana-user",
     action="store_true",
     help="Create user for grafana with only 'read' privaleges. You should read the output for the password.",
