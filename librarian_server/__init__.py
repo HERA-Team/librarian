@@ -13,7 +13,7 @@ from .settings import server_settings
 
 
 @asynccontextmanager
-def slack_post_at_startup_shutdown(app: FastAPI):
+async def slack_post_at_startup_shutdown(app: FastAPI):
     """
     Lifespan event that posts to the slack hook once
     the FastAPI server starts up and shuts down.
@@ -22,7 +22,7 @@ def slack_post_at_startup_shutdown(app: FastAPI):
 
     post_text_event_to_slack("Librarian server starting up")
     yield
-    post_text_event_to_slack("Librarian shutting down")
+    post_text_event_to_slack("Librarian server shutting down")
 
 
 def main() -> FastAPI:
