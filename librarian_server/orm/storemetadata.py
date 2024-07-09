@@ -104,11 +104,12 @@ class StoreMetadata(db.Base):
             if data.get("available", False)
         }
 
-        self.async_transfer_managers: dict[str, CoreAsyncTransferManager] = {
-            name: async_transfer_manager_from_name(name)(**data)
-            for name, data in self.async_transfer_manager_data.items()
-            if data.get("available", False)
-        }
+        if self.async_transfer_manager_data is not None:
+            self.async_transfer_managers: dict[str, CoreAsyncTransferManager] = {
+                name: async_transfer_manager_from_name(name)(**data)
+                for name, data in self.async_transfer_manager_data.items()
+                if data.get("available", False)
+            }
 
     def ingest_staged_file(
         self,
