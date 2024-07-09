@@ -77,6 +77,8 @@ class ServerSettings(BaseSettings):
     database_port: Optional[int] = None
     database: Optional[str] = None
 
+    database_password_file: Optional[Path] = None
+
     log_level: str = "DEBUG"
 
     # Display name and description of the site, used in UI only.
@@ -146,6 +148,10 @@ class ServerSettings(BaseSettings):
         if __context.globus_client_secret_file is not None:
             with open(__context.globus_client_secret_file, "r") as handle:
                 __context.globus_client_secret = handle.read().strip()
+
+        if __context.database_password_file is not None:
+            with open(__context.database_password_file, "r") as handle:
+                __context.database_password = handle.read().strip()
 
     @property
     def sqlalchemy_database_uri(self) -> str:
