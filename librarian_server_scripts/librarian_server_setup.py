@@ -166,7 +166,9 @@ def main():
 
     log.debug(f"Initial user {args.initial_user} created")
 
-    if "postgres" not in server_settings.sqlalchemy_database_uri:
+    if ("postgres" not in server_settings.sqlalchemy_database_uri) and (
+        "postgres" not in server_settings.database_driver
+    ):
         log.debug(
             "Database is not postgres; SQLite does not play as nicely with roles, so we are done"
         )
