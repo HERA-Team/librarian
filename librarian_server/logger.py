@@ -37,7 +37,7 @@ def post_text_event_to_slack(text: str) -> None:
         return
 
     requests.post(
-        server_settings.slack_webhook_enable,
+        server_settings.slack_webhook_url,
         json={
             "username": server_settings.displayed_site_name,
             "icon_emoji": ":ledger:",
