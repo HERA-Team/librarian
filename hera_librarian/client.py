@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Optional
+from urllib.parse import urlparse
 
 import requests
 from pydantic import BaseModel
@@ -137,7 +138,22 @@ class LibrarianClient:
 
     @property
     def hostname(self):
-        return f"{self.host}:{self.port}/api/v2"
+        # Grab the url with /api/v2 appended.
+        parsed = urlparse(url=self.host)
+
+        if parsed.port is not None:
+            raise LibrarianHTTPError(
+                url=self.host,
+                status_code=None,
+                reason="Host should not include port.",
+                suggested_remedy="Use the `port` parameter.",
+            )
+
+        parsed = parsed._replace(
+            netloc=f"{parsed.netloc}:{self.port}", path=f"{parsed.path}/api/v2"
+        )
+
+        return parsed.geturl()
 
     def resolve(self, path: str):
         """
@@ -154,10 +170,11 @@ class LibrarianClient:
             The resolved URL.
         """
 
-        if path[0] == "/":
-            return f"{self.hostname}{path}"
-        else:
-            return f"{self.hostname}/{path}"
+        parsed = urlparse(url=self.hostname)
+
+        parsed = parsed._replace(path=f"{parsed.path}/{path}")
+
+        return parsed.geturl()
 
     def post(
         self,

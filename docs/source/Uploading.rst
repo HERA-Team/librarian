@@ -50,10 +50,10 @@ directive in the python client to upload data.
     from pathlib import Path
 
     conn = client_settings.connections.get(
-        self.config.get("librarian_conn")
+        "my_librarian_name"
     )
 
-    self.librarian.upload(
+    conn.upload(
         Path(local_file),
         Path("/hello/world/this/is/a/file.txt")
     )
