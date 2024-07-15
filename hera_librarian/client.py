@@ -279,7 +279,7 @@ class LibrarianClient:
         """
 
         response: PingResponse = self.post(
-            endpoint="ping/logged" if require_login else "ping",
+            endpoint="ping/logged" if require_login else "ping/",
             request=PingRequest(),
             response=PingResponse,
         )
