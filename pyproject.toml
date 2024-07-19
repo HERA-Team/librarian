@@ -88,7 +88,7 @@ source = [
     "librarian_server",
     "librarian_background",
     "hera_librarian",
-    "librarian_server_scripts/librarian_server_repair_database.py"
+    "librarian_server_scripts"
 ]
 
 [tool.coverage.report]
