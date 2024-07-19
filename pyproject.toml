@@ -14,7 +14,7 @@ dependencies = [
     "checksumdir",
     "cryptography",
     "fastapi >= 0.108.0",
-    "globus-sdk",
+    "globus-sdk <= 3.40.0",
     "httpx",
     "pydantic >= 2",
     "pydantic-settings >= 2",

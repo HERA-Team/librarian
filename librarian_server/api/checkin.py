@@ -77,7 +77,11 @@ def modify_transfers_by_id(
             reasons.add("No destination transfer with the appropriate ID was found.")
             continue
 
-        authorized = user.is_admin or (transfer.uploader == user.username)
+        authorized = (
+            user.is_admin
+            or (transfer.source == user.username)
+            or (transfer.uploader == user.username)
+        )
 
         if not authorized:
             unprocessed.append(transfer_id)
@@ -115,7 +119,11 @@ def get_status_by_id(
     for transfer_id in transfer_ids:
         transfer = session.get(transfer_type, transfer_id, with_for_update=True)
 
-        authorized = user.is_admin or (transfer.uploader == user.username)
+        authorized = (
+            user.is_admin
+            or (transfer.source == user.username)
+            or (transfer.uploader == user.username)
+        )
 
         status[transfer_id] = (
             transfer.status if transfer is not None and authorized else None
