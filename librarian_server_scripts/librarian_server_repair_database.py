@@ -199,7 +199,11 @@ class TransferInfo(BaseModel):
 
         uuid = path_under_staging.difference(file_name).pop()
         potential_path = store.store_manager.resolve_path_staging(Path(uuid))
-        assert potential_path.exists()
+
+        if not potential_path.exists():
+            raise RuntimeError(
+                f"Staging location {potential_path} does not exist for {self}"
+            )
 
         return uuid
 
@@ -356,6 +360,37 @@ def core_destination(
 
         addables = []
 
+        for i, transfer_info in enumerate(summary_info.transfer_info):
+            # First: check if this transfer exists.
+            potential_transfer = session.get(
+                IncomingTransfer, transfer_info.destination_id
+            )
+
+            # That's ok - it must have been present in the backup. We expect
+            # some level of overlap!
+            if not potential_transfer is None:
+                continue
+
+            incoming_transfer = transfer_info.to_transfer(store=store)
+
+            if (i % spot_check_every) == 0:
+                if track_progress:
+                    print(
+                        f"Checking transfer, have ingested {i}/{number_of_transfers} transfers"
+                    )
+                # Check these by seeing if the folder exists.
+
+                full_path = store.store_manager.resolve_path_staging(
+                    incoming_transfer.staging_path
+                )
+
+                if not full_path.exists():
+                    raise RuntimeError(
+                        f"Staging location {incoming_transfer.staging_path} does not exist"
+                    )
+
+            addables += [incoming_transfer]
+
         for i, file_info in enumerate(summary_info.file_info):
             # First: check if this exists.
             potential_file = session.get(File, file_info.name)
@@ -377,37 +412,6 @@ def core_destination(
                     raise RuntimeError(f"Checksum does not match for file {file}")
 
             addables += [file, instance]
-
-        for i, transfer_info in enumerate(summary_info.transfer_info):
-            # First: check if this transfer exists.
-            potential_transfer = session.get(
-                IncomingTransfer, transfer_info.destination_id
-            )
-
-            # That's ok - it must have been present in the backup. We expect
-            # some level of overlap!
-            if not potential_transfer is None:
-                continue
-
-            incoming_transfer = transfer_info.to_transfer(store=store)
-
-            if (i % spot_check_every) == 0:
-                if track_progress:
-                    print(
-                        f"Checking transfer, have ingested {i}/{number_of_files} files"
-                    )
-                # Check these by seeing if the folder exists.
-
-                full_path = store.store_manager.resolve_path_staging(
-                    incoming_transfer.staging_path
-                )
-
-                if not full_path.exists():
-                    raise RuntimeError(
-                        f"Staging location {incoming_transfer.staging_path} does not exist"
-                    )
-
-            addables += [incoming_transfer]
 
         if track_progress:
             print("Completed the ingest process. Committing to database.")
