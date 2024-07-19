@@ -121,10 +121,11 @@ def test_simple_real_send(
     get_session = test_server_with_valid_file[1]
 
     with get_session() as session:
-        file = session.query(File).first()
+        # File provided by fixture. If you change that filename this test will fail.
+        file = session.get(File, "example_file.txt")
 
         transfer = OutgoingTransfer.new_transfer(
-            destination="liver_server",
+            destination="live_server",
             instance=file.instances[0],
             file=file,
         )

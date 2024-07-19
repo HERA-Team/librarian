@@ -69,6 +69,7 @@ librarian-background-only = "librarian_server_scripts.librarian_background_only:
 librarian-server-setup = "librarian_server_scripts.librarian_server_setup:main"
 librarian = "hera_librarian.cli:main"
 librarian-server-rebuild-database = "librarian_server_scripts.librarian_server_rebuild_database:main"
+librarian-server-repair-database = "librarian_server_scripts.librarian_server_repair_database:main"
 
 [project.urls]
 Homepage = "https://github.com/simonsobs/librarian"

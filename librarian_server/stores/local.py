@@ -152,15 +152,15 @@ class LocalStore(CoreStore):
                 # Directory is not empty. Delete it and all its contents. Unfortunately we can't log this..
                 shutil.rmtree(complete_path)
 
-        # Check if the parent is still in the staging area. We don't want
-        # to leave random dregs around!
-
+        # Check if the parent is empty. We don't want to leave dregs!
         if os.path.exists(complete_path.parent):
             try:
                 resolved_path = self._resolved_path_store(complete_path.parent)
                 resolved_path.rmdir()
-            except ValueError:
-                # The parent is not in the staging area. We can't delete it.
+            except (ValueError, OSError):
+                # The parent is not in the store area. We can't delete it, or
+                # the folder that is the parent is not empty (there may be other
+                # files under that directory that we haven't deleted yet).
                 pass
 
         return

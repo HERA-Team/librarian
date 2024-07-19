@@ -208,11 +208,10 @@ class StoreMetadata(db.Base):
             size=transfer.transfer_size,
             checksum=transfer.transfer_checksum,
             uploader=transfer.uploader,
-            source=transfer.uploader,
+            source=transfer.source,
         )
 
         # And the file instance associated with this.
-
         instance = Instance.new_instance(
             path=resolved_store_path,
             file=file,

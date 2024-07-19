@@ -2,6 +2,7 @@
 The local async transfer manager.
 """
 
+import copy
 import os
 import shutil
 from pathlib import Path
@@ -56,8 +57,19 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
         # set on all files and directories that we copy over.
         # They should have rw-rw-r-- and rwxrwxr-x permissions.
 
+        # Note that async transfers for some reason copy the whole file path.
+        # They don't just use the base-level, so we need to create the directory
+        # structure from bottom-up.
+        dest_path = copy.copy(remote_path).parent
+        paths_to_modify = []
+
+        while not dest_path.exists():
+            dest_path.mkdir(mode=0o775)
+            paths_to_modify.append(copy.copy(dest_path))
+            dest_path = dest_path.parent
+
         # Get the group of the parent.
-        parent_group = remote_path.parent.stat().st_gid
+        parent_group = dest_path.stat().st_gid
         # Get this user's uid.
         uid = os.getuid()
 
@@ -73,6 +85,9 @@ class LocalAsyncTransferManager(CoreAsyncTransferManager):
             os.chown(file, uid=uid, gid=parent_group)
 
             return
+
+        for path in paths_to_modify:
+            set_for_file(path)
 
         copy_success = False
 

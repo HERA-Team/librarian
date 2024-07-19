@@ -376,7 +376,11 @@ def test_server_with_many_files_and_errors(test_server, test_orm):
     data = random.randbytes(1024)
 
     # Add many files
-    file_names = [f"many_server_example_file_{x}.txt" for x in range(128)]
+    file_names = [f"test_files/many_server_example_file_{x}.txt" for x in range(64)]
+    file_names += [f"many_server_example_file_{x}.txt" for x in range(64)]
+
+    # Create the folder in the store
+    store.store_manager._resolved_path_store(Path("test_files")).mkdir()
 
     for file_name in file_names:
         file = test_orm.File.new_file(
@@ -429,7 +433,6 @@ def test_server_with_many_files_and_errors(test_server, test_orm):
     yield test_server
 
     # Now delete those items from the database.
-
     session = test_server[1]()
 
     for file_name in file_names:
