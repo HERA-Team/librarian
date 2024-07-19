@@ -12,6 +12,8 @@ Other steps to take:
    but allow it to complete those in-flight. Do not delete hanging
    staging directories until the transfers have all 'gone through'.
 2. Review your backup schedule.
+3. Make sure you have a hypervisor task running on the source to pick
+   up any files that have been moved from staged to store.
 """
 
 # This script recreates three major sets of rows:
@@ -198,12 +200,6 @@ class TransferInfo(BaseModel):
         file_name = set(Path(self.file_name).parts)
 
         uuid = path_under_staging.difference(file_name).pop()
-        potential_path = store.store_manager.resolve_path_staging(Path(uuid))
-
-        if not potential_path.exists():
-            raise RuntimeError(
-                f"Staging location {potential_path} does not exist for {self}"
-            )
 
         return uuid
 
@@ -226,6 +222,28 @@ class TransferInfo(BaseModel):
             store_path=self.file_name,
             source_transfer_id=self.source_id,
         )
+
+    def to_file(self, store: StoreMetadata) -> tuple[File, Instance]:
+        instance = Instance(
+            path=str(store.store_manager.resolve_path_store(Path(self.file_name))),
+            file_name=self.file_name,
+            store=store,
+            deletion_policy=DeletionPolicy.DISALLOWED,
+            created_time=self.start_time,
+            available=True,
+        )
+
+        file = File(
+            name=self.file_name,
+            create_time=self.start_time,
+            size=self.transfer_size,
+            checksum=self.transfer_checksum,
+            uploader=self.uploader,
+            source=self.source,
+            instances=[instance],
+        )
+
+        return file, instance
 
 
 class AllInfo(BaseModel):
@@ -358,6 +376,7 @@ def core_destination(
         if store is None:
             raise ValueError(f"Store {store_name} is not available in the database.")
 
+        to_spot_check = []
         addables = []
 
         for i, transfer_info in enumerate(summary_info.transfer_info):
@@ -373,20 +392,68 @@ def core_destination(
 
             incoming_transfer = transfer_info.to_transfer(store=store)
 
-            if (i % spot_check_every) == 0:
-                if track_progress:
-                    print(
-                        f"Checking transfer, have ingested {i}/{number_of_transfers} transfers"
-                    )
-                # Check these by seeing if the folder exists.
+            # We _always_ check every transfer. There may be files have been moved
+            # from staged -> store, and we need to ingest those!
 
-                full_path = store.store_manager.resolve_path_staging(
-                    incoming_transfer.staging_path
+            if track_progress:
+                print(
+                    f"Checking transfer, have ingested {i}/{number_of_transfers} transfers"
+                )
+            # Check these by seeing if the folder exists.
+            full_path = store.store_manager.resolve_path_staging(
+                incoming_transfer.staging_path
+            )
+
+            if not full_path.exists():
+                # Two possible scenarios: the file was already ingested, in which case we
+                # need to both check it and add a file and instance, OR we have a completely
+                # borked item, in which case we should STOP.
+                potential_file = session.get(File, incoming_transfer.upload_name)
+
+                if not potential_file is None:
+                    print(
+                        f"WARNING: file {incoming_transfer.upload_name} was already ingested, "
+                        f"but the outgoing transfer {transfer_info} was not marked as complete"
+                    )
+                    continue
+
+                path_to_file = store.store_manager.resolve_path_store(
+                    Path(incoming_transfer.store_path)
                 )
 
-                if not full_path.exists():
+                if path_to_file.exists():
+                    # Check it!
+                    print(
+                        f"Checking file {incoming_transfer.upload_name} for integrity, as "
+                        f"path on store exists but not on staging"
+                    )
+                    checksum = get_md5_from_path(path_to_file)
+                    size = get_size_from_path(path_to_file)
+
+                    if not (
+                        (checksum == incoming_transfer.transfer_checksum)
+                        and (size == incoming_transfer.transfer_size)
+                    ):
+                        raise RuntimeError(
+                            f"Staging location {incoming_transfer.staging_path} does not exist, and "
+                            f"it has been moved to {path_to_file} but the checksums do not match. "
+                            "Recommend deleting the data and re-trying"
+                        )
+                    else:
+                        print(
+                            f"File {incoming_transfer.upload_name} is correct, adding to database. "
+                            f"Recommend spot-checking after completion."
+                        )
+                        to_spot_check += [incoming_transfer.upload_name]
+
+                        file, instance = transfer_info.to_file(store=store)
+                        addables += [file, instance]
+
+                        continue
+                else:
                     raise RuntimeError(
-                        f"Staging location {incoming_transfer.staging_path} does not exist"
+                        f"Staging location {incoming_transfer.staging_path} does not exist, and "
+                        f"it has not been moved to the destination. Check {transfer_info}. "
                     )
 
             addables += [incoming_transfer]
@@ -415,6 +482,11 @@ def core_destination(
 
         if track_progress:
             print("Completed the ingest process. Committing to database.")
+
+        if len(to_spot_check):
+            print("Recommend spot-checking ingested files from completed transfers: ")
+            for file_name in to_spot_check:
+                print(f"  - {file_name}")
 
         session.add_all(addables)
         session.commit()

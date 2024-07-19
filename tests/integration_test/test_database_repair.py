@@ -122,11 +122,35 @@ def test_recover_from_disaster(
             .all()
         )
 
-        for transfer in incoming_transfers:
+        for transfer in incoming_transfers[:-2]:
             assert transfer.status == TransferStatus.STAGED
             session.delete(transfer)
 
-        # DELETE THEM ALL!!!
+        transfer = incoming_transfers[-1]
+
+        # For the last transfer, record its from and to positions
+        # to ensure we can recover from dropped comms.
+        DEBUG_SPECIAL_CASE = transfer.upload_name
+
+        transfer.store.store_manager.commit(
+            staging_path=transfer.store.store_manager.resolve_path_staging(
+                Path(transfer.staging_path) / Path(transfer.upload_name)
+            ),
+            store_path=transfer.store.store_manager.resolve_path_store(
+                Path(transfer.upload_name)
+            ),
+        )
+
+        transfer.store.store_manager.unstage(
+            path=transfer.store.store_manager.resolve_path_staging(
+                Path(transfer.staging_path)
+            )
+        )
+
+        # Delete this last record
+        session.delete(transfer)
+
+        # DELETE THEM ALL (except one!)
         session.commit()
 
     # Ok, repair the database!
@@ -269,6 +293,11 @@ def test_recover_from_disaster(
         for property, value in stored_properties_file.items():
             assert getattr(repaired_file, property) == value
 
+    # Databases are cleaned up after test. To spot-check, comment out
+    # the following line and run the test. The test should fail. You will
+    # also need to comment out the deletion items from the fixture setup.
+    # raise AttributeError
+
     # Remove the librarians we added.
     assert mocked_admin_client.remove_librarian(name="live_server")
 
@@ -285,7 +314,8 @@ def test_recover_from_disaster(
                 .filter_by(upload_name=file_name)
                 .first()
             )
-            session.delete(transfer)
+            if transfer:
+                session.delete(transfer)
 
         session.commit()
 
