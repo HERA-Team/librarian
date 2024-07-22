@@ -5,9 +5,6 @@ Includes the StoreMetadata class, which is a database model.
 """
 
 import datetime
-from enum import Enum
-from pathlib import Path
-from typing import Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, reconstructor
@@ -17,8 +14,8 @@ from hera_librarian.async_transfers import (
     async_transfer_manager_from_name,
 )
 from hera_librarian.deletion import DeletionPolicy
-from hera_librarian.models.uploads import UploadCompletionRequest
 from hera_librarian.transfers import CoreTransferManager, transfer_manager_from_name
+from hera_librarian.utils import compare_checksums, get_hash_function_from_hash
 
 from .. import database as db
 from ..stores import CoreStore, Stores
@@ -158,9 +155,13 @@ class StoreMetadata(db.Base):
         staged_path = staging_directory / upload_name
         store_path = self.store_manager.resolve_path_store(transfer.store_path)
 
+        hash_function = get_hash_function_from_hash(transfer.transfer_checksum)
+
         # First up, check that we got what we expected!
         try:
-            info = self.store_manager.path_info(staged_path)
+            info = self.store_manager.path_info(
+                staged_path, hash_function=hash_function
+            )
         except FileNotFoundError:
             transfer.status = TransferStatus.FAILED
             session.commit()
@@ -169,9 +170,8 @@ class StoreMetadata(db.Base):
                 f"File {staged_path} not found in staging area. "
                 "It is likely there was a problem with the file upload. "
             )
-        if (
-            info.size != transfer.transfer_size
-            or info.md5 != transfer.transfer_checksum
+        if info.size != transfer.transfer_size or (
+            not compare_checksums(info.checksum, transfer.transfer_checksum)
         ):
             # We have a problem! The file is not what we expected. Delete it quickly!
             self.store_manager.unstage(staging_directory)
@@ -182,7 +182,7 @@ class StoreMetadata(db.Base):
             raise ValueError(
                 f"File {staged_path} does not match expected size/checksum; "
                 f"expected {transfer.transfer_size}/{transfer.transfer_checksum}, "
-                f"got {info.size}/{info.md5}."
+                f"got {info.size}/{info.checksum}."
             )
 
         # If we got here, we got what we expected. Let's try to commit the file to the store.

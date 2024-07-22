@@ -11,7 +11,7 @@ version = "2.3.1"
 dependencies = [
     "alembic",
     "argon2-cffi",
-    "checksumdir",
+    "xxhash >= 0.8.0",
     "cryptography",
     "fastapi >= 0.108.0",
     "globus-sdk <= 3.40.0",

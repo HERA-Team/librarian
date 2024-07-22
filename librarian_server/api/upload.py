@@ -266,7 +266,7 @@ def commit(
         )
         response.status_code = status.HTTP_406_NOT_ACCEPTABLE
         return UploadFailedResponse(
-            reason="File does not have a valid checksum or size.",
+            reason="File does not have a valid checksum or size",
             suggested_remedy="Try to transfer the file again. If the problem persists, "
             "contact the administrator of this librarian instance.",
         )

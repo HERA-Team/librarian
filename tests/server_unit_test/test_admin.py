@@ -21,7 +21,7 @@ from hera_librarian.models.admin import (
     AdminStoreStateChangeRequest,
     AdminStoreStateChangeResponse,
 )
-from hera_librarian.utils import get_md5_from_path, get_size_from_path
+from hera_librarian.utils import get_checksum_from_path, get_size_from_path
 
 
 def test_add_file(test_client, test_server, garbage_file, test_orm):
@@ -43,7 +43,7 @@ def test_add_file(test_client, test_server, garbage_file, test_orm):
         name="test_upload_without_uploading.txt",
         create_time=garbage_file.stat().st_ctime,
         size=garbage_file.stat().st_size,
-        checksum=get_md5_from_path(full_path),
+        checksum=get_checksum_from_path(full_path),
         uploader="test",
         source="test",
         path=str(full_path),

@@ -30,6 +30,7 @@ def test_add_file(
         name="test_upload_without_uploading.txt",
         create_time=garbage_file.stat().st_ctime,
         size=garbage_file.stat().st_size,
+        # Leave this as-is to test 'auto selection' of md5 checksums.
         checksum=get_md5_from_path(full_path),
         uploader="test",
         path=str(full_path),
@@ -61,6 +62,7 @@ def test_add_file(
         name="test_upload_without_uploading.txt",
         create_time=garbage_file.stat().st_ctime,
         size=garbage_file.stat().st_size,
+        # Leave this as-is to test 'auto selection' of md5 checksums.
         checksum=get_md5_from_path(full_path),
         uploader="test",
         path=str(full_path),
@@ -75,6 +77,7 @@ def test_add_file(
             name="test_upload_without_uploading.txt",
             create_time=garbage_file.stat().st_ctime,
             size=garbage_file.stat().st_size,
+            # Leave this as-is to test 'auto selection' of md5 checksums.
             checksum=get_md5_from_path(full_path),
             uploader="test",
             path=str(full_path),
@@ -86,6 +89,7 @@ def test_add_file(
             name="test_upload_without_uploading_but_doesnt_exist.txt",
             create_time=garbage_file.stat().st_ctime,
             size=garbage_file.stat().st_size,
+            # Leave this as-is to test 'auto selection' of md5 checksums.
             checksum=get_md5_from_path(full_path),
             uploader="test",
             path=str(

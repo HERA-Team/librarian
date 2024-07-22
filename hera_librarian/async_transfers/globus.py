@@ -118,7 +118,7 @@ class GlobusAsyncTransferManager(CoreAsyncTransferManager):
             destination_endpoint=self.destination_endpoint,
             label=label,
             sync_level="exists",
-            verify_checksum=False,  # we do this ourselves
+            verify_checksum=True,  # We do this ourselves, but globus will auto-retry if it detects failed files
             preserve_timestamp=True,
             notify_on_succeeded=False,
         )

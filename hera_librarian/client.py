@@ -69,7 +69,11 @@ from .models.users import (
     UserAdministrationUpdateRequest,
 )
 from .settings import ClientInfo
-from .utils import get_md5_from_path, get_size_from_path
+from .utils import (
+    get_checksum_from_path,
+    get_hash_function_from_hash,
+    get_size_from_path,
+)
 
 if TYPE_CHECKING:
     from .transfers import CoreTransferManager
@@ -388,7 +392,7 @@ class LibrarianClient:
             endpoint="upload/stage",
             request=UploadInitiationRequest(
                 upload_size=get_size_from_path(local_path),
-                upload_checksum=get_md5_from_path(local_path),
+                upload_checksum=get_checksum_from_path(local_path),
                 upload_name=dest_path.name,
                 destination_location=dest_path,
                 uploader=self.user,

@@ -12,6 +12,7 @@ from schedule import CancelJob
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from hera_librarian.utils import compare_checksums, get_hash_function_from_hash
 from librarian_server.database import get_session
 from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm import CloneTransfer, Instance, StoreMetadata, TransferStatus
@@ -302,14 +303,17 @@ class CreateLocalClone(Task):
 
             # Now we can commit the file to the store.
             try:
-                path_info = store_to.store_manager.path_info(staged_path)
+                hash_function = get_hash_function_from_hash(instance.file.checksum)
+                path_info = store_to.store_manager.path_info(
+                    staged_path, hash_function=hash_function
+                )
 
-                if path_info.md5 != instance.file.checksum:
+                if not compare_checksums(path_info.checksum, instance.file.checksum):
                     log_to_database(
                         severity=ErrorSeverity.ERROR,
                         category=ErrorCategory.DATA_INTEGRITY,
                         message=f"File {instance.path} on store {store_to} has an incorrect checksum. "
-                        f"Expected {instance.file.checksum}, got {path_info.md5}. (Instance {instance.id})",
+                        f"Expected {instance.file.checksum}, got {path_info.checksum}. (Instance {instance.id})",
                         session=session,
                     )
 

@@ -11,7 +11,8 @@ from pathlib import Path
 
 from hera_librarian.transfers.core import CoreTransferManager
 from hera_librarian.utils import (
-    get_md5_from_path,
+    get_checksum_from_path,
+    get_hash_function_from_hash,
     get_size_from_path,
     get_type_from_path,
 )
@@ -231,7 +232,7 @@ class LocalStore(CoreStore):
 
         return resolved_path
 
-    def path_info(self, path: Path) -> PathInfo:
+    def path_info(self, path: Path, hash_function: str = "xxh3") -> PathInfo:
         # Promote path to object if required
         path = Path(path)
 
@@ -242,7 +243,7 @@ class LocalStore(CoreStore):
             # Use the old functions for consistency.
             path=path,
             filetype=get_type_from_path(str(path)),
-            md5=get_md5_from_path(path),
+            checksum=get_checksum_from_path(path, hash_function=hash_function),
             size=get_size_from_path(path),
         )
 

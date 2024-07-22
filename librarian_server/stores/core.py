@@ -155,7 +155,7 @@ class CoreStore(BaseModel, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def path_info(self, path: Path) -> PathInfo:
+    def path_info(self, path: Path, hash_function: str = "xxh3") -> PathInfo:
         """
         Get information about a file or directory at a path.
 
@@ -163,6 +163,8 @@ class CoreStore(BaseModel, abc.ABC):
         ----------
         path : Path
             Path to do this at.
+        hash_function: str
+            The hashing function chosen for checksuming this data.
 
         Returns
         -------

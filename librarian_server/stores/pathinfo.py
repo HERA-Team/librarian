@@ -19,8 +19,8 @@ class PathInfo(BaseModel):
     "Path being considered"
     filetype: str
     "File type at the path (e.g. png)"
-    md5: str
-    "MD5 sum of the file at the path"
+    checksum: str
+    "Checksum of the file at the path"
     size: int
     "Size in bytes of the file at the path"
     obsid: Optional[int] = None

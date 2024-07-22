@@ -17,7 +17,6 @@ import pytest
 from hera_librarian.client import AdminClient
 from hera_librarian.errors import ErrorCategory, ErrorSeverity
 from hera_librarian.exceptions import LibrarianHTTPError
-from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
 from .server import Server, server_setup
 
@@ -210,6 +209,7 @@ def test_server_with_valid_file(test_server, test_orm):
     file = test_orm.File.new_file(
         filename="example_file.txt",
         size=len(data),
+        # Leave as-is to test auto-selection of md5
         checksum=hashlib.md5(data).hexdigest(),
         uploader="test",
         source="test",
@@ -386,6 +386,7 @@ def test_server_with_many_files_and_errors(test_server, test_orm):
         file = test_orm.File.new_file(
             filename=file_name,
             size=len(data),
+            # Leave as-is to test auto-selection of md5
             checksum=hashlib.md5(data).hexdigest(),
             uploader="test",
             source="test",

@@ -193,6 +193,7 @@ def test_ongoing_transfer(
 
     with open(garbage_file, "rb") as f:
         data = f.read()
+        # Leave as-is to test auto-selection of md5
         checksum = md5(data).hexdigest()
         size = len(data)
 

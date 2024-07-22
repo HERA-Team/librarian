@@ -13,6 +13,7 @@ import datetime
 from sqlalchemy.orm import Session
 
 from hera_librarian.exceptions import LibrarianHTTPError, LibrarianTimeoutError
+from hera_librarian.utils import compare_checksums
 from librarian_server.database import get_session
 from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm import (
@@ -132,7 +133,7 @@ def handle_stale_outgoing_transfer(
     available_checksum = available_checksums.pop()
     available_store_id = available_store_ids.pop()
 
-    if available_checksum != expected_file_checksum:
+    if not compare_checksums(available_checksum, expected_file_checksum):
         log_to_database(
             severity=ErrorSeverity.ERROR,
             category=ErrorCategory.DATA_INTEGRITY,

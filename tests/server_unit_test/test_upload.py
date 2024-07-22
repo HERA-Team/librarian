@@ -17,7 +17,7 @@ from hera_librarian.models.uploads import (
     UploadInitiationRequest,
     UploadInitiationResponse,
 )
-from hera_librarian.utils import get_md5_from_path, get_size_from_path
+from hera_librarian.utils import get_checksum_from_path, get_size_from_path
 
 from ..server import Server
 
@@ -456,7 +456,7 @@ def test_directory_upload(test_client, test_server, test_orm, tmp_path):
     request = UploadInitiationRequest(
         destination_location="test_directory",
         upload_size=get_size_from_path(path),
-        upload_checksum=get_md5_from_path(path),
+        upload_checksum=get_checksum_from_path(path),
         uploader="test",
         upload_name="test",
     )

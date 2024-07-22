@@ -3,7 +3,7 @@ Rebuild the librarian database from scratch. Note that you WILL
 lose all:
 
 - Remote instances
-- MD5 Checksums
+- Checksums
 - User information
 """
 
@@ -124,7 +124,7 @@ def ingest_files(file_list: dict[str, Path], store_name: str):
             file = File.new_file(
                 filename=file_name,
                 size=file_path_info.size,
-                checksum=file_path_info.md5,
+                checksum=file_path_info.checksum,
                 uploader="unknown",
                 source="unknown",
             )

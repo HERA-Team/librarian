@@ -8,6 +8,7 @@ import logging
 from schedule import CancelJob
 from sqlalchemy.orm import Session
 
+from hera_librarian.utils import compare_checksums, get_hash_function_from_hash
 from librarian_server.database import get_session
 from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm import Instance, StoreMetadata
@@ -72,7 +73,10 @@ class CheckIntegrity(Task):
         for file in files:
             # Now we can check the integrity of each file.
             try:
-                path_info = store.store_manager.path_info(file.path)
+                hash_function = get_hash_function_from_hash(file.file.checksum)
+                path_info = store.store_manager.path_info(
+                    file.path, hash_function=hash_function
+                )
             except FileNotFoundError:
                 all_files_fine = False
                 log_to_database(
@@ -86,7 +90,7 @@ class CheckIntegrity(Task):
             # Compare checksum to database
             expected_checksum = file.file.checksum
 
-            if path_info.md5 == expected_checksum:
+            if compare_checksums(expected_checksum, path_info.checksum):
                 # File is fine.
                 logger.info(
                     f"File {file.path} on store {store.name} has been validated."
@@ -98,7 +102,7 @@ class CheckIntegrity(Task):
                 log_to_database(
                     severity=ErrorSeverity.ERROR,
                     category=ErrorCategory.DATA_INTEGRITY,
-                    message=f"File {file.path} on store {store.name} has an incorrect checksum. Expected {expected_checksum}, got {path_info.md5}. (Instance: {file.id})",
+                    message=f"File {file.path} on store {store.name} has an incorrect checksum. Expected {expected_checksum}, got {path_info.checksum}. (Instance: {file.id})",
                     session=session,
                 )
 

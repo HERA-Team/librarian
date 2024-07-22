@@ -45,7 +45,7 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
         source="test_user",
         upload_name=garbage_file.name,
         transfer_size=info.size,
-        transfer_checksum=info.md5,
+        transfer_checksum=info.checksum,
     )
 
     incoming_transfer.status = test_orm.TransferStatus.STAGED
@@ -88,7 +88,9 @@ def test_recieve_clone_with_valid(test_client, test_server, test_orm, garbage_fi
     assert expected_path.exists()
 
     # Check the file is in the store.
-    assert store.store_manager.path_info(file.instances[0].path).md5 == info.md5
+    assert (
+        store.store_manager.path_info(file.instances[0].path).checksum == info.checksum
+    )
 
     session.get(test_orm.File, "garbage_file.txt").delete(
         session=session, commit=False, force=True
