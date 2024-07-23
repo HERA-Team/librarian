@@ -13,7 +13,7 @@ import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from hera_librarian.exceptions import LibrarianError
 from hera_librarian.transfer import TransferStatus
@@ -217,6 +217,18 @@ def consume_queue_item(session_maker: Callable[[], "Session"]) -> bool:
 
         if queue_item is None:
             # Nothing to do!
+            return False
+
+        # Now, check we don't have too much going on.
+        stmt = (
+            select(func.count(SendQueue.id))
+            .filter_by(consumed=True)
+            .filter_by(completed=False)
+        )
+        in_flight = session.execute(stmt).scalar()
+
+        if in_flight > server_settings.max_async_inflight_transfers:
+            # Too much to do!
             return False
 
         # Otherwise, we are free to consume this item.

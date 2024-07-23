@@ -102,6 +102,9 @@ class ServerSettings(BaseSettings):
 
     # Transfer constraints
     max_async_send_retries: int = 3
+    # The maximum number of in-flight asynchronous transfers to
+    # a specific destination.
+    max_async_inflight_transfers: int = 64
 
     # Slack integration; by default disable this. You will need a slack
     # webhook url, and by default we raise all log_to_database alerts to slack too.
