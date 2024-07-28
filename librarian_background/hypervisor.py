@@ -109,7 +109,8 @@ def handle_stale_outgoing_transfer(
             session=session,
         )
 
-        transfer.fail_transfer(session=session, commit=False)
+        # Must commit; need to save this cancel state. The file will never get there
+        transfer.fail_transfer(session=session, commit=True)
 
         return False
 
@@ -126,7 +127,7 @@ def handle_stale_outgoing_transfer(
             session=session,
         )
 
-        transfer.fail_transfer(session=session, commit=False)
+        transfer.fail_transfer(session=session, commit=True)
 
         return False
 
@@ -142,7 +143,7 @@ def handle_stale_outgoing_transfer(
             session=session,
         )
 
-        transfer.fail_transfer(session=session, commit=False)
+        transfer.fail_transfer(session=session, commit=True)
 
         return False
 
