@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from hera_librarian.models.clone import (
+    CloneBatchFailedResponse,
     CloneBatchInitiationRequest,
     CloneBatchInitiationResponse,
     CloneBatchInitiationResponseFileItem,
@@ -221,9 +222,6 @@ def de_duplicate_file_and_transfer(
 
     transfer.source_transfer_id = source_transfer_id
 
-    session.add(transfer)
-    session.commit()
-
     return transfer
 
 
@@ -277,6 +275,9 @@ def stage(
         upload_name=request.upload_name,
     )
 
+    session.add(transfer)
+    session.commit()
+
     # We have a store! Create the staging area.
 
     file_name, file_location = store.store_manager.stage(
@@ -311,7 +312,10 @@ def stage(
     return model_response
 
 
-@router.post("/batch_stage", response_model=CloneBatchInitiationResponse)
+@router.post(
+    "/batch_stage",
+    response_model=CloneBatchInitiationResponse | CloneBatchFailedResponse,
+)
 def batch_stage(
     request: CloneBatchInitiationRequest,
     response: Response,
@@ -356,23 +360,92 @@ def batch_stage(
     )
 
     clones = []
+    bad_ids_exist = []
+    bad_ids_transfer_exist = []
+    bad_ids_ongoing = []
+    transfers = []
 
     for upload in request.uploads:
-        # This may raise a HTTPException. But that's ok; if we fail out after having
-        # created other 'incoming' transfers, they can just be cancelled by this same
-        # function later down the line when the offending file has been removed
-        # from the batch.
-        transfer = de_duplicate_file_and_transfer(
-            session=session,
-            source_transfer_id=upload.source_transfer_id,
-            source=request.source,
-            uploader=user.username,
-            upload_size=upload.upload_size,
-            upload_checksum=upload.upload_checksum,
-            destination_location=upload.destination_location,
-            upload_name=upload.upload_name,
-        )
+        try:
+            transfer = de_duplicate_file_and_transfer(
+                session=session,
+                source_transfer_id=upload.source_transfer_id,
+                source=request.source,
+                uploader=user.username,
+                upload_size=upload.upload_size,
+                upload_checksum=upload.upload_checksum,
+                destination_location=upload.destination_location,
+                upload_name=upload.upload_name,
+            )
+        except HTTPException as e:
+            log.warn(f"Error in batch staging: {e}")
 
+            if e.status_code == status.HTTP_409_CONFLICT:
+                bad_ids_exist.append(upload.source_transfer_id)
+            elif e.status_code == status.HTTP_406_NOT_ACCEPTABLE:
+                bad_ids_transfer_exist.append(upload.source_transfer_id)
+            elif e.status_code == status.HTTP_425_TOO_EARLY:
+                bad_ids_ongoing.append(upload.source_transfer_id)
+            else:
+                log.error(f"Unknown error in batch staging: {e}")
+
+            continue
+
+        transfers.append(transfer)
+
+    n_bad = len(bad_ids_exist) + len(bad_ids_transfer_exist) + len(bad_ids_ongoing)
+
+    if n_bad > 0:
+        # A bad batch. No worries, though, we never actually added
+        # those transfer objects. We can only truly handle a single
+        # error at once, though, so we will prioritize.
+        if len(bad_ids_ongoing) > 0:
+            response.status_code = status.HTTP_425_TOO_EARLY
+            return CloneBatchFailedResponse(
+                reason="Transfer is ongoing.",
+                suggested_remedy=(
+                    "Error in sharing logic. Your librarian is trying to send us a copy of "
+                    "a file with an ONGOING transfer. Check the background task ordering."
+                ),
+                source_transfer_ids=bad_ids_ongoing,
+                destination_transfer_ids=[-1] * len(bad_ids_ongoing),
+            )
+        elif len(bad_ids_exist) > 0:
+            response.status_code = status.HTTP_409_CONFLICT
+            return CloneBatchFailedResponse(
+                reason="File already exists on librarian.",
+                suggested_remedy=(
+                    "Error in sharing logic. Your librarain should "
+                    "never have tried to copy this. Check the background task ordering."
+                ),
+                source_transfer_ids=bad_ids_exist,
+                destination_transfer_ids=[-1] * len(bad_ids_exist),
+            )
+        elif len(bad_ids_transfer_exist) > 0:
+            response.status_code = status.HTTP_406_NOT_ACCEPTABLE
+            return CloneBatchFailedResponse(
+                reason="Transfer was already initiated or staged.",
+                suggested_remedy=(
+                    "Your librarian tried to upload a file again that we thought was already "
+                    "coming to us. You should fail your outgoing transfer, we have failed ours."
+                ),
+                source_transfer_ids=bad_ids_transfer_exist,
+                destination_transfer_ids=[-1] * len(bad_ids_transfer_exist),
+            )
+        else:
+            log.error("Unknown error in batch staging.")
+            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+            return CloneBatchFailedResponse(
+                reason="Unknown error.",
+                suggested_remedy="Check the logs.",
+                source_transfer_ids=[-1],
+                destination_transfer_ids=[-1],
+            )
+
+    session.add_all(transfers)
+    session.commit()
+
+    for upload, transfer in zip(request.uploads, transfers):
         # Now we have a handle on the transfer, let's stage it.
         file_name, file_location = store.store_manager.stage(
             file_size=upload.upload_size,

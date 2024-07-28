@@ -247,6 +247,22 @@ class CloneFailedResponse(BaseModel):
     "The ID of the transfer. Note that this is the IncomingTransfer ID."
 
 
+class CloneBatchFailedResponse(BaseModel):
+    """
+    (Generic) model for a response when a batch clone has failed. Allows
+    you to communicate information about the failure of a batch.
+    """
+
+    reason: str
+    "Reason for failure."
+    suggested_remedy: str = "Please try again later."
+    "Suggested remedy for failure."
+    source_transfer_ids: list[int]
+    "The IDs of the transfers. Note that these are the OutgoingTransfer IDs."
+    destination_transfer_ids: list[int]
+    "The IDs of the transfers. Note that these are the IncomingTransfer IDs."
+
+
 class CloneFailRequest(BaseModel):
     """
     In a librarian A -> librarian B transfer, this is the request

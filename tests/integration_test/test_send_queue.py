@@ -357,16 +357,12 @@ def test_send_from_existing_file_row(
         generate_task.core(session=session)
 
     # Check we correctly registered remote instances on the source.
-    # There will be only one...
-    found_remote_instanace = False
+    # We should correctly register all files.
     with source_session_maker() as session:
         for file_name in copied_files:
             file = session.get(test_orm.File, file_name)
-            if len(file.remote_instances) > 0:
-                found_remote_instanace = True
-                break
-
-    assert found_remote_instanace
+            if len(file.remote_instances) == 0:
+                raise FileNotFoundError
 
     # Remove the librarians we added.
     assert mocked_admin_client.remove_librarian(name="live_server")

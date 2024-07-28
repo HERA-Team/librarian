@@ -168,9 +168,9 @@ def use_batch_to_call_librarian(
 
         if e.status_code == 409:
             # The librarian already has the file... Potentially.
-            potential_id = e.full_response.get("source_transfer_id", None)
+            potential_ids = e.full_response.get("source_transfer_ids", None)
 
-            if potential_id is None:
+            if potential_ids is None:
                 log_to_database(
                     severity=ErrorSeverity.ERROR,
                     category=ErrorCategory.PROGRAMMING,
@@ -181,11 +181,12 @@ def use_batch_to_call_librarian(
                     session=session,
                 )
             else:
-                remedy_success = handle_existing_file(
-                    session=session,
-                    source_transfer_id=potential_id,
-                    librarian=librarian,
-                )
+                for id in potential_ids:
+                    remedy_success = handle_existing_file(
+                        session=session,
+                        source_transfer_id=id,
+                        librarian=librarian,
+                    )
 
         # Oh no, we can't call up the librarian!
         if not remedy_success:

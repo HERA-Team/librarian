@@ -235,7 +235,8 @@ def test_recover_from_disaster(
         generate_task.core(session=session)
 
     # Check we correctly registered remote instances on the source.
-    # There will be only one...
+    # They should all be there (tested in test_send_queue) but we
+    # care about one that we will re-create
     found_remote_instanace = False
     with source_session_maker() as session:
         for file_name in copied_files:
