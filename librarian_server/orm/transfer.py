@@ -154,11 +154,6 @@ class IncomingTransfer(db.Base):
                 request=request,
                 response=CheckinUpdateResponse,
             )
-
-            if not response.success:
-                raise Exception(
-                    "Remote librarian refused or failed to set transfer status to FAILED."
-                )
         except Exception as e:
             log.error(
                 f"Failed to communicate to remote librarian that transfer {self.id} "

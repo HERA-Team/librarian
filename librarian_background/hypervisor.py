@@ -16,7 +16,7 @@ from hera_librarian.exceptions import LibrarianHTTPError, LibrarianTimeoutError
 from hera_librarian.models.checkin import CheckinStatusRequest, CheckinStatusResponse
 from hera_librarian.utils import compare_checksums
 from librarian_server.database import get_session
-from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
+from librarian_server.logger import ErrorCategory, ErrorSeverity, log, log_to_database
 from librarian_server.orm import (
     Librarian,
     OutgoingTransfer,
@@ -256,11 +256,17 @@ def handle_stale_incoming_transfer(
 
     if source_status in [TransferStatus.CANCELLED, TransferStatus.FAILED]:
         # This one's a gimmie.
+        log.error(
+            f"Found end status for incoming transfer {transfer.id} on remote, cancelling"
+        )
         transfer.fail_transfer(session=session, commit=True)
         return False
 
     if source_status == transfer.status:
         # This is the remote's responsibility.
+        log.info(
+            f"Found same for incoming transfer {transfer.id} on remote, continuing"
+        )
         return True
 
     # We only get here in annoying scenarios.
