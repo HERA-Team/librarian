@@ -143,7 +143,7 @@ def mocked_admin_client(test_client):
 
     # Now need to replace post
 
-    def new_post(endpoint: str, request, response):
+    def new_post(endpoint: str, request, response=None):
         endpoint = f"/api/v2/{endpoint}"
         r = test_client.post_with_auth(endpoint, content=request.model_dump_json())
 

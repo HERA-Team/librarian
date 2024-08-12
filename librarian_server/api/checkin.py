@@ -83,6 +83,12 @@ def modify_transfers_by_id(
             or (transfer.uploader == user.username)
         )
 
+        # OutgoingTransfers
+        try:
+            authorized = authorized or (transfer.destination == user.username)
+        except AttributeError:
+            pass
+
         if not authorized:
             unprocessed.append(transfer_id)
             reasons.add("You are not authorized to modify the transfer.")

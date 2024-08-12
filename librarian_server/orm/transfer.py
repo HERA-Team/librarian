@@ -3,8 +3,10 @@ ORM for incoming and outgoing transfers.
 """
 
 import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from hera_librarian.models.checkin import CheckinUpdateRequest, CheckinUpdateResponse
 from hera_librarian.models.clone import (
     CloneFailRequest,
     CloneFailResponse,
@@ -103,6 +105,68 @@ class IncomingTransfer(db.Base):
             transfer_checksum=transfer_checksum,
             start_time=datetime.datetime.utcnow(),
         )
+
+    def fail_transfer(self, session: "Session", commit: bool = True):
+        """
+        Fail the transfer and (optionally) commit to the database.
+        """
+
+        self.status = TransferStatus.FAILED
+        self.end_time = datetime.datetime.now(datetime.timezone.utc)
+
+        try:
+            self.store.store_manager.unstage(Path(self.staging_path))
+        except (FileNotFoundError, OSError, AttributeError):
+            pass
+
+        if commit:
+            session.commit()
+
+        if self.source_transfer_id is None:
+            # No remote transfer ID, so we can't do anything.
+            return
+
+        # Now here's the interesting part - we need to communicate to the
+        # remote librarian that the transfer failed!
+        librarian: Librarian = (
+            session.query(Librarian).filter_by(name=self.source).first()
+        )
+
+        if not librarian:
+            # Librarian doesn't exist. We can't do anything.
+            log.error(
+                "Remote librarian does not exist when trying to fail transfer. "
+                "This state should be entirely unreachable."
+            )
+            return
+
+        client = librarian.client()
+
+        request = CheckinUpdateRequest(
+            source_transfer_ids=[self.source_transfer_id],
+            destination_transfer_ids=[],
+            new_status=TransferStatus.FAILED,
+        )
+
+        try:
+            response: CheckinUpdateResponse = client.post(
+                "checkin/update",
+                request=request,
+                response=CheckinUpdateResponse,
+            )
+
+            if not response.success:
+                raise Exception(
+                    "Remote librarian refused or failed to set transfer status to FAILED."
+                )
+        except Exception as e:
+            log.error(
+                f"Failed to communicate to remote librarian that transfer {self.id} "
+                f"failed with exception {e}. It is likely that there is a stale transfer "
+                f"on remote librarian {self.source} with id {self.source_transfer_id}."
+            )
+
+        return
 
 
 class OutgoingTransfer(db.Base):
@@ -224,7 +288,7 @@ class OutgoingTransfer(db.Base):
 
         try:
             response: CloneFailResponse = client.post(
-                path="/api/v2/clone/fail",
+                "clone/fail",
                 request=request,
                 response=CloneFailResponse,
             )
@@ -275,7 +339,7 @@ class OutgoingTransfer(db.Base):
 
         try:
             response: CloneStagedResponse = client.post(
-                path="/api/v2/clone/staged",
+                "clone/staged",
                 request=request,
                 response=CloneStagedResponse,
             )
