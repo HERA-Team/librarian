@@ -18,7 +18,7 @@ from librarian_server.orm.transfer import IncomingTransfer, OutgoingTransfer
 
 from ..database import yield_session
 from ..logger import log, log_to_database
-from .auth import ReadappendUserDependency, User
+from .auth import CallbackUserDependency, ReadappendUserDependency, User
 
 router = APIRouter(prefix="/api/v2/checkin")
 
@@ -131,6 +131,12 @@ def get_status_by_id(
             or (transfer.uploader == user.username)
         )
 
+        # OutgoingTransfers
+        try:
+            authorized = authorized or (transfer.destination == user.username)
+        except AttributeError:
+            pass
+
         status[transfer_id] = (
             transfer.status if transfer is not None and authorized else None
         )
@@ -142,7 +148,7 @@ def get_status_by_id(
 def update(
     request: CheckinUpdateRequest,
     response: Response,
-    user: ReadappendUserDependency,
+    user: CallbackUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
@@ -187,7 +193,7 @@ def update(
 def status(
     request: CheckinStatusRequest,
     response: Response,
-    user: ReadappendUserDependency,
+    user: CallbackUserDependency,
     session: Session = Depends(yield_session),
 ):
     """
