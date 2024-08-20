@@ -108,6 +108,20 @@ The following background tasks are available:
 - ``check_consumed_queue``: Check the consumed queue of files to send to a destination librarian.
   This task must be enabled if you would like to send files to a destination using the
   ``send_clone`` task.
+- ``incoming_transfer_hypervisor``: A hypervisor for incoming transfers; if transfers have
+  aged out we check on their status by calling up the upstream librarian and making
+  appropriate changes to the status. It is recommended to run this on any librarian that is
+  recieving incoming transfers as things can age out for many reasons.
+  This task is configured with the following additional parameters:
+
+  * ``age_in_days``: The number of days back to check for files to transfer (integer).
+- ``outgoing_transfer_hypervisor``: A hypervisor for outgoing transfers; if transfers have
+  aged out we check on their status by calling up the downstream librarian and making
+  appropriate changes to the status. It is recommended to run this on any librarian that is
+  sending outgoing transfers as things can age out for many reasons.
+  This task is configured with the following additional parameters:
+  
+  * ``age_in_days``: The number of days back to check for files to transfer (integer).
 
 
 Background Task Configuration Examples
@@ -128,16 +142,16 @@ in the ``clone`` store, and will clone from the ``store`` store. The system will
 
   {
     "create_local_clone": [
-        {
-            "task_name": "Local cloner",
-            "soft_timeout": "00:30:00",
-            "every": "01:00:00",
-            "age_in_days": 7,
-            "clone_from": "store",
-            "clone_to": ["clone"],
-            "files_per_run": 256,
-            "disable_store_on_full": true
-        }
+      {
+        "task_name": "Local cloner",
+        "soft_timeout": "00:30:00",
+        "every": "01:00:00",
+        "age_in_days": 7,
+        "clone_from": "store",
+        "clone_to": ["clone"],
+        "files_per_run": 256,
+        "disable_store_on_full": true
+      }
     ]
   }
 
@@ -153,29 +167,37 @@ store. The destination librarian is called ``destination``.
 
   {
     "send_clone": [
-        {
-            "task_name": "Clone sender",
-            "soft_timeout": "00:30:00",
-            "every": "01:00:00",
-            "age_in_days": 7,
-            "store_preference": "store",
-            "send_batch_size": 128,
-            "destination_librarian": "destination"
-        }
+      {
+        "task_name": "Clone sender",
+        "soft_timeout": "00:30:00",
+        "every": "01:00:00",
+        "age_in_days": 7,
+        "store_preference": "store",
+        "send_batch_size": 128,
+        "destination_librarian": "destination"
+      }
     ],
     "consume_queue": [
-        {
-            "task_name": "Queue consumer",
-            "soft_timeout": "00:30:00",
-            "every": "01:00:00"
-        }
+      {
+        "task_name": "Queue consumer",
+        "soft_timeout": "00:30:00",
+        "every": "01:00:00"
+      }
     ],
     "check_consumed_queue": [
-        {
-            "task_name": "Queue checker",
-            "soft_timeout": "00:30:00",
-            "every": "01:00:00"
-        }
+      {
+        "task_name": "Queue checker",
+        "soft_timeout": "00:30:00",
+        "every": "01:00:00"
+      }
+    ],
+    "outgoing_transfer_hypervisor": [
+      {
+        "task_name": "Outgoing transfer hypervisor",
+        "soft_timeout": "00:30:00",
+        "every": "01:00:00",
+        "age_in_days": 2
+      }
     ]
   }
     
@@ -191,13 +213,21 @@ deleted from the store.
 .. code-block:: json
 
   {
-      "receive_clone": [
-          {
-              "task_name": "Clone receiver",
-              "soft_timeout": "00:30:00",
-              "every": "01:00:00",
-              "deletion_policy": "DISALLOWED",
-              "files_per_run": 1024
-          }
-      ]
+    "receive_clone": [
+      {
+        "task_name": "Clone receiver",
+        "soft_timeout": "00:30:00",
+        "every": "01:00:00",
+        "deletion_policy": "DISALLOWED",
+        "files_per_run": 1024
+      }
+    ],
+    "incoming_transfer_hypervisor": [
+      {
+        "task_name": "Incoming transfer hypervisor",
+        "soft_timeout": "00:30:00",
+        "every": "01:00:00",
+        "age_in_days": 2
+      }
+    ]
   }
