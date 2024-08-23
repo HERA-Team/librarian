@@ -1,6 +1,7 @@
 # The Librarian
 
 [![Coverage Status](https://coveralls.io/repos/github/simonsobs/librarian/badge.svg?branch=main)](https://coveralls.io/github/simonsobs/librarian?branch=main)
+[![Docs Status](https://readthedocs.org/projects/solibrarian/badge/?version=latest&style=flat)](https://solibrarian.readthedocs.io)
 
 The Librarian is a system for data transfer orchestration designed for the
 Simons Observatory. The Librarian is based upon the HERA Librarian framework
