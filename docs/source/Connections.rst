@@ -69,9 +69,9 @@ need to provision accounts and associated librarians on each... Librarian.
 Let's assume a two-librarian network (which, you will note, due to the push-based
 system is how *all* networks are made: they are just simple combinations of various
 two-librarian networks). There are two librarians here, with the name ``destination_librarian``
-and ``source_librarian``.
+and ``source_librarian`` (i.e. these are the names defined in the ``server_settings.json``).
 
-Using the `provisioning tools <./Provisioning.rst>`, you will need to create
+Using the `provisioning tools <./Provisioning.rst>`_, you will need to create
 two accounts, one on each librarian:
 
 - On the source librarian, create a user account with username ``destination_librarian``.
