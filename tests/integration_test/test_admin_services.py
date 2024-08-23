@@ -3,6 +3,7 @@ Test the admin endpoints from the client.
 """
 
 import shutil
+import subprocess
 
 import pytest
 
@@ -189,3 +190,25 @@ def test_add_search_remove_librarian(admin_client, librarian_client):
 
     with pytest.raises(LibrarianError):
         response = admin_client.remove_librarian(name="test_server")
+
+
+def test_add_remove_user_cli(librarian_client_command_line):
+    assert subprocess.call(
+        [
+            "librarian",
+            "create-user",
+            librarian_client_command_line,
+            "--username=test_created_user",
+            "--password=test_password",
+            "--authlevel=ADMIN",
+        ]
+    )
+
+    assert subprocess.call(
+        [
+            "librarian",
+            "remove-user",
+            librarian_client_command_line,
+            "--username=test_created_user",
+        ]
+    )

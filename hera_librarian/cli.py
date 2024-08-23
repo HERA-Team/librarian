@@ -17,6 +17,8 @@ from typing import Optional
 
 import dateutil.parser
 
+from hera_librarian.authlevel import AuthLevel
+
 from . import AdminClient, LibrarianClient
 from .exceptions import (
     LibrarianClientRemovedFunctionality,
@@ -699,6 +701,46 @@ def remove_librarian(args):
     return res[0]
 
 
+def create_user(args):
+    """
+    Create a new user on the librarian.
+    """
+
+    auth_level = getattr(AuthLevel, args.auth_level.upper(), None)
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        client.create_user(
+            username=args.username,
+            password=args.password,
+            auth_level=auth_level,
+        )
+    except LibrarianError as e:
+        die(f"Error creating user: {e}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    return 0
+
+
+def delete_user(args):
+    """
+    Delete a user on the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=True)
+
+    try:
+        client.delete_user(username=args.username)
+    except LibrarianError as e:
+        die(f"Error deleting user: {e}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    return 0
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -749,6 +791,8 @@ def generate_parser():
     config_get_librarian_list_subparser(sub_parsers)
     config_add_librarian_subparser(sub_parsers)
     config_remove_librarian_subparser(sub_parsers)
+    config_create_user_subparser(sub_parsers)
+    config_delete_user_subparser(sub_parsers)
 
     return ap
 
@@ -1559,6 +1603,57 @@ def config_remove_librarian_subparser(sub_parsers):
         help="Remove all outgoing transfers to the librarian.",
     )
     sp.set_defaults(func=remove_librarian)
+
+
+def config_create_user_subparser(sub_parsers):
+    # function documentation
+    doc = """Create a new user in the librarian.
+
+    """
+    hlp = "Create a new user in the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("create-user", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--username",
+        help="The name of the user to create.",
+        type=str,
+        required=True,
+    )
+    sp.add_argument(
+        "--password",
+        help="The password of the user to create.",
+        type=str,
+        required=True,
+    )
+    sp.add_argument(
+        "--auth-level",
+        help="The authentication level of the user to create.",
+        type=str,
+        choices=[str(x) for x in list(AuthLevel)],
+        required=True,
+    )
+    sp.set_defaults(func=create_user)
+
+
+def config_delete_user_subparser(sub_parsers):
+    # function documentation
+    doc = """Delete a user in the librarian.
+
+    """
+    hlp = "Delete a user in the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("delete-user", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "--username",
+        help="The name of the user to delete.",
+        type=str,
+        required=True,
+    )
+    sp.set_defaults(func=delete_user)
 
 
 def main():

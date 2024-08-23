@@ -27,3 +27,6 @@ class AuthLevel(Enum):
 
     ADMIN = 100
     "Can do anything, including modifying the configuration."
+
+    def __str__(self) -> str:
+        return self.name
