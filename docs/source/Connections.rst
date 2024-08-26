@@ -111,3 +111,178 @@ On the destination librarian, you will need to add the source librarian:
                                             --authenticator=destination_librarian:$destination_librarian_password
 
 Once these accounts are setup, you can begin the background transfers.
+
+No ``hl_config.json``?
+-----------------------
+
+However, most of the time you won't have access to a ``hl_config.json`` file
+for the CLI client to work. In this case, you can use the python client to
+create the librarians and accounts. Here is an example script that will
+create the librarians and accounts for the above example:
+
+.. code-block:: python
+
+  """
+  An example script for setting up a link between two librarians. You will need
+  to run this both on the source and destination librarian.
+  """
+
+  from hera_librarian import AdminClient
+  from hera_librarian.exceptions import LibrarianError, LibrarianHTTPError
+  from hera_librarian.models.ping import PingResponse
+  from hera_librarian.authlevel import AuthLevel
+  import string
+  import secrets
+
+  import sys
+
+  dry_run = "--dry-run" in sys.argv
+
+  print(
+      "Welcome to the librarian co-registration script. This will proceed in "
+      "several steps. \n"
+      "First, we will get administrator information about the librarian you are "
+      "currently connected to.\n"
+      "Second, we will create a new account on this librarian with either READAPPEND "
+      "(destination) or CALLBACK (source) permissions.\n"
+      "Between this step and the next, you should run this script on the other "
+      "librarian to generate the appropriate account. \n"
+      "Third, we will register the remote librarian. Be extremely careful to make sure that "
+      "the user names are the same as the librarian names. \n"
+      "You can run this script with --dry-run to see what it would do without actually doing it."
+  )
+
+  # Step 1: Get admin information
+  print("\nStep 1: Getting administrator information.")
+  admin_username = input("Enter the administrator username: ")
+  admin_password = input("Enter the administrator password: ")
+  librarian_host = input("Enter the librarian host (including http/https): ")
+  librarian_port = input("Enter the librarian port: ")
+
+  if not dry_run:
+      try:
+          client = AdminClient(
+              host=librarian_host,
+              port=int(librarian_port),
+              user=admin_username,
+              password=admin_password,
+          )
+
+          ping_response = client.ping()
+      except (LibrarianHTTPError, LibrarianError):
+          print("Failed to connect to librarian.")
+          exit(1)
+  else:
+      ping_response = PingResponse(
+          name="dry-run", description="A dry run librarian. Doesn't really exist."
+      )
+
+  print(
+      "You are connected to librarian at {0}:{1}".format(librarian_host, librarian_port)
+  )
+  print(f"This librarian is called: {ping_response.name}")
+
+  # Step 2: Create a new account
+  print("\nStep 2: Creating a new account.")
+  certain = False
+
+  while certain is False:
+      new_username = input(
+          "Enter the new username (the 'name' of the librarian from the other script, printed above): "
+      )
+      new_password = "".join(
+          secrets.choice(string.ascii_letters + string.digits) for i in range(32)
+      )
+      new_authlevel = getattr(
+          AuthLevel,
+          input("Enter the new Authlevel (READAPPEND or CALLBACK): ").upper(),
+          None,
+      )
+
+      if new_authlevel not in [AuthLevel.READAPPEND, AuthLevel.CALLBACK]:
+          print("Invalid AuthLevel.")
+          continue
+
+      yesno = input(
+          "Are you certain you want to create a new account with "
+          "these details?\n"
+          f"Username: {new_username}\n"
+          f"Password: {new_password}\n"
+          f"AuthLevel: {new_authlevel}\n"
+          "(yes/no): "
+      )
+
+      certain = yesno == "yes"
+
+  if not dry_run:
+      try:
+          client.create_user(new_username, new_password, new_authlevel)
+      except (LibrarianHTTPError, LibrarianError):
+          print("Failed to create user.")
+          exit(1)
+
+  print(f"User created. Authenticator: {new_username}:{new_password}")
+
+  print(
+      "You should now repeat this process on the other librarian "
+      f"to make a user with the name {ping_response.name}."
+  )
+
+  # Step 3: Register the remote librarian
+  print("\nStep 3: Registering the remote librarian.")
+
+  certain = False
+
+  while certain is False:
+      remote_librarian_host = input("Enter the remote librarian host (including http/https): ")
+      remote_librarian_port = int(
+          input("Enter the remote librarian port (443 for HTTPS default): ")
+      )
+      remote_librarian_name = input("Enter the remote librarian name: ")
+      remote_librarian_authenticator = input(
+          "Enter the remote librarian authenticator (from the remote invocation of this script, Step 2): "
+      )
+
+      if remote_librarian_name != new_username:
+          print(
+              "--------------------------------\n"
+              f"WARNING: You used a different username ({new_username}) for the "
+              f"remote librarian ({remote_librarian_name}) to the name you are using here. "
+              "This is almost certainly the wrong thing to do. Continue at your own peril.\n"
+              "--------------------------------"
+          )
+
+      if not ping_response.name == remote_librarian_authenticator.split(":")[0]:
+          print(
+              "--------------------------------\n"
+              f"WARNING: The remote librarian authenticator ({remote_librarian_authenticator}) "
+              f"does not contain the name of the librarian you are currently connected to ({ping_response.name}). "
+              "This is almost certainly the wrong thing to do. Continue at your own peril.\n"
+              "--------------------------------"
+          )
+
+      yesno = input(
+          "Are you certain you want to register this remote librarian?\n"
+          f"Host: {remote_librarian_host}\n"
+          f"Port: {remote_librarian_port}\n"
+          f"Name: {remote_librarian_name}\n"
+          f"Authenticator: {remote_librarian_authenticator}\n"
+          "(yes/no): "
+      )
+
+      certain = yesno == "yes"
+
+  if not dry_run:
+      try:
+          client.add_librarian(
+              name=remote_librarian_name,
+              host=remote_librarian_host,
+              port=remote_librarian_port,
+              authenticator=remote_librarian_authenticator,
+              check_connection=False,
+          )
+      except (LibrarianHTTPError, LibrarianError):
+          print("Failed to add remote librarian.")
+          exit(1)
+
+  print("Remote librarian added.")
