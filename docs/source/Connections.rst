@@ -180,7 +180,11 @@ create the librarians and accounts for the above example:
   print(
       "You are connected to librarian at {0}:{1}".format(librarian_host, librarian_port)
   )
-  print(f"This librarian is called: {ping_response.name}")
+  print(
+      f"This librarian is called: {ping_response.name} (note that this is not "
+      "the same as the user name you should use; see the config file for the librarian "
+      "name)."
+  )
 
   # Step 2: Create a new account
   print("\nStep 2: Creating a new account.")
