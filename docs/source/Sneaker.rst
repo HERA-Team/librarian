@@ -62,7 +62,7 @@ Below, we have a step-by-step guide to performing a SneakerNet transfer using
 the librarian command-line interface.
 
 Step 1: Adding or enabling a store
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------
 
 For more information on adding a store, see `Stores <./Stores.rst>`_. It is crucial
 to mark SneakerNet stores as 'non-ingestible' (i.e. set ``ingestible: false``
@@ -107,7 +107,7 @@ librarian. As these things are generally meant to be transparent to regular
 users of the librarian, these endpoints require administrator privileges.
 
 Step 2: Background tasks and remote librarians
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------------
 
 There are two core background tasks that are used in SneakerNet transfers:
 ``CreateLocalClone`` and ``ReceiveClone``. The first is used at the source site
@@ -147,7 +147,7 @@ done by name, not by database row ID, so you should be more than
 able to remove and re-add librarians without any issues.
 
 Step 3: Creating a store manifest
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------
 
 Once one of your SneakerNet stores are filled up, you can create
 a manifest of the store using the ``get_store_manifest`` endpoint.
@@ -178,7 +178,7 @@ the other side.
 
 
 Step 4: Moving the data
-^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 You will then need to move the data to the destination site. This
 is generally done by physically moving the device to the destination
@@ -187,7 +187,7 @@ the data, as it will be required for the next step, as well as
 sending this (considerably smaller amount of data) over the network.
 
 Step 5: Ingesting the store manifest
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------
 
 Once the data has been moved to the destination site, you will need
 to ingest the data into the librarian. This is done using the

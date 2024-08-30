@@ -36,6 +36,7 @@ Indices and tables
     Deployment
     Stores
     Background
-    Sneaker
     Connections
+    Sneaker
+    Globus
 

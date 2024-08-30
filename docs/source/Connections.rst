@@ -280,7 +280,7 @@ create the librarians and accounts for the above example:
       try:
           client.add_librarian(
               name=remote_librarian_name,
-              host=remote_librarian_host,
+              url=remote_librarian_host,
               port=remote_librarian_port,
               authenticator=remote_librarian_authenticator,
               check_connection=False,
