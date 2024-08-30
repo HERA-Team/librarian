@@ -54,8 +54,8 @@ all endpoints. Using the client is simple:
 The python interface is considered stable (appendable), and is the 
 preferred way for programatically interacting with the librarian server.
 
-Commad-line client
-------------------
+Command-line client
+-------------------
 
 The command-line client wraps almost all of the python functions
 through the use of the ``argparse`` library. The command-line
