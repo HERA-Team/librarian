@@ -39,4 +39,6 @@ Indices and tables
     Connections
     Sneaker
     Globus
+    Observability
+    Troubleshooting
 
