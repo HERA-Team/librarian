@@ -62,6 +62,13 @@ You will end up with a JSON configuration like this:
         }
     ]
 
+If you change the JSON configuration of a store, you will need to migrate it.
+You can do this with the migration script:
+
+.. code-block::bash
+
+   $ librarian-server-setup --migrate
+
 
 Local Stores
 ------------
