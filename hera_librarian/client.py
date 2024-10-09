@@ -68,6 +68,11 @@ from .models.users import (
     UserAdministrationPasswordChange,
     UserAdministrationUpdateRequest,
 )
+from .models.validate import (
+    FileValidationRequest,
+    FileValidationResponse,
+    FileValidationResponseItem,
+)
 from .settings import ClientInfo
 from .utils import (
     get_checksum_from_path,
@@ -510,6 +515,36 @@ class LibrarianClient:
         )
 
         return response.success
+
+    def validate_file(self, file_name: str) -> list[FileValidationResponseItem]:
+        """
+        Validate a file within the librarian. Note that this will be a slow
+        operation _and_ the response does not immediately tell you whether
+        there are valid copies of the file in the librarian network. You will
+        need to loop through the FileValidationResponseItem objects yourself
+        to determine if there are any broken copies or if there are enough
+        for your purposes.
+
+        Parameters
+        ----------
+        file_name : str
+            The name of the file to validate.
+
+        Returns
+        -------
+        list[FileValidationResponseItem]
+            A list of FileValidationResponseItem objects. These include
+            ``.librarian``, ``.store``, ``.instance_id`` and
+            ``.computed_same_checksum`` among additional information.
+        """
+
+        response = self.post(
+            endpoint="validate/file",
+            request=FileValidationRequest(file_name=file_name),
+            response=FileValidationResponse,
+        )
+
+        return response.root
 
 
 class AdminClient(LibrarianClient):

@@ -49,6 +49,7 @@ def main() -> FastAPI:
         search_router,
         upload_router,
         users_router,
+        validate_router,
     )
 
     app.include_router(upload_router)
@@ -59,5 +60,6 @@ def main() -> FastAPI:
     app.include_router(users_router)
     app.include_router(admin_router)
     app.include_router(checkin_router)
+    app.include_router(validate_router)
 
     return app

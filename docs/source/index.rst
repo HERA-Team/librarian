@@ -32,6 +32,7 @@ Indices and tables
 
     Client
     Uploading
+    Validating
     Provisioning
     Deployment
     Stores

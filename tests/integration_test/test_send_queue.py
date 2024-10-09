@@ -364,6 +364,21 @@ def test_send_from_existing_file_row(
             if len(file.remote_instances) == 0:
                 raise FileNotFoundError
 
+    # We can now use the validation endpoint to check the integrity
+    # of the files.
+    instance_validations = mocked_admin_client.validate_file(file_name=file_name)
+
+    # Should have _ours_ and _theirs_.
+    assert len(instance_validations) == 2
+
+    source_librarians_for_validations = {x.librarian for x in instance_validations}
+
+    assert len(source_librarians_for_validations) == 2  # I.e. they are different
+
+    # Now we can check the checksums.
+    checksums_from_validations = {x.current_checksum for x in instance_validations}
+    assert len(checksums_from_validations) == 1  # Same file
+
     # Remove the librarians we added.
     assert mocked_admin_client.remove_librarian(name="live_server")
 

@@ -741,6 +741,36 @@ def delete_user(args):
     return 0
 
 
+def validate_file(args):
+    """
+    Validate a file on the librarian.
+    """
+
+    client = get_client(args.conn_name, admin=False)
+
+    try:
+        response = client.validate_file(file_name=args.file_name)
+        print(f"Found {len(response)} instances of files in the librarian network.")
+        # Cut down responses to just the information we want to see.
+        print_table(
+            [
+                {
+                    "Librarian": r.librarian,
+                    "Checksum Match": r.computed_same_checksum,
+                    "Original Checksum": r.original_checksum,
+                    "Current Checksum": r.current_checksum,
+                }
+                for r in response
+            ]
+        )
+    except LibrarianError as e:
+        die(f"Error validating file: {e}")
+    except LibrarianHTTPError as e:
+        die(f"Unexpected error communicating with the librarian server: {e.reason}")
+
+    return 0
+
+
 # make the base parser
 def generate_parser():
     """Make a librarian ArgumentParser.
@@ -793,6 +823,7 @@ def generate_parser():
     config_remove_librarian_subparser(sub_parsers)
     config_create_user_subparser(sub_parsers)
     config_delete_user_subparser(sub_parsers)
+    config_validate_file_subparser(sub_parsers)
 
     return ap
 
@@ -1654,6 +1685,24 @@ def config_delete_user_subparser(sub_parsers):
         required=True,
     )
     sp.set_defaults(func=delete_user)
+
+
+def config_validate_file_subparser(sub_parsers):
+    # function documentation
+    doc = """Validate a file in the librarian.
+
+    """
+    hlp = "Validate a file in the librarian"
+
+    # add sub parser
+    sp = sub_parsers.add_parser("validate-file", description=doc, help=hlp)
+    sp.add_argument("conn_name", metavar="CONNECTION-NAME", help=_conn_name_help)
+    sp.add_argument(
+        "file_name", metavar="FILE-NAME", help="The name of the file to validate."
+    )
+    sp.set_defaults(func=validate_file)
+
+    return
 
 
 def main():

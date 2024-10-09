@@ -13,7 +13,12 @@ from hera_librarian.utils import get_md5_from_path, get_size_from_path
 
 
 def test_add_file(
-    server, admin_client, garbage_file, librarian_database_session_maker, test_orm
+    server,
+    admin_client,
+    garbage_file,
+    librarian_database_session_maker,
+    test_orm,
+    librarian_client_command_line,
 ):
     """
     Tests that we can add a file with no row in database.
@@ -56,6 +61,15 @@ def test_add_file(
 
     assert response.success
     assert response.already_exists is False
+
+    table = subprocess.check_output(
+        [
+            "librarian",
+            "validate-file",
+            librarian_client_command_line,
+            "test_upload_without_uploading.txt",
+        ],
+    )
 
     # Try uplaoding again.
 
