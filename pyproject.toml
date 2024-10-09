@@ -7,7 +7,7 @@ exclude=["*tests*"]
 [project]
 name="hera_librarian"
 requires-python = ">=3.10"
-version = "2.5.0"
+version = "2.5.1"
 dependencies = [
     "alembic",
     "argon2-cffi",
