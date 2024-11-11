@@ -14,7 +14,7 @@ dependencies = [
     "xxhash >= 0.8.0",
     "cryptography",
     "fastapi >= 0.108.0",
-    "globus-sdk <= 3.40.0",
+    "globus-sdk",
     "httpx",
     "pydantic >= 2",
     "pydantic-settings >= 2",
