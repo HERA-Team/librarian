@@ -43,26 +43,35 @@ def calculate_checksum_of_local_copy(
 ):
     start = perf_counter()
     hash_function = get_hash_function_from_hash(original_checksum)
-    path_info = path_info_function(path, hash_function=hash_function)
+    try:
+        path_info = path_info_function(path, hash_function=hash_function)
+        response = FileValidationResponseItem(
+            librarian=server_settings.name,
+            store=store_id,
+            instance_id=instance_id,
+            original_checksum=original_checksum,
+            original_size=original_size,
+            current_checksum=path_info.checksum,
+            current_size=path_info.size,
+            computed_same_checksum=compare_checksums(
+                original_checksum, path_info.checksum
+            ),
+        )
+        end = perf_counter()
 
-    response = FileValidationResponseItem(
-        librarian=server_settings.name,
-        store=store_id,
-        instance_id=instance_id,
-        original_checksum=original_checksum,
-        original_size=original_size,
-        current_checksum=path_info.checksum,
-        current_size=path_info.size,
-        computed_same_checksum=compare_checksums(original_checksum, path_info.checksum),
-    )
-    end = perf_counter()
+        log.debug(
+            f"Calculated path info for {instance_id} ({path_info.size} B) "
+            f"in {end - start:.2f} seconds."
+        )
 
-    log.debug(
-        f"Calculated path info for {instance_id} ({path_info.size} B) "
-        f"in {end - start:.2f} seconds."
-    )
+        return [response]
+    except FileNotFoundError:
+        # A mistakenly 'available' file that is not actually available.
+        log.error(
+            f"File {path} in store {store_id} marked as available but does not exist."
+        )
 
-    return [response]
+        return []
 
 
 def calculate_checksum_of_remote_copies(
@@ -73,18 +82,19 @@ def calculate_checksum_of_remote_copies(
     try:
         client = librarian.client()
         responses = client.validate_file(file_name)
+        end = perf_counter()
+
+        log.debug(
+            f"Validated file {file_name} with librarian {librarian.name} in {end - start:.2f} seconds."
+            f"Found {len(responses)} instances."
+        )
+
+        return responses
     except (LibrarianHTTPError, LibrarianError):
         log.error(
             f"Failed to validate file {file_name} with librarian {librarian.name}"
         )
-    end = perf_counter()
-
-    log.debug(
-        f"Validated file {file_name} with librarian {librarian.name} in {end - start:.2f} seconds."
-        f"Found {len(responses)} instances."
-    )
-
-    return responses
+        return []
 
 
 @router.post(
