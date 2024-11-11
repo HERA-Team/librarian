@@ -3,7 +3,7 @@ ORM for 'errors' table, describing (potentially critical) errors
 that need to be remedied by an outside entity.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -61,7 +61,7 @@ class Error(db.Base):
             severity=severity,
             category=category,
             message=message,
-            raised_time=datetime.utcnow(),
+            raised_time=datetime.now(timezone.utc),
             cleared_time=None,
             cleared=False,
             caller=caller,
@@ -78,5 +78,5 @@ class Error(db.Base):
         """
 
         self.cleared = True
-        self.cleared_time = datetime.utcnow()
+        self.cleared_time = datetime.now(timezone.utc)
         session.commit()

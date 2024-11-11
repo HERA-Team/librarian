@@ -36,8 +36,8 @@ def test_search_by_filename(test_server_with_many_files_and_errors, test_client)
 def test_search_by_created_time(test_server_with_many_files_and_errors, test_client):
     request = FileSearchRequest(
         create_time_window=(
-            datetime.datetime.utcnow() - datetime.timedelta(days=1),
-            datetime.datetime.utcnow(),
+            datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1),
+            datetime.datetime.now(datetime.timezone.utc),
         )
     )
 

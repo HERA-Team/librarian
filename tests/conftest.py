@@ -422,7 +422,7 @@ def test_server_with_many_files_and_errors(test_server, test_orm):
 
         if x % 2:
             error.cleared = True
-            error.cleared_time = datetime.datetime.utcnow()
+            error.cleared_time = datetime.datetime.now(datetime.timezone.utc)
 
         session.add(error)
         session.commit()

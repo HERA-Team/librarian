@@ -53,7 +53,7 @@ class CreateLocalClone(Task):
             return self.core(session=session)
 
     def core(self, session: Session):
-        core_begin = datetime.datetime.utcnow()
+        core_begin = datetime.datetime.now(datetime.timezone.utc)
 
         try:
             store_from = self.get_store(self.clone_from, session)
@@ -145,7 +145,10 @@ class CreateLocalClone(Task):
         for instance in instances:
             # First, check if we have gone over time:
             if (
-                (datetime.datetime.utcnow() - core_begin > self.soft_timeout)
+                (
+                    datetime.datetime.now(datetime.timezone.utc) - core_begin
+                    > self.soft_timeout
+                )
                 if self.soft_timeout
                 else False
             ):

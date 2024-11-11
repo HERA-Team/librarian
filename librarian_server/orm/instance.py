@@ -4,7 +4,7 @@ Also includes the ORM for the 'remote_instances' table, describing
 what files have instances on remote librarians that we are aware about.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -82,7 +82,7 @@ class Instance(db.Base):
             file=file,
             store=store,
             deletion_policy=deletion_policy,
-            created_time=datetime.utcnow(),
+            created_time=datetime.now(timezone.utc),
             available=True,
         )
 
@@ -175,6 +175,6 @@ class RemoteInstance(db.Base):
             store_id=store_id,
             librarian_id=librarian.id,
             librarian=librarian,
-            copy_time=datetime.utcnow(),
+            copy_time=datetime.now(timezone.utc),
             sender=server_settings.name,
         )

@@ -4,7 +4,7 @@ the database. They contain, notably, a unique filename (that may actually
 be a path, e.g. abcd/efgh/ijkl.txt).
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -108,7 +108,7 @@ class File(db.Base):
 
         return File(
             name=str(filename),
-            create_time=datetime.utcnow(),
+            create_time=datetime.now(timezone.utc),
             size=size,
             checksum=checksum,
             uploader=uploader,

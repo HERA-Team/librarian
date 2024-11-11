@@ -103,7 +103,7 @@ class IncomingTransfer(db.Base):
             source=source,
             transfer_size=transfer_size,
             transfer_checksum=transfer_checksum,
-            start_time=datetime.datetime.utcnow(),
+            start_time=datetime.datetime.now(datetime.timezone.utc),
         )
 
     def fail_transfer(self, session: "Session", commit: bool = True):
@@ -240,7 +240,7 @@ class OutgoingTransfer(db.Base):
             transfer_checksum=file.checksum,
             file_name=file.name,
             instance_id=instance.id,
-            start_time=datetime.datetime.utcnow(),
+            start_time=datetime.datetime.now(datetime.timezone.utc),
         )
 
     def fail_transfer(self, session: "Session", commit: bool = True):
@@ -413,7 +413,7 @@ class CloneTransfer(db.Base):
             source_store_id=source_store_id,
             destination_store_id=destination_store_id,
             source_instance_id=source_instance_id,
-            start_time=datetime.datetime.utcnow(),
+            start_time=datetime.datetime.now(datetime.timezone.utc),
         )
 
     def fail_transfer(self, session: "Session"):
@@ -422,7 +422,7 @@ class CloneTransfer(db.Base):
         """
 
         self.status = TransferStatus.FAILED
-        self.end_time = datetime.datetime.utcnow()
+        self.end_time = datetime.datetime.now(datetime.timezone.utc)
 
         session.commit()
 

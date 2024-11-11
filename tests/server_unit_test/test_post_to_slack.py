@@ -31,7 +31,7 @@ def test_post_to_slack():
             self.category = category
             self.severity = severity
             self.id = id
-            self.raised_time = datetime.datetime.utcnow()
+            self.raised_time = datetime.datetime.now(datetime.timezone.utc)
             self.caller = (
                 inspect.stack()[1].filename
                 + ":"

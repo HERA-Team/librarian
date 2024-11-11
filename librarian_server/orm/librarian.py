@@ -3,7 +3,7 @@ ORM model for another librarian that we are (bi)-directionally connected
 to.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import ValidationError
 
@@ -86,8 +86,8 @@ class Librarian(db.Base):
             url=url,
             port=port,
             authenticator=encrypt_string(authenticator),
-            last_seen=datetime.utcnow(),
-            last_heard=datetime.utcnow(),
+            last_seen=datetime.now(timezone.utc),
+            last_heard=datetime.now(timezone.utc),
         )
 
         if not check_connection:
@@ -107,7 +107,7 @@ class Librarian(db.Base):
                 "is returning an invalid response to ping."
             )
 
-        librarian.last_seen = datetime.utcnow()
+        librarian.last_seen = datetime.now(timezone.utc)
 
         return librarian
 

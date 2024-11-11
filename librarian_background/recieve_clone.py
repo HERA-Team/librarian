@@ -50,7 +50,7 @@ class RecieveClone(Task):
         Checks for incoming transfers and processes them.
         """
 
-        core_begin = datetime.datetime.utcnow()
+        core_begin = datetime.datetime.now(datetime.timezone.utc)
 
         # Find incoming transfers that are STAGED
         ongoing_transfers: list[IncomingTransfer] = (
@@ -68,7 +68,10 @@ class RecieveClone(Task):
 
         for transfer in ongoing_transfers:
             if (
-                (datetime.datetime.utcnow() - core_begin > self.soft_timeout)
+                (
+                    datetime.datetime.now(datetime.timezone.utc) - core_begin
+                    > self.soft_timeout
+                )
                 if self.soft_timeout
                 else False
             ):
