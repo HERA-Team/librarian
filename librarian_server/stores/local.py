@@ -13,6 +13,7 @@ from hera_librarian.transfers.core import CoreTransferManager
 from hera_librarian.utils import (
     get_checksum_from_path,
     get_hash_function_from_hash,
+    compare_checksums,
     get_size_from_path,
     get_type_from_path,
 )
@@ -34,6 +35,8 @@ class LocalStore(CoreStore):
     "If true, the user running the server will chown the files after committing."
     readonly_after_commit: bool = False
     "If true, the user running the server will chmod the files to 444 and folders to 555 after commit."
+
+    max_copy_retries: int = 3
 
     @property
     def available(self) -> bool:
@@ -133,6 +136,10 @@ class LocalStore(CoreStore):
         if os.path.exists(complete_path.parent):
             try:
                 resolved_path = self._resolved_path_staging(complete_path.parent)
+
+                if any(resolved_path.iterdir()):
+                    raise ValueError("Parent directory is not empty.")
+
                 resolved_path.rmdir()
             except ValueError:
                 # The parent is not in the staging area. We can't delete it.
@@ -157,6 +164,10 @@ class LocalStore(CoreStore):
         if os.path.exists(complete_path.parent):
             try:
                 resolved_path = self._resolved_path_store(complete_path.parent)
+
+                if any(resolved_path.iterdir()):
+                    raise ValueError("Parent directory is not empty.")
+
                 resolved_path.rmdir()
             except (ValueError, OSError):
                 # The parent is not in the store area. We can't delete it, or
@@ -181,12 +192,34 @@ class LocalStore(CoreStore):
 
             return
         else:
-            # We need to copy the file and then set the permissions.
-            if resolved_path_staging.is_dir():
-                shutil.copytree(resolved_path_staging, resolved_path_store)
-            else:
-                shutil.copy2(resolved_path_staging, resolved_path_store)
+            # We need to copy the file and then set the permissions. Copying can inherrently
+            # introduce issues with corruption, so we need to be careful and make sure
+            # we have a good copy.
+            retries = 0
+            copy_success = False
 
+            original_checksum = get_checksum_from_path(resolved_path_staging)
+
+            while not copy_success and retries < self.max_copy_retries:
+                if resolved_path_staging.is_dir():
+                    shutil.copytree(resolved_path_staging, resolved_path_store)
+                else:
+                    shutil.copy2(resolved_path_staging, resolved_path_store)
+
+                new_checksum = get_checksum_from_path(resolved_path_store)
+
+                copy_success = compare_checksums(original_checksum, new_checksum)
+                retries += 1
+
+            if not copy_success:
+                # We need to clean up
+                self.delete(store_path)
+                
+                raise ValueError(
+                    f"Could not copy {resolved_path_staging} to {resolved_path_store} "
+                    f"after {retries} attempts."
+                )
+        
         try:
             # Set permissions and ownership.
             def set_for_file(file: Path):
