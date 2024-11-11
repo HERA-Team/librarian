@@ -347,6 +347,24 @@ class CreateLocalClone(Task):
                 all_transfers_successful = False
 
                 continue
+            except ValueError as e:
+                log_to_database(
+                    severity=ErrorSeverity.ERROR,
+                    category=ErrorCategory.DATA_INTEGRITY,
+                    message=(
+                        f"Failed to commit file {instance.path} to store {store_to}: {e}. "
+                        f"Skipping. (Instance {instance.id})"
+                    ),
+                    session=session,
+                )
+
+                transfer.fail_transfer(session=session)
+
+                store_to.store_manager.unstage(staged_path)
+
+                all_transfers_successful = False
+
+                continue
 
             store_to.store_manager.unstage(staging_name)
 

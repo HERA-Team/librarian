@@ -225,21 +225,25 @@ class StoreMetadata(db.Base):
         # Commit our change to the transfer, file, and instance simultaneously.
 
         try:
-            session.commit()
-
             # We're good to go and move the file to where it needs to be.
             self.store_manager.commit(
                 staging_path=staged_path, store_path=resolved_store_path
             )
             self.store_manager.unstage(staging_directory)
-        except SQLAlchemyError as e:
-            # Need to rollback everything. The upload failed...
+
+            # SQLAlchemy is likely to be the least of our issues!
+            session.commit()
+        except (SQLAlchemyError, ValueError) as e:
+            # Need to rollback everything. The upload failed.
+            # In the case of ValueError, we have a problem with the file itself.
             self.store_manager.unstage(staging_directory)
 
             session.rollback()
 
             transfer.status = TransferStatus.FAILED
             session.commit()
+
+            raise e
 
         return instance
 
