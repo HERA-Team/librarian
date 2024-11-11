@@ -25,6 +25,7 @@ dependencies = [
     "sqlalchemy >= 2",
     "sysrsync == 1.1.1",
     "uvicorn",
+    "asyncer==0.0.8"
 ]
 authors = [
     {name = "Josh Borrow"},
