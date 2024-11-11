@@ -8,7 +8,6 @@ import os.path
 import re
 from pathlib import Path
 
-import pkg_resources
 import xxhash
 
 # Here we bundle the source code from checksumdir rather than relying on it as
