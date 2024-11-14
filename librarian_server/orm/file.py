@@ -145,3 +145,68 @@ class File(db.Base):
 
         if commit:
             session.commit()
+
+
+class CorruptFile(db.Base):
+    """
+    An ORM object for a file that has been marked as (potentially) corrupt
+    during a check. This will need to be verified and fixed.
+    """
+
+    __tablename__ = "corrupt_files"
+
+    id: int = db.Column(db.Integer, primary_key=True)
+    "The ID of the corrupt file."
+    file_name: str = db.Column(
+        db.String(256), db.ForeignKey("files.name"), nullable=False
+    )
+    "The name of the file."
+    file = db.relationship("File", primaryjoin="CorruptFile.file_name == File.name")
+    "The file object associated with this."
+    instance_id: int = db.Column(db.Integer, db.ForeignKey("instances.id"))
+    "The instance ID of the corrupt file."
+    instance = db.relationship(
+        "Instance", primaryjoin="CorruptFile.instance_id == Instance.id"
+    )
+    "The instance object associated with this."
+    corrupt_time: datetime = db.Column(db.DateTime)
+    "The time at which the file was marked as corrupt."
+    size: int = db.Column(db.BigInteger)
+    "The size of the file in bytes."
+    checksum: str = db.Column(db.String(256))
+    "The checksum of the file that was re-computed and found to be incorrect."
+    count: int = db.Column(db.Integer)
+    "The number of times this file has been marked as corrupt."
+
+    @classmethod
+    def new_corrupt_file(
+        cls, instance: Instance, size: int, checksum: str
+    ) -> "CorruptFile":
+        """
+        Create a new corrupt file object.
+
+        Parameters
+        ----------
+        file : File
+            The file that is corrupt.
+        size : int
+            The size of the file in bytes.
+        checksum : str
+            The checksum of the file that was re-computed and found to be incorrect.
+
+        Returns
+        -------
+        CorruptFile
+            The new corrupt file object.
+        """
+
+        return CorruptFile(
+            file_name=instance.file.name,
+            file=instance.file,
+            instance_id=instance.id,
+            instance=instance,
+            corrupt_time=datetime.now(timezone.utc),
+            size=size,
+            checksum=checksum,
+            count=1,
+        )

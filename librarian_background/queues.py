@@ -157,11 +157,11 @@ def check_on_consumed(
                 # We can't do anything with this librarian, but there may be other
                 # librarians that are enabled.
                 continue
-            
+
             logger.info(
                 "Handling queue item {q.id} with {q.retries} retries", q=queue_item
             )
-            
+
             current_status = queue_item.async_transfer_manager.transfer_status(
                 settings=server_settings
             )

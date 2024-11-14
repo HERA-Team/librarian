@@ -1749,7 +1749,6 @@ def config_set_librarian_transfer_subparser(sub_parsers):
     sp.add_argument(
         "--name", help="The name of the librarian to set the transfer state of."
     )
-
     grp = sp.add_mutually_exclusive_group()
     grp.add_argument(
         "--enabled",

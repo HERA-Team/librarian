@@ -41,6 +41,12 @@ def test_check_integrity_failure(test_client, test_server_with_invalid_file, tes
     )
     assert integrity_task() == False
 
+    # Go check the database!
+    with get_session() as session:
+        corrupt_file = session.query(test_orm.CorruptFile).first()
+        assert corrupt_file is not None
+        assert corrupt_file.count >= 1
+
 
 def test_check_integrity_invalid_store(test_client, test_server, test_orm):
     """

@@ -1,7 +1,8 @@
 # Copyright 2017 the HERA Collaboration
 # Licensed under the 2-clause BSD License.
 
-"""Add librarian transfer toggling
+
+"""Add librarian transfer toggling and corruption
 
 Revision ID: 1def8c988372
 Revises: 42f29c26ab0f
@@ -24,6 +25,19 @@ def upgrade():
             sa.Column("transfers_enabled", sa.Boolean(), nullable=False, default=True)
         )
 
+    op.create_table(
+        "corrupt_files",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("file_name", sa.String(), nullable=False),
+        sa.Column("instance_id", sa.Integer(), nullable=False),
+        sa.Column("corrupt_time", sa.DateTime(), nullable=False),
+        sa.Column("size", sa.BigInteger(), nullable=False),
+        sa.Column("checksum", sa.String(), nullable=False),
+        sa.Column("count", sa.Integer(), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+
 
 def downgrade():
     op.drop_column("librarians", "transfers_enabled")
+    op.drop_table("corrupt_files")
