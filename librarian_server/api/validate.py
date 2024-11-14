@@ -24,7 +24,7 @@ from hera_librarian.models.validate import (
 from hera_librarian.utils import compare_checksums, get_hash_function_from_hash
 
 from ..database import yield_session
-from ..logger import log, log_to_database
+from ..logger import log
 from ..orm.file import File
 from ..orm.librarian import Librarian
 from ..settings import server_settings
@@ -193,14 +193,11 @@ async def validate_file(
 
     for info in checksum_info:
         if not info.computed_same_checksum and info.librarian == server_settings.name:
-            log_to_database(
-                severity=ErrorSeverity.CRITICAL,
-                category=ErrorCategory.DATA_INTEGRITY,
-                message=(
-                    "File validation failed The checksums do not match for "
-                    f"file {file.name} in store {instance.store.id}."
-                ),
-                session=session,
+            log.error(
+                "File validation failed, the checksums do not match for file "
+                "{} in store {}.",
+                request.file_name,
+                info.store,
             )
 
     return FileValidationResponse(checksum_info)

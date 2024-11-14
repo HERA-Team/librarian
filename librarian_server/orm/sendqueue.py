@@ -19,6 +19,7 @@ There are a few reasons for this:
 import datetime
 from typing import TYPE_CHECKING
 
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from hera_librarian.async_transfers import CoreAsyncTransferManager
@@ -28,7 +29,6 @@ from hera_librarian.models.checkin import CheckinUpdateRequest, CheckinUpdateRes
 from hera_librarian.transfer import TransferStatus
 
 from .. import database as db
-from ..logger import log, log_to_database
 from .librarian import Librarian
 
 if TYPE_CHECKING:
@@ -188,14 +188,9 @@ class SendQueue(db.Base):
             )
         except Exception as e:
             # Oh no, we can't call up the librarian!
-            log_to_database(
-                severity=ErrorSeverity.ERROR,
-                category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                message=(
-                    f"Unable to communicate with remote librarian for batch "
-                    f"status update, recieved response {e}."
-                ),
-                session=session,
+            logger.error(
+                f"Unable to communicate with remote librarian for batch "
+                f"status update, recieved response {e}."
             )
 
             raise LibrarianError(

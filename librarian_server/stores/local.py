@@ -9,11 +9,12 @@ import stat
 import uuid
 from pathlib import Path
 
+from loguru import logger
+
 from hera_librarian.transfers.core import CoreTransferManager
 from hera_librarian.utils import (
-    get_checksum_from_path,
-    get_hash_function_from_hash,
     compare_checksums,
+    get_checksum_from_path,
     get_size_from_path,
     get_type_from_path,
 )
@@ -99,6 +100,11 @@ class LocalStore(CoreStore):
 
     def stage(self, file_size: int, file_name: Path) -> tuple[Path]:
         if file_size > self.free_space:
+            logger.error(
+                "Not enough free space on store. Requested: {}, Available: {}",
+                file_size,
+                self.free_space,
+            )
             raise ValueError("Not enough free space on store")
 
         # TODO: Do we want to actually keep track of files we have staged?
@@ -127,7 +133,10 @@ class LocalStore(CoreStore):
                 # It's not a directory. Delete it.
                 os.remove(complete_path)
             except OSError:
-                # Directory is not empty. Delete it and all its contents. Unfortunately we can't log this..
+                # Directory is not empty. Delete it and all its contents.
+                logger.warning(
+                    f"Directory {complete_path} is not empty. Deleting all contents"
+                )
                 shutil.rmtree(complete_path)
 
         # Check if the parent is still in the staging area. We don't want
@@ -157,7 +166,10 @@ class LocalStore(CoreStore):
                 # It's not a directory. Delete it.
                 os.remove(complete_path)
             except OSError:
-                # Directory is not empty. Delete it and all its contents. Unfortunately we can't log this..
+                # Directory is not empty. Delete it and all its contents.
+                logger.warning(
+                    f"Directory {complete_path} is not empty. Deleting all contents"
+                )
                 shutil.rmtree(complete_path)
 
         # Check if the parent is empty. We don't want to leave dregs!
@@ -214,12 +226,19 @@ class LocalStore(CoreStore):
             if not copy_success:
                 # We need to clean up
                 self.delete(store_path)
-                
+
+                logger.error(
+                    "Could not copy {} to {} after {} attempts.",
+                    resolved_path_staging,
+                    resolved_path_store,
+                    retries,
+                )
+
                 raise ValueError(
                     f"Could not copy {resolved_path_staging} to {resolved_path_store} "
                     f"after {retries} attempts."
                 )
-        
+
         try:
             # Set permissions and ownership.
             def set_for_file(file: Path):
@@ -249,6 +268,10 @@ class LocalStore(CoreStore):
                     for x in dirs + files:
                         set_for_file(Path(root) / x)
         except ValueError:
+            logger.error(
+                "Can not set permissions on {}",
+                resolved_path_store,
+            )
             raise PermissionError(f"Could not set permissions on {resolved_path_store}")
 
         return

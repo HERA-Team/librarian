@@ -378,7 +378,7 @@ def batch_stage(
                 upload_name=upload.upload_name,
             )
         except HTTPException as e:
-            log.warn(f"Error in batch staging: {e}")
+            log.warning(f"Error in batch staging: {e}")
 
             if e.status_code == status.HTTP_409_CONFLICT:
                 bad_ids_exist.append(upload.source_transfer_id)

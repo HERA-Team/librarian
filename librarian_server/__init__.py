@@ -18,18 +18,18 @@ async def slack_post_at_startup_shutdown(app: FastAPI):
     Lifespan event that posts to the slack hook once
     the FastAPI server starts up and shuts down.
     """
-    from .logger import post_text_event_to_slack
+    from loguru import logger
 
-    post_text_event_to_slack("Librarian server starting up")
+    logger.info("Librarian server starting up")
     yield
-    post_text_event_to_slack("Librarian server shutting down")
+    logger.info("Librarian server shutting down")
 
 
 def main() -> FastAPI:
-    from .logger import log
+    from loguru import logger
 
-    log.info("Starting Librarian v2.0 server.")
-    log.debug("Creating FastAPI app instance.")
+    logger.info("Starting Librarian v2.0 server.")
+    logger.debug("Creating FastAPI app instance.")
 
     app = FastAPI(
         title=server_settings.displayed_site_name,
@@ -38,7 +38,7 @@ def main() -> FastAPI:
         lifespan=slack_post_at_startup_shutdown,
     )
 
-    log.debug("Adding API router.")
+    logger.debug("Adding API router.")
 
     from .api import (
         admin_router,

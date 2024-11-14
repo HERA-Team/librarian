@@ -9,14 +9,15 @@ b) Successful transfer, if the file is found on the downstream
 """
 
 import datetime
+import time
 
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from hera_librarian.exceptions import LibrarianHTTPError, LibrarianTimeoutError
 from hera_librarian.models.checkin import CheckinStatusRequest, CheckinStatusResponse
 from hera_librarian.utils import compare_checksums
 from librarian_server.database import get_session
-from librarian_server.logger import ErrorCategory, ErrorSeverity, log, log_to_database
 from librarian_server.orm import (
     Librarian,
     OutgoingTransfer,
@@ -33,6 +34,7 @@ def get_stale_of_type(session: Session, age_in_days: int, transfer_type: object)
     Get the stale transfers of a given type.
     """
 
+    query_start = time.perf_counter()
     # Get the stale outgoing transfers
     stale_since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
         days=age_in_days
@@ -48,7 +50,17 @@ def get_stale_of_type(session: Session, age_in_days: int, transfer_type: object)
         )
     )
 
-    return session.execute(transfer_stmt).scalars().all()
+    result = session.execute(transfer_stmt).scalars().all()
+    query_end = time.perf_counter()
+
+    logger.info(
+        "Queried database for stale transfers of type {} (age {}d) in {} seconds",
+        transfer_type,
+        age_in_days,
+        query_end - query_start,
+    )
+
+    return result
 
 
 def handle_stale_outgoing_transfer(
@@ -68,11 +80,9 @@ def handle_stale_outgoing_transfer(
     )
 
     if not downstream_librarian:
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.DATA_INTEGRITY,
-            message=f"Downstream librarian {transfer.destination} not found",
-            session=session,
+        logger.error(
+            "Downstream librarian {} not found, cancelling transfer",
+            transfer.destination,
         )
 
         transfer.fail_transfer(session=session, commit=False)
@@ -84,31 +94,34 @@ def handle_stale_outgoing_transfer(
     expected_file_name = transfer.file.name
     expected_file_checksum = transfer.file.checksum
 
+    logger.info(
+        "Calling librarian {} to ask for information on file {} (outgoing transfer {})"
+        " with checksum {}",
+        transfer.destination,
+        expected_file_name,
+        transfer.id,
+        expected_file_checksum,
+    )
+
     try:
         potential_files = client.search_files(
             name=expected_file_name,
         )
     except (LibrarianHTTPError, LibrarianTimeoutError) as e:
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-            message=(
-                f"Unacceptable error when trying to check if librarian {transfer.destination}"
-                f"has file {expected_file_name} with exception {e}."
-            ),
-            session=session,
+        logger.error(
+            "Unacceptable error when trying to check if librarian {} has file {} with exception {}",
+            transfer.destination,
+            expected_file_name,
+            e,
         )
         return False
 
     if not potential_files:
         # The downstream does not have the file. We should cancel the transfer.
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.DATA_INTEGRITY,
-            message=f"Downstream librarian {transfer.destination} does "
-            f"not have file {expected_file_name} and the transfer is stale. "
-            "Cancelling the transfer.",
-            session=session,
+        logger.error(
+            "Downstream librarian {} does not have file {}, cancelling transfer",
+            transfer.destination,
+            expected_file_name,
         )
 
         # Must commit; need to save this cancel state. The file will never get there
@@ -120,13 +133,11 @@ def handle_stale_outgoing_transfer(
     available_store_ids = {i.store_id for f in potential_files for i in f.instances}
 
     if len(available_checksums) != 1:
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.DATA_INTEGRITY,
-            message=f"Multiple (or zero, actual {len(available_checksums)}) checksums "
-            f"found for file {expected_file_name} "
-            f"on downstream librarian {transfer.destination}.",
-            session=session,
+        logger.error(
+            "Multiple (or zero, actual {}) checksums found for file {} on downstream librarian {}",
+            len(available_checksums),
+            expected_file_name,
+            transfer.destination,
         )
 
         transfer.fail_transfer(session=session, commit=True)
@@ -137,13 +148,11 @@ def handle_stale_outgoing_transfer(
     available_store_id = available_store_ids.pop()
 
     if not compare_checksums(available_checksum, expected_file_checksum):
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.DATA_INTEGRITY,
-            message=f"Checksum mismatch for file {expected_file_name} "
-            f"on downstream librarian {transfer.destination}.",
-            session=session,
+        logger.error(
+            "Checksum mismatch for file {} on downstream librarian {}",
         )
+
+        # TODO: Use corrupt files database here?
 
         transfer.fail_transfer(session=session, commit=True)
 
@@ -162,15 +171,12 @@ def handle_stale_outgoing_transfer(
 
     session.commit()
 
-    log_to_database(
-        severity=ErrorSeverity.INFO,
-        category=ErrorCategory.TRANSFER,
-        message=(
-            f"Successfully registered remote instance for {transfer.destination} and "
-            f"transfer {transfer.id} based upon stale transfer with "
-            f"status {transfer.status}."
-        ),
-        session=session,
+    logger.info(
+        "Successfully registered remote instance for {} and transfer {} based "
+        "upon stale transfer with status {}",
+        transfer.destination,
+        transfer.id,
+        transfer.status,
     )
 
     return True
@@ -186,11 +192,9 @@ def handle_stale_incoming_transfer(
     )
 
     if not upstream_librarian:
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.DATA_INTEGRITY,
-            message=f"Upstream librarian {transfer.source} not found",
-            session=session,
+        logger.error(
+            "Upstream librarian {} not found, cancelling transfer",
+            transfer.source,
         )
 
         transfer.fail_transfer(session=session, commit=True)
@@ -205,6 +209,12 @@ def handle_stale_incoming_transfer(
         destination_transfer_ids=[],
     )
 
+    logger.info(
+        "Calling librarian {} to ask for information on incoming transfer {}",
+        transfer.source,
+        transfer.id,
+    )
+
     try:
         response: CheckinStatusResponse = client.post(
             "checkin/status", request=status_request, response=CheckinStatusResponse
@@ -212,15 +222,14 @@ def handle_stale_incoming_transfer(
 
         source_status = response.source_transfer_status[transfer.source_transfer_id]
     except Exception as e:
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.TRANSFER,
-            message=(
-                f"Unsuccessfully tried to contact {transfer.source} for information on "
-                f"transfer (local: {transfer.id}, remote: {transfer.source_transfer_id}). "
-                f"Exception: {e}. We are failing {transfer.id}"
-            ),
-            session=session,
+        logger.error(
+            "Unsuccessfully tried to contact {} for information on transfer "
+            "(local: {}, remote: {}), exception {}. We are failing {}",
+            transfer.source,
+            transfer.id,
+            transfer.source_transfer_id,
+            e,
+            transfer.id,
         )
 
         # This implies that the transfer doesn't exist on the remote.
@@ -240,15 +249,13 @@ def handle_stale_incoming_transfer(
     #    is an explicitly bad state as we are a push-based system.
 
     if source_status in [TransferStatus.COMPLETED]:
-        log_to_database(
-            severity=ErrorSeverity.CRITICAL,
-            category=ErrorCategory.PROGRAMMING,
-            message=(
-                f"Transfer (local: {transfer.id}, remote: {transfer.source_transfer_id}) has "
-                f"COMPLETED status on remote but {transfer.status} on local. This is "
-                f"an unreachable state for file {transfer.upload_name}. Requires manual check"
-            ),
-            session=session,
+        logger.error(
+            "Transfer (local: {}, remote: {}) has COMPLETED status on remote but {} "
+            "on local. This is an unreachable state for file {}. Requires manual check",
+            transfer.id,
+            transfer.source_transfer_id,
+            transfer.status,
+            transfer.upload_name,
         )
 
         transfer.fail_transfer(session=session, commit=True)
@@ -256,7 +263,7 @@ def handle_stale_incoming_transfer(
 
     if source_status in [TransferStatus.CANCELLED, TransferStatus.FAILED]:
         # This one's a gimmie.
-        log.error(
+        logger.error(
             f"Found end status for incoming transfer {transfer.id} on remote, cancelling"
         )
         transfer.fail_transfer(session=session, commit=True)
@@ -264,7 +271,7 @@ def handle_stale_incoming_transfer(
 
     if source_status == transfer.status:
         # This is the remote's responsibility.
-        log.info(
+        logger.info(
             f"Found same for incoming transfer {transfer.id} on remote, continuing"
         )
         return True
@@ -272,15 +279,14 @@ def handle_stale_incoming_transfer(
     # We only get here in annoying scenarios.
     if transfer.status == TransferStatus.INITIATED:
         # Remote more advanced.
-        log_to_database(
-            severity=ErrorSeverity.INFO,
-            category=ErrorCategory.TRANSFER,
-            message=(
-                f"Transfer (local: {transfer.id}, remote: {transfer.source_transfer_id}) has "
-                f"more advanced state on remote ({source_status} > {transfer.status}). Catching"
-                f"up our transfer."
-            ),
-            session=session,
+        logger.info(
+            "Transfer (local: {}, remote: {}) has more advanced state on remote "
+            "({}, {} > {}). Catching up our transfer",
+            transfer.id,
+            transfer.source_transfer_id,
+            transfer.source,
+            source_status,
+            transfer.status,
         )
 
         transfer.status = source_status
@@ -289,15 +295,11 @@ def handle_stale_incoming_transfer(
 
     if transfer.status == TransferStatus.STAGED:
         # Uh, this should be picked up by a different task (recv_clone)
-        log_to_database(
-            severity=ErrorSeverity.CRITICAL,
-            category=ErrorCategory.CONFIGURATION,
-            message=(
-                f"Transfer (local: {transfer.id}, remote: {transfer.source_transfer_id}) has "
-                "status STAGED and is being picked up by the hypervisor task. This should not "
-                "occur; recommend manual check"
-            ),
-            session=session,
+        logger.error(
+            "Transfer (local: {}, remote: {}) has status STAGED and is being picked up by "
+            "the hypervisor task. This should not occur; recommend manual check",
+            transfer.id,
+            transfer.source_transfer_id,
         )
         return False
 
@@ -308,29 +310,26 @@ def handle_stale_incoming_transfer(
         else:
             assert source_status == TransferStatus.STAGED
             # Remote more advanced (STAGED)
-            log_to_database(
-                severity=ErrorSeverity.INFO,
-                category=ErrorCategory.TRANSFER,
-                message=(
-                    f"Transfer (local: {transfer.id}, remote: {transfer.source_transfer_id}) has "
-                    f"more advanced state on remote ({source_status} > {transfer.status}). Catching"
-                    f"up our transfer."
-                ),
-                session=session,
+            logger.info(
+                "Transfer (local: {}, remote: {}) has more advanced state on remote "
+                "({}, {} > {}). Catching up our transfer",
+                transfer.id,
+                transfer.source_transfer_id,
+                transfer.source,
+                source_status,
+                transfer.status,
             )
 
             transfer.status = source_status
             session.commit()
             return True
 
-    log_to_database(
-        severity=ErrorSeverity.CRITICAL,
-        category=ErrorCategory.PROGRAMMING,
-        message=(
-            f"Transfer (local: {transfer.id}, remote: {transfer.source_transfer_id}) has "
-            "fallen through the hypervisor. Recommend manual check"
-        ),
-        session=session,
+    # We should never get here.
+    logger.error(
+        "Transfer (local: {}, remote: {}) has fallen through the hypervisor. "
+        "Recommend manual check",
+        transfer.id,
+        transfer.source_transfer_id,
     )
 
     return True
@@ -357,6 +356,12 @@ class OutgoingTransferHypervisor(Task):
         end_time = start_time + self.soft_timeout
 
         stale_transfers = get_stale_of_type(session, self.age_in_days, OutgoingTransfer)
+
+        logger.info(
+            "Found {} stale outgoing transfers of age {} days",
+            len(stale_transfers),
+            self.age_in_days,
+        )
 
         for transfer in stale_transfers:
             current_time = datetime.datetime.now(datetime.timezone.utc)
@@ -390,6 +395,12 @@ class IncomingTransferHypervisor(Task):
         end_time = start_time + self.soft_timeout
 
         stale_transfers = get_stale_of_type(session, self.age_in_days, IncomingTransfer)
+
+        logger.info(
+            "Found {} stale incoming transfers of age {} days",
+            len(stale_transfers),
+            self.age_in_days,
+        )
 
         for transfer in stale_transfers:
             current_time = datetime.datetime.now(datetime.timezone.utc)

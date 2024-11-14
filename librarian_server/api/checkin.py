@@ -17,7 +17,7 @@ from hera_librarian.transfer import TransferStatus
 from librarian_server.orm.transfer import IncomingTransfer, OutgoingTransfer
 
 from ..database import yield_session
-from ..logger import log, log_to_database
+from ..logger import log
 from .auth import CallbackUserDependency, ReadappendUserDependency, User
 
 router = APIRouter(prefix="/api/v2/checkin")

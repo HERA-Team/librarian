@@ -6,17 +6,18 @@ to see if they have completed.
 
 import datetime
 import logging
+import time
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from hera_librarian.deletion import DeletionPolicy
 from hera_librarian.exceptions import LibrarianHTTPError
 from hera_librarian.models.clone import CloneCompleteRequest, CloneCompleteResponse
 from librarian_server.database import get_session
-from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm import (
     File,
     IncomingTransfer,
@@ -27,8 +28,6 @@ from librarian_server.orm import (
 )
 
 from .task import Task
-
-logger = logging.getLogger("schedule")
 
 
 class RecieveClone(Task):
@@ -52,17 +51,25 @@ class RecieveClone(Task):
 
         core_begin = datetime.datetime.now(datetime.timezone.utc)
 
+        query_start = time.perf_counter()
         # Find incoming transfers that are STAGED
         ongoing_transfers: list[IncomingTransfer] = (
             session.query(IncomingTransfer)
             .filter_by(status=TransferStatus.STAGED)
             .all()
         )
+        query_end = time.perf_counter()
+
+        logger.info(
+            "Query for {n} incoming transfers took {t} seconds",
+            n=len(ongoing_transfers),
+            t=query_end - query_start,
+        )
 
         all_transfers_succeeded = True
 
         if len(ongoing_transfers) == 0:
-            logger.info("No ongoing transfers to process.")
+            logger.info("No ongoing transfers to process")
 
         transfers_processed = 0
 
@@ -76,13 +83,14 @@ class RecieveClone(Task):
                 else False
             ):
                 logger.info(
-                    "RecieveClone task has gone over time. Will reschedule for later."
+                    "RecieveClone task has gone over time. Will reschedule for later"
                 )
                 break
 
             if transfers_processed >= self.files_per_run:
                 logger.info(
-                    f"Processed {transfers_processed} transfers, which is the maximum for this run."
+                    "Processed {} transfers, which is the maximum for this run",
+                    transfers_processed,
                 )
                 break
 
@@ -90,14 +98,10 @@ class RecieveClone(Task):
             store: StoreMetadata = transfer.store
 
             if store is None:
-                log_to_database(
-                    severity=ErrorSeverity.CRITICAL,
-                    category=ErrorCategory.PROGRAMMING,
-                    message=(
-                        f"Transfer {transfer.id} has no store associated with it. "
-                        "Skipping for now, but this should never happen."
-                    ),
-                    session=session,
+                logger.error(
+                    "Transfer {} has no store associated with it."
+                    "Skipping for now, but this should never happen",
+                    transfer.id,
                 )
 
                 all_transfers_succeeded = False
@@ -105,17 +109,20 @@ class RecieveClone(Task):
                 continue
 
             try:
+                logger.info(
+                    "Attempting to ingest file {t.upload_name} from transfer {t.id}",
+                    t=transfer,
+                )
                 store.ingest_staged_file(
                     transfer=transfer,
                     session=session,
                     deletion_policy=self.deletion_policy,
                 )
             except (FileNotFoundError, FileExistsError, ValueError) as e:
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.PROGRAMMING,
-                    message=traceback.format_exc(),
-                    session=session,
+                logger.error(
+                    "Failed to ingest file {t.upload_name} from transfer {t.id} with exception {e}",
+                    t=transfer,
+                    e=e,
                 )
 
                 all_transfers_succeeded = False
@@ -137,7 +144,7 @@ class RecieveClone(Task):
             if librarian:
                 # Need to call back
                 logger.info(
-                    f"Transfer {transfer.id} has completed. Calling back to librarian {librarian.name}."
+                    f"Transfer {transfer.id} has completed. Calling back to librarian {librarian.name}"
                 )
 
                 request = CloneCompleteRequest(
@@ -151,26 +158,22 @@ class RecieveClone(Task):
                 downstream_client = librarian.client()
 
                 try:
-                    logger.info("Sending clone complete request.")
+                    logger.info("Sending clone complete request")
                     response: CloneCompleteResponse = downstream_client.post(
                         endpoint="clone/complete",
                         request=request,
                         response=CloneCompleteResponse,
                     )
                 except LibrarianHTTPError as e:
-                    log_to_database(
-                        severity=ErrorSeverity.ERROR,
-                        category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                        message=(
-                            f"Failed to call back to librarian {librarian.name} "
-                            f"with exception {e}."
-                        ),
-                        session=session,
+                    logger.error(
+                        "Failed to call back to librarian {name} with exception {e}",
+                        name=librarian.name,
+                        e=e,
                     )
             else:
                 logger.error(
                     f"Transfer {transfer.id} has no source librarian "
-                    f"(source is {transfer.source}) - cannot callback."
+                    f"(source is {transfer.source}) - cannot callback"
                 )
 
             transfers_processed += 1

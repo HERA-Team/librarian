@@ -10,15 +10,16 @@ synchronous communication. There are two main tasks:
 """
 
 import datetime
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+from loguru import logger
 from sqlalchemy import func, select
 
 from hera_librarian.exceptions import LibrarianError
 from hera_librarian.transfer import TransferStatus
 from librarian_server.database import get_session
-from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm.sendqueue import SendQueue
 from librarian_server.settings import server_settings
 
@@ -122,9 +123,19 @@ def check_on_consumed(
     """
 
     with session_maker() as session:
+        query_start = time.perf_counter()
+
         stmt = select(SendQueue).with_for_update(skip_locked=True)
         stmt = stmt.filter_by(consumed=True).filter_by(completed=False)
         queue_items = session.execute(stmt).scalars().all()
+
+        query_end = time.perf_counter()
+
+        logger.info(
+            "Queried database for {} consumed items in {} seconds",
+            len(queue_items),
+            query_end - query_start,
+        )
 
         if len(queue_items) == 0:
             return False
@@ -134,42 +145,43 @@ def check_on_consumed(
                 # We are out of time.
                 return False
 
+            logger.info(
+                "Handling queue item {q.id} with {q.retries} retries", q=queue_item
+            )
+
             current_status = queue_item.async_transfer_manager.transfer_status(
                 settings=server_settings
             )
 
             if current_status == TransferStatus.INITIATED:
+                logger.info("Transfer for {q.id} is still ongoing", q=queue_item)
                 continue
             elif current_status == TransferStatus.COMPLETED:
                 if complete_status == TransferStatus.STAGED:
+                    logger.info("Transfer for {q.id} is staged", q=queue_item)
                     try:
                         queue_item.update_transfer_status(
                             new_status=complete_status,
                             session=session,
                         )
                     except LibrarianError as e:
-                        log_to_database(
-                            severity=ErrorSeverity.WARNING,
-                            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                            message=(
-                                f"Librarian {queue_item.destination} was not available for "
-                                f"contact, returning error {e}. We will try again later."
-                            ),
-                            session=session,
+                        logger.info(
+                            "Librarian {q.destination} was not available for contact, "
+                            "returning error {e}, trying again later",
+                            q=queue_item,
+                            e=e,
                         )
 
                         continue
                     except AttributeError as e:
                         # This is a larger problem; we are missing the associated
                         # librarian in the database. Better ping!
-                        log_to_database(
-                            severity=ErrorSeverity.CRITICAL,
-                            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                            message=(
-                                f"Librarian {queue_item.destination} was not found in "
-                                f"the database, returning error {e}. Will try again later "
-                                "to complete this transfer, but remedy is suggested."
-                            ),
+                        logger.info(
+                            "Librarian {q.destination} was not found in the database, "
+                            "returning error {e}, trying again later, but likely this requires "
+                            "manual remedy",
+                            q=queue_item,
+                            e=e,
                         )
 
                         continue
@@ -178,21 +190,20 @@ def check_on_consumed(
                         "No other status than STAGED is supported for checking on consumed"
                     )
             elif current_status == TransferStatus.FAILED:
+                logger.info("Transfer for {q.id} has failed", q=queue_item)
                 for transfer in queue_item.transfers:
                     transfer.fail_transfer(session=session, commit=False)
             else:
-                log_to_database(
-                    severity=ErrorSeverity.WARNING,
-                    category=ErrorCategory.TRANSFER,
-                    message=(
-                        f"Incompatible return value for transfer status from "
-                        f"SendQueue item {queue_item.id} ({current_status})."
-                    ),
-                    session=session,
+                logger.error(
+                    "Incompatible return value for transfer status from "
+                    "SendQueue item {queue_item.id} ({current_status})",
+                    queue_item=queue_item,
+                    current_status=current_status,
                 )
                 continue
 
             # If we got down here, we can mark the transfer as consumed.
+            logger.info("Marking {q.id} as completed", q=queue_item)
             queue_item.completed = True
             queue_item.completed_time = datetime.datetime.now(datetime.timezone.utc)
 
@@ -210,24 +221,40 @@ def consume_queue_item(session_maker: Callable[[], "Session"]) -> bool:
     """
 
     with session_maker() as session:
+        query_start = time.perf_counter()
         stmt = select(SendQueue).with_for_update(skip_locked=True)
         stmt = stmt.filter_by(completed=False).filter_by(consumed=False)
         stmt = stmt.order_by(SendQueue.priority.desc(), SendQueue.created_time)
         queue_item = session.execute(stmt).scalar()
+        query_end = time.perf_counter()
+
+        logger.info(
+            "Queried database for next queue item in {} seconds",
+            query_end - query_start,
+        )
 
         if queue_item is None:
+            logger.info("Found no new queue item, returning")
             # Nothing to do!
             return False
 
         # Now, check we don't have too much going on.
+        query_start = time.perf_counter()
         stmt = (
             select(func.count(SendQueue.id))
             .filter_by(consumed=True)
             .filter_by(completed=False)
         )
         in_flight = session.execute(stmt).scalar()
+        query_end = time.perf_counter()
+
+        logger.info(
+            "Queried database for in-flight items in {} seconds",
+            query_end - query_start,
+        )
 
         if in_flight > server_settings.max_async_inflight_transfers:
+            logger.info("Too many in-flight items, returning")
             # Too much to do!
             return False
 
@@ -235,6 +262,11 @@ def consume_queue_item(session_maker: Callable[[], "Session"]) -> bool:
         transfer_list = [
             (Path(x.source_path), Path(x.dest_path)) for x in queue_item.transfers
         ]
+        logger.info(
+            "Consuming queue item {q.id} ({n} transfers)",
+            q=queue_item,
+            n=len(transfer_list),
+        )
         # Need to create a copy here in case there is an internal state
         # change. Otherwise SQLAlchemy won't write it back.
         transfer_manager = queue_item.async_transfer_manager.model_copy()
@@ -249,10 +281,22 @@ def consume_queue_item(session_maker: Callable[[], "Session"]) -> bool:
             # Be careful, the internal state of the async transfer manager
             # may have changed. Send it back.
             queue_item.async_transfer_manager = transfer_manager
+
+            logger.info("Successfully consumed queue item {q.id}", q=queue_item)
         else:
             queue_item.retries += 1
+            logger.warning(
+                "Failed to consume queue item {q.id} ({r}/{m_r} retries)",
+                q=queue_item,
+                r=queue_item.retries,
+                m_r=server_settings.max_async_send_retries,
+            )
 
             if queue_item.retries > server_settings.max_async_send_retries:
+                logger.error(
+                    "Queue item {q.id} has exceeded maximum retries, failing",
+                    q=queue_item,
+                )
                 queue_item.fail(session=session)
 
         session.commit()

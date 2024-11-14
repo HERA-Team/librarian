@@ -4,22 +4,20 @@ within some time-frame.
 """
 
 import datetime
-import logging
+import time
 from pathlib import Path
 from typing import Optional
 
+from loguru import logger
 from schedule import CancelJob
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from hera_librarian.utils import compare_checksums, get_hash_function_from_hash
 from librarian_server.database import get_session
-from librarian_server.logger import ErrorCategory, ErrorSeverity, log_to_database
 from librarian_server.orm import CloneTransfer, Instance, StoreMetadata, TransferStatus
 
 from .task import Task
-
-logger = logging.getLogger("schedule")
 
 
 class CreateLocalClone(Task):
@@ -59,11 +57,9 @@ class CreateLocalClone(Task):
             store_from = self.get_store(self.clone_from, session)
         except ValueError:
             # Store doesn't exist. Cancel this job.
-            log_to_database(
-                severity=ErrorSeverity.CRITICAL,
-                category=ErrorCategory.CONFIGURATION,
-                message=f"Store {self.clone_from} does not exist. Cancelling job. Please update the configuration.",
-                session=session,
+            logger.error(
+                "Store {} does not exist, cancelling job: please update configuration",
+                self.clone_from,
             )
             return CancelJob
 
@@ -76,11 +72,9 @@ class CreateLocalClone(Task):
                 stores_to = [self.get_store(self.clone_to, session)]
         except ValueError:
             # Store doesn't exist. Cancel this job.
-            log_to_database(
-                severity=ErrorSeverity.CRITICAL,
-                category=ErrorCategory.CONFIGURATION,
-                message=f"Store {self.clone_to} does not exist. Cancelling job. Please update the configuration.",
-                session=session,
+            logger.error(
+                "Store {} does not exist, cancelling job: please update configuration",
+                self.clone_from,
             )
             return CancelJob
 
@@ -89,11 +83,9 @@ class CreateLocalClone(Task):
             all_disabled = all_disabled and not store.enabled
 
         if all_disabled:
-            log_to_database(
-                severity=ErrorSeverity.CRITICAL,
-                category=ErrorCategory.CONFIGURATION,
-                message=f"All stores in {self.clone_to} are disabled. It is likely that all stores are full.",
-                session=session,
+            logger.error(
+                "All stores in {} are disabled. It is likely that all stores are full.",
+                self.clone_to,
             )
             return
 
@@ -110,6 +102,8 @@ class CreateLocalClone(Task):
         # 4. Get all instances on the source store that are in the difference.
         # 5. Get all instances on the source store that are in the difference and are younger than start_time.
         # 6. Clone all of these instances to the destination store.
+
+        query_start = time.perf_counter()
 
         source_store_id = store_from.id
         destination_store_ids = [store.id for store in stores_to]
@@ -138,6 +132,14 @@ class CreateLocalClone(Task):
 
         instances: list[Instance] = session.execute(query).scalars().all()
 
+        query_end = time.perf_counter()
+
+        logger.info(
+            "Queried database for local clone instances created since {} in {} seconds",
+            start_time,
+            query_end - query_start,
+        )
+
         successful_clones = 0
         unnecessary_clones = 0
         all_transfers_successful = True
@@ -153,14 +155,16 @@ class CreateLocalClone(Task):
                 else False
             ):
                 logger.info(
-                    "CreateLocalClone task has gone over time. Will reschedule for later."
+                    "CreateLocalClone task has gone over time; will reschedule for later"
                 )
                 break
 
             if successful_clones > self.files_per_run:
                 logger.info(
-                    f"CreateLocalClone task has cloned {successful_clones} files, which is over "
-                    f"the limit of {self.files_per_run}. Will reschedule for later."
+                    "CreateLocalClone has cloned {} files, which is over the limit of {}; "
+                    "will reschedule for later",
+                    successful_clones,
+                    self.files_per_run,
                 )
                 break
 
@@ -170,7 +174,8 @@ class CreateLocalClone(Task):
                 if secondary_instance.store in stores_to:
                     unnecessary_clones += 1
                     logger.debug(
-                        f"File instance {instance} already exists on clone_to store. Skipping."
+                        "File instance {} already exists on clone_to store. Skipping.",
+                        instance,
                     )
                     continue
 
@@ -186,11 +191,9 @@ class CreateLocalClone(Task):
                     if self.disable_store_on_full:
                         store.enabled = False
                         session.commit()
-                        log_to_database(
-                            severity=ErrorSeverity.WARNING,
-                            category=ErrorCategory.STORE_FULL,
-                            message=f"Store {store} is full. Disabling; please replace the disk.",
-                            session=session,
+                        logger.warning(
+                            "Store {} is full. Disabling; please replace the disk",
+                            store,
                         )
                     continue
 
@@ -200,14 +203,10 @@ class CreateLocalClone(Task):
                 break
 
             if not store_available:
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.STORE_FULL,
-                    message=(
-                        f"File {instance.file.name} is too large to fit on any store in "
-                        f"{self.clone_to}. Skipping. (Instance {instance.id})"
-                    ),
-                    session=session,
+                logger.error(
+                    "File {} is too large to fit on any store in {}; skipping",
+                    instance.file.name,
+                    self.clone_to,
                 )
 
                 all_transfers_successful = False
@@ -232,14 +231,11 @@ class CreateLocalClone(Task):
                     file_name=Path(instance.file.name).name,
                 )
             except ValueError:
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.STORE_FULL,
-                    message=(
-                        f"File {instance.file.name} is too large to fit on store {store_to}. "
-                        f"Skipping, but this should have already have been caught. (Instance {instance.id})"
-                    ),
-                    session=session,
+                logger.error(
+                    "File {} is too large to fit on store {}; skipping, but should already have been"
+                    "caught, check the logic",
+                    instance.file.name,
+                    store_to,
                 )
 
                 transfer.fail_transfer(session=session)
@@ -267,14 +263,16 @@ class CreateLocalClone(Task):
                         break
 
                     logger.debug(
-                        f"Failed to transfer file {instance.path} to store {store_to} using transfer manager {transfer_manager}."
+                        "Failed to transfer file {} to store {} using transfer manager {}",
+                        instance.path,
+                        store_to,
+                        tm_name,
                     )
                 except FileNotFoundError as e:
-                    log_to_database(
-                        severity=ErrorSeverity.ERROR,
-                        category=ErrorCategory.DATA_AVAILABILITY,
-                        message=f"File {e.filename} does not exist when trying to clone from {store_from}. Skipping. (Instance {instance.id})",
-                        session=session,
+                    logger.error(
+                        "File {} does not exist when trying to clone from {}, skipping",
+                        e.filename,
+                        store_from,
                     )
 
                     transfer.fail_transfer(session=session)
@@ -285,16 +283,13 @@ class CreateLocalClone(Task):
 
             if not success:
                 # Fail the transfer _here_, not after trying every transfer manager.
-
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.DATA_AVAILABILITY,
-                    message=f"Failed to transfer file {instance.path} to store {store_to}. Skipping. (Instance {instance.id})",
-                    session=session,
+                logger.error(
+                    "Failed to transfer file {} to store {}, skipping",
+                    instance.path,
+                    store_to,
                 )
 
                 transfer.fail_transfer(session=session)
-
                 all_transfers_successful = False
 
                 continue
@@ -312,18 +307,19 @@ class CreateLocalClone(Task):
                 )
 
                 if not compare_checksums(path_info.checksum, instance.file.checksum):
-                    log_to_database(
-                        severity=ErrorSeverity.ERROR,
-                        category=ErrorCategory.DATA_INTEGRITY,
-                        message=f"File {instance.path} on store {store_to} has an incorrect checksum. "
-                        f"Expected {instance.file.checksum}, got {path_info.checksum}. (Instance {instance.id})",
-                        session=session,
+                    logger.error(
+                        "File {} on store {} has an incorrect checksum. Expected {}, got {}. (Instance {})",
+                        instance.path,
+                        store_to,
+                        instance.file.checksum,
+                        path_info.checksum,
+                        instance.id,
                     )
 
+                    # TODO: Use the corrupt file table here.
+
                     transfer.fail_transfer(session=session)
-
                     store_to.store_manager.unstage(staged_path)
-
                     all_transfers_successful = False
 
                     continue
@@ -336,35 +332,29 @@ class CreateLocalClone(Task):
                     staging_path=staged_path, store_path=resolved_store_path
                 )
             except FileExistsError:
-                log_to_database(
-                    severity=ErrorSeverity.CRITICAL,
-                    category=ErrorCategory.PROGRAMMING,
-                    message=f"File {instance.path} already exists on store {store_to}. Skipping. (Instance {instance.id})",
-                    session=session,
+                logger.error(
+                    "File {} already exists on store {}. Skipping. (Instance {})",
+                    instance.path,
+                    store_to,
+                    instance.id,
                 )
 
                 store_to.store_manager.unstage(staging_name)
-
                 transfer.fail_transfer(session=session)
-
                 all_transfers_successful = False
 
                 continue
             except ValueError as e:
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.DATA_INTEGRITY,
-                    message=(
-                        f"Failed to commit file {instance.path} to store {store_to}: {e}. "
-                        f"Skipping. (Instance {instance.id})"
-                    ),
-                    session=session,
+                logger.error(
+                    "Failed to commit file {} to store {}: {}. Skipping. (Instance {})",
+                    instance.path,
+                    store_to,
+                    e,
+                    instance.id,
                 )
 
                 transfer.fail_transfer(session=session)
-
                 store_to.store_manager.unstage(staged_path)
-
                 all_transfers_successful = False
 
                 continue

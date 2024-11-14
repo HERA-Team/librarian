@@ -3,14 +3,12 @@ Sends clones of files to a remote librarian.
 """
 
 import datetime
-import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 from schedule import CancelJob
 from sqlalchemy import select
 
 from hera_librarian.client import LibrarianClient
-from hera_librarian.errors import ErrorCategory, ErrorSeverity
 from hera_librarian.exceptions import (
     LibrarianError,
     LibrarianHTTPError,
@@ -22,7 +20,6 @@ from hera_librarian.models.clone import (
     CloneBatchInitiationResponse,
 )
 from librarian_server.database import get_session
-from librarian_server.logger import log_to_database
 from librarian_server.orm import (
     File,
     Instance,
@@ -41,9 +38,10 @@ from .task import Task
 if TYPE_CHECKING:
     from hera_librarian import LibrarianClient
 
-from sqlalchemy.orm import Session
+import time
 
-logger = logging.getLogger("schedule")
+from loguru import logger
+from sqlalchemy.orm import Session
 
 
 def process_batch(
@@ -61,6 +59,11 @@ def process_batch(
     # we should try to transfer the rest from it too. Stores may
     # be inaccessable, or not be able to use certain transfer methods,
     # and we want the most uniform batch possible.
+
+    logger.info(
+        "Processing batch of {n} files to send",
+        n=len(files),
+    )
 
     valid_stores = set()
 
@@ -109,6 +112,11 @@ def process_batch(
             }
         )
 
+    logger.info(
+        "Batch of {n} files to send prepared",
+        n=len(files),
+    )
+
     return outgoing_transfers, outgoing_information
 
 
@@ -144,6 +152,12 @@ def use_batch_to_call_librarian(
         Truthy if the call was successful, False otherwise.
 
     """
+
+    logger.info(
+        "Using batch of {n} prepared files to call {lib} for egress",
+        n=len(outgoing_transfers),
+        lib=librarian.name if librarian is not None else None,
+    )
     # Now the outgoing transfers all have IDs! We can create the batch
     # items.
     batch_items = [
@@ -171,14 +185,9 @@ def use_batch_to_call_librarian(
             potential_ids = e.full_response.get("source_transfer_ids", None)
 
             if potential_ids is None:
-                log_to_database(
-                    severity=ErrorSeverity.ERROR,
-                    category=ErrorCategory.PROGRAMMING,
-                    message=(
-                        "Librarian told us that they have a file, but did not provide "
-                        "the source transfer ID."
-                    ),
-                    session=session,
+                logger.error(
+                    "Librarian told us that they have a file, but did not provide a "
+                    "source transfer ID"
                 )
             else:
                 for id in potential_ids:
@@ -190,18 +199,18 @@ def use_batch_to_call_librarian(
 
         # Oh no, we can't call up the librarian!
         if not remedy_success:
-            log_to_database(
-                severity=ErrorSeverity.ERROR,
-                category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                message=(
-                    f"Unable to communicate with remote librarian for batch "
-                    f"to stage clone with exception {e}."
-                ),
-                session=session,
+            logger.warning(
+                "Unable to communicate with remote librarian for batch to "
+                "stage clone with exception {e}",
+                e=e,
             )
 
         # What a waste... Even if we did remedy the problem with the
         # already-existent file, we need to fail this over.
+        logger.warning(
+            "Failing existing {n} transfers due to failure to communicate with librarian",
+            n=len(outgoing_transfers),
+        )
         for transfer in outgoing_transfers:
             transfer.fail_transfer(session=session, commit=False)
 
@@ -210,15 +219,10 @@ def use_batch_to_call_librarian(
         return False
     except LibrarianTimeoutError as e:
         # Can't connect to the librarian. Log and move on...
-
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-            message=(
-                f"Timeout when trying to communicate with remote librarian for batch "
-                f"to stage clone with exception {e}."
-            ),
-            session=session,
+        logger.warning(
+            "Timeout when trying to communicate with remote librarian for batch "
+            "to stage clone with exception {e}, failing transfers",
+            e=e,
         )
 
         for transfer in outgoing_transfers:
@@ -227,6 +231,14 @@ def use_batch_to_call_librarian(
         session.commit()
 
         return False
+
+    logger.info(
+        "Successfully staged batch of {n} files for egress to {lib} with {b} "
+        "bytes available on store",
+        n=len(outgoing_transfers),
+        lib=librarian.name,
+        b=response.available_bytes_on_store,
+    )
 
     return response
 
@@ -261,6 +273,8 @@ def create_send_queue_item(
         Mapping of source transfer IDs to the remote transfer information.
     """
 
+    logger.info("Creating send queue item for {lib}", lib=librarian.name)
+
     transfer_map: dict[int:CloneBatchInitiationRequestFileItem] = {
         x.source_transfer_id: x for x in response.uploads
     }
@@ -277,15 +291,11 @@ def create_send_queue_item(
 
     # In all liklehood, this loop will never run. If it does, that's probably a bug.
     for tid in not_accepted_transfers:
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.TRANSFER,
-            message=(
-                f"Transfer ID {tid} was not returned from the batch upload process. "
-                "Failing this transfer internally, and continuing, but this "
-                "should not happen."
-            ),
-            session=session,
+        logger.error(
+            "Transfer ID {} was not returned from the batch upload process. "
+            "Failing this transfer internally, and continuing, but this "
+            "should not happen",
+            tid,
         )
 
         # Because we want to re-use the list, need to iterate through it.
@@ -304,14 +314,10 @@ def create_send_queue_item(
 
     if len(response.async_transfer_providers) == 0:
         # No transfer providers are available at all for that librarian.
-        log_to_database(
-            severity=ErrorSeverity.WARNING,
-            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-            message=(
-                f"No transfer providers to send to {librarian}, "
-                f"were provided. Failing all associated transfers."
-            ),
-            session=session,
+        logger.error(
+            "No transfer providers to send to {librarian}, were provided."
+            "Failing all associated transfers",
+            librarian=librarian.name,
         )
 
         for transfer in outgoing_transfers:
@@ -328,15 +334,11 @@ def create_send_queue_item(
 
     if not transfer_provider.valid:
         # We couldn't find a valid transfer manager. We will have to fail it all.
-        log_to_database(
-            severity=ErrorSeverity.WARNING,
-            category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-            message=(
-                f"No valid transfer manager found for transfer to {librarian}, "
-                f"was provided {list(response.async_transfer_providers.keys())}. Failing "
-                "all associated transfers."
-            ),
-            session=session,
+        logger.error(
+            "No valid transfer manager found for transfer to {librarian}, "
+            "was provided {providers}. Failing all associated transfers",
+            librarian=librarian.name,
+            providers=list(response.async_transfer_providers.keys()),
         )
 
         for transfer in outgoing_transfers:
@@ -346,6 +348,12 @@ def create_send_queue_item(
 
         # Break out of the loop.
         return False, None, None
+
+    logger.info(
+        "Successfully found transfer provider {provider} for {librarian}",
+        provider=transfer_provider,
+        librarian=librarian.name,
+    )
 
     send = SendQueue.new_item(
         priority=0,
@@ -357,6 +365,8 @@ def create_send_queue_item(
     session.add(send)
     session.commit()
 
+    logger.info("Successfully added new send queue item {send} to database", send=send)
+
     return send, transfer_provider, transfer_map
 
 
@@ -364,6 +374,12 @@ def call_destination_and_state_ongoing(send: SendQueue, session: Session):
     """
     Call the destination librarian and state the transfer as ongoing.
     """
+
+    logger.info(
+        "Calling destination librarian {lib} for send queue item {send} to set ONGOING",
+        lib=send.destination,
+        send=send.id,
+    )
 
     try:
         send.update_transfer_status(
@@ -374,15 +390,20 @@ def call_destination_and_state_ongoing(send: SendQueue, session: Session):
         # Incorrect downstream librarian. This is a weird programming error,
         # that is only reachable if someone deleted the librarian in the
         # database between this process starting and ending.
-        log_to_database(
-            severity=ErrorSeverity.CRITICAL,
-            category=ErrorCategory.PROGRAMMING,
-            message=e.message,
-            session=session,
+        logger.error(
+            "Incorrect downstream librarian for send queue item {send}, {e}",
+            send=send.id,
+            e=e,
         )
     except LibrarianError as e:
         # Can't call up downstream librarian. Already been called in.
         pass
+
+    logger.info(
+        "Successfully updated to ONGOING librarian {lib} for send queue item {send}",
+        lib=send.destination,
+        send=send.id,
+    )
 
 
 def handle_existing_file(
@@ -402,30 +423,22 @@ def handle_existing_file(
     up later by the hypervisor task
     """
 
-    log_to_database(
-        severity=ErrorSeverity.INFO,
-        category=ErrorCategory.TRANSFER,
-        message=(
-            f"Librarian {librarian.name} told us that they already have the file "
-            f"from transfer {source_transfer_id}, attempting to handle and create "
-            "remote instance."
-        ),
-        session=session,
+    logger.info(
+        "Librarian {lib} told us that they already have the file from transfer "
+        "{source_transfer_id}, attempting to handle and create a remote instance",
+        lib=librarian.name,
+        source_transfer_id=source_transfer_id,
     )
 
     transfer: OutgoingTransfer = session.get(OutgoingTransfer, source_transfer_id)
 
     if transfer is None:
-        log_to_database(
-            severity=ErrorSeverity.ERROR,
-            category=ErrorCategory.PROGRAMMING,
-            message=(
-                f"Transfer {source_transfer_id} does not exist, but we were told "
-                "by the downstream librarian that it does. There must be another "
-                "librarian that sent them the file, and the DAG nature of the "
-                "librarian is being violated."
-            ),
-            session=session,
+        logger.error(
+            "Transfer {source_transfer_id} does not exist, but we were told "
+            "by the downstream librarian that it does. There must be another "
+            "librarian that sent them the file, and the DAG nature of the "
+            "librarian is being violated.",
+            source_transfer_id=source_transfer_id,
         )
 
         return False
@@ -468,14 +481,10 @@ class SendClone(Task):
 
         # Only used when there is a botched config.
         if librarian is None:  # pragma: no cover
-            log_to_database(
-                severity=ErrorSeverity.CRITICAL,
-                category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                message=(
-                    f"Librarian {self.destination_librarian} does not exist within database. "
-                    "Cancelling job. Please update the configuration (and re-start the librarian)."
-                ),
-                session=session,
+            logger.error(
+                "Librarian {dest} does not existi within the database. Cancelling job, "
+                "please update the configuration",
+                dest=self.destination_librarian,
             )
             return CancelJob
 
@@ -484,18 +493,15 @@ class SendClone(Task):
         try:
             client.ping()
         except Exception as e:
-            log_to_database(
-                severity=ErrorSeverity.ERROR,
-                category=ErrorCategory.LIBRARIAN_NETWORK_AVAILABILITY,
-                message=(
-                    f"Librarian {self.destination_librarian} is unreachable. Skipping sending clones."
-                ),
-                session=session,
+            logger.warning(
+                "Librarian {dest} is unreachable. Skipping sending clones for now",
+                dest=self.destination_librarian,
             )
 
             # No point canceling job, our freind could just be down for a while.
             return
 
+        query_start = time.perf_counter()
         current_time = datetime.datetime.now(datetime.timezone.utc)
         age_in_days = datetime.timedelta(days=self.age_in_days)
         oldest_file_age = current_time - age_in_days
@@ -525,10 +531,13 @@ class SendClone(Task):
         files_without_remote_instances: list[File] = (
             session.execute(file_stmt).scalars().all()
         )
+        query_end = time.perf_counter()
 
         logger.info(
-            f"Found {len(files_without_remote_instances)} files without remote instances, "
-            "and without ongoing transfers."
+            "Found {n} files without remote instances, "
+            "and without ongoing transfers in {t} seconds; preparing to send clones",
+            n=len(files_without_remote_instances),
+            t=query_end - query_start,
         )
 
         if self.store_preference is not None:
@@ -540,14 +549,9 @@ class SendClone(Task):
 
             # Botched configuration!
             if use_store is None:  # pragma: no cover
-                log_to_database(
-                    severity=ErrorSeverity.CRITICAL,
-                    category=ErrorCategory.CONFIGURATION,
-                    message=(
-                        f"Store {self.store_preference} does not exist. Cancelling job. "
-                        "Please update the configuration."
-                    ),
-                    session=session,
+                logger.error(
+                    "Store {store} does not exist. Cancelling job. Please update the configuration",
+                    store=self.store_preference,
                 )
 
                 return CancelJob
@@ -572,6 +576,13 @@ class SendClone(Task):
             files_to_try = files_without_remote_instances[
                 files_tried : files_tried + this_batch_size
             ]
+
+            logger.info(
+                "Sending batch of files to {dest} with {n}/{left} files",
+                dest=self.destination_librarian,
+                n=this_batch_size,
+                left=left_to_send,
+            )
 
             files_tried += this_batch_size
 
@@ -628,16 +639,10 @@ class SendClone(Task):
                 if remote_transfer_info is None:  # pragma: no cover
                     # This is an unreachable state; we already purged these
                     # scenarios.
-                    log_to_database(
-                        severity=ErrorSeverity.CRITICAL,
-                        category=ErrorCategory.PROGRAMMING,
-                        message=(
-                            "Trying to set parameters of a transfer that should not "
-                            "exist; this should be an unreachable state."
-                        ),
-                        session=session,
+                    logger.error(
+                        "Trying to set parameters of a transfer that should not exist; "
+                        "this should be an unreachable state."
                     )
-
                     # In this case, the best thing that we can do is fail this individual
                     # transfer and pick it up later.
                     transfer.fail_transfer(session=session, commit=False)
