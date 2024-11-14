@@ -8,6 +8,7 @@ from hera_librarian.deletion import DeletionPolicy
 from hera_librarian.models.admin import (
     AdminAddLibrarianRequest,
     AdminAddLibrarianResponse,
+    AdminChangeLibrarianTransferStatusRequest,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
     AdminListLibrariansRequest,
@@ -352,6 +353,19 @@ def test_add_librarians(test_client, test_server_with_valid_file, test_orm):
     assert response.success == False
     assert response.already_exists == True
 
+    # Now disable this guy!
+    disable_request = AdminChangeLibrarianTransferStatusRequest(
+        librarian_name="our_closest_friend",
+        transfers_enabled=False,
+    )
+
+    response = test_client.post_with_auth(
+        "/api/v2/admin/librarians/transfer_status/change",
+        content=disable_request.model_dump_json(),
+    )
+
+    assert response.status_code == 200
+
     # Now we can try the search endpoint.
     search_request = AdminListLibrariansRequest(
         ping=False,
@@ -371,6 +385,7 @@ def test_add_librarians(test_client, test_server_with_valid_file, test_orm):
             assert librarian.url == "http://localhost"
             assert librarian.port == 80
             assert librarian.available == None
+            assert librarian.enabled == False
             found = True
 
     assert found

@@ -16,10 +16,12 @@ from hera_librarian.exceptions import LibrarianHTTPError
 from hera_librarian.models.admin import (
     AdminAddLibrarianRequest,
     AdminAddLibrarianResponse,
+    AdminChangeLibrarianTransferStatusRequest,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
     AdminDeleteInstanceRequest,
     AdminDeleteInstanceResponse,
+    AdminLibrarianTransferStatusResponse,
     AdminListLibrariansRequest,
     AdminListLibrariansResponse,
     AdminRemoveLibrarianRequest,
@@ -388,6 +390,7 @@ def list_librarians(
                 url=librarian.url,
                 port=librarian.port,
                 available=ping if request.ping else None,
+                enabled=librarian.transfers_enabled,
             )
         )
 
@@ -581,3 +584,39 @@ def delete_local_instance(
         store.store_manager.delete(Path(instance.path))
 
     return AdminDeleteInstanceResponse(success=True, instance_id=request.instance_id)
+
+
+@router.post(
+    path="/librarians/transfer_status/change",
+    response_model=AdminLibrarianTransferStatusResponse,
+)
+def change_librarian_transfer_status(
+    request: AdminChangeLibrarianTransferStatusRequest,
+    user: AdminUserDependency,
+    response: Response,
+    session: Session = Depends(yield_session),
+) -> AdminLibrarianTransferStatusResponse:
+    """
+    Change the transfer status of a librarian. This will enable or disable
+    outbound transfers to the librarian.
+    """
+
+    librarian = (
+        session.query(Librarian).filter_by(name=request.librarian_name).one_or_none()
+    )
+
+    if librarian is None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return AdminRequestFailedResponse(
+            reason=f"Librarian {request.librarian_name} does not exist",
+            suggested_remedy="Please verify that the requested librarian exists",
+        )
+
+    librarian.transfers_enabled = request.transfers_enabled
+
+    session.commit()
+
+    return AdminLibrarianTransferStatusResponse(
+        librarian_name=librarian.name,
+        transfers_enabled=librarian.transfers_enabled,
+    )

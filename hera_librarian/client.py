@@ -29,10 +29,12 @@ from .exceptions import LibrarianError, LibrarianHTTPError, LibrarianTimeoutErro
 from .models.admin import (
     AdminAddLibrarianRequest,
     AdminAddLibrarianResponse,
+    AdminChangeLibrarianTransferStatusRequest,
     AdminCreateFileRequest,
     AdminCreateFileResponse,
     AdminDeleteInstanceRequest,
     AdminDeleteInstanceResponse,
+    AdminLibrarianTransferStatusResponse,
     AdminListLibrariansRequest,
     AdminListLibrariansResponse,
     AdminRemoveLibrarianRequest,
@@ -1319,3 +1321,41 @@ class AdminClient(LibrarianClient):
                 raise e
 
         return response.success, response.number_of_transfers_removed
+
+    def set_librarian_status(
+        self,
+        librarian_name: str,
+        transfers_enabled: bool,
+    ) -> bool:
+        """
+        Set the status of transfers to the librarian.
+
+        Parameters
+        ----------
+        librarian_name : str
+            The name of the librarian to set the status of.
+        transfers_enabled : bool
+            Whether transfers to this librarian should be enabled.
+
+        Returns
+        -------
+        bool
+            The new status.
+        """
+
+        try:
+            response = self.post(
+                endpoint="admin/librarians/transfer_status/set",
+                request=AdminChangeLibrarianTransferStatusRequest(
+                    librarian_name=librarian_name,
+                    transfers_enabled=transfers_enabled,
+                ),
+                response=AdminLibrarianTransferStatusResponse,
+            )
+        except LibrarianHTTPError as e:
+            if e.status_code == 400 and "Librarian" in e.reason:
+                raise LibrarianError(e.reason)
+            else:
+                raise e
+
+        return response.transfers_enabled

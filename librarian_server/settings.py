@@ -136,10 +136,10 @@ class ServerSettings(BaseSettings):
 
     # Host and port to bind to.
     host: str = "0.0.0.0"
-    port: int
+    port: int = 8080
 
     # Stores that the librarian should add or migrate
-    add_stores: list[StoreSettings]
+    add_stores: list[StoreSettings] = []
 
     # Database migration settings
     alembic_config_path: str = "."

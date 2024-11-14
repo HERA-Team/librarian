@@ -123,3 +123,63 @@ fails because of network interruption. Here, the outgoing transfer
 hypervisor will find it (as it will still be STAGED on A), call
 up B, find that the instance exists, and register a remote instance
 on A. The transfer is then marked as complete.
+
+
+Enabling and Disabling Transfers
+--------------------------------
+
+There may be points in time when you want to shut down transfers to
+specific machines. Whilst this can always be performed by editing the
+configuration files and restarting the server, that is not always optimal.
+
+Instead, you can use the following command-line script inside a container
+(i.e. with direct access to the database):
+
+.. code-block::
+
+   librarian-change-transfer-status [-h] --librarian LIBRARIAN [--enable] [--disable]
+
+   Change the status of an external librarian, to enable or disable transfers.
+
+   options:
+     -h, --help            show this help message and exit
+     --librarian LIBRARIAN
+                           Name of the librarian to change the status of.
+     --enable              Enable the librarian.
+     --disable             Disable the librarian.
+
+Or using the client:
+
+.. code-block::
+
+   librarian get-librarian-list [-h] [--ping] CONNECTION-NAME
+
+   Get a list of librarians known to the librarian.
+
+   positional arguments:
+     CONNECTION-NAME  Which Librarian to talk to; as in ~/.hl_client.cfg.
+
+   options:
+     -h, --help       show this help message and exit
+     --ping           Ping the librarians to check they are up.
+
+
+to find information about the connected librarians, and to set their properties:
+
+.. code-block::
+   
+   librarian set-librarian-transfer [-h] [--name NAME] [--enabled] [--disabled] CONNECTION-NAME
+
+   Set the transfer state of a librarian.
+
+   positional arguments:
+     CONNECTION-NAME  Which Librarian to talk to; as in ~/.hl_client.cfg.
+
+   options:
+     -h, --help       show this help message and exit
+     --name NAME      The name of the librarian to set the transfer state of.
+     --enabled        Set the librarian to enabled for transfers.
+     --disabled       Set the librarian to disabled for transfers.
+
+
+These client tools require an administrator account to use.

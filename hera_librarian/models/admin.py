@@ -167,6 +167,9 @@ class LibrarianListResponseItem(BaseModel):
     available: bool | None
     "Whether the librarian is available or not, only if ping is true."
 
+    enabled: bool
+    "Whether transfers the librarian is enabled or not."
+
 
 class AdminListLibrariansResponse(BaseModel):
     librarians: list[LibrarianListResponseItem]
@@ -238,3 +241,28 @@ class AdminDeleteInstanceResponse(BaseModel):
 
     "The instance name of the instance that was changed."
     instance_id: int
+
+
+class AdminChangeLibrarianTransferStatusRequest(BaseModel):
+    """
+    A request to change the transfer status of a librarian, either
+    to enable or disable outbound transfers.
+    """
+
+    "The name of the librarian to change the transfer status of."
+    librarian_name: str
+
+    "Whether to enable or disable outbound transfers."
+    transfers_enabled: bool
+
+
+class AdminLibrarianTransferStatusResponse(BaseModel):
+    """
+    A response to a user change request.
+    """
+
+    "The name of the librarian that was changed."
+    librarian_name: str
+
+    "Whether the librarian has outbound transfers enabled."
+    transfers_enabled: bool

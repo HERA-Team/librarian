@@ -36,6 +36,7 @@ class Librarian(db.Base):
     "The port of this librarian."
     authenticator = db.Column(db.String(256), nullable=False)
     "The authenticator so we can connect this librarian. This is encrypted."
+    transfers_enabled = db.Column(db.Boolean, nullable=False, default=True)
 
     last_seen = db.Column(db.DateTime, nullable=False)
     "The last time we connected to and verified this librarian exists."

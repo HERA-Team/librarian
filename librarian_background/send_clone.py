@@ -488,6 +488,12 @@ class SendClone(Task):
             )
             return CancelJob
 
+        if not librarian.transfers_enabled:
+            logger.warning(
+                f"Transfers to librarian {librarian.name} are temporarily disabled, skipping."
+            )
+            return
+
         client: "LibrarianClient" = librarian.client()
 
         try:
