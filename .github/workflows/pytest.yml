@@ -1,23 +1,18 @@
 name: Tests
 
-on: [push, pull_request, pull_request_target]
+on: [push, pull_request, pull_request_target, release]
 
 jobs:
-    Test:
-        runs-on: ubuntu-latest
-
-        steps:
-            - uses: actions/checkout@v4
-
-            - uses: actions/setup-python@v4
-              with:
-                python-version: "3.10"
-                cache: "pip"
-
-            - run: pip install -e ".[dev]"
-
-            - run: pytest --cov --cov-append
-
-            - uses: coverallsapp/github-action@v2
-              with:
-                file: .coverage
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: "pip"
+      - run: pip install -e ".[dev]"
+      - run: pytest --cov --cov-append
+      - uses: coverallsapp/github-action@v2
+        with:
+          file: .coverage
