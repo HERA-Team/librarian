@@ -105,18 +105,18 @@ An example configuration for a PostgreSQL database is as follows (docker compose
             source: "/librarian/database"
             target: "/var/lib/postgresql/data"
         environment:
-        POSTGRES_USER: "librarian"
-        POSTGRES_PASSWORD: "hello-world-password"
-        POSTGRES_DB: "librarian"
+          POSTGRES_USER: "librarian"
+          POSTGRES_PASSWORD: "hello-world-password"
+          POSTGRES_DB: "librarian"
         expose:
           - 5432
         networks:
           - "librarian-network"
         healthcheck:
-        test: ["CMD-SHELL", "pg_isready"]
-        interval: 10s
-        timeout: 10s
-        retries: 5
+          test: ["CMD-SHELL", "pg_isready"]
+          interval: 10s
+          timeout: 10s
+          retries: 5
 
     networks:
       librarian-network:
