@@ -27,6 +27,8 @@ def background(run_once: bool = False):
         + background_settings.check_consumed_queue
         + background_settings.outgoing_transfer_hypervisor
         + background_settings.incoming_transfer_hypervisor
+        + background_settings.duplicate_remote_instance_hypervisor
+        + background_settings.rolling_deletion
     )
 
     for task in all_tasks:

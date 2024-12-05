@@ -13,9 +13,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from hera_librarian.deletion import DeletionPolicy
 from librarian_background.hypervisor import (
+    DuplicateRemoteInstanceHypervisor,
     IncomingTransferHypervisor,
     OutgoingTransferHypervisor,
 )
+from librarian_background.rolling_deletion import RollingDeletion
 
 from .check_integrity import CheckIntegrity
 from .create_clone import CreateLocalClone
@@ -213,6 +215,46 @@ class IncomingTransferHypervisorSettings(BackgroundTaskSettings):
         )
 
 
+class DuplicateRemoteInstanceHypervisorSettings(BackgroundTaskSettings):
+    """
+    Settings for the duplicate instance hypervisor task.
+    """
+
+    @property
+    def task(self) -> DuplicateRemoteInstanceHypervisor:
+        return DuplicateRemoteInstanceHypervisor(
+            name=self.task_name,
+            soft_timeout=self.soft_timeout,
+        )
+
+
+class RollingDeletionSettings(BackgroundTaskSettings):
+    """
+    Settings for the rolling deletion task
+    """
+
+    store_name: str
+    age_in_days: float
+
+    number_of_remote_copies: int = 3
+    verify_downstream_checksums: bool = True
+    mark_unavailable: bool = True
+    force_deletion: bool = True
+
+    @property
+    def task(self) -> RollingDeletion:
+        return RollingDeletion(
+            name=self.task_name,
+            soft_timeout=self.soft_timeout,
+            store_name=self.store_name,
+            age_in_days=self.age_in_days,
+            number_of_remote_copies=self.number_of_remote_copies,
+            verify_downstream_checksums=self.verify_downstream_checksums,
+            mark_unavailable=self.mark_unavailable,
+            force_deletion=self.force_deletion,
+        )
+
+
 class BackgroundSettings(BaseSettings):
     """
     Background task settings, configurable.
@@ -240,6 +282,11 @@ class BackgroundSettings(BaseSettings):
 
     outgoing_transfer_hypervisor: list[OutgoingTransferHypervisorSettings] = []
     incoming_transfer_hypervisor: list[IncomingTransferHypervisorSettings] = []
+    duplicate_remote_instance_hypervisor: list[
+        DuplicateRemoteInstanceHypervisorSettings
+    ] = []
+
+    rolling_deletion: list[RollingDeletionSettings] = []
 
     # Global settings:
 
