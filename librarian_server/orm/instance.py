@@ -7,6 +7,7 @@ what files have instances on remote librarians that we are aware about.
 from datetime import datetime, timezone
 from pathlib import Path
 
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from hera_librarian.deletion import DeletionPolicy
@@ -91,6 +92,7 @@ class Instance(db.Base):
         session: Session,
         commit: bool = True,
         force: bool = False,
+        mark_unavailable: bool = False,
     ):
         """
         Delete this instance.
@@ -103,12 +105,19 @@ class Instance(db.Base):
             Whether or not to commit the deletion.
         force : bool
             Whether or not to force the deletion (i.e. ignore DeletionPolicy)
+        mark_unavailable: bool
+            If true, only mark this as unavailable, don't delete the metadata
         """
 
         if self.deletion_policy == DeletionPolicy.ALLOWED or force:
             self.store.store_manager.delete(Path(self.path))
 
-        session.delete(self)
+        if mark_unavailable:
+            logger.info("Marking instance {} as unavailable", self.id)
+            self.available = False
+        else:
+            logger.info("Deleting instance {}", self.id)
+            session.delete(self)
 
         if commit:
             session.commit()

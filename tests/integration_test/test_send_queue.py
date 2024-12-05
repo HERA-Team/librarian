@@ -379,6 +379,29 @@ def test_send_from_existing_file_row(
     checksums_from_validations = {x.current_checksum for x in instance_validations}
     assert len(checksums_from_validations) == 1  # Same file
 
+    # Ok, now try the deletion task.
+    from librarian_background.rolling_deletion import RollingDeletion
+
+    task = RollingDeletion(
+        name="rolling_deletion",
+        store_name="local_store",
+        age_in_days=0.0000000000000000001,
+        number_of_remote_copies=1,
+        verify_downstream_checksums=True,
+        mark_unavailable=True,
+        force_deletion=False,
+    )
+
+    with source_session_maker() as session:
+        task.core(session=session)
+
+    # Check that the instance is gone
+    with source_session_maker() as session:
+        for file_name in copied_files:
+            file = session.get(test_orm.File, file_name)
+            for instance in file.instances:
+                assert instance.available == False
+
     # Remove the librarians we added.
     assert mocked_admin_client.remove_librarian(name="live_server")
 
