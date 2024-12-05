@@ -176,3 +176,65 @@ def test_handle_stale_incoming_transfer(
 
     assert mocked_admin_client.remove_librarian(name="live_server")
     assert admin_client.remove_librarian(name="test_server")
+
+
+def test_remote_instance_duplicate(
+    test_server_with_many_files_and_errors,
+    test_orm,
+    mocked_admin_client,
+    server,
+):
+    from librarian_background.hypervisor import DuplicateRemoteInstanceHypervisor
+
+    assert mocked_admin_client.add_librarian(
+        name="live_server",
+        url="http://localhost",
+        authenticator="admin:password",  # This is the default authenticator.
+        port=server.id,
+    )
+
+    used_file_names = []
+    ids_to_keep = []
+    ids_to_delete = []
+
+    # Get a bunch of files
+    with test_server_with_many_files_and_errors[1]() as session:
+        librarian = session.query(test_orm.Librarian).filter_by(name="live_server").one()
+
+        files = session.query(test_orm.File).limit(10).all()
+
+        # Create two remote instances for each
+        for file in files:
+            used_file_names.append(file.name)
+
+            ri_a = test_orm.RemoteInstance.new_instance(
+                file=file, store_id=2, librarian=librarian
+            )
+            ri_b = test_orm.RemoteInstance.new_instance(
+                file=file, store_id=2, librarian=librarian
+            )
+
+            session.add_all((ri_a, ri_b))
+            session.commit()
+
+            ids_to_keep.append(ri_a.id)
+            ids_to_delete.append(ri_b.id)
+
+    # Now can run the hypervisor
+    with test_server_with_many_files_and_errors[1]() as session:
+        DuplicateRemoteInstanceHypervisor(name="").core(session)
+
+    with test_server_with_many_files_and_errors[1]() as session:
+        for file_name in used_file_names:
+            file = session.query(test_orm.File).filter_by(name=file_name).one()
+
+            for ri in file.remote_instances:
+                assert ri.id in ids_to_keep
+                assert not ri.id in ids_to_delete
+
+                session.delete(ri)
+
+        session.commit()
+
+    assert mocked_admin_client.remove_librarian(name="live_server")
+
