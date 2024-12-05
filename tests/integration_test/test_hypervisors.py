@@ -199,7 +199,9 @@ def test_remote_instance_duplicate(
 
     # Get a bunch of files
     with test_server_with_many_files_and_errors[1]() as session:
-        librarian = session.query(test_orm.Librarian).filter_by(name="live_server").one()
+        librarian = (
+            session.query(test_orm.Librarian).filter_by(name="live_server").one()
+        )
 
         files = session.query(test_orm.File).limit(10).all()
 
@@ -237,4 +239,3 @@ def test_remote_instance_duplicate(
         session.commit()
 
     assert mocked_admin_client.remove_librarian(name="live_server")
-
