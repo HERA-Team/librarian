@@ -8,15 +8,18 @@ probably ways to work around that but things work well enough as is.
 """
 
 
-from pkg_resources import DistributionNotFound, get_distribution, parse_version
+from importlib.metadata import version, PackageNotFoundError
+from packaging.version import parse
 
 import contextlib
 import logging
 import sys
 
-with contextlib.suppress(DistributionNotFound):
+
+with contextlib.suppress(PackageNotFoundError):
     # version information is saved under hera_librarian package
-    __version__ = get_distribution("hera_librarian").version
+    __version__ = version("hera_librarian")
+
 _log_level_names = {
     "debug": logging.DEBUG,
     "info": logging.INFO,
@@ -119,7 +122,7 @@ def get_version_info():
     git_hash : str
         The git hash of the installed librarian server.
     """
-    parsed_version = parse_version(__version__)
+    parsed_version = parse(__version__)
     tag = parsed_version.base_version
     local = parsed_version.local
 
