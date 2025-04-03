@@ -62,3 +62,18 @@ workflows:
       - librarian:
           name: librarian_3.8
           python_version: "3.8"
+      - librarian:
+          name: librarian_3.9
+          python_version: "3.9"
+      - librarian:
+          name: librarian_3.10
+          python_version: "3.10"
+      - librarian:
+          name: librarian_3.11
+          python_version: "3.11"
+      - librarian:
+          name: librarian_3.12
+          python_version: "3.12"
+      - librarian:
+          name: librarian_3.13
+          python_version: "3.13"

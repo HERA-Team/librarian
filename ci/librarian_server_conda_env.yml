@@ -10,8 +10,8 @@ dependencies:
   - flask-sqlalchemy
   - jinja2
   - numpy
-  - psycopg2
+  - psycopg>=3.2.2
   - pytz
   - pyuvdata
-  - sqlalchemy
+  - sqlalchemy>=2.0
   - tornado

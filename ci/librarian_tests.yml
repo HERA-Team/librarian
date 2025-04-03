@@ -10,9 +10,9 @@ dependencies:
   - h5py
   - jinja2
   - numpy
-  - psycopg2
+  - psycopg>=3.2.2
   - pytest
   - pytz
   - pyuvdata
-  - sqlalchemy
+  - sqlalchemy>=2.0
   - tornado

@@ -3,7 +3,7 @@
 
     "SECRET_KEY": "d41d8cd98f00b204e9800998ecf8427e",
 
-    "SQLALCHEMY_DATABASE_URI": "postgresql://postgres:password@db/librarian",
+    "SQLALCHEMY_DATABASE_URI": "postgresql+psycopg://postgres:password@db/librarian",
 
     "SQLALCHEMY_TRACK_MODIFICATIONS": false,
 
