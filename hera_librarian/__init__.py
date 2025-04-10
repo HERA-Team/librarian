@@ -2,8 +2,8 @@
 # Copyright 2016 the HERA Team.
 # Licensed under the BSD License.
 
-
-from pkg_resources import DistributionNotFound, get_distribution
+import contextlib
+from importlib.metadata import version, PackageNotFoundError
 
 import json
 import os.path
@@ -22,11 +22,9 @@ LibrarianClient
 ).split()
 
 
-try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:
-    # package is not installed
-    pass
+# do not set version if package is not installed
+with contextlib.suppress(PackageNotFoundError):
+    __version__ = version("hera_librarian")
 
 
 class NoSuchConnectionError(Exception):
