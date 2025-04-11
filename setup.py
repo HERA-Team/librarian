@@ -15,10 +15,10 @@ server_reqs = [
     "flask_sqlalchemy",
     "hera-librarian",
     "numpy",
-    "psycopg2-binary",
+    "psycopg>=3.2.2",
     "pytz",
     "pyuvdata",
-    "sqlalchemy>=1.4.0",
+    "sqlalchemy>=2.0",
     "tornado",
 ]
 
