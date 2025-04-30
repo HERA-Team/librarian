@@ -25,7 +25,7 @@ from astropy.time import Time
 from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 
-from . import db,app, is_primary_server, logger
+from . import db, app, is_primary_server, logger
 from .webutil import ServerError
 
 # M&C severity classes
