@@ -261,7 +261,7 @@ def maybe_add_stores():
     know about.
 
     """
-    from .dbutil import SQLAlchemyError
+    from sqlalchemy.exc import SQLAlchemyError
     from .store import Store
 
     for name, cfg in app.config.get("add-stores", {}).items():

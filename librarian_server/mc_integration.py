@@ -25,7 +25,7 @@ from astropy.time import Time
 from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 
-from . import db, is_primary_server, logger
+from . import db, app, is_primary_server, logger
 from .webutil import ServerError
 
 # M&C severity classes
@@ -93,15 +93,15 @@ class MCManager:
         unix_now = time.time()
 
         # First, report our general status info.
+        with app.app_context():
+            num_files = db.session.query(func.count(File.name)).scalar() or 0
 
-        num_files = db.session.query(func.count(File.name)).scalar() or 0
-
-        data_volume_gb = (
-            (
-                db.session.query(func.sum(File.size)).select_from(FileInstance).outerjoin(File)
-            ).scalar()
-            or 0
-        ) / 1024**3
+            data_volume_gb = (
+                (
+                    db.session.query(func.sum(File.size)).select_from(FileInstance).outerjoin(File)
+                ).scalar()
+                or 0
+            ) / 1024**3
 
         free_space_gb = 0
         for store in Store.query.filter(Store.available):
