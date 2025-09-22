@@ -607,38 +607,38 @@ class UploaderTask(bgtasks.BackgroundTask):
             from . import mc_integration
 
             mc_integration.note_file_upload_succeeded(self.conn_name, file.size)
-
-        db.session.add(
-            file.make_copy_finished_event(
-                self.conn_name,
-                self.remote_store_path,
-                error_code,
-                error_message,
-                duration=dt,
-                average_rate=rate,
-            )
-        )
-
-        if self.standing_order_name is not None and error_code == 0:
-            # XXX keep this name synched with that in search.py:StandingOrder
-            _type = "standing_order_succeeded:" + self.standing_order_name
-            db.session.add(file.make_generic_event(_type))
-
-        if error_code == 0:
-            logger.info(
-                "transfer of %s:%s: duration %.1f s, average rate %.1f kB/s",
-                self.store.name,
-                self.store_path,
-                dt,
-                rate,
+        with app.app_context():
+            db.session.add(
+                file.make_copy_finished_event(
+                    self.conn_name,
+                    self.remote_store_path,
+                    error_code,
+                    error_message,
+                    duration=dt,
+                    average_rate=rate,
+                )
             )
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise ServerError("failed to commit completion events to database")
+            if self.standing_order_name is not None and error_code == 0:
+                # XXX keep this name synched with that in search.py:StandingOrder
+                _type = "standing_order_succeeded:" + self.standing_order_name
+                db.session.add(file.make_generic_event(_type))
+
+            if error_code == 0:
+                logger.info(
+                    "transfer of %s:%s: duration %.1f s, average rate %.1f kB/s",
+                    self.store.name,
+                    self.store_path,
+                    dt,
+                    rate,
+                )
+
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise ServerError("failed to commit completion events to database")
 
 
 def launch_copy_by_file_name(

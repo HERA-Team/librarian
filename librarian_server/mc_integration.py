@@ -103,10 +103,10 @@ class MCManager:
                 or 0
             ) / 1024**3
 
-        free_space_gb = 0
-        for store in Store.query.filter(Store.available):
-            free_space_gb += store.get_space_info()["available"]  # measured in bytes
-        free_space_gb /= 1024**3  # bytes => GiB
+            free_space_gb = 0
+            for store in Store.query.filter(Store.available):
+                free_space_gb += store.get_space_info()["available"]  # measured in bytes
+            free_space_gb /= 1024**3  # bytes => GiB
 
         upload_min_elapsed = (unix_now - self._last_file_upload_time) / 60
 
@@ -332,8 +332,8 @@ def create_observation_record(obsid):
     rec = the_mc_manager.create_observation_record(obsid)
     if rec is None:
         raise ServerError("expected M&C to know about obsid %s but it didn't", obsid)
-
-    db.session.add(rec)
+    with app.app_context():
+        db.session.add(rec)
     return rec
 
 
