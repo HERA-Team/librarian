@@ -1104,14 +1104,16 @@ def create_standing_order(ignored_name):
 
         storder = StandingOrder(name, default_search, "undefined-connection")
         storder._validate()
-        db.session.add(storder)
+        with app.app_context():
+            db.session.add(storder)
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise Exception("failed to commit information to database; see logs for details")
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise Exception("failed to commit information to database; see logs for details")
+
     except Exception as e:
         flash(f'Cannot create "{name}": {e}')
         return redirect(url_for("standing_orders"))
@@ -1136,14 +1138,17 @@ def update_standing_order(name):
         storder.conn_name = new_conn
         storder.search = new_search
         storder._validate()
-        db.session.merge(storder)
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise Exception("failed to commit update to database; see logs for details")
+        with app.app_context():
+            db.session.merge(storder)
+
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise Exception("failed to commit update to database; see logs for details")
+
     except Exception as e:
         flash(f'Cannot update "{name}": {e}')
         return redirect(url_for("standing_orders"))
@@ -1163,14 +1168,15 @@ def delete_standing_order(name):
         flash('No such standing order "%s"' % name)
         return redirect(url_for("standing_orders"))
 
-    db.session.delete(storder)
+    with app.app_context():
+        db.session.delete(storder)
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to commit deletion to database; see logs for details")
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to commit deletion to database; see logs for details")
 
     flash('Deleted standing order "%s"' % name)
     return redirect(url_for("standing_orders"))

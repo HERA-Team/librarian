@@ -51,13 +51,14 @@ def create_records(info, sourcename):
     from .file import File
     from .observation import Observation, ObservingSession
 
-    for subinfo in info.get("sessions", {}).values():
-        obj = ObservingSession.from_dict(subinfo)
-        db.session.merge(obj)
+    with app.app_context():
+        for subinfo in info.get("sessions", {}).values():
+            obj = ObservingSession.from_dict(subinfo)
+            db.session.merge(obj)
 
-    for subinfo in info.get("observations", {}).values():
-        obj = Observation.from_dict(subinfo)
-        db.session.merge(obj)
+        for subinfo in info.get("observations", {}).values():
+            obj = Observation.from_dict(subinfo)
+            db.session.merge(obj)
 
     from .mc_integration import is_file_record_invalid, note_file_created
 
@@ -89,22 +90,24 @@ def create_records(info, sourcename):
         try:
             db.session.query(File).filter_by(name=obj.name).one()
         except NoResultFound:
-            try:
-                db.session.add(obj)
-                db.session.flush()
-            except IntegrityError:
-                db.session.rollback()
-            else:
-                note_file_created(obj)
+            with app.app_context():
+                try:
+                    db.session.add(obj)
+                    db.session.flush()
+                except IntegrityError:
+                    db.session.rollback()
+                else:
+                    note_file_created(obj)
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        import sys
+    with app.app_context():
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            import sys
 
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to commit records to database; see logs for details")
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to commit records to database; see logs for details")
 
 
 # Verrry miscellaneous.

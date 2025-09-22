@@ -228,17 +228,18 @@ class Store(db.Model, BaseStore):
         # and the database modification. Would it be safer to switch the ordering?
 
         inst = FileInstance(self, parent_dirs, file_name, deletion_policy=deletion_policy)
-        db.session.add(inst)
-        db.session.add(file.make_instance_creation_event(inst, self))
+        with app.app_context():
+            db.session.add(inst)
+            db.session.add(file.make_instance_creation_event(inst, self))
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise ServerError(
-                "failed to commit new instance information to database; DB/FS consistency broken!"
-            )
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise ServerError(
+                    "failed to commit new instance information to database; DB/FS consistency broken!"
+                )
 
         return inst
 
@@ -424,35 +425,36 @@ def register_instances(args, sourcename=None):
 
     # Sort the files to get the creation times to line up.
 
-    for full_path in sorted(file_info.keys()):
-        if not full_path.startswith(slashed_prefix):
-            raise ServerError('file path %r should start with "%s"', full_path, slashed_prefix)
+    with app.app_context():
+        for full_path in sorted(file_info.keys()):
+            if not full_path.startswith(slashed_prefix):
+                raise ServerError('file path %r should start with "%s"', full_path, slashed_prefix)
 
-        # Do we already know about this instance? If so, just ignore it.
+            # Do we already know about this instance? If so, just ignore it.
 
-        store_path = full_path[len(slashed_prefix):]
-        parent_dirs = os.path.dirname(store_path)
-        name = os.path.basename(store_path)
+            store_path = full_path[len(slashed_prefix):]
+            parent_dirs = os.path.dirname(store_path)
+            name = os.path.basename(store_path)
 
-        instance = FileInstance.query.get((store.id, parent_dirs, name))
-        if instance is not None:
-            continue
+            instance = FileInstance.query.get((store.id, parent_dirs, name))
+            if instance is not None:
+                continue
 
-        # OK, we have to create some stuff.
+            # OK, we have to create some stuff.
 
-        file = File.get_inferring_info(
-            store, store_path, sourcename, info=file_info[full_path], null_obsid=null_obsid
-        )
-        inst = FileInstance(store, parent_dirs, name)
-        db.session.add(inst)
-        db.session.add(file.make_instance_creation_event(inst, store))
+            file = File.get_inferring_info(
+                store, store_path, sourcename, info=file_info[full_path], null_obsid=null_obsid
+            )
+            inst = FileInstance(store, parent_dirs, name)
+            db.session.add(inst)
+            db.session.add(file.make_instance_creation_event(inst, store))
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to commit new records to database; see logs for details")
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to commit new records to database; see logs for details")
 
     # Finally, trigger a look at our standing orders.
 
@@ -732,14 +734,15 @@ def launch_copy_by_file_name(
     )
 
     # Remember that we launched this copy.
-    db.session.add(file.make_copy_launched_event(connection_name, remote_store_path))
+    with app.app_context():
+        db.session.add(file.make_copy_launched_event(connection_name, remote_store_path))
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to commit copy-launch event to database")
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to commit copy-launch event to database")
 
 
 @app.route("/api/launch_file_copy", methods=["GET", "POST"])
@@ -844,53 +847,54 @@ class OffloaderTask(bgtasks.BackgroundTask):
         # mechanism.
         #
         # Here we *are* paranoid about exceptions.
-        for i, info in enumerate(self.instance_info):
-            desc_name = f"{source_store.name}:{info.parent_dirs}/{info.name}"
+        with app.app_context():
+            for i, info in enumerate(self.instance_info):
+                desc_name = f"{source_store.name}:{info.parent_dirs}/{info.name}"
 
-            if not info.success:
-                logger.warn("offload thread did not succeed on instance %s", desc_name)
-                continue
+                if not info.success:
+                    logger.warn("offload thread did not succeed on instance %s", desc_name)
+                    continue
+
+                try:
+                    source_inst = FileInstance.query.get((source_store.id, info.parent_dirs, info.name))
+                except Exception:
+                    logger.warn("offloader wrapup: no instance %s; already deleted?", desc_name)
+                    continue
+
+                stagepath = os.path.join(self.staging_dir, f"{str(i)}_{source_inst.name}")
+
+                try:
+                    dest_store.process_staged_file(
+                        stagepath, source_inst.store_path, "direct", source_inst.deletion_policy
+                    )
+                except Exception:
+                    logger.warn(
+                        "offloader failed to complete upload of %s", source_inst.descriptive_name()
+                    )
+                    continue
+
+                # If we're still here, the copy succeeded and the destination
+                # store has a shiny new instance. Mark the source instance as
+                # deleteable.
+
+                logger.info('offloader: marking "%s" for deletion', source_inst.descriptive_name())
+                source_inst.deletion_policy = DeletionPolicy.ALLOWED
+                db.session.add(
+                    source_inst.file.make_generic_event(
+                        "instance_deletion_policy_changed",
+                        store_name=source_inst.store_object.name,
+                        parent_dirs=source_inst.parent_dirs,
+                        new_policy=DeletionPolicy.ALLOWED,
+                        context="offload",
+                    )
+                )
 
             try:
-                source_inst = FileInstance.query.get((source_store.id, info.parent_dirs, info.name))
-            except Exception:
-                logger.warn("offloader wrapup: no instance %s; already deleted?", desc_name)
-                continue
-
-            stagepath = os.path.join(self.staging_dir, f"{str(i)}_{source_inst.name}")
-
-            try:
-                dest_store.process_staged_file(
-                    stagepath, source_inst.store_path, "direct", source_inst.deletion_policy
-                )
-            except Exception:
-                logger.warn(
-                    "offloader failed to complete upload of %s", source_inst.descriptive_name()
-                )
-                continue
-
-            # If we're still here, the copy succeeded and the destination
-            # store has a shiny new instance. Mark the source instance as
-            # deleteable.
-
-            logger.info('offloader: marking "%s" for deletion', source_inst.descriptive_name())
-            source_inst.deletion_policy = DeletionPolicy.ALLOWED
-            db.session.add(
-                source_inst.file.make_generic_event(
-                    "instance_deletion_policy_changed",
-                    store_name=source_inst.store_object.name,
-                    parent_dirs=source_inst.parent_dirs,
-                    new_policy=DeletionPolicy.ALLOWED,
-                    context="offload",
-                )
-            )
-
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            logger.error("offloader: failed to commit db changes; continuing")
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                logger.error("offloader: failed to commit db changes; continuing")
 
         # Finally, we can blow away the staging directory.
 
@@ -974,12 +978,13 @@ def initiate_offload(args, sourcename=None):
     if not len(info):
         source_store.available = False
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise ServerError("offload: failed to mark store as unavailable")
+        with app.app_context():
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise ServerError("offload: failed to mark store as unavailable")
 
         return {"outcome": "store-shut-down"}
 
@@ -1006,13 +1011,14 @@ def make_store_available(name):
 
     store.available = True
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        flash("Failed to update database?! See server logs for details.")
-        return redirect(url_for("stores"))
+    with app.app_context():
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            flash("Failed to update database?! See server logs for details.")
+            return redirect(url_for("stores"))
 
     flash('Marked store "%s" as available' % store.name)
     return redirect(url_for("stores") + "/" + store.name)
@@ -1029,13 +1035,14 @@ def make_store_unavailable(name):
 
     store.available = False
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        flash("Failed to update database?! See server logs for details.")
-        return redirect(url_for("stores"))
+    with app.app_context():
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            flash("Failed to update database?! See server logs for details.")
+            return redirect(url_for("stores"))
 
     flash('Marked store "%s" as unavailable' % store.name)
     return redirect(url_for("stores") + "/" + store.name)

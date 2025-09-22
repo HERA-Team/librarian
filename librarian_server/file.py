@@ -239,16 +239,17 @@ class File(db.Model):
                 obsid,
             )
 
-        db.session.add(fobj)
+        with app.app_context():
+            db.session.add(fobj)
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise ServerError("failed to add new file %s to database; see logs for details", name)
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise ServerError("failed to add new file %s to database; see logs for details", name)
 
-        mc.note_file_created(fobj)
+            mc.note_file_created(fobj)
 
         return fobj
 
@@ -328,8 +329,9 @@ class File(db.Model):
 
             # Looks like we succeeded in blowing it away.
             if not noop:
-                db.session.add(self.make_instance_deletion_event(inst, store))
-                db.session.delete(inst)
+                with app.app_context():
+                    db.session.add(self.make_instance_deletion_event(inst, store))
+                    db.session.delete(inst)
             n_deleted += 1
         logger.info('task_id: {id} - {n} deleted instances: {i}/{tot} nkept: {n_kept}'.format(
                     n=self.name,
@@ -338,14 +340,15 @@ class File(db.Model):
                     tot=len(self.instances),
                     n_kept=n_kept))
         if not noop:
-            try:
-                db.session.commit()
-            except SQLAlchemyError as exc:
-                db.session.rollback()
-                app.log_exception(sys.exc_info())
-                raise ServerError(
-                    "deleted instances but failed to update database! " "DB/FS consistency broken!"
-                ) from exc
+            with app.app_context():
+                try:
+                    db.session.commit()
+                except SQLAlchemyError as exc:
+                    db.session.rollback()
+                    app.log_exception(sys.exc_info())
+                    raise ServerError(
+                        "deleted instances but failed to update database! " "DB/FS consistency broken!"
+                    ) from exc
 
         return {"n_deleted": n_deleted, "n_kept": n_kept, "n_error": n_error}
 
@@ -605,14 +608,15 @@ def create_file_event(args, sourcename=None):
         raise ServerError('no known file "%s"', file_name)
 
     event = file.make_generic_event(tp, **payload)
-    db.session.add(event)
+    with app.app_context():
+        db.session.add(event)
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to add event to database -- see server logs for details")
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to add event to database -- see server logs for details")
 
     return {}
 
@@ -678,21 +682,22 @@ def set_one_file_deletion_policy(args, sourcename=None):
     else:
         raise ServerError('no instances of file "%s" on this librarian', file_name)
 
-    db.session.add(
-        file.make_generic_event(
-            "instance_deletion_policy_changed",
-            store_name=inst.store_object.name,
-            parent_dirs=inst.parent_dirs,
-            new_policy=deletion_policy,
+    with app.app_context():
+        db.session.add(
+            file.make_generic_event(
+                "instance_deletion_policy_changed",
+                store_name=inst.store_object.name,
+                parent_dirs=inst.parent_dirs,
+                new_policy=deletion_policy,
+            )
         )
-    )
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to commit changes to the database")
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to commit changes to the database")
 
     return {}
 

@@ -275,12 +275,13 @@ def assign_observing_sessions(args, sourcename=None):
             # i.e., this obs does not overlap an existing session.
             examine_obs.append(obs)
 
-    try:
-        db.session.commit()  # if there are any obs matching existing sessions
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to commit obs changes to database; see logs for details")
+    with app.app_context():
+        try:
+            db.session.commit()  # if there are any obs matching existing sessions
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to commit obs changes to database; see logs for details")
 
     if not len(examine_obs):
         return retval
@@ -327,14 +328,15 @@ def assign_observing_sessions(args, sourcename=None):
             )
         stop = sess_obs[-1].stop_time_jd
         sess = ObservingSession(sess_obs[0].obsid, start, stop)
-        db.session.add(sess)
+        with app.app_context():
+            db.session.add(sess)
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise ServerError("failed to commit obs changes to database (2); see logs for details")
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise ServerError("failed to commit obs changes to database (2); see logs for details")
 
         new_sess_info.append(
             dict(id=sess.id, start_time_jd=start, stop_time_jd=stop, n_obs=len(sess_obs))
@@ -345,12 +347,13 @@ def assign_observing_sessions(args, sourcename=None):
 
         i0 = i1
 
-    try:
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        app.log_exception(sys.exc_info())
-        raise ServerError("failed to commit obs changes to database (3); see logs for details")
+    with app.app_context():
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            app.log_exception(sys.exc_info())
+            raise ServerError("failed to commit obs changes to database (3); see logs for details")
 
     return retval
 
