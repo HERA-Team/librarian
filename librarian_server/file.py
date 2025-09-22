@@ -247,7 +247,8 @@ class File(db.Model):
             except SQLAlchemyError:
                 db.session.rollback()
                 app.log_exception(sys.exc_info())
-                raise ServerError("failed to add new file %s to database; see logs for details", name)
+                raise ServerError(
+                    "failed to add new file %s to database; see logs for details", name)
 
             mc.note_file_created(fobj)
 

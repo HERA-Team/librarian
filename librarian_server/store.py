@@ -856,7 +856,8 @@ class OffloaderTask(bgtasks.BackgroundTask):
                     continue
 
                 try:
-                    source_inst = FileInstance.query.get((source_store.id, info.parent_dirs, info.name))
+                    source_inst = FileInstance.query.get(
+                        (source_store.id, info.parent_dirs, info.name))
                 except Exception:
                     logger.warn("offloader wrapup: no instance %s; already deleted?", desc_name)
                     continue

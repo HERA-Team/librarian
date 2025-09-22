@@ -336,7 +336,8 @@ def assign_observing_sessions(args, sourcename=None):
             except SQLAlchemyError:
                 db.session.rollback()
                 app.log_exception(sys.exc_info())
-                raise ServerError("failed to commit obs changes to database (2); see logs for details")
+                raise ServerError(
+                    "failed to commit obs changes to database (2); see logs for details")
 
         new_sess_info.append(
             dict(id=sess.id, start_time_jd=start, stop_time_jd=stop, n_obs=len(sess_obs))
