@@ -496,21 +496,23 @@ def describe_session_without_event(args, sourcename=None):
 @app.route("/observations")
 @login_required
 def observations():
-    q = Observation.query.order_by(Observation.start_time_jd.desc()).limit(50)
+    with app.app_context():
+        q = Observation.query.order_by(Observation.start_time_jd.desc()).limit(50)
     return render_template("obs-listing.html", title="Observations", obs=q)
 
 
 @app.route("/observations/<int:obsid>")
 @login_required
 def specific_observation(obsid):
-    obs = Observation.query.get(obsid)
-    if obs is None:
-        flash("No such observation %r known" % obsid)
-        return redirect(url_for("observations"))
+    with app.app_context():
+        obs = Observation.query.get(obsid)
+        if obs is None:
+            flash("No such observation %r known" % obsid)
+            return redirect(url_for("observations"))
 
-    from .file import File
+        from .file import File
 
-    files = list(File.query.filter(File.obsid == obsid).order_by(File.name.asc()))
+        files = list(File.query.filter(File.obsid == obsid).order_by(File.name.asc()))
 
     return render_template(
         "obs-individual.html", title="Observation %d" % obsid, obs=obs, files=files
@@ -520,30 +522,33 @@ def specific_observation(obsid):
 @app.route("/sessions/all")
 @login_required
 def sessions_all():
-    q = list(ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()))
+    with app.app_context():
+        q = list(ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()))
     return render_template("session-listing-all.html", title="All Observing Sessions", sess=q)
 
 
 @app.route("/sessions/recent")
 @login_required
 def sessions_recent():
-    q = list(ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()).limit(30))
+    with app.app_context():
+        q = list(ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()).limit(30))
     return render_template("session-listing-recent.html", title="Recent Observing Sessions", sess=q)
 
 
 @app.route("/sessions/<int:id>")
 @login_required
 def specific_session(id):
-    sess = ObservingSession.query.get(id)
-    if sess is None:
-        flash("No such observing session %r known" % id)
-        return redirect(url_for("sessions"))
+    with app.app_context():
+        sess = ObservingSession.query.get(id)
+        if sess is None:
+            flash("No such observing session %r known" % id)
+            return redirect(url_for("sessions"))
 
-    obs = list(
-        Observation.query.filter(Observation.session_id == id).order_by(
-            Observation.start_time_jd.asc()
+        obs = list(
+            Observation.query.filter(Observation.session_id == id).order_by(
+                Observation.start_time_jd.asc()
+            )
         )
-    )
 
     return render_template(
         "session-individual.html", title="Observing Session %d" % id, sess=sess, obs=obs

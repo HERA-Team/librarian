@@ -306,7 +306,8 @@ class StreamFile(web.RequestHandler):
 
         from .file import FileInstance
 
-        inst = FileInstance.query.filter(FileInstance.name == file_name).first()
+        with app.app_context():
+            inst = FileInstance.query.filter(FileInstance.name == file_name).first()
         if inst is None:
             self.clear()
             self.set_status(404)

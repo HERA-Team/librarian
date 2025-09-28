@@ -64,7 +64,8 @@ class Store(db.Model, BaseStore):
     def get_by_name(cls, name):
         """Look up a store by name, or raise an ServerError on failure."""
 
-        stores = list(cls.query.filter(cls.name == name))
+        with app.app_context():
+            stores = list(cls.query.filter(cls.name == name))
         if not len(stores):
             raise ServerError("No such store %r", name)
         if len(stores) > 1:
@@ -115,7 +116,8 @@ class Store(db.Model, BaseStore):
         # staged instance and return success, because the intended effect has
         # already been achieved.
 
-        instance = FileInstance.query.get((self.id, parent_dirs, file_name))
+        with app.app_context():
+            instance = FileInstance.query.get((self.id, parent_dirs, file_name))
         if instance is not None:
             self._delete(staged_path)
             return
@@ -131,7 +133,8 @@ class Store(db.Model, BaseStore):
             # sense of this file. In particular, we should have a File record
             # ready to go.
 
-            file = File.query.get(file_name)
+            with app.app_context():
+                file = File.query.get(file_name)
 
             if file is None:
                 # If this happens, it doesn't seem particularly helpful for debugging
@@ -264,8 +267,9 @@ def probe_stores(args, sourcename=None):
     """
     store_list = []
 
-    for store in Store.query.filter(Store.available):
-        store_list.append(store.to_dict())
+    with app.app_context():
+        for store in Store.query.filter(Store.available):
+            store_list.append(store.to_dict())
 
     return {"stores": store_list}
 
@@ -302,11 +306,12 @@ def initiate_upload(args, sourcename=None):
         space_avail = -1
         dest_store = None
 
-        for store in Store.query.filter(Store.available):
-            avail = store.get_space_info()["available"]
-            if avail > space_avail:
-                space_avail = avail
-                dest_store = store
+        with app.app_context():
+            for store in Store.query.filter(Store.available):
+                avail = store.get_space_info()["available"]
+                if avail > space_avail:
+                    space_avail = avail
+                    dest_store = store
 
         del store  # paranoia; had a bug where we used this below!
 
@@ -597,19 +602,20 @@ class UploaderTask(bgtasks.BackgroundTask):
 
         from .file import File
 
-        file = File.query.get(os.path.basename(self.store_path))
-
-        if error_code != 0:
-            dt = rate = None
-        else:
-            dt = self.t_finish - self.t_start  # seconds
-            dt_eff = max(dt, 0.5)  # avoid div-by-zero just in case
-            rate = file.size / (dt_eff * 1024.0)  # kilobytes/sec (AKA kB/s)
-
-            from . import mc_integration
-
-            mc_integration.note_file_upload_succeeded(self.conn_name, file.size)
         with app.app_context():
+            file = File.query.get(os.path.basename(self.store_path))
+
+            if error_code != 0:
+                dt = rate = None
+            else:
+                dt = self.t_finish - self.t_start  # seconds
+                dt_eff = max(dt, 0.5)  # avoid div-by-zero just in case
+                rate = file.size / (dt_eff * 1024.0)  # kilobytes/sec (AKA kB/s)
+
+                from . import mc_integration
+
+                mc_integration.note_file_upload_succeeded(self.conn_name, file.size)
+
             db.session.add(
                 file.make_copy_finished_event(
                     self.conn_name,
@@ -678,7 +684,8 @@ def launch_copy_by_file_name(
 
     from .file import FileInstance
 
-    inst = FileInstance.query.filter(FileInstance.name == file_name).first()
+    with app.app_context():
+        inst = FileInstance.query.filter(FileInstance.name == file_name).first()
     if inst is None:
         if no_instance == "raise":
             raise ServerError("cannot upload %s: no local file instances with that name", file_name)
@@ -1055,7 +1062,8 @@ def make_store_unavailable(name):
 @app.route("/stores")
 @login_required
 def stores():
-    q = Store.query.order_by(Store.name.asc())
+    with app.app_context():
+        q = Store.query.order_by(Store.name.asc())
     return render_template("store-listing.html", title="Stores", stores=q)
 
 

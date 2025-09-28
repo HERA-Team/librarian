@@ -174,73 +174,73 @@ class File(db.Model):
         parent_dirs = os.path.dirname(store_path)
         name = os.path.basename(store_path)
 
-        prev = cls.query.get(name)
-        if prev is not None:
-            # If there's already a record for this File name, then its corresponding
-            # Observation etc must already be available. Let's leave well enough alone:
-            return prev
-
-        # Darn. We're going to have to create the File, and maybe its
-        # Observation too. Get to it.
-
-        if info is None:
-            try:
-                info = store.get_info_for_path(store_path)
-            except Exception as e:
-                raise ServerError("cannot register %s:%s: %s", store.name, store_path, e)
-
-        size = required_arg(info, int, "size")
-        md5 = required_arg(info, str, "md5")
-        ttp = required_arg(info, str, "type")
-
-        from . import mc_integration as mc
-        from .observation import Observation
-
-        obsid = optional_arg(info, int, "obsid")
-
-        if null_obsid:
-            if obsid is not None:
-                raise ServerError(
-                    "new file %s is expected to have a null obsid, but it has %r", name, obsid
-                )
-        else:
-            if obsid is None:
-                # Our UV data files embed their obsids in a way that we can
-                # extract robustly, but we want to be able to ingest new files
-                # that don't necessarily have obsid information embedded. We used
-                # to do this by guessing from the JD in the filename, but that
-                # proved to be unreliable (as you might guess). So we now have a
-                # configurable scheme to make this possible; the only implemented
-                # technique still looks at filenames, but does it in a somewhat
-                # better-justified way where it requires preexisting files to have
-                # an assigned obsid that it can copy.
-                obsid = infer_file_obsid(parent_dirs, name, info)
-
-            obs = Observation.query.get(obsid)
-
-            if obs is None:
-                # The other piece of the puzzle is that we used to sometimes
-                # create new Observation records based on data that we tried to
-                # infer from standalone files. Now that the we have an on-site M&C
-                # system that records the canonical metadata for observations,
-                # that mode is deprecated. On-site, we only create Observations
-                # from M&C. Off-site, we only get them from uploads from other
-                # Librarians.
-                mc.create_observation_record(obsid)
-
-        if isinstance(obsid, Row):
-            # convert from Row object to integer
-            obsid = obsid._asdict()["obsid"]
-        fobj = File(name, ttp, obsid, source_name, size, md5)
-
-        if mc.is_file_record_invalid(fobj):
-            raise ServerError(
-                ("new file %s (obsid %s) rejected by M&C; " "see M&C error logs for the reason"),
-                name,
-                obsid,
-            )
-
         with app.app_context():
+            prev = cls.query.get(name)
+            if prev is not None:
+                # If there's already a record for this File name, then its corresponding
+                # Observation etc must already be available. Let's leave well enough alone:
+                return prev
+
+            # Darn. We're going to have to create the File, and maybe its
+            # Observation too. Get to it.
+
+            if info is None:
+                try:
+                    info = store.get_info_for_path(store_path)
+                except Exception as e:
+                    raise ServerError("cannot register %s:%s: %s", store.name, store_path, e)
+
+            size = required_arg(info, int, "size")
+            md5 = required_arg(info, str, "md5")
+            ttp = required_arg(info, str, "type")
+
+            from . import mc_integration as mc
+            from .observation import Observation
+
+            obsid = optional_arg(info, int, "obsid")
+
+            if null_obsid:
+                if obsid is not None:
+                    raise ServerError(
+                        "new file %s is expected to have a null obsid, but it has %r", name, obsid
+                    )
+            else:
+                if obsid is None:
+                    # Our UV data files embed their obsids in a way that we can
+                    # extract robustly, but we want to be able to ingest new files
+                    # that don't necessarily have obsid information embedded. We used
+                    # to do this by guessing from the JD in the filename, but that
+                    # proved to be unreliable (as you might guess). So we now have a
+                    # configurable scheme to make this possible; the only implemented
+                    # technique still looks at filenames, but does it in a somewhat
+                    # better-justified way where it requires preexisting files to have
+                    # an assigned obsid that it can copy.
+                    obsid = infer_file_obsid(parent_dirs, name, info)
+
+                obs = Observation.query.get(obsid)
+
+                if obs is None:
+                    # The other piece of the puzzle is that we used to sometimes
+                    # create new Observation records based on data that we tried to
+                    # infer from standalone files. Now that the we have an on-site M&C
+                    # system that records the canonical metadata for observations,
+                    # that mode is deprecated. On-site, we only create Observations
+                    # from M&C. Off-site, we only get them from uploads from other
+                    # Librarians.
+                    mc.create_observation_record(obsid)
+
+            if isinstance(obsid, Row):
+                # convert from Row object to integer
+                obsid = obsid._asdict()["obsid"]
+            fobj = File(name, ttp, obsid, source_name, size, md5)
+
+            if mc.is_file_record_invalid(fobj):
+                raise ServerError(
+                    ("new file %s (obsid %s) rejected by M&C; see M&C error logs for the reason"),
+                    name,
+                    obsid,
+                )
+
             db.session.add(fobj)
 
             try:
@@ -605,12 +605,12 @@ def create_file_event(args, sourcename=None):
     tp = required_arg(args, str, "type")
     payload = required_arg(args, dict, "payload")
 
-    file = File.query.get(file_name)
-    if file is None:
-        raise ServerError('no known file "%s"', file_name)
-
-    event = file.make_generic_event(tp, **payload)
     with app.app_context():
+        file = File.query.get(file_name)
+        if file is None:
+            raise ServerError('no known file "%s"', file_name)
+
+        event = file.make_generic_event(tp, **payload)
         db.session.add(event)
 
         try:
@@ -629,7 +629,8 @@ def locate_file_instance(args, sourcename=None):
     """Tell the caller where to find an instance of the named file."""
     file_name = required_arg(args, str, "file_name")
 
-    file = File.query.get(file_name)
+    with app.app_context():
+        file = File.query.get(file_name)
     if file is None:
         raise ServerError('no known file "%s"', file_name)
 
@@ -667,24 +668,24 @@ def set_one_file_deletion_policy(args, sourcename=None):
 
         restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
 
-    file = File.query.get(file_name)
-    if file is None:
-        raise ServerError('no known file "%s"', file_name)
-
-    deletion_policy = DeletionPolicy.parse_safe(deletion_policy)
-
-    for inst in file.instances:
-        # We could do this filter in SQL but it's easier to just do it this way;
-        # you can't call filter() on `file.instances`.
-        if restrict_to_store is not None and inst.store != restrict_to_store.id:
-            continue
-
-        inst.deletion_policy = deletion_policy
-        break  # just one!
-    else:
-        raise ServerError('no instances of file "%s" on this librarian', file_name)
-
     with app.app_context():
+        file = File.query.get(file_name)
+        if file is None:
+            raise ServerError('no known file "%s"', file_name)
+
+        deletion_policy = DeletionPolicy.parse_safe(deletion_policy)
+
+        for inst in file.instances:
+            # We could do this filter in SQL but it's easier to just do it this way;
+            # you can't call filter() on `file.instances`.
+            if restrict_to_store is not None and inst.store != restrict_to_store.id:
+                continue
+
+            inst.deletion_policy = deletion_policy
+            break  # just one!
+        else:
+            raise ServerError('no instances of file "%s" on this librarian', file_name)
+
         db.session.add(
             file.make_generic_event(
                 "instance_deletion_policy_changed",
@@ -720,7 +721,8 @@ def delete_file_instances(args, sourcename=None):
 
         restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
 
-    file = File.query.get(file_name)
+    with app.app_context():
+        file = File.query.get(file_name)
     if file is None:
         raise ServerError('no known file "%s"', file_name)
 
@@ -735,21 +737,22 @@ def delete_file_instances_matching_query(args, sourcename=None):
     See File.delete_instances for a description of the safety interlocks.
 
     """
-    query = required_arg(args, str, "query")
-    mode = optional_arg(args, str, "mode", "standard")
-    restrict_to_store = optional_arg(args, str, "restrict_to_store")
-    if restrict_to_store is not None:
-        from .store import Store
+    with app.app_context():
+        query = required_arg(args, str, "query")
+        mode = optional_arg(args, str, "mode", "standard")
+        restrict_to_store = optional_arg(args, str, "restrict_to_store")
+        if restrict_to_store is not None:
+            from .store import Store
 
-        restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
+            restrict_to_store = Store.get_by_name(restrict_to_store)  # ServerError if lookup fails
 
-    from .search import compile_search
+        from .search import compile_search
 
-    query = compile_search(query, query_type="files")
-    stats = {}
+        query = compile_search(query, query_type="files")
+        stats = {}
 
-    for file in query:
-        stats[file.name] = file.delete_instances(mode=mode, restrict_to_store=restrict_to_store)
+        for file in query:
+            stats[file.name] = file.delete_instances(mode=mode, restrict_to_store=restrict_to_store)
 
     return {"stats": stats}
 
@@ -760,13 +763,14 @@ def delete_file_instances_matching_query(args, sourcename=None):
 @app.route("/files/<string:name>")
 @login_required
 def specific_file(name):
-    file = File.query.get(name)
-    if file is None:
-        flash('No such file "%s" known' % name)
-        return redirect(url_for("index"))
+    with app.app_context():
+        file = File.query.get(name)
+        if file is None:
+            flash('No such file "%s" known' % name)
+            return redirect(url_for("index"))
 
-    instances = list(FileInstance.query.filter(FileInstance.name == name))
-    events = sorted(file.events, key=lambda e: e.time, reverse=True)
+        instances = list(FileInstance.query.filter(FileInstance.name == name))
+        events = sorted(file.events, key=lambda e: e.time, reverse=True)
 
     return render_template(
         "file-individual.html",

@@ -287,8 +287,9 @@ def index():
     from .file import File
     from .observation import ObservingSession
 
-    rs = ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()).limit(7)
-    rf = File.query.order_by(File.create_time.desc()).limit(50)
+    with app.app_context():
+        rs = ObservingSession.query.order_by(ObservingSession.start_time_jd.desc()).limit(7)
+        rf = File.query.order_by(File.create_time.desc()).limit(50)
     return render_template(
         "main-page.html", title="Librarian Homepage", recent_files=rf, recent_sessions=rs
     )
@@ -301,7 +302,8 @@ def connectivity_check():
 
     results = {}
 
-    for store in Store.query.filter(Store.available):
-        results[store.name] = store.check_stores_connections()
+    with app.app_context():
+        for store in Store.query.filter(Store.available):
+            results[store.name] = store.check_stores_connections()
 
     return render_template("connectivity-check.html", title="Connectivity Check", results=results)

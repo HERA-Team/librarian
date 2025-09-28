@@ -1071,7 +1071,8 @@ def launch_stage_operation(user, search, stage_dest):
 @app.route("/standing-orders")
 @login_required
 def standing_orders():
-    q = StandingOrder.query.order_by(StandingOrder.name.asc())
+    with app.app_context():
+        q = StandingOrder.query.order_by(StandingOrder.name.asc())
 
     return render_template("standing-order-listing.html", title="Standing Orders", storders=q)
 
@@ -1079,7 +1080,8 @@ def standing_orders():
 @app.route("/standing-orders/<string:name>")
 @login_required
 def specific_standing_order(name):
-    storder = StandingOrder.query.filter(StandingOrder.name == name).first()
+    with app.app_context():
+        storder = StandingOrder.query.filter(StandingOrder.name == name).first()
     if storder is None:
         flash('No such standing order "%s"' % name)
         return redirect(url_for("standing_orders"))
@@ -1140,7 +1142,8 @@ def create_standing_order(ignored_name):
 @app.route("/standing-orders/<string:name>/update", methods=["POST"])
 @login_required
 def update_standing_order(name):
-    storder = StandingOrder.query.filter(StandingOrder.name == name).first()
+    with app.app_context():
+        storder = StandingOrder.query.filter(StandingOrder.name == name).first()
     if storder is None:
         flash('No such standing order "%s"' % name)
         return redirect(url_for("standing_orders"))
@@ -1179,7 +1182,8 @@ def update_standing_order(name):
 @app.route("/standing-orders/<string:name>/delete", methods=["POST"])
 @login_required
 def delete_standing_order(name):
-    storder = StandingOrder.query.filter(StandingOrder.name == name).first()
+    with app.app_context():
+        storder = StandingOrder.query.filter(StandingOrder.name == name).first()
     if storder is None:
         flash('No such standing order "%s"' % name)
         return redirect(url_for("standing_orders"))
@@ -1306,7 +1310,8 @@ def execute_search_ui():
         if output_format == full_path_format:
             from .file import FileInstance
 
-            instances = FileInstance.query.filter(FileInstance.name.in_(search))
+            with app.app_context():
+                instances = FileInstance.query.filter(FileInstance.name.in_(search))
             text = "\n".join(i.full_path_on_store() for i in instances)
         elif output_format == file_name_format:
             text = "\n".join(f.name for f in search)
