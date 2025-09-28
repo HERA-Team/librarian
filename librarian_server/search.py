@@ -309,11 +309,12 @@ def _session_get_num_obs():
 
     from .observation import Observation, ObservingSession
 
-    return (
-        db.session.query(func.count(Observation.obsid))
-        .filter(Observation.session_id == ObservingSession.id)
-        .as_scalar()
-    )
+    with app.app_context():
+        return (
+            db.session.query(func.count(Observation.obsid))
+            .filter(Observation.session_id == ObservingSession.id)
+            .as_scalar()
+        )
 
 
 def _session_get_num_files():
@@ -322,12 +323,13 @@ def _session_get_num_files():
     from .file import File
     from .observation import Observation, ObservingSession
 
-    return (
-        db.session.query(func.count(File.name))
-        .filter(File.obsid == Observation.obsid)
-        .filter(Observation.session_id == ObservingSession.id)
-        .as_scalar()
-    )
+    with app.app_context():
+        return (
+            db.session.query(func.count(File.name))
+            .filter(File.obsid == Observation.obsid)
+            .filter(Observation.session_id == ObservingSession.id)
+            .as_scalar()
+        )
 
 
 def _session_get_age():
@@ -373,15 +375,16 @@ class ObservingSessionSearchCompiler(GenericSearchCompiler):
 
         # This feels awfully gross, but it works.
 
-        return (
-            db.session.query(func.count(File.name))
-            .filter(File.obsid == Observation.obsid)
-            .filter(Observation.session_id == ObservingSession.id)
-            .join(FileEvent)
-            .filter(FileEvent.type == payload, File.name == FileEvent.name)
-            .as_scalar()
-            == 0
-        )
+        with app.app_context():
+            return (
+                db.session.query(func.count(File.name))
+                .filter(File.obsid == Observation.obsid)
+                .filter(Observation.session_id == ObservingSession.id)
+                .join(FileEvent)
+                .filter(FileEvent.type == payload, File.name == FileEvent.name)
+                .as_scalar()
+                == 0
+            )
 
 
 the_session_search_compiler = ObservingSessionSearchCompiler()
@@ -408,9 +411,12 @@ def _obs_get_num_files():
     from .file import File
     from .observation import Observation
 
-    return (
-        db.session.query(func.count(File.name)).filter(File.obsid == Observation.obsid).as_scalar()
-    )
+    with app.app_context():
+        return (
+            db.session.query(func.count(File.name)).filter(
+                File.obsid == Observation.obsid
+            ).as_scalar()
+        )
 
 
 def _obs_get_total_size():
@@ -419,7 +425,10 @@ def _obs_get_total_size():
     from .file import File
     from .observation import Observation
 
-    return db.session.query(func.sum(File.size)).filter(File.obsid == Observation.obsid).as_scalar()
+    with app.app_context():
+        return db.session.query(func.sum(File.size)).filter(
+            File.obsid == Observation.obsid
+        ).as_scalar()
 
 
 simple_obs_attrs = [
@@ -453,7 +462,10 @@ def _file_get_num_instances():
 
     from .file import File, FileInstance
 
-    return db.session.query(func.count()).filter(FileInstance.name == File.name).as_scalar()
+    with app.app_context():
+        return db.session.query(func.count()).filter(
+            FileInstance.name == File.name
+        ).as_scalar()
 
 
 simple_file_attrs = [
@@ -527,18 +539,20 @@ class FileSearchCompiler(GenericSearchCompiler):
         from .file import File
         from .observation import Observation
 
-        matched_obsids = db.session.query(Observation.obsid).filter(
-            the_obs_search_compiler.compile(payload)
-        )
+        with app.app_context():
+            matched_obsids = db.session.query(Observation.obsid).filter(
+                the_obs_search_compiler.compile(payload)
+            )
         return File.obsid.in_(matched_obsids)
 
     def _do_obs_sub_query(self, clause_name, payload):
         from .file import File
         from .observation import Observation
 
-        matched_obsids = db.session.query(Observation.obsid).filter(
-            the_obs_search_compiler._compile_clause(clause_name, payload)
-        )
+        with app.app_context():
+            matched_obsids = db.session.query(Observation.obsid).filter(
+                the_obs_search_compiler._compile_clause(clause_name, payload)
+            )
         return File.obsid.in_(matched_obsids)
 
 
@@ -573,31 +587,32 @@ def compile_search(search_string, query_type="files"):
 
     # Offload to the helper classes.
 
-    if query_type == "files":
-        return File.query.filter(the_file_search_compiler.compile(search))
-    elif query_type == "names":
-        return db.session.query(File.name).filter(the_file_search_compiler.compile(search))
-    elif query_type == "obs":
-        return Observation.query.filter(the_obs_search_compiler.compile(search))
-    elif query_type == "sessions":
-        return ObservingSession.query.filter(the_session_search_compiler.compile(search))
-    elif query_type == "instances-stores":
-        # The following syntax gives us a LEFT OUTER JOIN which is what we want to
-        # get (at most) one instance for each File of interest.
-        return (
-            db.session.query(FileInstance, File, Store)
-            .join(Store)
-            .join(File, isouter=True)
-            .filter(the_file_search_compiler.compile(search))
-        )
-    elif query_type == "instances":
-        return (
-            db.session.query(FileInstance)
-            .join(File, isouter=True)
-            .filter(the_file_search_compiler.compile(search))
-        )
-    else:
-        raise ServerError("unhandled query_type %r", query_type)
+    with app.app_context():
+        if query_type == "files":
+            return File.query.filter(the_file_search_compiler.compile(search))
+        elif query_type == "names":
+            return db.session.query(File.name).filter(the_file_search_compiler.compile(search))
+        elif query_type == "obs":
+            return Observation.query.filter(the_obs_search_compiler.compile(search))
+        elif query_type == "sessions":
+            return ObservingSession.query.filter(the_session_search_compiler.compile(search))
+        elif query_type == "instances-stores":
+            # The following syntax gives us a LEFT OUTER JOIN which is what we want to
+            # get (at most) one instance for each File of interest.
+            return (
+                db.session.query(FileInstance, File, Store)
+                .join(Store)
+                .join(File, isouter=True)
+                .filter(the_file_search_compiler.compile(search))
+            )
+        elif query_type == "instances":
+            return (
+                db.session.query(FileInstance)
+                .join(File, isouter=True)
+                .filter(the_file_search_compiler.compile(search))
+            )
+        else:
+            raise ServerError("unhandled query_type %r", query_type)
 
 
 # "Standing orders" to copy files from one Librarian to another.
@@ -652,10 +667,11 @@ class StandingOrder(db.Model):
         # We then layer on a check that the files don't have the specified
         # marker event.
 
-        already_done = db.session.query(File.name).filter(
-            FileEvent.name == File.name, FileEvent.type == self.event_type
-        )
-        query = query.filter(~File.name.in_(already_done))
+        with app.app_context():
+            already_done = db.session.query(File.name).filter(
+                FileEvent.name == File.name, FileEvent.type == self.event_type
+            )
+            query = query.filter(~File.name.in_(already_done))
 
         # Finally we filter out files that already have copy tasks associated
         # with this standing order, exceping those tasks that encountered an

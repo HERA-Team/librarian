@@ -958,28 +958,28 @@ def initiate_offload(args, sourcename=None):
 
     inst_alias = aliased(FileInstance)
 
-    n_other_stores = (
-        db.session.query(func.count())
-        .filter(inst_alias.name == FileInstance.name)
-        .filter(inst_alias.store != source_store.id)
-        .as_scalar()
-    )
+    with app.app_context():
+        n_other_stores = (
+            db.session.query(func.count())
+            .filter(inst_alias.name == FileInstance.name)
+            .filter(inst_alias.store != source_store.id)
+            .as_scalar()
+        )
 
-    q = (
-        FileInstance.query.filter(FileInstance.store == source_store.id)
-        .filter(n_other_stores == 0)
-        .limit(OFFLOAD_BATCH_SIZE)
-    )
+        q = (
+            FileInstance.query.filter(FileInstance.store == source_store.id)
+            .filter(n_other_stores == 0)
+            .limit(OFFLOAD_BATCH_SIZE)
+        )
 
-    info = [InstanceOffloadInfo(i) for i in q]
+        info = [InstanceOffloadInfo(i) for i in q]
 
-    # If no such instances exist, mark the store as unavailable, essentially
-    # clearing it for deletion, and return.
+        # If no such instances exist, mark the store as unavailable, essentially
+        # clearing it for deletion, and return.
 
-    if not len(info):
-        source_store.available = False
+        if not len(info):
+            source_store.available = False
 
-        with app.app_context():
             try:
                 db.session.commit()
             except SQLAlchemyError:
@@ -1072,7 +1072,10 @@ def specific_store(name):
 
     from .file import FileInstance
 
-    num_instances = db.session.query(func.count()).filter(FileInstance.store == store.id).scalar()
+    with app.app_context():
+        num_instances = db.session.query(func.count()).filter(
+            FileInstance.store == store.id
+        ).scalar()
 
     if store.available:
         toggle_action = "make-unavailable"
