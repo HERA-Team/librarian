@@ -678,14 +678,18 @@ def set_one_file_deletion_policy(args, sourcename=None):
     else:
         raise ServerError('no instances of file "%s" on this librarian', file_name)
 
-    db.session.add(
-        file.make_generic_event(
-            "instance_deletion_policy_changed",
-            store_name=inst.store_object.name,
-            parent_dirs=inst.parent_dirs,
-            new_policy=deletion_policy,
+    try:
+        db.session.add(
+            file.make_generic_event(
+                "instance_deletion_policy_changed",
+                store_name=inst.store_object.name,
+                parent_dirs=inst.parent_dirs,
+                new_policy=deletion_policy,
+            )
         )
-    )
+    except:
+        app.log_exception(sys.exc_info())
+        raise ServerError("failed to add "+filename+" to db.session.add. in app.context")
 
     try:
         db.session.commit()
@@ -693,6 +697,9 @@ def set_one_file_deletion_policy(args, sourcename=None):
         db.session.rollback()
         app.log_exception(sys.exc_info())
         raise ServerError("failed to commit changes to the database")
+    except Exception as e:
+        app.log_exception(sys.exc_info())
+        raise ServerError("Some error that is not SQLAlchemyError has occurred while trying to mark"+file_name+" for deletion") from e
 
     return {}
 
