@@ -829,7 +829,8 @@ class OffloaderTask(bgtasks.BackgroundTask):
             dest_store = Store.get_by_name(self.dest_store.name)
 
             if exc is None:
-                logger.info("instance offload %s => %s succeeded", source_store.name, dest_store.name)
+                logger.info("instance offload %s => %s succeeded",
+                            source_store.name, dest_store.name)
             else:
                 # If the thread crashed, our state information should still be
                 # reasonable, and we might as well complete any offloads that may
@@ -854,7 +855,8 @@ class OffloaderTask(bgtasks.BackgroundTask):
                     continue
 
                 try:
-                    source_inst = FileInstance.query.get((source_store.id, info.parent_dirs, info.name))
+                    source_inst = FileInstance.query.get(
+                        (source_store.id, info.parent_dirs, info.name))
                 except Exception:
                     logger.warn("offloader wrapup: no instance %s; already deleted?", desc_name)
                     continue
