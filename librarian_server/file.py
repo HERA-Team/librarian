@@ -689,7 +689,7 @@ def set_one_file_deletion_policy(args, sourcename=None):
         )
     except:
         app.log_exception(sys.exc_info())
-        raise ServerError("failed to add "+filename+" to db.session.add. in app.context")
+        raise ServerError("failed to add "+file_name+" to db.session.add. in app.context")
 
     try:
         db.session.commit()
