@@ -593,9 +593,9 @@ class UploaderTask(bgtasks.BackgroundTask):
             error_code = 1
             error_message = str(exc)
 
-        from .file import File
-
         with app.app_context():
+            from .file import File
+
             file = File.query.get(os.path.basename(self.store_path))
 
             if error_code != 0:
@@ -818,13 +818,13 @@ class OffloaderTask(bgtasks.BackgroundTask):
             info.success = True
 
     def wrapup_function(self, retval, exc):
-        from .file import DeletionPolicy, FileInstance
-
-        # Yay, we can access the database again! We need it to delete all of
-        # the instances that we *successfully* copied. We also need to turn
-        # the stores back into a DB-ified objects to do what we need to do.
-
         with app.app_context():
+            from .file import DeletionPolicy, FileInstance
+
+            # Yay, we can access the database again! We need it to delete all of
+            # the instances that we *successfully* copied. We also need to turn
+            # the stores back into a DB-ified objects to do what we need to do.
+
             source_store = Store.get_by_name(self.source_store.name)
             dest_store = Store.get_by_name(self.dest_store.name)
 
