@@ -88,14 +88,14 @@ class MCManager:
     def check_in(self):
         from sqlalchemy import func
 
+        from .file import File, FileInstance
+        from .store import Store
+
+        astro_now = Time.now()
+        unix_now = time.time()
+
+        # First, report our general status info.
         with app.app_context():
-            from .file import File, FileInstance
-            from .store import Store
-
-            astro_now = Time.now()
-            unix_now = time.time()
-
-            # First, report our general status info.
             num_files = db.session.query(func.count(File.name)).scalar() or 0
 
             data_volume_gb = (
@@ -105,16 +105,16 @@ class MCManager:
                 or 0
             ) / 1024**3
 
-            free_space_gb = 0
-            for store in Store.query.filter(Store.available):
-                free_space_gb += store.get_space_info()["available"]  # measured in bytes
-            free_space_gb /= 1024**3  # bytes => GiB
+        free_space_gb = 0
+        for store in Store.query.filter(Store.available):
+            free_space_gb += store.get_space_info()["available"]  # measured in bytes
+        free_space_gb /= 1024**3  # bytes => GiB
 
-            upload_min_elapsed = (unix_now - self._last_file_upload_time) / 60
+        upload_min_elapsed = (unix_now - self._last_file_upload_time) / 60
 
-            from .bgtasks import get_unfinished_task_count
+        from .bgtasks import get_unfinished_task_count
 
-            num_processes = get_unfinished_task_count()
+        num_processes = get_unfinished_task_count()
 
         try:
             self.mc_session.add_lib_status(
