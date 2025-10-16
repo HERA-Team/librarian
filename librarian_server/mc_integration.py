@@ -89,14 +89,15 @@ class MCManager:
     def check_in(self):
         from sqlalchemy import func
 
-        from .file import File, FileInstance
-        from .store import Store
-
         astro_now = Time.now()
         unix_now = time.time()
 
-        # First, report our general status info.
         with app.app_context():
+            from .file import File, FileInstance
+            from .store import Store
+            from .bgtasks import get_unfinished_task_count
+
+            # First, report our general status info.
             num_files = db.session.query(func.count(File.name)).scalar() or 0
 
             data_volume_gb = (
@@ -112,8 +113,6 @@ class MCManager:
             free_space_gb /= 1024**3  # bytes => GiB
 
         upload_min_elapsed = (unix_now - self._last_file_upload_time) / 60
-
-        from .bgtasks import get_unfinished_task_count
 
         num_processes = get_unfinished_task_count()
         mc_logger.debug(f'check_in reporting to M&C. running git hash {self.git_hash}')
