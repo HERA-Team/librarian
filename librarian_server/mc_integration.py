@@ -27,8 +27,12 @@ import logging
 from astropy.time import Time
 from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
+from sqlalchemy import func
 
 from . import db, app, is_primary_server, logger
+from .bgtasks import get_unfinished_task_count
+from .file import File, FileInstance
+from .store import Store
 from .webutil import ServerError
 
 # M&C severity classes
@@ -87,16 +91,10 @@ class MCManager:
             logger.error("could not commit error record to M&C: %s", e)
 
     def check_in(self):
-        from sqlalchemy import func
-
         astro_now = Time.now()
         unix_now = time.time()
 
         with app.app_context():
-            from .file import File, FileInstance
-            from .store import Store
-            from .bgtasks import get_unfinished_task_count
-
             # First, report our general status info.
             num_files = db.session.query(func.count(File.name)).scalar() or 0
 

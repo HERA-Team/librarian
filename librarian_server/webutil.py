@@ -13,15 +13,13 @@ AuthFailedError
 ServerError
 json_api
 login_required
-login
-logout
 """
 ).split()
 
 import json
 import os
 import sys
-from flask import Response, flash, redirect, render_template, request, session, url_for
+from flask import Response, redirect, request, session, url_for
 from functools import wraps
 from tornado import gen, iostream, web
 
@@ -252,38 +250,6 @@ def login_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if len(request.form):
-        reqdata = request.form  # POST
-    else:
-        reqdata = request.args  # GET
-
-    nxt = reqdata.get("next")
-    if nxt is None:
-        nxt = url_for("index")
-
-    if request.method == "GET":
-        return render_template("login.html", next=nxt)
-
-    # This is a POST request -- user is actually trying to log in.
-
-    try:
-        sourcename = _check_authentication(request.form.get("auth"))
-    except AuthFailedError:
-        flash("Login failed.")
-        return render_template("login.html", next=nxt)
-
-    session["sourcename"] = sourcename
-    return redirect(nxt)
-
-
-@app.route("/logout")
-def logout():
-    session.pop("sourcename", None)
-    return redirect(url_for("index"))
 
 
 # Streaming of data through the tornado asynchronous API
