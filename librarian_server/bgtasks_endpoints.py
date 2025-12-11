@@ -7,8 +7,8 @@
 from flask import render_template
 
 from . import app
-from .webutil import the_task_manager
-from .webutil import login_required
+from .bgtasks import the_task_manager
+from .bgtasks import login_required
 
 
 # Web user interface
