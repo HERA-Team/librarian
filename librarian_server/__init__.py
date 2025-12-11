@@ -97,7 +97,17 @@ def is_primary_server():
 # We have to manually import the modules that implement services. It's not
 # crazy to worry about circular dependency issues, but everything will be all
 # right.
-from . import bgtasks, file, misc, observation, search, store, webutil  # noqa: E402
+from . import (  # noqa: E402
+    bgtasks,
+    bgtasks_endpoints,
+    file_endpoints,
+    misc_endpoints,
+    observation_endpoints,
+    search,
+    search_endpoints,
+    store_endpoints,
+    webutil_endpoints
+)
 
 
 def get_version_info():
