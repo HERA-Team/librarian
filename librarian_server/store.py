@@ -430,7 +430,7 @@ def register_instances(args, sourcename=None):
 
         # Do we already know about this instance? If so, just ignore it.
 
-        store_path = full_path[len(slashed_prefix) :]
+        store_path = full_path[len(slashed_prefix):]
         parent_dirs = os.path.dirname(store_path)
         name = os.path.basename(store_path)
 
@@ -593,52 +593,53 @@ class UploaderTask(bgtasks.BackgroundTask):
             error_code = 1
             error_message = str(exc)
 
-        from .file import File
+        with app.app_context():
+            from .file import File
 
-        file = File.query.get(os.path.basename(self.store_path))
+            file = File.query.get(os.path.basename(self.store_path))
 
-        if error_code != 0:
-            dt = rate = None
-        else:
-            dt = self.t_finish - self.t_start  # seconds
-            dt_eff = max(dt, 0.5)  # avoid div-by-zero just in case
-            rate = file.size / (dt_eff * 1024.0)  # kilobytes/sec (AKA kB/s)
+            if error_code != 0:
+                dt = rate = None
+            else:
+                dt = self.t_finish - self.t_start  # seconds
+                dt_eff = max(dt, 0.5)  # avoid div-by-zero just in case
+                rate = file.size / (dt_eff * 1024.0)  # kilobytes/sec (AKA kB/s)
 
-            from . import mc_integration
+                from . import mc_integration
 
-            mc_integration.note_file_upload_succeeded(self.conn_name, file.size)
+                mc_integration.note_file_upload_succeeded(self.conn_name, file.size)
 
-        db.session.add(
-            file.make_copy_finished_event(
-                self.conn_name,
-                self.remote_store_path,
-                error_code,
-                error_message,
-                duration=dt,
-                average_rate=rate,
-            )
-        )
-
-        if self.standing_order_name is not None and error_code == 0:
-            # XXX keep this name synched with that in search.py:StandingOrder
-            _type = "standing_order_succeeded:" + self.standing_order_name
-            db.session.add(file.make_generic_event(_type))
-
-        if error_code == 0:
-            logger.info(
-                "transfer of %s:%s: duration %.1f s, average rate %.1f kB/s",
-                self.store.name,
-                self.store_path,
-                dt,
-                rate,
+            db.session.add(
+                file.make_copy_finished_event(
+                    self.conn_name,
+                    self.remote_store_path,
+                    error_code,
+                    error_message,
+                    duration=dt,
+                    average_rate=rate,
+                )
             )
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            raise ServerError("failed to commit completion events to database")
+            if self.standing_order_name is not None and error_code == 0:
+                # XXX keep this name synched with that in search.py:StandingOrder
+                _type = "standing_order_succeeded:" + self.standing_order_name
+                db.session.add(file.make_generic_event(_type))
+
+            if error_code == 0:
+                logger.info(
+                    "transfer of %s:%s: duration %.1f s, average rate %.1f kB/s",
+                    self.store.name,
+                    self.store_path,
+                    dt,
+                    rate,
+                )
+
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                raise ServerError("failed to commit completion events to database")
 
 
 def launch_copy_by_file_name(
@@ -817,80 +818,83 @@ class OffloaderTask(bgtasks.BackgroundTask):
             info.success = True
 
     def wrapup_function(self, retval, exc):
-        from .file import DeletionPolicy, FileInstance
+        with app.app_context():
+            from .file import DeletionPolicy, FileInstance
 
-        # Yay, we can access the database again! We need it to delete all of
-        # the instances that we *successfully* copied. We also need to turn
-        # the stores back into a DB-ified objects to do what we need to do.
+            # Yay, we can access the database again! We need it to delete all of
+            # the instances that we *successfully* copied. We also need to turn
+            # the stores back into a DB-ified objects to do what we need to do.
 
-        source_store = Store.get_by_name(self.source_store.name)
-        dest_store = Store.get_by_name(self.dest_store.name)
+            source_store = Store.get_by_name(self.source_store.name)
+            dest_store = Store.get_by_name(self.dest_store.name)
 
-        if exc is None:
-            logger.info("instance offload %s => %s succeeded", source_store.name, dest_store.name)
-        else:
-            # If the thread crashed, our state information should still be
-            # reasonable, and we might as well complete any offloads that may
-            # have actually copied successfully. So we pretty much ignore the
-            # fact that an exception occurred.
-            logger.warn(
-                "instance offload %s => %s FAILED: %s", source_store.name, dest_store.name, exc
-            )
-
-        # For all successful copies, we need to un-stage the file in the usual
-        # way. If that worked, we mark the original instance as being
-        # deleteable. The command-line client give the user a query that will
-        # safely remove thee redundant instances using the standard deletion
-        # mechanism.
-        #
-        # Here we *are* paranoid about exceptions.
-        for i, info in enumerate(self.instance_info):
-            desc_name = f"{source_store.name}:{info.parent_dirs}/{info.name}"
-
-            if not info.success:
-                logger.warn("offload thread did not succeed on instance %s", desc_name)
-                continue
-
-            try:
-                source_inst = FileInstance.query.get((source_store.id, info.parent_dirs, info.name))
-            except Exception:
-                logger.warn("offloader wrapup: no instance %s; already deleted?", desc_name)
-                continue
-
-            stagepath = os.path.join(self.staging_dir, f"{str(i)}_{source_inst.name}")
-
-            try:
-                dest_store.process_staged_file(
-                    stagepath, source_inst.store_path, "direct", source_inst.deletion_policy
-                )
-            except Exception:
+            if exc is None:
+                logger.info("instance offload %s => %s succeeded",
+                            source_store.name, dest_store.name)
+            else:
+                # If the thread crashed, our state information should still be
+                # reasonable, and we might as well complete any offloads that may
+                # have actually copied successfully. So we pretty much ignore the
+                # fact that an exception occurred.
                 logger.warn(
-                    "offloader failed to complete upload of %s", source_inst.descriptive_name()
+                    "instance offload %s => %s FAILED: %s", source_store.name, dest_store.name, exc
                 )
-                continue
 
-            # If we're still here, the copy succeeded and the destination
-            # store has a shiny new instance. Mark the source instance as
-            # deleteable.
+            # For all successful copies, we need to un-stage the file in the usual
+            # way. If that worked, we mark the original instance as being
+            # deleteable. The command-line client give the user a query that will
+            # safely remove thee redundant instances using the standard deletion
+            # mechanism.
+            #
+            # Here we *are* paranoid about exceptions.
+            for i, info in enumerate(self.instance_info):
+                desc_name = f"{source_store.name}:{info.parent_dirs}/{info.name}"
 
-            logger.info('offloader: marking "%s" for deletion', source_inst.descriptive_name())
-            source_inst.deletion_policy = DeletionPolicy.ALLOWED
-            db.session.add(
-                source_inst.file.make_generic_event(
-                    "instance_deletion_policy_changed",
-                    store_name=source_inst.store_object.name,
-                    parent_dirs=source_inst.parent_dirs,
-                    new_policy=DeletionPolicy.ALLOWED,
-                    context="offload",
+                if not info.success:
+                    logger.warn("offload thread did not succeed on instance %s", desc_name)
+                    continue
+
+                try:
+                    source_inst = FileInstance.query.get(
+                        (source_store.id, info.parent_dirs, info.name))
+                except Exception:
+                    logger.warn("offloader wrapup: no instance %s; already deleted?", desc_name)
+                    continue
+
+                stagepath = os.path.join(self.staging_dir, f"{str(i)}_{source_inst.name}")
+
+                try:
+                    dest_store.process_staged_file(
+                        stagepath, source_inst.store_path, "direct", source_inst.deletion_policy
+                    )
+                except Exception:
+                    logger.warn(
+                        "offloader failed to complete upload of %s", source_inst.descriptive_name()
+                    )
+                    continue
+
+                # If we're still here, the copy succeeded and the destination
+                # store has a shiny new instance. Mark the source instance as
+                # deleteable.
+
+                logger.info('offloader: marking "%s" for deletion', source_inst.descriptive_name())
+                source_inst.deletion_policy = DeletionPolicy.ALLOWED
+                db.session.add(
+                    source_inst.file.make_generic_event(
+                        "instance_deletion_policy_changed",
+                        store_name=source_inst.store_object.name,
+                        parent_dirs=source_inst.parent_dirs,
+                        new_policy=DeletionPolicy.ALLOWED,
+                        context="offload",
+                    )
                 )
-            )
 
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            app.log_exception(sys.exc_info())
-            logger.error("offloader: failed to commit db changes; continuing")
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                app.log_exception(sys.exc_info())
+                logger.error("offloader: failed to commit db changes; continuing")
 
         # Finally, we can blow away the staging directory.
 

@@ -20,18 +20,21 @@ note_file_upload_succeeded
 register_callbacks
 """.split()
 
+import sys
 import time
+import logging
+
 from astropy.time import Time
 from sqlalchemy.engine.row import Row
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 
-from . import db, is_primary_server, logger
+from . import db, app, is_primary_server, logger
 from .webutil import ServerError
 
 # M&C severity classes
 FATAL, SEVERE, WARNING, INFO = range(1, 5)
 
-
+mc_logger = logging.getLogger("librarian.mc_integration")
 class MCManager:
     """A simple singleton class that checks in with M&C. Only gets created if M&C
     reporting is actually enabled.
@@ -93,27 +96,27 @@ class MCManager:
         unix_now = time.time()
 
         # First, report our general status info.
+        with app.app_context():
+            num_files = db.session.query(func.count(File.name)).scalar() or 0
 
-        num_files = db.session.query(func.count(File.name)).scalar() or 0
+            data_volume_gb = (
+                (
+                    db.session.query(func.sum(File.size)).select_from(FileInstance).outerjoin(File)
+                ).scalar()
+                or 0
+            ) / 1024**3
 
-        data_volume_gb = (
-            (
-                db.session.query(func.sum(File.size)).select_from(FileInstance).outerjoin(File)
-            ).scalar()
-            or 0
-        ) / 1024**3
-
-        free_space_gb = 0
-        for store in Store.query.filter(Store.available):
-            free_space_gb += store.get_space_info()["available"]  # measured in bytes
-        free_space_gb /= 1024**3  # bytes => GiB
+            free_space_gb = 0
+            for store in Store.query.filter(Store.available):
+                free_space_gb += store.get_space_info()["available"]  # measured in bytes
+            free_space_gb /= 1024**3  # bytes => GiB
 
         upload_min_elapsed = (unix_now - self._last_file_upload_time) / 60
 
         from .bgtasks import get_unfinished_task_count
 
         num_processes = get_unfinished_task_count()
-
+        mc_logger.debug(f'check_in reporting to M&C. running git hash {self.git_hash}')
         try:
             self.mc_session.add_lib_status(
                 astro_now,
@@ -161,8 +164,9 @@ class MCManager:
         # the sum of those files' sizes, divided by the reporting interval. In
         # corner cases the bandwidth will get wonky, but we also have the
         # direct measurements from the pots to look at.
-
+        mc_logger.debug(f'check_in. checking remotes')
         for conn_name, file_sizes in self._remote_upload_stats.items():
+            mc_logger.debug(f'check_in. found {len(self._remote_upload_stats.items())} remotes')
             num_file_uploads = len(file_sizes)
             bytes_uploaded = sum(file_sizes)  # this works when the list is empty.
             bandwidth_Mbs = bytes_uploaded * 8 / (1024**2 * (unix_now - self._last_report_time))
@@ -174,7 +178,7 @@ class MCManager:
             # that to execute.
 
             from hera_librarian import LibrarianClient, RPCError
-
+            mc_logger.debug(f'check_in. pinging {conn_name}')
             client = LibrarianClient(conn_name)
             t0 = time.time()
 
@@ -187,7 +191,7 @@ class MCManager:
                 ping_time = time.time() - t0
 
             # OK now we're ready to file our report!
-
+            mc_logger.debug(f'check_in. add_lib_remote_status for {conn_name}')
             self.mc_session.add_lib_remote_status(
                 astro_now, conn_name, ping_time, num_file_uploads, bandwidth_Mbs
             )
@@ -200,6 +204,7 @@ class MCManager:
             self.error(SEVERE, "could not commit ping report to the M&C system: %s", e)
 
         self._last_report_time = time.time()
+        logger.debug('end check_in')
 
     def is_file_record_invalid(self, file_obj):
         """This function is kind-sorta superseded by create_observation_record(), but
@@ -295,7 +300,7 @@ def register_callbacks(version_string, git_hash):
     from tornado import ioloop
 
     cb = ioloop.PeriodicCallback(
-        the_mc_manager.check_in, 15 * 60 * 1000
+        the_mc_manager.check_in, 1 * 15 * 1000 #15s interval for debuggin
     )  # measured in milliseconds
     cb.start()
     return cb
@@ -334,6 +339,12 @@ def create_observation_record(obsid):
         raise ServerError("expected M&C to know about obsid %s but it didn't", obsid)
 
     db.session.add(rec)
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.log_exception(sys.exc_info())
+        raise ServerError("failed to add new observation record %s to database; see logs for details", rec)
     return rec
 
 

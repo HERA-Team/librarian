@@ -25,6 +25,7 @@ from .dbutil import NotNull
 from .observation import Observation
 from .store import Store
 from .webutil import ServerError, json_api, login_required, optional_arg, required_arg
+import tornado.process
 
 
 def infer_file_obsid(parent_dirs, name, info):
@@ -326,12 +327,16 @@ class File(db.Model):
                 continue
 
             # Looks like we succeeded in blowing it away.
-
             if not noop:
                 db.session.add(self.make_instance_deletion_event(inst, store))
                 db.session.delete(inst)
             n_deleted += 1
-
+        logger.info('task_id: {id} - {n} deleted instances: {i}/{tot} nkept: {n_kept}'.format(
+                    n=self.name,
+                    i=n_deleted,
+                    id=tornado.process.task_id(),
+                    tot=len(self.instances),
+                    n_kept=n_kept))
         if not noop:
             try:
                 db.session.commit()
@@ -673,14 +678,18 @@ def set_one_file_deletion_policy(args, sourcename=None):
     else:
         raise ServerError('no instances of file "%s" on this librarian', file_name)
 
-    db.session.add(
-        file.make_generic_event(
-            "instance_deletion_policy_changed",
-            store_name=inst.store_object.name,
-            parent_dirs=inst.parent_dirs,
-            new_policy=deletion_policy,
+    try:
+        db.session.add(
+            file.make_generic_event(
+                "instance_deletion_policy_changed",
+                store_name=inst.store_object.name,
+                parent_dirs=inst.parent_dirs,
+                new_policy=deletion_policy,
+            )
         )
-    )
+    except:
+        app.log_exception(sys.exc_info())
+        raise ServerError("failed to add "+file_name+" to db.session.add. in app.context")
 
     try:
         db.session.commit()
@@ -688,6 +697,9 @@ def set_one_file_deletion_policy(args, sourcename=None):
         db.session.rollback()
         app.log_exception(sys.exc_info())
         raise ServerError("failed to commit changes to the database")
+    except Exception as e:
+        app.log_exception(sys.exc_info())
+        raise ServerError("Some error that is not SQLAlchemyError has occurred while trying to mark"+file_name+" for deletion") from e
 
     return {}
 

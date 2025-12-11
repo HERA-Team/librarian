@@ -266,7 +266,7 @@ class BaseStore:
         store_path = self._path(store_path)
         if host_path is not None:
             if store_path.startswith(host_path):
-                store_path = store_path[len(host_path) :]
+                store_path = store_path[len(host_path):]
                 # trim off leading "/" if present
                 if store_path.startswith("/"):
                     store_path = store_path.lstrip("/")
@@ -458,7 +458,7 @@ class BaseStore:
         if not fullpath.startswith(self.path_prefix):
             raise RPCError(f"unexpected output from mktemp on {self.name}: {fullpath}")
 
-        return fullpath[len(self.path_prefix) + 1 :]
+        return fullpath[len(self.path_prefix) + 1:]
 
     # Interrogations of the store -- these don't change anything so they don't
     # necessarily need to be paired with Librarian database modifications.
@@ -493,8 +493,17 @@ class BaseStore:
         # 30 second lifetime:
         if self._cached_space_info is not None and now - self._space_info_timestamp < 30:
             return self._cached_space_info
-
-        output = self._ssh_slurp("df -B1 %s" % self._path())
+        try:
+            output = self._ssh_slurp("df -B1 %s" % self._path())
+        except(RPCError):  # TEMPORARY CATCH.
+            print("{host} - librarian.base_store.get_space_info SSH FAILURE TO CONNECT")
+            if self._cached_space_info is None:  # if the store errors when the server starts, no cache available
+                self._cached_space_info = {}
+                self._cached_space_info["used"] = 0
+                self._cached_space_info["available"] = 0
+                self._cached_space_info["total"] = 1
+            self._space_info_timestamp = now
+            return self._cached_space_info  # WARNING! FAILURE NOT INDICATED ON WEB PAGE
         bits = output.splitlines()[-1].split()
         info = {}
         info["used"] = int(bits[2])  # measured in bytes

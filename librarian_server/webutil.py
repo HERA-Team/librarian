@@ -300,7 +300,7 @@ class StreamFile(web.RequestHandler):
             self.finish("internal server error: bad URI prefix")
             return
 
-        file_name = self.request.uri[len(self.uri_prefix) :]
+        file_name = self.request.uri[len(self.uri_prefix):]
 
         # Find an instance
 

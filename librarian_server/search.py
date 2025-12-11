@@ -775,9 +775,9 @@ class StandingOrderManager:
 
         stord_logger.debug("running searches")
         self.last_check = now
-
-        for storder in StandingOrder.query.all():
-            storder.maybe_launch_copies()
+        with app.app_context():
+            for storder in StandingOrder.query.all():
+                storder.maybe_launch_copies()
 
         return True
 
